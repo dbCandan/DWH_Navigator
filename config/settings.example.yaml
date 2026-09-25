@@ -24,6 +24,7 @@ expansion:
   enabled: true
   weight: 0.6                  # genişletme terimlerinin ağırlığı
   term_dictionary: config/term_dictionary.csv
+  stopwords: config/stopwords_tr.txt
 
 scoring:
   w_rule: 0.6

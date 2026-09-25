@@ -37,7 +37,15 @@ Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
 önce ve sonra `vsa eval` çalıştırılır; regresyon varsa değişiklik geri alınır.
 
+## Sözlükte dokümanda olmayan ayrıntılar
+- Baştaki `[...]` bayrakları: `MODEL TAHMİNİ` (240, ×0.85), `ORİJİNAL AÇIKLAMA HATALIYDI`
+  (88, not), ve `BU OBJEDE FARKLI ANLAMDA — DOĞRULANMALI` gibi diğerleri (~50,
+  `NEEDS_VERIFICATION`, not). Metin ortasındaki `[...]` formül olabilir, bayrak değildir.
+- `vCampaign` iki şemada (CFM, CMP) var → obje anahtarı her zaman `DB.Şema.Obje`.
+- Sheet2'de db/şema yok; bulgular (Obje, Kolon) ile eşlenir. 22 tekrar kolon var.
+
 ## Komutlar
+Sanal ortam `.venv/` (Windows: `.venv\Scripts\python`).
 ```bash
 pip install -e ".[dev]"
 pytest
@@ -53,5 +61,7 @@ vsa ask "kredi kartı limit doluluk oranı"
 - [ ] M3 — Hibrit arama (dense + reranker)
 - [ ] M4 — LLM katmanı
 - [ ] M5 — Batch modu
-- [ ] M6 — Arayüz
+- [ ] M6 — Arayüz — **tasarım kararları tamamen Claude'da**; kullanıcı "beni şaşırt" dedi.
+      Seçenek menüsü sunma, iddialı ve özgün bir tasarım yap. Kapalı ağ: runtime'da
+      dış CDN/font yok, her şey gömülü.
 - [ ] M7 — Geri bildirim döngüsü

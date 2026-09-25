@@ -1,0 +1,209 @@
+"""Turkish text normalization (HANDOVER §6).
+
+This module is the ONLY place where case folding happens. No other module may call
+``str.lower()`` / ``str.upper()`` / ``str.casefold()`` directly.
+
+Pipeline used for both indexing and querying::
+
+    raw text -> CamelCase split -> Turkish lowercase -> ASCII fold
+             -> stopword removal (token level) -> light suffix stemming
+
+Both sides are ASCII-folded, so a user typing "musteri" matches "müşteri".
+"""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Iterable
+
+_TR_LOWER = str.maketrans({"I": "ı", "İ": "i"})
+_TR_UPPER = str.maketrans({"i": "İ", "ı": "I"})
+
+_ASCII_FOLD = str.maketrans(
+    {
+        "ı": "i",
+        "ş": "s",
+        "ğ": "g",
+        "ü": "u",
+        "ö": "o",
+        "ç": "c",
+        "â": "a",
+        "î": "i",
+        "û": "u",
+        # Not Turkish, but appear in banking text and should not break tokens.
+        "é": "e",
+        "è": "e",
+        "ä": "a",
+    }
+)
+
+# Suffixes in ASCII-folded form, longest first (HANDOVER §6.4).
+_SUFFIXES: tuple[str, ...] = tuple(
+    sorted(
+        set(
+            [
+                "lerinin",
+                "larinin",
+                "lerine",
+                "larina",
+                "lerini",
+                "larini",
+                "lerin",
+                "larin",
+                "leri",
+                "lari",
+                "ler",
+                "lar",
+                "nin",
+                "nun",
+                "in",
+                "un",
+                "den",
+                "dan",
+                "ten",
+                "tan",
+                "de",
+                "da",
+                "te",
+                "ta",
+                "si",
+                "su",
+                "i",
+                "u",
+                "e",
+                "a",
+            ]
+        ),
+        key=len,
+        reverse=True,
+    )
+)
+MIN_STEM_LEN = 4
+_MAX_STEM_PASSES = 3
+
+# A "word" is a run of letters/digits; everything else separates words.
+_WORD_RE = re.compile(r"[^\W_]+", re.UNICODE)
+# An identifier may also contain underscores (KKB_DATE).
+_IDENT_RE = re.compile(r"\w+", re.UNICODE)
+
+
+def tr_lower(text: str) -> str:
+    """Lowercase with Turkish rules: ``I -> ı`` and ``İ -> i``."""
+    return text.translate(_TR_LOWER).lower()
+
+
+def tr_upper(text: str) -> str:
+    """Uppercase with Turkish rules: ``i -> İ`` and ``ı -> I``."""
+    return text.translate(_TR_UPPER).upper()
+
+
+def ascii_fold(text: str) -> str:
+    """Fold Turkish characters to ASCII. Expects already-lowercased text."""
+    return text.translate(_ASCII_FOLD)
+
+
+def fold(text: str) -> str:
+    """Turkish lowercase + ASCII fold. Canonical comparison form for any string."""
+    return ascii_fold(tr_lower(text))
+
+
+def split_camel(word: str) -> list[str]:
+    """Split a CamelCase / snake_case identifier into its parts (original casing kept).
+
+    ``CardLimitFullnessToday`` -> ``Card Limit Fullness Today``
+    ``IFRSStage``              -> ``IFRS Stage`` (acronym run is kept together)
+    ``TOTALOUTSTANDINGBALANCE``-> unchanged (all caps cannot be split)
+    ``KKB_DATE``               -> ``KKB DATE``
+    ``Avg30d``                 -> ``Avg 30 d``
+    """
+    parts: list[str] = []
+    for chunk in _WORD_RE.findall(word):
+        parts.extend(_split_chunk(chunk))
+    return parts
+
+
+def _split_chunk(chunk: str) -> list[str]:
+    parts: list[str] = []
+    start = 0
+    n = len(chunk)
+    for i in range(1, n):
+        prev, cur = chunk[i - 1], chunk[i]
+        nxt = chunk[i + 1] if i + 1 < n else ""
+        boundary = (
+            (prev.islower() and cur.isupper())
+            or (prev.isdigit() != cur.isdigit())
+            # End of an acronym run: "IFRSStage" -> split before "S" of "Stage".
+            or (prev.isupper() and cur.isupper() and nxt.islower())
+        )
+        if boundary:
+            parts.append(chunk[start:i])
+            start = i
+    parts.append(chunk[start:])
+    return parts
+
+
+def stem(token: str) -> str:
+    """Light rule-based Turkish suffix stripping on an ASCII-folded token.
+
+    Strips the longest matching suffix while the remaining root keeps at least
+    ``MIN_STEM_LEN`` characters; repeats a few times so stacked suffixes
+    ("transferlerinin" -> "transfer") reduce consistently. Digits are left alone.
+    """
+    if token.isdigit():
+        return token
+    for _ in range(_MAX_STEM_PASSES):
+        for suffix in _SUFFIXES:
+            if token.endswith(suffix) and len(token) - len(suffix) >= MIN_STEM_LEN:
+                token = token[: -len(suffix)]
+                break
+        else:
+            break
+    return token
+
+
+def load_stopwords(lines: Iterable[str]) -> frozenset[str]:
+    """Build a folded stopword set from raw lines (``#`` comments and blanks skipped)."""
+    words = set()
+    for line in lines:
+        word = line.split("#", 1)[0].strip()
+        if word:
+            words.add(fold(word))
+    return frozenset(words)
+
+
+def tokenize(
+    text: str,
+    *,
+    stopwords: frozenset[str] = frozenset(),
+    do_stem: bool = True,
+    keep_compound: bool = True,
+) -> list[str]:
+    """Turn free text or an identifier into normalized search tokens.
+
+    Stopwords are removed per token, not per phrase: in "risk bilgisi" only
+    "bilgisi" is dropped (HANDOVER §6.5).
+
+    With ``keep_compound`` a CamelCase word also emits its whole folded form, so
+    an exact identifier query (``CreditCardLimitRate``) still matches.
+    """
+    tokens: list[str] = []
+    for word in _IDENT_RE.findall(text):
+        parts = split_camel(word)
+        for part in parts:
+            tok = fold(part)
+            if (len(tok) < 2 and not tok.isdigit()) or tok in stopwords:
+                continue
+            tokens.append(stem(tok) if do_stem else tok)
+        if keep_compound and len(parts) > 1:
+            # Whole identifier, never stemmed: it must match the name exactly.
+            tokens.append(fold(word.replace("_", "")))
+    return tokens
+
+
+def normalize_phrase(text: str, *, stopwords: frozenset[str] = frozenset()) -> str:
+    """Normalized, space-joined form of a phrase — for containment checks.
+
+    ``"Limit Doluluk Oranı"`` and ``CardLimitFullness`` both become comparable
+    token strings, so ``"limit doluluk" in normalize_phrase(desc)`` works.
+    """
+    return " ".join(tokenize(text, stopwords=stopwords, keep_compound=False))
