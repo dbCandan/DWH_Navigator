@@ -1,0 +1,50 @@
+# Kopyalayıp config/settings.yaml olarak kullanın (settings.yaml repoya girmez).
+
+dictionary:
+  path: data/DataDictionary-Final.xlsx
+  sheet: Sheet1
+  quality_sheet: Sheet2        # opsiyonel
+
+index:
+  dir: data/index
+
+search:
+  top_k_columns: 120
+  top_k_objects: 10
+  field_weights:
+    name: 3
+    synonyms: 2
+    description: 1
+    object: 1
+  bm25:
+    k1: 1.2
+    b: 0.75
+
+expansion:
+  enabled: true
+  weight: 0.6                  # genişletme terimlerinin ağırlığı
+  term_dictionary: config/term_dictionary.csv
+
+scoring:
+  w_rule: 0.6
+  w_llm: 0.4
+  min_candidate_score: 0.25
+  min_answer_score: 0.35
+  object:
+    best_column: 0.50
+    coverage: 0.30
+    time: 0.10
+    granularity: 0.10
+  flag_penalty:
+    model_estimated: 0.85
+    naming_mismatch: 0.90
+
+llm:
+  enabled: false
+  endpoint: ""                 # OpenAI uyumlu /v1/chat/completions
+  model: ""
+  temperature: 0.1
+  timeout: 120
+
+report:
+  out_dir: out

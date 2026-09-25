@@ -1,0 +1,65 @@
+# Golden set — HANDOVER §13.3 ve Ek A.
+# KURAL: Mevcut maddeler silinmez, yalnızca eklenir.
+#
+# expected_objects: Bu talebe doğru cevap sayılan tablolar (herhangi biri yeterli).
+# primary_object:   Tam sözlükte 1. sırada beklenen tablo (MRR ve recall@1 için).
+
+- id: q001
+  query: >-
+    Müşterilerin risk bilgilerini aylık bazda ve kırılımlı olarak
+    (kredi kartı, gayrimenkul, ihtiyaç kredisi vb.) gösteren bir tablo mevcut mudur?
+  mode: ask
+  primary_object: EDWDM.MDL.vPRCArrayAllotment
+  expected_objects:
+    - EDWDM.MDL.vPRCArrayAllotment
+    - EDWDM.MDL.vPRCArrayCard
+    - EDWDM.IDM.vKKBGGCI
+    - EDWDM.CON.vProjectRisk
+    - EDWDM.CON.vProductRiskInfo
+  expected_columns:
+    - EDWDM.MDL.vPRCArrayAllotment.ConsumerBalance
+    - EDWDM.MDL.vPRCArrayAllotment.HousingFinanceBalance
+    - EDWDM.MDL.vPRCArrayAllotment.Period
+  notes: >-
+    Kredi kartı kırılımı vPRCArrayAllotment'ta yok; vPRCArrayCard ile
+    CustomerPartyId + Period üzerinden birleştirilmeli. vProjectRisk ve
+    vProductRiskInfo, vPRC* hariç tutulan kapsamda öne çıkan cevaplardır.
+  source: manuel-analiz-2026-09
+
+- id: q002
+  query: "Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?"
+  mode: ask
+  primary_object: EDWDM.MDL.vPRCCard
+  expected_objects:
+    - EDWDM.MDL.vPRCCard
+    - EDWDM.CMP.vCardLimitFullness
+    - EDWDM.MDL.vPRCArrayCard
+  expected_columns:
+    - EDWDM.MDL.vPRCCard.CreditCardLimitRate
+    - EDWDM.CMP.vCardLimitFullness.CardLimitFullnessToday
+    - EDWDM.MDL.vPRCArrayCard.CreditCardLimitRate
+  traps:
+    - EDWDM.CON.vCreditCardLimit.CardLimitRatio
+  notes: >-
+    vCreditCardLimit.CardLimitRatio doluluk oranı DEĞİLDİR (referans değere oran).
+    vCardLimitFullness.TotalLimitFullness kart değil tüm limitleri kapsar.
+  source: manuel-analiz-2026-09
+
+- id: q003
+  query: >-
+    Müşteri bazında aylık para transferi özeti: transfer tipi, transfer adedi,
+    toplam transfer tutarı TL, işlem yapılan farklı kişi sayısı, farklı banka sayısı,
+    kendi hesabına transfer adedi ve tutarı
+  mode: ask
+  primary_object: EDWDM.TRX.vCustomerMoneyTransferSummary
+  expected_objects:
+    - EDWDM.TRX.vCustomerMoneyTransferSummary
+    - EDWDM.MDL.vPRCArrayMoneyTransfer
+    - EDWDM.TRX.vFASTOutgoing
+  expected_columns:
+    - EDWDM.TRX.vCustomerMoneyTransferSummary.Period
+    - EDWDM.TRX.vCustomerMoneyTransferSummary.VirmanIntrabankMoneyTransferAmountTL
+  notes: >-
+    Aslen 10 alanlık hedef tablo talebi (batch modu, M5). M1'de tek soru olarak
+    özetlenmiş hali ile test edilir. Alan bazlı beklentiler batch golden setine taşınacak.
+  source: manuel-analiz-2026-09
