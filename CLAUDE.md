@@ -36,7 +36,8 @@ Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
 
 ## Yeni kararlar
 `docs/DECISIONS.md`: ADR-009 (müşteri no = hesap no), ADR-010 (zaman/granülerlik yalnız obje
-skorunda), ADR-011 (uygulanamayan bileşen ağırlıktan çıkar), ADR-012 (kolon skoru tabanı).
+skorunda), ADR-011 (uygulanamayan bileşen ağırlıktan çıkar), ADR-012 (kolon skoru tabanı),
+ADR-013 (IDF ağırlıklı kapsama + cevap eşiği), ADR-014 (uzun format kırılım), ADR-015 (obje havuzu).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -63,7 +64,8 @@ vsa ask "kredi kartı limit doluluk oranı"
 ## Yol haritası durumu
 - [x] M1 — LLM'siz çekirdek (normalize, loader, BM25, genişletme, kural skoru, toplama, ask Excel)
       Kabul: golden set recall@5 = 1.00 (3/3). `vsa eval` M2'den önce de çalışıyor.
-- [ ] M2 — Değerlendirme (recall@k, MRR)
+- [x] M2 — Değerlendirme: `vsa eval` (ask/batch/negatif grupları, kolon isabeti, tuzaklar),
+      `--compare` (§13.4), `--save` → `eval/history.jsonl`. Golden set hâlâ küçük (4 ask).
 - [ ] M3 — Hibrit arama (dense + reranker)
 - [ ] M4 — LLM katmanı
 - [ ] M5 — Batch modu

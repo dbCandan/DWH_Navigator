@@ -1,6 +1,6 @@
 """Deterministic column-level rule score (HANDOVER §9.2, ADR-010, ADR-012).
 
-    base  = 0.35 × relative_bm25 + 0.25 × column_concept_coverage
+    base  = 0.35 × relative_bm25 + 0.25 × column_concept_coverage (IDF-weighted)
     score = (base + bonuses − penalties) × flag multipliers, clipped to [0, 1]
 
 Time and granularity are NOT scored here — they are object properties (ADR-010).
@@ -45,7 +45,7 @@ def score_column(
     content = q.content_concepts
     covered = [c for c in content if covers(f.all_tokens, c)]
     relative = bm25 / max_bm25 if max_bm25 > 0 else 0.0
-    coverage = len(covered) / len(content) if content else 0.0
+    coverage = q.coverage(covered)
     score = W_BASE_RELATIVE * relative + W_BASE_COVERAGE * coverage
 
     signals: list[str] = []

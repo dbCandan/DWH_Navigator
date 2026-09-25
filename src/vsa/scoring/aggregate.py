@@ -55,6 +55,17 @@ CUSTOMER_KEYS = frozenset(
 )
 _CUSTOMER_TOKEN = stem(fold("müşteri"))
 
+# Long-format breakdown (Ek A.1/A.3): a dimension column such as ProductName or
+# FINANCETYPE carries breakdown values as rows instead of separate columns.
+DIMENSION_SUFFIXES = (
+    "name", "type", "typename", "tip", "tipi", "tur", "turu", "code", "kod",
+    "category", "kategori", "group", "grup", "class",
+)  # fmt: skip
+PRODUCT_HINTS = frozenset({stem(fold("ürün")), "product", "financetype", "producttype"})
+# A dimension limited to one product family ("CardProductNumberName") cannot carry
+# values from other families, so it does not qualify.
+PRODUCT_FAMILY_TOKENS = frozenset({"card", "kart", "cc", "account", "hesab", "deposit"})
+
 
 @dataclass(frozen=True, slots=True)
 class ObjectColumns:
@@ -80,6 +91,18 @@ def time_component(obj: ObjectColumns, concept: Concept) -> tuple[float, ColumnF
     return best
 
 
+def product_dimension(obj: ObjectColumns) -> ColumnFeatures | None:
+    """A general product-type dimension column of the object, if any (long format)."""
+    for f in obj.features:
+        if (
+            f.name_folded.endswith(DIMENSION_SUFFIXES)
+            and (f.name_tokens & PRODUCT_HINTS or f.name_folded in PRODUCT_HINTS)
+            and not f.name_tokens & PRODUCT_FAMILY_TOKENS
+        ):
+            return f
+    return None
+
+
 def aggregate(
     hits: Mapping[int, ColumnHit],
     q: ExpandedQuery,
@@ -103,10 +126,16 @@ def aggregate(
             continue
 
         covered = [c for c in content if any(covers(f.all_tokens, c) for f in obj.features)]
+        dimension: ColumnFeatures | None = None
+        long_values: list[Concept] = []
+        pending = [c for c in q.breakdown_values if c not in covered]
+        if pending and (dimension := product_dimension(obj)) is not None:
+            long_values = pending
+            covered = [c for c in content if c in covered or c in long_values]
         components: dict[str, float] = {"best_column": best.rule_score}
         active: dict[str, float] = {"best_column": weights.best_column}
         if content:
-            components["coverage"] = len(covered) / len(content)
+            components["coverage"] = q.coverage(covered)
             active["coverage"] = weights.coverage
         time_col: ColumnFeatures | None = None
         if time_concept is not None:
@@ -120,7 +149,9 @@ def aggregate(
         total_w = sum(active.values())
         score = sum(components[k] * w for k, w in active.items()) / total_w
 
-        related = _related_columns(obj, hits, best, covered, time_col, min_candidate_score)
+        related = _related_columns(
+            obj, hits, best, covered, time_col, min_candidate_score, dimension
+        )
         first = obj.features[0].col
         groups = sorted({f.col.dataset_group for f in obj.features if f.col.dataset_group})
         results.append(
@@ -136,6 +167,8 @@ def aggregate(
                 components=components,
                 covered=[c.label for c in covered],
                 missing=[c.label for c in content if c not in covered],
+                long_format_values=[c.label for c in long_values],
+                dimension_column=dimension.col.column if dimension else "",
             )
         )
     # Ties (several perfect matches clipped to 1.0) fall back to the unclipped best score.
@@ -150,6 +183,7 @@ def _related_columns(
     covered: Sequence[Concept],
     time_col: ColumnFeatures | None,
     min_candidate_score: float,
+    dimension: ColumnFeatures | None = None,
 ) -> list[ColumnHit]:
     """Columns shown under "İlgili Alanlar": best match, one per covered concept,
     the time column, then other strong matches."""
@@ -167,6 +201,8 @@ def _related_columns(
         carriers = [hits[f.col.id] for f in obj.features if covers(f.all_tokens, concept)]
         if carriers:
             take(max(carriers, key=lambda h: h.rule_score), "kavram")
+    if dimension is not None:
+        take(hits[dimension.col.id], "kırılım")
     if time_col is not None:
         take(hits[time_col.col.id], "zaman")
     for hit in sorted((hits[f.col.id] for f in obj.features), key=lambda h: -h.rule_score):

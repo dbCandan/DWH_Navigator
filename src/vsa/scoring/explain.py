@@ -74,6 +74,8 @@ def explain(m: ObjectMatch, q: ExpandedQuery) -> None:
     tc = q.time_concept
     if tc is not None and time_hit is not None and m.components.get("time", 0) >= 0.8:
         reasons.append(f"{time_hit.col.column} kolonu ile {tc.value} seri sunuyor.")
+    if m.long_format_values:
+        reasons.append(f"Ürün kırılımı {m.dimension_column} kolonu üzerinden (uzun format).")
     if m.components.get("granularity") == 1.0:
         reasons.append("Müşteri seviyesinde anahtar içeriyor.")
     m.reason = " ".join(reasons)
@@ -81,6 +83,12 @@ def explain(m: ObjectMatch, q: ExpandedQuery) -> None:
     caveats: list[str] = []
     if m.missing:
         caveats.append("Karşılanmayan kavram: " + ", ".join(m.missing) + ".")
+    if m.long_format_values:
+        caveats.append(
+            f"Kırılım uzun formatta: {', '.join(m.long_format_values)} değerleri "
+            f"{m.dimension_column} kolonunda satır olarak beklenir; değerlerin varlığı "
+            "ve adlandırması doğrulanmalı. Geniş format gerekiyorsa pivot uygulanmalı."
+        )
     if tc is not None:
         t = m.components.get("time", 0.0)
         if t == 0:

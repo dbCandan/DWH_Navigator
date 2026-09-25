@@ -10,6 +10,7 @@ index:
 
 search:
   top_k_columns: 120
+  candidate_object_columns: 400  # obje adayı toplamak için taranan kolon sayısı
   top_k_objects: 10
   field_weights:
     name: 3
@@ -21,7 +22,8 @@ search:
     b: 0.75
 
 expansion:
-  enabled: true
+  enabled: true                # kurumsal terim sözlüğü
+  synonyms: true               # sözlüğün kendi eş anlamlılar bölümü
   weight: 0.6                  # genişletme terimlerinin ağırlığı
   term_dictionary: config/term_dictionary.csv
   stopwords: config/stopwords_tr.txt
@@ -31,6 +33,7 @@ scoring:
   w_llm: 0.4
   min_candidate_score: 0.25
   min_answer_score: 0.35
+  min_answer_coverage: 0.5      # en iyi obje talebin bilgi içeriğinin yarısını karşılamalı (ADR-013)
   object:
     best_column: 0.50
     coverage: 0.30

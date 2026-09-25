@@ -1,0 +1,14 @@
+# Negatif set — sözlükte karşılığı OLMAYAN talepler (HANDOVER §1.4, ADR-006).
+# Beklenen cevap: BULUNAMADI. Sentetiktir; gerçek talepler golden_set.yaml'a gider.
+# Metrik: yanlış cevap oranı (BULUNAMADI dışında bir sonuç dönen madde oranı).
+
+- id: n001
+  query: Uzay gemisi yakıt seviyesi
+- id: n002
+  query: Futbol maçlarının skorları ve gol atan oyuncular
+- id: n003
+  query: Şehirlere göre günlük hava sıcaklığı tahmini
+- id: n004
+  query: Çalışanların yemekhane menü tercihleri
+- id: n005
+  query: Tarladaki buğday hasat nem ölçümü sensör verisi

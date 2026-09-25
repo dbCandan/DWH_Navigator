@@ -30,6 +30,9 @@ class BM25Settings:
 @dataclass(slots=True)
 class SearchSettings:
     top_k_columns: int = 120
+    # Objects reached through their best columns in the top N of BM25 are scored as a
+    # whole; wider than top_k_columns so coverage-driven winners are not missed (§8).
+    candidate_object_columns: int = 400
     top_k_objects: int = 10
     field_weights: dict[str, float] = field(
         default_factory=lambda: {"name": 3.0, "synonyms": 2.0, "description": 1.0, "object": 1.0}
@@ -39,7 +42,8 @@ class SearchSettings:
 
 @dataclass(slots=True)
 class ExpansionSettings:
-    enabled: bool = True
+    enabled: bool = True  # corporate term dictionary (§7.2a)
+    synonyms: bool = True  # dictionary's own synonym sections (§7.2b)
     weight: float = 0.6
     term_dictionary: str = "config/term_dictionary.csv"
     stopwords: str = "config/stopwords_tr.txt"
@@ -65,6 +69,7 @@ class ScoringSettings:
     w_llm: float = 0.4
     min_candidate_score: float = 0.25
     min_answer_score: float = 0.35
+    min_answer_coverage: float = 0.5  # ADR-013
     object: ObjectWeights = field(default_factory=ObjectWeights)
     flag_penalty: FlagPenalty = field(default_factory=FlagPenalty)
 

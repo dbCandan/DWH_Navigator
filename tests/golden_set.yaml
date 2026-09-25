@@ -39,7 +39,12 @@
     - EDWDM.CMP.vCardLimitFullness.CardLimitFullnessToday
     - EDWDM.MDL.vPRCArrayCard.CreditCardLimitRate
   traps:
-    - EDWDM.CON.vCreditCardLimit.CardLimitRatio
+    # not_lead: ilk 3 önerinin hiçbirinde lider (en güçlü) kolon olmamalı.
+    # caveat:   listelenebilir ama mutlaka kısıt notu taşımalı.
+    - column: EDWDM.CON.vCreditCardLimit.CardLimitRatio
+      rule: not_lead
+    - column: EDWDM.CMP.vCardLimitFullness.TotalLimitFullness
+      rule: caveat
   notes: >-
     vCreditCardLimit.CardLimitRatio doluluk oranı DEĞİLDİR (referans değere oran).
     vCardLimitFullness.TotalLimitFullness kart değil tüm limitleri kapsar.
@@ -63,3 +68,78 @@
     Aslen 10 alanlık hedef tablo talebi (batch modu, M5). M1'de tek soru olarak
     özetlenmiş hali ile test edilir. Alan bazlı beklentiler batch golden setine taşınacak.
   source: manuel-analiz-2026-09
+
+# --------------------------------------------------------------------------------------
+# Ek A'nın geri kalanı (2026-09-26): kapsam varyantı ve alan bazlı hedef tablo talebi.
+# --------------------------------------------------------------------------------------
+
+- id: q001-kapsam
+  query: >-
+    Müşterilerin risk bilgilerini aylık bazda ve kırılımlı olarak
+    (kredi kartı, gayrimenkul, ihtiyaç kredisi vb.) gösteren bir tablo mevcut mudur?
+  mode: ask
+  # ADR-001: uygulamada filtre yoktur. Değerlendirme, vPRC* objeleri çıkarılmış ayrı bir
+  # sözlük dosyasını simüle eder (iş biriminin istediği kapsam).
+  scope:
+    exclude_object_prefix: vPRC
+  primary_object: EDWDM.CON.vProjectRisk
+  expected_objects:
+    - EDWDM.CON.vProjectRisk
+    - EDWDM.CON.vProductRiskInfo
+    - EDWDM.IDM.vKKBGGCI
+  expected_columns:
+    - EDWDM.CON.vProjectRisk.DataDate
+    - EDWDM.CON.vProjectRisk.ProductName
+    - EDWDM.CON.vProjectRisk.RiskAmountTL
+  notes: Ek A.1 — aynı talep, vPRC* hariç tutulduğunda.
+  source: manuel-analiz-2026-09
+
+- id: b001
+  mode: batch
+  context: Müşteri bazında aylık para transferi özeti
+  notes: >-
+    Ek A.3 — 10 alanlık hedef tablo talebi. Genel sonuç: kısmen var; çekirdek
+    vCustomerMoneyTransferSummary (müşteri + periyot bazında hazır). Kişi/banka sayıları
+    vFASTOutgoing'den DISTINCT ile türetilmeli. CustomerId için ADR-009 gereği özet
+    tablodaki müşteri anahtarları da kabul edilir.
+  source: manuel-analiz-2026-09
+  fields:
+    - name: CustomerId
+      status: Hazır
+      expected_objects: [EDWDM.MDL.vPRCArrayMoneyTransfer, EDWDM.TRX.vCustomerMoneyTransferSummary]
+      expected_columns:
+        - EDWDM.MDL.vPRCArrayMoneyTransfer.CustomerId
+        - EDWDM.TRX.vCustomerMoneyTransferSummary.CustomerPartyId
+        - EDWDM.TRX.vCustomerMoneyTransferSummary.AccountNumber
+    - name: TransferType
+      status: Kısmen hazır
+      expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
+    - name: Period
+      status: Hazır
+      expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
+      expected_columns: [EDWDM.TRX.vCustomerMoneyTransferSummary.Period]
+    - name: TransferCount
+      status: Hazır
+      expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
+    - name: TotalTransferAmountTL
+      status: Hazır
+      expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
+    - name: DistinctTransactionPersonCount
+      status: Türetilmeli
+      expected_objects: [EDWDM.TRX.vFASTOutgoing]
+      expected_columns: [EDWDM.TRX.vFASTOutgoing.ReceiverIdentityNumber]
+    - name: DistinctBankCount
+      status: Türetilmeli
+      expected_objects: [EDWDM.TRX.vFASTOutgoing]
+      expected_columns: [EDWDM.TRX.vFASTOutgoing.ReceiverBankName]
+    - name: OwnAccountTransferCount
+      status: Kısmen hazır
+      expected_objects: [EDWDM.TRX.vFASTOutgoing, EDWDM.TRX.vCustomerMoneyTransferSummary]
+    - name: OwnAccountTransferDistinctBankCount
+      status: Türetilmeli
+      expected_objects: [EDWDM.TRX.vFASTOutgoing]
+    - name: OwnAccountTotalAmountTL
+      status: Kısmen hazır
+      expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
+      expected_columns:
+        - EDWDM.TRX.vCustomerMoneyTransferSummary.VirmanIntrabankMoneyTransferAmountTL

@@ -127,6 +127,8 @@ class ObjectMatch:
     reason: str = ""
     caveat: str = "-"
     usage: str = ""
+    long_format_values: list[str] = field(default_factory=list)  # met via dimension column
+    dimension_column: str = ""
 
 
 @dataclass(slots=True)

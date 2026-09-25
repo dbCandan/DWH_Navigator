@@ -11,7 +11,7 @@ from vsa.text.normalize import fold, tokenize
 @dataclass(frozen=True, slots=True)
 class ColumnFeatures:
     col: DictColumn
-    name_folded: str  # "cardlimitfullnesstoday" — for exact-name match
+    name_folded: str  # "cardlimitfullnesstoday", "kkbdate" — exact-name match / lookups
     name: tuple[str, ...]  # stemmed name parts (+ compound form)
     synonyms: tuple[tuple[str, ...], ...]  # each synonym phrase as a token tuple
     description: tuple[str, ...]  # stemmed description tokens, in order
@@ -36,7 +36,7 @@ def build_features(col: DictColumn, stopwords: frozenset[str]) -> ColumnFeatures
     syn_flat = {t for p in synonyms for t in p}
     return ColumnFeatures(
         col=col,
-        name_folded=fold(col.column),
+        name_folded=fold(col.column).replace("_", ""),
         name=name,
         synonyms=synonyms,
         description=description,

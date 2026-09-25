@@ -30,11 +30,19 @@ def engine() -> Engine:
 
 
 def test_m1_acceptance(engine: Engine) -> None:
-    """HANDOVER §17 M1: expected object in the top 5 for every golden item."""
-    report = evaluate(engine, load_golden(ROOT / "tests" / "golden_set.yaml"))
-    assert report.items
-    misses = [i.id for i in report.items if not i.rank or i.rank > 5]
+    """HANDOVER §17 M1: expected object in the top 5 for every golden ask item;
+    no trap violations; every negative item answered BULUNAMADI (ADR-006)."""
+    report = evaluate(
+        engine,
+        load_golden(ROOT / "tests" / "golden_set.yaml"),
+        load_golden(ROOT / "tests" / "negative_set.yaml"),
+    )
+    asks = report.group("ask")
+    assert asks
+    misses = [i.id for i in asks if not i.rank or i.rank > 5]
     assert misses == [], misses
+    assert report.trap_violations == 0
+    assert report.false_answer_rate == 0.0
 
 
 def test_ask_report(engine: Engine, tmp_path: Path) -> None:

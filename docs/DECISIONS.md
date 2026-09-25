@@ -70,3 +70,47 @@ kapsaması (kolon metninin karşıladığı talep kavramı oranı) mutlak bir ö
 bonus/ceza tablosu bunun üzerine uygulanır.
 
 **Sonuç.** `scoring/rules.py`. Katsayılar `vsa eval` ile kalibre edilir.
+
+---
+
+## ADR-013 — Kavram kapsaması bilgi ağırlıklıdır; cevap için kapsama eşiği
+
+**Tarih.** 2026-09-26
+
+**Bağlam.** Kapsama oranı tüm kavramları eşit sayıyordu. "Müşteri" sözlükte 5.803 kolonda
+geçerken "sıcaklık" hiç geçmiyor; ilgisiz sorular yaygın kavramları karşılayarak %50 kapsama
+alıyor ve öneri üretiyordu (negatif sette yanlış cevap oranı %60).
+
+**Karar.**
+- Her içerik kavramı, sözlükteki yaygınlığına göre IDF ağırlığı alır:
+  `log(1 + N / (df + 1))`. Kolon ve obje kapsaması bu ağırlıklarla hesaplanır.
+- En iyi objenin kapsaması `min_answer_coverage` (0.5) altındaysa cevap BULUNAMADI olur.
+- Sözlükte hiç geçmeyen kavramlar raporda "Kapsam" notu olarak listelenir.
+
+**Sonuç.** Negatif set yanlış cevap oranı %60 → %0; golden set gerilemedi.
+
+---
+
+## ADR-014 — Uzun format kırılım (boyut kolonu) kapsama sayılır
+
+**Tarih.** 2026-09-26
+
+**Bağlam.** Ek A.1 (vPRC* hariç) ve A.3: kırılım bazı tablolarda ayrı kolonlarla (geniş
+format), bazılarında `ProductName` / `FINANCETYPE` gibi bir boyut kolonunun değerleriyle
+(uzun format) veriliyor. Token eşleşmesi uzun formatı göremiyordu.
+
+**Karar.** Kırılım istenen talepte parantez içinde sayılan terimler "kırılım değeri"dir.
+Bir obje bu değerleri kolon olarak taşımıyor ama genel bir ürün boyut kolonu taşıyorsa
+(`...Name/Type/Code` + ürün ipucu; tek ürün ailesine ait olmayan), değerler kapsanmış
+sayılır ve rapora "uzun format, değerlerin varlığı doğrulanmalı" kısıtı düşülür.
+
+---
+
+## ADR-015 — Obje aday havuzu kolon havuzundan geniştir
+
+**Tarih.** 2026-09-26
+
+**Karar.** Obje adayları BM25'in ilk 400 kolonundan (`candidate_object_columns`) toplanır;
+kolon havuzu (`top_k_columns`) 120 kalır. §8 gereği kavramları birlikte karşılayan tablo,
+tek tek kolonları zayıf olsa da değerlendirilmelidir. Sözlükte ~390 obje olduğundan
+maliyet önemsizdir.

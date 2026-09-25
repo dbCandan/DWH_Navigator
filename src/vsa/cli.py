@@ -18,12 +18,23 @@ from rich.panel import Panel
 from rich.table import Table
 
 from vsa.config import Settings, load_settings
-from vsa.evaluation import KS, evaluate, load_golden
+from vsa.evaluation import (
+    KS,
+    EvalReport,
+    append_history,
+    compare_configs,
+    evaluate,
+    load_yaml_list,
+    read_history,
+)
 from vsa.index.store import IndexMissingError
 from vsa.loader import file_version
 from vsa.models import AnalysisResult, Level, Verdict
 from vsa.pipeline import Engine
 from vsa.report.excel import report_path, write_ask_report
+
+HISTORY_PATH = Path("eval/history.jsonl")
+NL = "\n"
 
 app = typer.Typer(add_completion=False, help="Veri Sözlüğü Asistanı (VSA)")
 console = Console()
@@ -145,25 +156,118 @@ def ask(
         console.print(f"[green]Rapor:[/green] {path}")
 
 
+def _rank_cell(rank: int | None) -> str:
+    if rank is None:
+        return "[red]yok[/red]"
+    return f"[green]{rank}[/green]" if rank <= 3 else f"[yellow]{rank}[/yellow]"
+
+
+def _print_items(report: EvalReport, group: str, title: str) -> None:
+    items = report.group(group)
+    if not items:
+        return
+    table = Table(title=title, header_style="bold white on #1F3864", title_justify="left")
+    for col in ("ID", "Sıra", "Birincil", "Kolon", "İlk 3", "Tuzak"):
+        table.add_column(col)
+    for it in items:
+        cols = f"{it.columns_found}/{it.columns_total}" if it.columns_total else "-"
+        traps = f"[red]{NL.join(it.trap_violations)}[/red]" if it.trap_violations else "-"
+        table.add_row(
+            it.id,
+            _rank_cell(it.rank),
+            str(it.primary_rank or "-"),
+            cols,
+            NL.join(k.split(".")[-1] for k in it.top[:3]),
+            traps,
+        )
+    console.print(table)
+    recalls = "  ".join(f"recall@{k}={report.recall(k, group):.2f}" for k in KS)
+    console.print(
+        f"[bold]{recalls}  MRR={report.mrr(group):.3f}  "
+        f"kolon={report.column_recall(group):.2f}[/bold]  (n={len(items)})"
+    )
+    console.print()
+
+
+def _print_negatives(report: EvalReport) -> None:
+    if not report.negatives:
+        return
+    table = Table(title="Negatif set (beklenen: BULUNAMADI)", header_style="bold white on #1F3864",
+                  title_justify="left")  # fmt: skip
+    for col in ("ID", "Talep", "Sonuç", "En yakın", "Skor"):
+        table.add_column(col)
+    for n in report.negatives:
+        style = "red" if n.false_answer else "green"
+        table.add_row(
+            n.id, n.query, f"[{style}]{n.verdict.value}[/{style}]", n.top_object,
+            f"{n.top_score:.2f}",
+        )  # fmt: skip
+    console.print(table)
+    console.print(f"[bold]Yanlış cevap oranı={report.false_answer_rate:.2f}[/bold]")
+    console.print()
+
+
 @app.command("eval")
 def eval_cmd(
     golden: Path = typer.Option(Path("tests/golden_set.yaml"), "--golden"),
+    negatives: Path = typer.Option(Path("tests/negative_set.yaml"), "--negatives"),
+    compare: bool = typer.Option(False, "--compare", help="Genişletme varyantlarını karşılaştır"),
+    save: bool = typer.Option(False, "--save", help="Metrikleri eval/history.jsonl'e ekle"),
+    label: str = typer.Option("", "--label", help="Kayıt etiketi (ör. 'coverage v2')"),
     settings_path: Path | None = SettingsOpt,
 ) -> None:
-    """Golden set üzerinde recall@1/3/5 ve MRR hesaplar."""
+    """Golden set ve negatif set üzerinde değerlendirme (HANDOVER §13)."""
     settings = _setup(settings_path)
     engine = _load_engine(settings)
-    report = evaluate(engine, load_golden(golden))
-    table = Table(header_style="bold white on #1F3864")
-    for col in ("ID", "Sıra", "Birincil", "İlk 3"):
-        table.add_column(col)
-    for it in report.items:
-        rank = str(it.rank) if it.rank else "[red]yok[/red]"
-        prim = str(it.primary_rank) if it.primary_rank else "-"
-        table.add_row(it.id, rank, prim, "\n".join(k.split(".")[-1] for k in it.top[:3]))
+    gold, negs = load_yaml_list(golden), load_yaml_list(negatives)
+
+    if compare:
+        with console.status("Konfigürasyonlar karşılaştırılıyor…") as status:
+            results = compare_configs(engine, gold, negs, lambda n: status.update(n))
+        table = Table(title="Konfigürasyon karşılaştırması (§13.4)",
+                      header_style="bold white on #1F3864", title_justify="left")  # fmt: skip
+        for col in ("Konfigürasyon", "ask R@1", "ask R@3", "ask MRR", "kolon",
+                    "batch R@1", "batch R@3", "batch MRR", "tuzak", "yanlış cevap"):  # fmt: skip
+            table.add_column(col, justify="right" if col != "Konfigürasyon" else "left")
+        for name, r in results:
+            table.add_row(
+                name, f"{r.recall(1):.2f}", f"{r.recall(3):.2f}", f"{r.mrr():.3f}",
+                f"{r.column_recall():.2f}", f"{r.recall(1, 'batch'):.2f}",
+                f"{r.recall(3, 'batch'):.2f}", f"{r.mrr('batch'):.3f}",
+                str(r.trap_violations), f"{r.false_answer_rate:.2f}",
+            )  # fmt: skip
+        console.print(table)
+        return
+
+    report = evaluate(engine, gold, negs)
+    _print_items(report, "ask", "Serbest metin talepleri")
+    _print_items(report, "batch", "Hedef tablo alanları (batch)")
+    _print_negatives(report)
+    if report.trap_violations:
+        console.print(f"[red]Tuzak ihlali: {report.trap_violations}[/red]")
+    if save:
+        entry = append_history(report, HISTORY_PATH, engine, label)
+        console.print(f"[green]Kaydedildi:[/green] {HISTORY_PATH} ({entry['commit']})")
+        history = read_history(HISTORY_PATH)
+        if len(history) >= 2:
+            _print_delta(history[-2]["metrics"], history[-1]["metrics"])
+
+
+def _print_delta(before: dict[str, float], after: dict[str, float]) -> None:
+    table = Table(title="Önceki kayda göre fark", header_style="bold white on #1F3864",
+                  title_justify="left")  # fmt: skip
+    for col in ("Metrik", "Önce", "Sonra", "Fark"):
+        table.add_column(col, justify="right" if col != "Metrik" else "left")
+    lower_is_better = {"trap_violations", "negative.false_answer_rate"}
+    for key in after:
+        if key.endswith(".n") or key not in before:
+            continue
+        d = after[key] - before[key]
+        good = (d < 0) if key in lower_is_better else (d > 0)
+        style = "green" if good else ("red" if d else "dim")
+        delta = f"[{style}]{d:+.3f}[/{style}]"
+        table.add_row(key, f"{before[key]:.3f}", f"{after[key]:.3f}", delta)
     console.print(table)
-    metrics = "  ".join(f"recall@{k}={report.recall(k):.2f}" for k in KS)
-    console.print(f"[bold]{metrics}  MRR={report.mrr:.3f}[/bold]  (n={len(report.items)})")
 
 
 def main() -> None:  # pragma: no cover

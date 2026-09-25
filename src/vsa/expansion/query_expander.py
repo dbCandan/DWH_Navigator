@@ -13,9 +13,10 @@ user's original wording.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 
 from vsa.features import ColumnFeatures
@@ -26,6 +27,8 @@ from vsa.text.normalize import fold, tokenize, tokenize_pairs
 # as the "most reliable signal" (§7.2b); it still participates in BM25.
 GENERIC_SYNONYM_DF = 40
 MAX_PHRASE_LEN = 6
+_WORD = re.compile(r"\w+")
+_PARENS = re.compile(r"\(([^)]*)\)")
 # Term-dictionary domains whose groups are measures, not content concepts.
 MEASURE_DOMAINS = frozenset({"finansal"})
 
@@ -44,6 +47,9 @@ class Concept:
     # A column satisfies the concept if ALL tokens of ANY alternative are present.
     alternatives: tuple[tuple[str, ...], ...] = ()
     value: str = ""  # TIME: "aylık"/"günlük"...; MEASURE: "oran"/"adet"/"tutar"
+    # A requested breakdown value, e.g. "kredi kartı" in "kırılımlı (kredi kartı, …)".
+    # Can be met by its own column (wide format) or a dimension column (long format).
+    breakdown_value: bool = False
 
     @property
     def is_content(self) -> bool:
@@ -51,7 +57,8 @@ class Concept:
         return self.kind in (ConceptKind.TERM, ConceptKind.MEASURE)
 
     def display(self) -> str:
-        return f"{self.kind.value}:{self.label}"
+        kind = "kırılım değeri" if self.breakdown_value else self.kind.value
+        return f"{kind}:{self.label}"
 
 
 # (folded word prefix, canonical value). Prefix match on unstemmed folded tokens.
@@ -89,6 +96,19 @@ class ExpandedQuery:
     expansion_terms: list[str]  # display strings of added equivalents
     expansion_tokens: frozenset[str]  # tokens that came only from expansion
     synonym_hits: dict[int, list[str]] = field(default_factory=dict)  # col id -> phrases
+    # Information weight per content concept (IDF over dictionary columns), set by the
+    # engine. Rare concepts ("gayrimenkul") matter more than ubiquitous ones ("müşteri").
+    concept_weights: dict[Concept, float] = field(default_factory=dict)
+    unknown_concepts: list[Concept] = field(default_factory=list)  # appear nowhere
+
+    def coverage(self, covered: Sequence[Concept]) -> float:
+        """Information-weighted share of content concepts in ``covered`` (0–1)."""
+        content = self.content_concepts
+        if not content:
+            return 0.0
+        total = sum(self.concept_weights.get(c, 1.0) for c in content)
+        got = sum(self.concept_weights.get(c, 1.0) for c in content if c in covered)
+        return got / total if total else 0.0
 
     @property
     def content_concepts(self) -> list[Concept]:
@@ -102,6 +122,10 @@ class ExpandedQuery:
     def measure(self) -> str | None:
         c = next((c for c in self.concepts if c.kind is ConceptKind.MEASURE), None)
         return c.value if c else None
+
+    @property
+    def breakdown_values(self) -> list[Concept]:
+        return [c for c in self.concepts if c.breakdown_value]
 
     @property
     def wants_breakdown(self) -> bool:
@@ -124,11 +148,13 @@ class QueryExpander:
         stopwords: frozenset[str],
         expansion_weight: float = 0.6,
         enabled: bool = True,
+        use_synonyms: bool = True,
     ) -> None:
         self.groups = list(term_groups)
         self.stopwords = stopwords
         self.weight = expansion_weight
         self.enabled = enabled
+        self.use_synonyms = use_synonyms
         self._group_members: list[list[tuple[str, tuple[str, ...]]]] = []
         self._group_alts: list[tuple[tuple[str, ...], ...]] = []
         phrases: list[_Phrase] = []
@@ -153,11 +179,13 @@ class QueryExpander:
         pairs = tokenize_pairs(text, stopwords=self.stopwords, keep_compound=False)
         tokens = [t for t, _ in pairs]
         bm25_tokens = tokenize(text, stopwords=self.stopwords, keep_compound=True)
-        raw_words = frozenset(fold(w) for w in text.replace(",", " ").split())
+        raw_words = frozenset(fold(w).replace("_", "") for w in _WORD.findall(text))
 
-        matches, consumed = self._match_terms(tokens)
+        # Term dictionary off -> neither expansion nor multi-word term concepts.
+        matches, consumed = self._match_terms(tokens) if self.enabled else ([], set())
         matched_groups = list(dict.fromkeys(gi for gi, _ in matches))
         concepts = self._concepts(pairs, matches, consumed)
+        concepts = self._mark_breakdown_values(text, concepts)
 
         sparse: dict[str, float] = {t: 1.0 for t in bm25_tokens}
         expansion_terms: list[str] = []
@@ -172,7 +200,7 @@ class QueryExpander:
                         sparse[t] = self.weight
                         expansion_tokens.add(t)
 
-        hits = self._synonym_hits(tokens)
+        hits = self._synonym_hits(tokens) if self.use_synonyms else {}
         return ExpandedQuery(
             text=text,
             tokens=tokens,
@@ -257,6 +285,24 @@ class QueryExpander:
             seen.add(tok)
             concepts.append(Concept(ConceptKind.TERM, surface, alternatives=((tok,),)))
         return concepts
+
+    def _mark_breakdown_values(self, text: str, concepts: list[Concept]) -> list[Concept]:
+        """In a breakdown request, terms listed in parentheses are breakdown values:
+        "kırılımlı olarak (kredi kartı, gayrimenkul, ihtiyaç kredisi vb.)"."""
+        if not any(c.kind is ConceptKind.BREAKDOWN for c in concepts):
+            return concepts
+        listed: set[str] = set()
+        for group in _PARENS.findall(text):
+            listed.update(tokenize(group, stopwords=self.stopwords, keep_compound=False))
+        if not listed:
+            return concepts
+        out = []
+        for c in concepts:
+            own = tokenize(c.label, keep_compound=False)
+            if c.kind is ConceptKind.TERM and own and set(own) <= listed:
+                c = replace(c, breakdown_value=True)
+            out.append(c)
+        return out
 
     def _synonym_hits(self, tokens: list[str]) -> dict[int, list[str]]:
         hits: dict[int, list[str]] = defaultdict(list)
