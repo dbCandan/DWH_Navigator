@@ -72,3 +72,40 @@ def test_irrelevant_query_does_not_crash(engine: Engine) -> None:
 
 def test_slug() -> None:
     assert slugify("Kredi kartı limit doluluk oranı?") == "kredi_karti_limit_doluluk_orani"
+
+
+def test_m5_batch_acceptance(engine: Engine) -> None:
+    """M5 regression guard on the Ek A.3 target-table request (values as of 2026-09-26)."""
+    report = evaluate(engine, load_golden(ROOT / "tests" / "golden_set.yaml"))
+    assert report.recall(3, "batch") >= 0.9
+    assert report.status_accuracy() >= 0.9
+
+
+def test_batch_report(engine: Engine, tmp_path: Path) -> None:
+    from vsa.batch import BatchAnalyzer
+    from vsa.models import FieldStatus, RequestField
+    from vsa.report.excel import write_batch_report
+
+    fields = [
+        RequestField(1, "CustomerId", "CustomerId", "Müşteri numarası"),
+        RequestField(2, "Period", "Period", "Ay, yıl örn: 202604"),
+        RequestField(
+            3, "Farklı Banka Sayısı", "DistinctBankCount", "Gönderilen farklı banka sayısı"
+        ),
+        RequestField(4, "Uzay Gemisi Yakıtı", "SpaceshipFuel", "Roket yakıt seviyesi"),
+    ]
+    result = BatchAnalyzer(engine).analyze(fields, "test")
+    by_name = {r.field.en: r for r in result.fields}
+    assert by_name["Period"].status is FieldStatus.READY
+    assert by_name["DistinctBankCount"].status is FieldStatus.DERIVE
+    best = by_name["DistinctBankCount"].best
+    assert best is not None and best.derivation.startswith("COUNT(DISTINCT")
+    keys = engine.column_keys
+    assert all(
+        h.col.key in keys for r in result.fields for c in r.candidates for h in c.match.columns
+    )
+
+    path = write_batch_report(result, tmp_path / "b.xlsx")
+    wb = load_workbook(path)
+    assert wb.sheetnames == ["Özet", "Alan Eşleştirme", "Alan Detayları", "Notlar ve Öneriler"]
+    assert wb["Alan Eşleştirme"]["E1"].value == "Durum"

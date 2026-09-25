@@ -19,12 +19,13 @@ Veri sözlüğünü `data/` altına koyun (bu klasör repoya girmez).
 ```bash
 vsa index                                   # sözlükten indeks kurar
 vsa ask "kredi kartı limit doluluk oranı"   # tekil soru, Excel üretir
-vsa eval                                    # golden set metrikleri
+vsa batch -i data/talep.xlsx                # hedef tablo talebi (TR/EN/açıklama), Excel üretir
+vsa eval                                    # golden set metrikleri (--compare, --save)
 ```
 
 ## Durum
 
-M1 (LLM'siz çekirdek) tamamlandı — golden set recall@5 = 1.00. Sıradaki: M2 (değerlendirme
-altyapısı ve golden set'in büyütülmesi).
+M1 (LLM'siz çekirdek), M2 (değerlendirme) ve M5 (batch modu) tamamlandı. M3 (hibrit arama)
+ve M4 (LLM) donanım/model kararlarını bekliyor (HANDOVER §19).
 
 Kararlar: [docs/DECISIONS.md](docs/DECISIONS.md)

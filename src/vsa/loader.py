@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from vsa.models import DictColumn, Dictionary, Flag, FlagKind, TermGroup
+from vsa.models import DictColumn, Dictionary, Flag, FlagKind, RequestField, TermGroup
 from vsa.text.normalize import fold, load_stopwords
 
 log = logging.getLogger(__name__)
@@ -265,3 +265,51 @@ def load_stopword_file(path: Path) -> frozenset[str]:
         log.warning("Durak kelime dosyası bulunamadı: %s", path)
         return frozenset()
     return load_stopwords(path.read_text(encoding="utf-8").splitlines())
+
+
+# --------------------------------------------------------------------------- batch input
+
+_HEADER_KEYS = {
+    "tr": ("turkce", "turkish", "tr baslik", "tr"),
+    "en": ("ingilizce", "english", "en baslik", "en"),
+    "description": ("aciklama", "description", "desc"),
+}
+
+
+def _header_role(cell: str) -> str | None:
+    text = fold(cell).strip()
+    for role, keys in _HEADER_KEYS.items():
+        if any(text == k or (len(k) > 3 and text.startswith(k)) or k in text.split() for k in keys):
+            return role
+    return None
+
+
+def parse_request_rows(rows: list[list[object]]) -> list[RequestField]:
+    """Rows of a target-table request sheet -> RequestFields (HANDOVER §4.1).
+
+    The header row is found by its titles ("Türkçe Başlık", "İngilizce Başlık",
+    "Açıklamalar"); without one, the first three columns are taken in that order.
+    """
+    header_at, roles = -1, {"tr": 0, "en": 1, "description": 2}
+    for i, row in enumerate(rows[:10]):
+        found = {r: j for j, c in enumerate(row) if (r := _header_role(_cell(c)))}
+        if {"tr", "en"} <= found.keys() or {"en", "description"} <= found.keys():
+            header_at, roles = i, found
+            break
+
+    fields: list[RequestField] = []
+    for row in rows[header_at + 1 :]:
+
+        def get(role: str, row: list[object] = row) -> str:
+            j = roles.get(role)
+            return _cell(row[j]) if j is not None and j < len(row) else ""
+
+        tr, en, desc = get("tr"), get("en"), get("description")
+        if tr or en:
+            fields.append(RequestField(len(fields) + 1, tr, en, desc))
+    return fields
+
+
+def load_request_file(path: Path, sheet: str | int = 0) -> list[RequestField]:
+    df = pd.read_excel(path, sheet_name=sheet, header=None, dtype=str)
+    return parse_request_rows(df.values.tolist())

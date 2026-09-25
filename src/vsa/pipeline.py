@@ -9,7 +9,7 @@ import logging
 import math
 import time
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -139,8 +139,12 @@ class Engine:
 
     # ------------------------------------------------------------------ analysis
 
-    def rank_objects(self, query: str) -> tuple[list[ObjectMatch], Any]:
-        """Full ranked object list for a query (no top-N cut, no answer threshold)."""
+    def rank_objects(
+        self, query: str, include: Iterable[str] = ()
+    ) -> tuple[list[ObjectMatch], ExpandedQuery]:
+        """Ranked objects for a query (no answer threshold). Objects in ``include`` are
+        always scored and kept, even when search alone would not reach them — batch
+        mode uses this to judge every field against the core table."""
         s = self.settings
         q = self.expander.expand(query)
         self._weigh_concepts(q)
@@ -150,7 +154,8 @@ class Engine:
 
         pool = {doc for doc, _ in scored[: s.search.candidate_object_columns]}
         pool |= set(q.synonym_hits)
-        candidate_objects = {self.features[i].col.object_key for i in pool}
+        forced = {k for k in include if k in self.objects}
+        candidate_objects = {self.features[i].col.object_key for i in pool} | forced
 
         hits: dict[int, ColumnHit] = {}
         for key in candidate_objects:
@@ -165,8 +170,13 @@ class Engine:
             s.scoring.object,
             s.scoring.min_candidate_score,
         )
-        ranked = [m for m in ranked if m.score >= s.scoring.min_candidate_score]
-        return ranked[: s.search.top_k_objects + NEAR_MISS_COUNT], q
+        limit = s.search.top_k_objects + NEAR_MISS_COUNT
+        kept = [
+            m
+            for i, m in enumerate(ranked)
+            if m.object_key in forced or (i < limit and m.score >= s.scoring.min_candidate_score)
+        ]
+        return kept, q
 
     def _concept_df(self, concept: Concept) -> int:
         if concept not in self._df_cache:

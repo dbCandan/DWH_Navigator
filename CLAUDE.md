@@ -37,7 +37,8 @@ Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
 ## Yeni kararlar
 `docs/DECISIONS.md`: ADR-009 (müşteri no = hesap no), ADR-010 (zaman/granülerlik yalnız obje
 skorunda), ADR-011 (uygulanamayan bileşen ağırlıktan çıkar), ADR-012 (kolon skoru tabanı),
-ADR-013 (IDF ağırlıklı kapsama + cevap eşiği), ADR-014 (uzun format kırılım), ADR-015 (obje havuzu).
+ADR-013 (IDF ağırlıklı kapsama + cevap eşiği), ADR-014 (uzun format kırılım), ADR-015 (obje havuzu),
+ADR-016/017 (batch: çekirdek tablo, yapısal alanlar, ölçü uyumu, kanal toplamları, terim kapsam notları).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -59,7 +60,10 @@ ruff check src tests
 mypy src
 vsa index
 vsa ask "kredi kartı limit doluluk oranı"
+vsa batch -i data/QuestionList-1.xlsx
+vsa eval --save --label "ne değişti"   # ağırlık değişikliğinden önce/sonra
 ```
+Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılmalı (BM25 indekse gömülü).
 
 ## Yol haritası durumu
 - [x] M1 — LLM'siz çekirdek (normalize, loader, BM25, genişletme, kural skoru, toplama, ask Excel)
@@ -68,7 +72,9 @@ vsa ask "kredi kartı limit doluluk oranı"
       `--compare` (§13.4), `--save` → `eval/history.jsonl`. Golden set hâlâ küçük (4 ask).
 - [ ] M3 — Hibrit arama (dense + reranker)
 - [ ] M4 — LLM katmanı
-- [ ] M5 — Batch modu
+- [x] M5 — Batch modu: `vsa batch -i talep.xlsx` (TR/EN/açıklama). Çekirdek tablo, yapısal
+      alanlar, türetme ipuçları (ADR-016/017). Ek A.3: recall@3 0.90, durum doğruluğu 0.90.
+      QuestionList-2 (günlük) ve A.3 dışı alanlar için doğrulanmış cevap yok.
 - [ ] M6 — Arayüz — **tasarım kararları tamamen Claude'da**; kullanıcı "beni şaşırt" dedi.
       Seçenek menüsü sunma, iddialı ve özgün bir tasarım yap. Kapalı ağ: runtime'da
       dış CDN/font yok, her şey gömülü.

@@ -5,8 +5,10 @@ Three item groups:
 * **ask**   — free-text requests. Hit at k when ANY ``expected_objects`` is in the top k
   (several answers can be right, Ek A.1); ``primary_object`` tracks the manual first
   choice. Also column recall and trap checks (Ek A.2).
-* **batch** — fields of a target-table request (Ek A.3), each asked as
-  "<field> — <context>". Early M5 signal.
+* **batch** — fields of a target-table request (Ek A.3), run through the batch
+  analyzer as one request (core-table analysis over all fields). Fields without
+  ``expected_objects`` take part in the analysis but not in the metrics; ``status``
+  is checked against the field status label (§9.4).
 * **negative** — requests with no answer in the dictionary; anything but
   BULUNAMADI is a false answer (ADR-006).
 
@@ -27,8 +29,10 @@ from typing import Any
 
 import yaml
 
+from vsa.batch import BatchAnalyzer
+from vsa.batch import field_query as batch_field_query
 from vsa.expansion.query_expander import QueryExpander
-from vsa.models import Dictionary, ObjectMatch, Verdict
+from vsa.models import Dictionary, ObjectMatch, RequestField, Verdict
 from vsa.pipeline import Engine
 from vsa.text.normalize import split_camel
 
@@ -48,6 +52,7 @@ class ItemResult:
     columns_found: int = 0
     columns_total: int = 0
     trap_violations: list[str] = field(default_factory=list)
+    status_ok: bool | None = None  # batch: field status label as expected?
 
 
 @dataclass(slots=True)
@@ -88,6 +93,10 @@ class EvalReport:
         total = sum(i.columns_total for i in items)
         return sum(i.columns_found for i in items) / total if total else 0.0
 
+    def status_accuracy(self, group: str = "batch") -> float:
+        checked = [i for i in self.group(group) if i.status_ok is not None]
+        return sum(1 for i in checked if i.status_ok) / len(checked) if checked else 0.0
+
     @property
     def trap_violations(self) -> int:
         return sum(len(i.trap_violations) for i in self.items)
@@ -107,6 +116,8 @@ class EvalReport:
                 out[f"{g}.recall@{k}"] = round(self.recall(k, g), 4)
             out[f"{g}.mrr"] = round(self.mrr(g), 4)
             out[f"{g}.column_recall"] = round(self.column_recall(g), 4)
+            if g == "batch":
+                out["batch.status_accuracy"] = round(self.status_accuracy(), 4)
             out[f"{g}.n"] = len(self.group(g))
         out["trap_violations"] = self.trap_violations
         if self.negatives:
@@ -176,7 +187,7 @@ def _score_item(
     item_id: str,
     group: str,
     query: str,
-    ranked: list[ObjectMatch],
+    ranked: Sequence[ObjectMatch],
     spec: dict[str, Any],
 ) -> ItemResult:
     keys = [m.object_key for m in ranked]
@@ -236,22 +247,34 @@ def evaluate(
                 _score_item(str(item["id"]), "ask", q, eng.rank_objects(q)[0], item)
             )
         elif mode == "batch":
-            for fld in item["fields"]:
-                q = field_query(str(item["context"]), str(fld["name"]))
-                report.items.append(
-                    _score_item(
-                        f"{item['id']}.{fld['name']}", "batch", q, eng.rank_objects(q)[0], fld
-                    )
+            specs = list(item["fields"])
+            fields = [
+                RequestField(i, str(f.get("tr", "")), str(f["name"]), str(f.get("description", "")))
+                for i, f in enumerate(specs, 1)
+            ]
+            result = BatchAnalyzer(eng, top_n=5).analyze(fields, str(item["id"]))
+            for spec, fr in zip(specs, result.fields, strict=True):
+                if not spec.get("expected_objects"):
+                    continue
+                res = _score_item(
+                    f"{item['id']}.{spec['name']}",
+                    "batch",
+                    batch_field_query(fr.field),
+                    [c.match for c in fr.candidates],
+                    spec,
                 )
+                if "status" in spec:
+                    res.status_ok = fr.status.value == spec["status"]
+                report.items.append(res)
 
     for neg in negatives:
-        result = engine.analyze(str(neg["query"]))
-        pool = result.objects or result.near_misses
+        answer = engine.analyze(str(neg["query"]))
+        pool = answer.objects or answer.near_misses
         report.negatives.append(
             NegativeResult(
                 id=str(neg["id"]),
                 query=str(neg["query"]),
-                verdict=result.verdict,
+                verdict=answer.verdict,
                 top_object=pool[0].object_name if pool else "-",
                 top_score=pool[0].score if pool else 0.0,
             )

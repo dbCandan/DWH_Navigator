@@ -31,6 +31,7 @@ _WORD = re.compile(r"\w+")
 _PARENS = re.compile(r"\(([^)]*)\)")
 # Term-dictionary domains whose groups are measures, not content concepts.
 MEASURE_DOMAINS = frozenset({"finansal"})
+SCOPE_NOTE_PREFIX = "kapsam:"
 
 
 class ConceptKind(StrEnum):
@@ -50,6 +51,9 @@ class Concept:
     # A requested breakdown value, e.g. "kredi kartı" in "kırılımlı (kredi kartı, …)".
     # Can be met by its own column (wide format) or a dimension column (long format).
     breakdown_value: bool = False
+    # A term-dictionary note starting with "Kapsam:" — a known scope limit of the term
+    # (e.g. virman covers in-bank transfers only). Reported as a caveat when matched.
+    scope_note: str = ""
 
     @property
     def is_content(self) -> bool:
@@ -261,7 +265,12 @@ class QueryExpander:
             g = self.groups[gi]
             if fold(g.domain) in MEASURE_DOMAINS:
                 continue  # "tutar", "adet"… are measures, handled below
-            concepts.append(Concept(ConceptKind.TERM, member, alternatives=self._group_alts[gi]))
+            scope = g.note if fold(g.note).startswith(SCOPE_NOTE_PREFIX) else ""
+            concepts.append(
+                Concept(
+                    ConceptKind.TERM, member, alternatives=self._group_alts[gi], scope_note=scope
+                )
+            )
 
         for i, word in enumerate(surfaces):
             for prefix, value in _MEASURE_WORDS:

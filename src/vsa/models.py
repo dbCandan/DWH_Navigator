@@ -154,3 +154,77 @@ class AnalysisResult:
     method: list[str]
     dropped_by_validation: int = 0
     elapsed_ms: int = 0
+
+
+# --------------------------------------------------------------------------- batch (M5)
+
+
+class FieldStatus(StrEnum):
+    READY = "Hazır"
+    PARTIAL = "Kısmen hazır"
+    DERIVE = "Türetilmeli"
+    NOT_FOUND = "Bulunamadı"
+
+
+@dataclass(frozen=True, slots=True)
+class RequestField:
+    """One row of a target-table request: TR title / EN title / description."""
+
+    index: int
+    tr: str
+    en: str
+    description: str = ""
+
+    @property
+    def label(self) -> str:
+        return self.en or self.tr
+
+
+@dataclass(slots=True)
+class FieldCandidate:
+    match: ObjectMatch
+    score: float  # field-level score incl. core-table context bonus
+    in_core: bool = False
+    derivation: str = ""  # e.g. "COUNT(DISTINCT ReceiverBankName)"
+    notes: list[str] = field(default_factory=list)
+    wide_family: bool = False  # core table answers by summing per-channel columns
+    fits_measure: bool = True  # False: e.g. an amount column offered for a distinct count
+
+
+@dataclass(slots=True)
+class FieldResult:
+    field: RequestField
+    status: FieldStatus
+    candidates: list[FieldCandidate]
+
+    @property
+    def best(self) -> FieldCandidate | None:
+        return self.candidates[0] if self.candidates else None
+
+
+@dataclass(slots=True)
+class TableCoverage:
+    """How many requested fields a single object can serve (§4.1)."""
+
+    object_key: str
+    object_name: str
+    fields: list[str]  # labels of fields this object serves
+    ready: int
+    partial: int
+    mean_score: float
+
+
+@dataclass(slots=True)
+class BatchResult:
+    name: str
+    verdict: Verdict
+    summary: str
+    fields: list[FieldResult]
+    coverage: list[TableCoverage]
+    notes: list[Note]
+    time_grain: str  # "aylık" / "günlük" / ""
+    dictionary_source: str
+    dictionary_version: str
+    generated_at: str
+    method: list[str]
+    elapsed_ms: int = 0

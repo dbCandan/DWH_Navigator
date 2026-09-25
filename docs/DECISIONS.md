@@ -114,3 +114,45 @@ sayılır ve rapora "uzun format, değerlerin varlığı doğrulanmalı" kısıt
 kolon havuzu (`top_k_columns`) 120 kalır. §8 gereği kavramları birlikte karşılayan tablo,
 tek tek kolonları zayıf olsa da değerlendirilmelidir. Sözlükte ~390 obje olduğundan
 maliyet önemsizdir.
+
+---
+
+## ADR-016 — Batch modu: çekirdek tablo ve yapısal alanlar
+
+**Tarih.** 2026-09-26
+
+**Bağlam.** Hedef tablo taleplerinde (Ek A.3, QuestionList-1/2) alanları tek tek sormak
+işe yaramıyor: `Period` veya `CustomerId` gibi genel alanlar yüzlerce tabloda var ve ancak
+talebin geri kalanını karşılayan tablo bağlamında anlam kazanıyor.
+
+**Karar.**
+- Çekirdek tablo skoru = tüm alan skorlarının toplamı × (0.5 + 0.5 × zaman uyumu). Zaman
+  düzeyi talebin zaman alanından çıkarılır (`Period` → aylık, `Date` → günlük) ve eşitlik
+  bozucu değil çarpandır: aylık hedef tablo aylık kaynaktan beslenmelidir.
+- En iyi 8 çekirdek aday, her alan için ayrıca skorlanır (2. tur); ilk 3'e bağlam bonusu
+  (+0.10 / +0.05) verilir.
+- Müşteri anahtarı ve zaman alanı, çekirdek tabloda varsa oradan alınır (Hazır).
+
+**Sonuç.** `batch.py`. Ek A.3 alanlarında recall@3 0.00 → 0.90.
+
+---
+
+## ADR-017 — Batch modu: ölçü uyumu, türetme ve kanal toplamları
+
+**Tarih.** 2026-09-26
+
+**Karar.**
+- **Ölçü uyumu:** Tekil sayım isteyen alan ("farklı banka sayısı") bir tutar kolonuyla
+  karşılanamaz; böyle adaylar, isteği karşılayabilen tüm adayların arkasına sıralanır.
+- **Tekil sayım türetmesi:** Varlığın kendisi (banka, alıcı) aranır; çekirdek tablonun veri
+  seti grubundaki varlık kolonlu tablolar her zaman değerlendirilir ve +0.10 alan bonusu
+  alır. Öneri `COUNT(DISTINCT <varlık kolonu>)` olarak raporlanır. Varlık kolonu adı ya da
+  kimliği taşımalı; kart/hesap numarası (`BankCardNo`) sayılmaz.
+- **Kanal toplamları:** Çekirdek tablo bir sayı/tutar alanını kanal/yön kırılımlı kolon
+  ailesi olarak taşıyorsa (`FASTIncomingCount`, `KASIncomingCount`, …) cevap oradan verilir
+  ve Ek A.3'teki manuel analize uygun olarak **Hazır** sayılır; toplama notu eklenir.
+- **Terim kapsam notları:** Terim sözlüğünde `note` alanı "Kapsam:" ile başlayan grup
+  eşleştiğinde not kolona kısıt olarak düşer ve alan en fazla **Kısmen hazır** olur
+  (ör. virman yalnızca banka içi transferi kapsar).
+
+**Sonuç.** Ek A.3 durum etiketi doğruluğu 0.50 → 0.90.

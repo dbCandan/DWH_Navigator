@@ -28,7 +28,7 @@ veri tarihi,data date|rapor tarihi|iş tarihi|dönem sonu,zaman,
 işlem tarihi,transaction date|tran date|transfer date,zaman,
 para transferi,EFT|havale|money transfer|transfer|gönderim,işlem,
 FAST,anlık transfer|instant transfer|fonların anlık ve sürekli transferi,işlem,
-virman,hesaplar arası transfer|kendi hesabına transfer|internal transfer,işlem,
+virman,hesaplar arası transfer|kendi hesabına transfer|kendi hesabına para transferi|kendi hesabı transfer|internal transfer,işlem,"Kapsam: virman yalnızca banka içi hesaplar arası transferi kapsar; başka bankadaki kendi hesabına yapılan transferler dahil değildir (Ek A.3)."
 SWIFT,uluslararası transfer|yurt dışı transfer|international transfer,işlem,
 alıcı,karşı taraf|receiver|beneficiary|lehtar,işlem,
 gönderen,sender|gönderici|remitter,işlem,

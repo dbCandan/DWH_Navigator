@@ -91,6 +91,10 @@ def score_column(
         for c in negated:
             caveats.append(f"Kapsam farkı: açıklamaya göre “{c.label}” bazlı değil")
 
+    for c in covered:
+        if c.scope_note:
+            caveats.append(c.scope_note)
+
     if f.col.has_flag(FlagKind.MODEL_ESTIMATED):
         score *= penalty.model_estimated
         caveats.append(CAVEAT_MODEL_ESTIMATED)

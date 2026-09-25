@@ -96,6 +96,8 @@
 
 - id: b001
   mode: batch
+  # Alan metinleri iş biriminin gerçek talep dosyasından (QuestionList-1). Beklenen
+  # cevaplar yalnız Ek A.3'te doğrulanmış 10 alan için var; yeni alanlar eklenmedi.
   context: Müşteri bazında aylık para transferi özeti
   notes: >-
     Ek A.3 — 10 alanlık hedef tablo talebi. Genel sonuç: kısmen var; çekirdek
@@ -105,6 +107,8 @@
   source: manuel-analiz-2026-09
   fields:
     - name: CustomerId
+      tr: "CustomerId"
+      description: "Müşteri numarası"
       status: Hazır
       expected_objects: [EDWDM.MDL.vPRCArrayMoneyTransfer, EDWDM.TRX.vCustomerMoneyTransferSummary]
       expected_columns:
@@ -112,34 +116,66 @@
         - EDWDM.TRX.vCustomerMoneyTransferSummary.CustomerPartyId
         - EDWDM.TRX.vCustomerMoneyTransferSummary.AccountNumber
     - name: TransferType
+      tr: "Tür"
+      description: "Gelen/giden transfer türünü belirtir."
       status: Kısmen hazır
       expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
     - name: Period
+      tr: "Period"
+      description: "Ay, yıl örn: 202604"
       status: Hazır
       expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
       expected_columns: [EDWDM.TRX.vCustomerMoneyTransferSummary.Period]
     - name: TransferCount
+      tr: "Transfer Sayısı"
+      description: "Para transferi sayısıdır"
       status: Hazır
       expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
     - name: TotalTransferAmountTL
+      tr: "Transfer Toplamı TL"
+      description: "Para transferi miktarının ilgili güne göre TL cinsinden toplamı"
       status: Hazır
       expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
     - name: DistinctTransactionPersonCount
+      tr: "Farklı Alıcı Sayısı"
+      description: "Gelen/giden farklı alıcı sayısı"
       status: Türetilmeli
       expected_objects: [EDWDM.TRX.vFASTOutgoing]
       expected_columns: [EDWDM.TRX.vFASTOutgoing.ReceiverIdentityNumber]
     - name: DistinctBankCount
+      tr: "Farklı Banka Sayısı"
+      description: "Gönderilen farklı banka sayısı"
       status: Türetilmeli
       expected_objects: [EDWDM.TRX.vFASTOutgoing]
       expected_columns: [EDWDM.TRX.vFASTOutgoing.ReceiverBankName]
     - name: OwnAccountTransferCount
+      tr: "Kendi Hesabına Para Transferi Sayısı"
+      description: "Kendi hesabına gönderilen  para transferi sayısı"
       status: Kısmen hazır
       expected_objects: [EDWDM.TRX.vFASTOutgoing, EDWDM.TRX.vCustomerMoneyTransferSummary]
     - name: OwnAccountTransferDistinctBankCount
+      tr: "Kendi Hesabı Transfer Farklı Banka Sayısı"
+      description: "Kişinin kendi hesabına gönderdiği para transferlerinin farklı banka sayısı"
       status: Türetilmeli
       expected_objects: [EDWDM.TRX.vFASTOutgoing]
     - name: OwnAccountTotalAmountTL
+      tr: "Kendi Hesabına Para Transfer Toplamı TL"
+      description: "Kendi hesabına gönderilen para transferleri miktarının ilgili güne göre TL cinsinden toplamı"
       status: Kısmen hazır
       expected_objects: [EDWDM.TRX.vCustomerMoneyTransferSummary]
       expected_columns:
         - EDWDM.TRX.vCustomerMoneyTransferSummary.VirmanIntrabankMoneyTransferAmountTL
+    # Talep dosyasındaki diğer alanlar — doğrulanmış beklenen cevap yok, metriğe girmez;
+    # çekirdek tablo analizi talebin tamamına baktığı için listede durmaları gerekir.
+    - name: TransferMethod
+      tr: "Para Transferi Türü"
+      description: "Havale/FAST/EFT/SWIFT/Global Para Transferi/Moneygram türlerini belirtir."
+    - name: FEC
+      tr: "FEC"
+      description: "Dolar, euro, altın vs Fec türünü belirtir."
+    - name: TotalTransferAmountOriginal
+      tr: "Transfer Toplamı Original Amount"
+      description: "Para transferi miktarının ilgili fec cinsinde toplamıdır"
+    - name: OwnAccountTotalAmountOriginal
+      tr: "Kendi Hesabına Para Transfer Toplamı Original Amount"
+      description: "Kendi hesabına gönderilen para transferlerinin kendi cinsinden toplamı"

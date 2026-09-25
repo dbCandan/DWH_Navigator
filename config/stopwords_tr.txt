@@ -72,3 +72,10 @@ alanı
 elimizde
 şeklinde
 yer
+# Talep açıklamalarındaki biçim/talimat kelimeleri
+belirtir
+örn
+örneğin
+virgül
+ayrılacak
+sadece

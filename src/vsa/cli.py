@@ -17,6 +17,7 @@ from rich.logging import RichHandler
 from rich.panel import Panel
 from rich.table import Table
 
+from vsa.batch import BatchAnalyzer
 from vsa.config import Settings, load_settings
 from vsa.evaluation import (
     KS,
@@ -28,10 +29,10 @@ from vsa.evaluation import (
     read_history,
 )
 from vsa.index.store import IndexMissingError
-from vsa.loader import file_version
-from vsa.models import AnalysisResult, Level, Verdict
+from vsa.loader import file_version, load_request_file
+from vsa.models import AnalysisResult, BatchResult, FieldStatus, Level, Verdict
 from vsa.pipeline import Engine
-from vsa.report.excel import report_path, write_ask_report
+from vsa.report.excel import report_path, write_ask_report, write_batch_report
 
 HISTORY_PATH = Path("eval/history.jsonl")
 NL = "\n"
@@ -40,6 +41,12 @@ app = typer.Typer(add_completion=False, help="Veri Sözlüğü Asistanı (VSA)")
 console = Console()
 
 LEVEL_STYLE = {Level.HIGH: "green", Level.MEDIUM: "yellow", Level.LOW: "red"}
+STATUS_STYLE = {
+    FieldStatus.READY: "green",
+    FieldStatus.PARTIAL: "yellow",
+    FieldStatus.DERIVE: "dark_orange",
+    FieldStatus.NOT_FOUND: "red",
+}
 VERDICT_STYLE = {Verdict.FOUND: "green", Verdict.PARTIAL: "yellow", Verdict.NOT_FOUND: "red"}
 
 SettingsOpt = typer.Option(
@@ -205,6 +212,68 @@ def _print_negatives(report: EvalReport) -> None:
     console.print(table)
     console.print(f"[bold]Yanlış cevap oranı={report.false_answer_rate:.2f}[/bold]")
     console.print()
+
+
+def _print_batch(r: BatchResult) -> None:
+    console.print(
+        Panel(r.summary, title="Sonuç", border_style=VERDICT_STYLE[r.verdict], expand=False)
+    )
+    table = Table(show_lines=True, header_style="bold white on #1F3864")
+    for col in ("#", "Talep Alanı", "Durum", "En İyi Eşleşme", "Güven"):
+        table.add_column(col, justify="right" if col in ("#", "Güven") else "left")
+    for fr in r.fields:
+        style = STATUS_STYLE[fr.status]
+        best = fr.best
+        match = "-"
+        if best is not None:
+            match = f"[bold]{best.match.object_name}[/bold].{best.match.columns[0].col.column}"
+            if best.derivation:
+                match += f"{NL}[cyan]→ {best.derivation}[/cyan]"
+        table.add_row(
+            str(fr.field.index),
+            f"{fr.field.tr}{NL}[dim]{fr.field.en}[/dim]",
+            f"[{style}]{fr.status.value}[/{style}]",
+            match,
+            f"%{round(best.score * 100)}" if best else "-",
+        )
+    console.print(table)
+    if r.coverage:
+        c = r.coverage[0]
+        console.print(
+            f"[cyan]• Tek tablo kapsama:[/cyan] {c.object_name} — "
+            f"{len(c.fields)}/{len(r.fields)} alan ({c.ready} hazır düzeyde)"
+        )
+    for n in r.notes:
+        if n.scope == "Netleştirme":
+            console.print(f"[cyan]• Netleştirme:[/cyan] {n.text}")
+    console.print(f"[dim]{r.elapsed_ms} ms · sözlük {r.dictionary_version}[/dim]")
+
+
+@app.command()
+def batch(
+    input_file: Path = typer.Option(..., "--input", "-i", help="Talep tablosu (.xlsx)"),
+    sheet: str = typer.Option("0", "--sheet", help="Sayfa adı veya sırası"),
+    top: int = typer.Option(3, "--top", "-n", help="Alan başına en fazla öneri"),
+    no_excel: bool = typer.Option(False, "--no-excel", help="Excel üretme"),
+    out: Path | None = typer.Option(None, "--out", help="Rapor klasörü"),
+    settings_path: Path | None = SettingsOpt,
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Hedef tablo talebini (TR başlık / EN başlık / açıklama) alan alan analiz eder."""
+    settings = _setup(settings_path, verbose)
+    fields = load_request_file(input_file, int(sheet) if sheet.isdigit() else sheet)
+    if not fields:
+        console.print("[red]Talep dosyasında alan bulunamadı.[/red]")
+        raise typer.Exit(2)
+    engine = _load_engine(settings)
+    with console.status(f"{len(fields)} alan analiz ediliyor…"):
+        result = BatchAnalyzer(engine, top_n=top).analyze(fields, input_file.stem)
+    _print_batch(result)
+    if not no_excel:
+        path = write_batch_report(
+            result, report_path(out or Path(settings.report.out_dir), "batch", input_file.stem)
+        )
+        console.print(f"[green]Rapor:[/green] {path}")
 
 
 @app.command("eval")
