@@ -31,6 +31,7 @@ from vsa.index.dense import DenseIndex, load_dense_index, normalize
 from vsa.index.store import load_index, save_index
 from vsa.llm.client import LLMClient, LLMError, NullClient, client_from_settings
 from vsa.llm.judge import JudgeResult, judge
+from vsa.llm.prompts import EXPAND_SCHEMA, EXPAND_SYSTEM, expand_user
 from vsa.loader import load_dictionary, load_stopword_file, load_term_dictionary
 from vsa.models import AnalysisResult, ColumnHit, Dictionary, Note, ObjectMatch, TermGroup, Verdict
 from vsa.scoring.aggregate import ObjectColumns, aggregate
@@ -47,6 +48,7 @@ from vsa.scoring.explain import (
     summary_sentence,
 )
 from vsa.scoring.rules import covers, score_column
+from vsa.text.normalize import tokenize
 from vsa.validate import validate
 
 log = logging.getLogger(__name__)
@@ -91,6 +93,7 @@ class Engine:
         self.llm: LLMClient = llm or NullClient()
         self.dense = dense
         self._qvec_cache: dict[str, np.ndarray] = {}
+        self._expand_cache: dict[str, list[str]] = {}
         self._dense_error = ""
         self.features = [build_features(c, resources.stopwords) for c in dictionary.columns]
         if [f.col.id for f in self.features] != list(range(len(self.features))):
@@ -191,6 +194,7 @@ class Engine:
         s = self.settings
         q = self.expander.expand(query)
         self._weigh_concepts(q)
+        self._llm_expand(q)
         scored = self.bm25.search(q.sparse_terms, top_k=len(self.features))
         bm25_map = dict(scored)
         max_bm25 = scored[0][1] if scored else 0.0
@@ -276,6 +280,25 @@ class Engine:
                 m.llm_reason, m.llm_caveat, m.llm_usage = v.reason, v.caveat, v.usage
         ranked.sort(key=lambda m: (-m.score, m.object_key))
         return result
+
+    def _llm_expand(self, q: ExpandedQuery) -> None:
+        """§7.2c: model-generated terms only widen the BM25 pool (weight 0.6); they never
+        become concepts or signals, so a misread concept cannot steer the score."""
+        s = self.settings
+        if not (s.llm.expand_query and self.llm.available):
+            return
+        if q.text not in self._expand_cache:
+            reply = self.llm.chat_json(
+                EXPAND_SYSTEM, expand_user(q.text), EXPAND_SCHEMA, max_tokens=400
+            )
+            terms: list[str] = []
+            if reply:
+                for key in ("synonyms_tr", "terms_en", "column_name_guesses"):
+                    terms += [str(t) for t in reply.get(key, []) or [] if str(t).strip()][:8]
+            self._expand_cache[q.text] = terms
+        for term in self._expand_cache[q.text]:
+            for tok in tokenize(term, stopwords=self.resources.stopwords):
+                q.sparse_terms.setdefault(tok, s.expansion.weight)
 
     def _concept_df(self, concept: Concept) -> int:
         if concept not in self._df_cache:

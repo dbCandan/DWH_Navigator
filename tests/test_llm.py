@@ -181,3 +181,19 @@ def test_judge_rescoring(sample_dictionary_path: Path) -> None:
     assert top.reason == "LLM gerekçe" and top.caveat.startswith("LLM kısıt")
     assert result.llm_model == "fake-llm"
     assert any("LLM hakem" in m for m in result.method)
+
+
+def test_llm_expansion_only_widens_bm25(sample_dictionary_path: Path) -> None:
+    s = Settings()
+    s.dictionary.path = str(sample_dictionary_path)
+    s.llm.enabled, s.llm.expand_query, s.llm.judge = True, True, False
+    base = Engine.from_dictionary_file(s)
+    reply = {
+        "synonyms_tr": ["kullanım oranı"],
+        "terms_en": ["utilization"],
+        "column_name_guesses": [],
+    }
+    engine = Engine(base.dictionary, s, base.resources, llm=FakeClient(reply))
+    _, q = engine.rank_objects("kart doluluk")
+    assert q.sparse_terms.get("utilization") == s.expansion.weight
+    assert "utilization" not in {c.label for c in q.concepts}

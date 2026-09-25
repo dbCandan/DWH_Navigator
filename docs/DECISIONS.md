@@ -156,3 +156,51 @@ talebin geri kalanını karşılayan tablo bağlamında anlam kazanıyor.
   (ör. virman yalnızca banka içi transferi kapsar).
 
 **Sonuç.** Ek A.3 durum etiketi doğruluğu 0.50 → 0.90.
+
+---
+
+## ADR-018 — Yerel model sunucusu: LM Studio, OpenAI uyumlu API, standart kütüphane
+
+**Tarih.** 2026-09-26
+
+**Bağlam.** HANDOVER §10.3 OpenAI uyumlu `/v1/chat/completions` bekliyor; §19 donanım sorusu
+açık. Geliştirme makinesi: Intel Core Ultra 7 265H, 32 GB RAM, NVIDIA GPU yok (Intel Arc
+tümleşik), LM Studio kurulu.
+
+**Karar.**
+- İstemci (`llm/client.py`) yalnızca standart kütüphane kullanır; kapalı ağa ek wheel
+  gerekmez. LM Studio, vLLM, llama.cpp server ve Ollama ile aynı kod çalışır.
+- Embedding: **BGE-M3** (GGUF Q8_0, 635 MB, `gpustack/bge-m3-GGUF`), 1024 boyut, çok dilli.
+  Doküman önerisiyle aynı; Türkçe kelime dağarcığı farkını yakalıyor ("ihtiyaç kredisi" ~
+  "tüketici finansmanı fon kullandırım" 0.66, ilgisiz cümle 0.43).
+- Sohbet modeli makinedeki modeller arasından ölçümle seçilir (bkz. ADR-019 sonuçları).
+- Model adları ve uç nokta `config/settings.yaml` içindedir (repoya girmez).
+
+---
+
+## ADR-019 — Hibrit arama ve LLM hakemin birleşimi
+
+**Tarih.** 2026-09-26
+
+**Karar.**
+- **Hibrit (M3):** Vektör kolu kullanıcının özgün cümlesiyle sorgulanır (ADR-004). İlk 200
+  kolonun objeleri aday havuzuna eklenir; kolon arama bileşeni
+  `(1 − 0.35) × göreli BM25 + 0.35 × normalize kosinüs` olur (min–max, ilk 200 aralığında).
+  HANDOVER'daki RRF yerine bu karışım seçildi: kural skoru mutlak bir 0–1 ölçeğe
+  dayandığı için (ADR-012) sıra tabanlı RRF skoru anlamını kaybettiriyordu.
+- **Hakem (M4):** İlk 8 obje, en fazla 5 alanlı ve kısaltılmış açıklamalarla modele verilir;
+  model yalnızca `t1…t8` kimliklerini seçer. `final = 0.6 × kural + 0.4 × LLM`; seçilmeyen
+  veya görülmeyen objeler LLM = 0 alır, böylece "hiçbiri uygun değil" cevabı skoru
+  doğal olarak düşürür. Hata → kural sonucu (ADR-008).
+- Batch modunda hakem kapalıdır (alan başına LLM çağrısı CPU'da dakikalar sürer).
+
+---
+
+## ADR-020 — Web arayüzü standart kütüphane ile sunulur
+
+**Tarih.** 2026-09-26
+
+**Karar.** `http.server.ThreadingHTTPServer` + tek HTML sayfası (CSS/JS gömülü, dış kaynak
+yok). FastAPI/uvicorn eklenmedi: kapalı ağa taşınacak bağımlılık sayısı artmıyor ve araç
+tek ekip içindir. Motor tek kilitle korunur. Geri bildirim `data/feedback.jsonl`'e yazılır
+(M7 başlangıcı).

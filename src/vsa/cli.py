@@ -36,6 +36,7 @@ from vsa.evaluation import (
     load_yaml_list,
     read_history,
 )
+from vsa.feedback import export_candidates, load_feedback, summarize
 from vsa.index.dense import build_dense_index
 from vsa.index.store import IndexMissingError
 from vsa.llm.client import LLMError, OpenAICompatibleClient
@@ -407,6 +408,37 @@ def _print_delta(before: dict[str, float], after: dict[str, float]) -> None:
         delta = f"[{style}]{d:+.3f}[/{style}]"
         table.add_row(key, f"{before[key]:.3f}", f"{after[key]:.3f}", delta)
     console.print(table)
+
+
+@app.command()
+def feedback(
+    export: Path = typer.Option(
+        Path("eval/golden_candidates.yaml"),
+        "--export",
+        help="Aday golden maddelerin yazılacağı yer",
+    ),
+) -> None:
+    """Arayüz geri bildirimlerini özetler ve golden set adaylarına dönüştürür (M7)."""
+    _setup(None)
+    rows = summarize(load_feedback(FEEDBACK_PATH))
+    if not rows:
+        console.print(f"[yellow]Henüz geri bildirim yok ({FEEDBACK_PATH}).[/yellow]")
+        return
+    table = Table(header_style="bold white on #1F3864")
+    for col in ("Talep", "👍", "👎", "Alan oyları"):
+        table.add_column(col)
+    for fb in rows:
+        table.add_row(
+            fb.query[:70],
+            NL.join(k.rsplit(".", 1)[-1] for k in fb.up) or "-",
+            NL.join(k.rsplit(".", 1)[-1] for k in fb.down) or "-",
+            str(len(fb.fields)) if fb.fields else "-",
+        )
+    console.print(table)
+    n = export_candidates(FEEDBACK_PATH, export)
+    console.print(
+        f"[green]{n} aday golden madde yazıldı:[/green] {export} (gözden geçirip ekleyin)"
+    )
 
 
 def main() -> None:  # pragma: no cover

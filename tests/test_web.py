@@ -109,3 +109,23 @@ def test_feedback(base_url: str, tmp_path: Path) -> None:
     assert json.loads(lines[0])["vote"] == "up"
     status, _ = post(base_url + "/api/feedback", {"vote": "maybe"})
     assert status == 400
+
+
+def test_feedback_to_golden_candidates(tmp_path: Path) -> None:
+    from vsa.feedback import export_candidates
+
+    fb = tmp_path / "fb.jsonl"
+    rows = [
+        {"query": "q1", "object": "DB.S.vA", "field": "", "vote": "down"},
+        {"query": "q1", "object": "DB.S.vA", "field": "", "vote": "up"},  # latest wins
+        {"query": "q1", "object": "DB.S.vB", "field": "", "vote": "down"},
+        {"query": "q2", "object": "DB.S.vC", "field": "", "vote": "down"},
+    ]
+    fb.write_text("\n".join(json.dumps(r) for r in rows) + "\nbroken\n", encoding="utf-8")
+    out = tmp_path / "cand.yaml"
+    assert export_candidates(fb, out) == 1
+    import yaml
+
+    items = yaml.safe_load(out.read_text(encoding="utf-8"))
+    assert items[0]["expected_objects"] == ["DB.S.vA"]
+    assert items[0]["rejected_objects"] == ["DB.S.vB"]
