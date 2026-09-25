@@ -104,6 +104,24 @@ class TestBuildColumns:
         cols, _ = build_columns(df)
         assert cols[0].key == "DB.S.T.C"
 
+    def test_account_number_meaning_note_dropped(self) -> None:
+        """ADR-009: customer no == account no, so this note is noise."""
+        base = {"DatabaseName": "DB", "SchemaName": "S", "ObjectName": "T"}
+        df = pd.DataFrame(
+            [
+                {**base, "ColumnName": "AccountNumber",
+                 "ColumnDescription": "[BU OBJEDE FARKLI ANLAMDA — DOĞRULANMALI] Hesap no."},
+                {**base, "ColumnName": "BranchId",
+                 "ColumnDescription": "[BU OBJEDE FARKLI ANLAMDA — DOĞRULANMALI] Şube."},
+                {**base, "ColumnName": "DocumentApprovalAccountNumber",
+                 "ColumnDescription": "[BU OBJEDE HESAP NUMARASI ANLAMINDA] Hesap no."},
+            ]
+        )  # fmt: skip
+        cols, _ = build_columns(df)
+        assert cols[0].flags == ()
+        assert cols[1].has_flag(FlagKind.NEEDS_VERIFICATION)
+        assert cols[2].flags == ()
+
     def test_missing_required_column_raises(self) -> None:
         with pytest.raises(ValueError, match="zorunlu kolon"):
             build_columns(pd.DataFrame([{"SchemaName": "S"}]))

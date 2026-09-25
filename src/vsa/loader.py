@@ -90,6 +90,17 @@ def parse_description(raw: str) -> tuple[str, tuple[str, ...], tuple[Flag, ...]]
     return text.strip(), synonyms, tuple(flags)
 
 
+def _is_account_number_note(column: str, flag: Flag) -> bool:
+    """ADR-009: customer number and account number are the same concept, so the
+    "different meaning in this object" notes on AccountNumber columns are noise."""
+    if flag.kind is not FlagKind.NEEDS_VERIFICATION:
+        return False
+    if not fold(column).endswith("accountnumber"):
+        return False
+    text = fold(flag.text)
+    return "farkli anlamda" in text or "hesap numarasi" in text
+
+
 def _resolve_columns(df_columns: Iterable[str]) -> dict[str, str]:
     """Map logical names -> actual DataFrame column names, case-insensitively."""
     lookup = {fold(str(c)).replace(" ", ""): str(c) for c in df_columns}
@@ -141,6 +152,7 @@ def build_columns(
         seen.add(key)
 
         body, synonyms, flags = parse_description(raw)
+        flags = tuple(f for f in flags if not _is_account_number_note(col, f))
         extra = findings.get((fold(obj), fold(col)), [])
         group = _cell(rec[names["dataset_group"]]) if "dataset_group" in names else ""
         columns.append(
@@ -215,7 +227,9 @@ def load_dictionary(
     columns, warnings = build_columns(rows, quality)
     warnings = extra_warnings + warnings
     for w in warnings:
-        log.warning(w)
+        log.info(w)
+    if warnings:
+        log.warning("Sözlük yüklenirken %d uyarı oluştu (ayrıntı: --verbose)", len(warnings))
     return Dictionary(
         columns=columns,
         source_path=str(path),

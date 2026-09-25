@@ -54,5 +54,21 @@ per
 which
 what
 table
-data
-info
+# Talep cümlelerindeki dolgu kelimeleri
+gösteren
+olarak
+bazda
+ihtiyacımız
+duyuyoruz
+nerede
+istiyoruz
+lazım
+içeren
+hakkında
+bulunan
+oluşan
+alan
+alanı
+elimizde
+şeklinde
+yer

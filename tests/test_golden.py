@@ -1,0 +1,66 @@
+"""End-to-end: M1 acceptance on the golden set, report and CLI (needs the real dictionary)."""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+import pytest
+from openpyxl import load_workbook
+
+from vsa.config import Settings
+from vsa.evaluation import evaluate, load_golden
+from vsa.models import Verdict
+from vsa.pipeline import Engine
+from vsa.report.excel import report_path, slugify, write_ask_report
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture(scope="module")
+def engine() -> Engine:
+    from .conftest import REAL_DICTIONARY
+
+    if not REAL_DICTIONARY.exists():
+        pytest.skip("Gerçek sözlük yok (data/ gitignore'da)")
+    logging.disable(logging.WARNING)
+    settings = Settings()
+    settings.dictionary.path = str(REAL_DICTIONARY)
+    return Engine.from_dictionary_file(settings)
+
+
+def test_m1_acceptance(engine: Engine) -> None:
+    """HANDOVER §17 M1: expected object in the top 5 for every golden item."""
+    report = evaluate(engine, load_golden(ROOT / "tests" / "golden_set.yaml"))
+    assert report.items
+    misses = [i.id for i in report.items if not i.rank or i.rank > 5]
+    assert misses == [], misses
+
+
+def test_ask_report(engine: Engine, tmp_path: Path) -> None:
+    result = engine.analyze("Kredi kartı limit doluluk oranı", top_n=3)
+    assert result.verdict is not Verdict.NOT_FOUND
+    assert 0 < len(result.objects) <= 3
+    assert result.dropped_by_validation == 0
+    keys = engine.column_keys
+    assert all(h.col.key in keys for m in result.objects for h in m.columns)
+
+    path = write_ask_report(result, report_path(tmp_path, "ask", result.query))
+    wb = load_workbook(path)
+    assert wb.sheetnames == ["Özet", "Öneriler", "Alan Detayları", "Notlar ve Öneriler"]
+    ws = wb["Öneriler"]
+    assert ws["A1"].value == "Sıra"
+    assert ws["A1"].font.name == "Arial"
+    assert ws["I2"].number_format == "0%"
+    assert ws.freeze_panes == "A2"
+    assert "sürüm" in str(wb["Özet"]["B3"].value)
+
+
+def test_irrelevant_query_does_not_crash(engine: Engine) -> None:
+    result = engine.analyze("zzzz qqqq")
+    assert result.verdict is Verdict.NOT_FOUND
+    assert result.objects == []
+
+
+def test_slug() -> None:
+    assert slugify("Kredi kartı limit doluluk oranı?") == "kredi_karti_limit_doluluk_orani"

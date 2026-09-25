@@ -38,44 +38,17 @@ _ASCII_FOLD = str.maketrans(
 )
 
 # Suffixes in ASCII-folded form, longest first (HANDOVER §6.4).
+# HANDOVER §6.4 list plus possessive+case stacks ("verisine", "tablosundan").
 _SUFFIXES: tuple[str, ...] = tuple(
     sorted(
         set(
-            [
-                "lerinin",
-                "larinin",
-                "lerine",
-                "larina",
-                "lerini",
-                "larini",
-                "lerin",
-                "larin",
-                "leri",
-                "lari",
-                "ler",
-                "lar",
-                "nin",
-                "nun",
-                "in",
-                "un",
-                "den",
-                "dan",
-                "ten",
-                "tan",
-                "de",
-                "da",
-                "te",
-                "ta",
-                "si",
-                "su",
-                "i",
-                "u",
-                "e",
-                "a",
-            ]
+            "lerinin larinin lerine larina lerini larini lerin larin leri lari ler lar "
+            "nin nun in un den dan ten tan de da te ta si su i u e a "
+            "sinden sindan sinde sinda sine sina sini sinin ine ina ini "
+            "nden ndan nde nda yla yle "
+            "dir dur tir tur".split()  # copula: "oranıdır" -> "oran"
         ),
-        key=len,
-        reverse=True,
+        key=lambda x: (-len(x), x),
     )
 )
 MIN_STEM_LEN = 4
@@ -162,13 +135,44 @@ def stem(token: str) -> str:
 
 
 def load_stopwords(lines: Iterable[str]) -> frozenset[str]:
-    """Build a folded stopword set from raw lines (``#`` comments and blanks skipped)."""
-    words = set()
+    """Build a stopword set from raw lines (``#`` comments and blanks skipped).
+
+    Holds both the folded and the stemmed form, so inflected fillers such as
+    "bilgilerini" are caught by the entry "bilgisi" (both stem to "bilgi").
+    """
+    words: set[str] = set()
     for line in lines:
         word = line.split("#", 1)[0].strip()
         if word:
-            words.add(fold(word))
+            folded = fold(word)
+            words.update((folded, stem(folded)))
     return frozenset(words)
+
+
+def tokenize_pairs(
+    text: str,
+    *,
+    stopwords: frozenset[str] = frozenset(),
+    do_stem: bool = True,
+    keep_compound: bool = True,
+) -> list[tuple[str, str]]:
+    """Like :func:`tokenize`, but each token comes with its surface form
+    (Turkish-lowercased original word part) for human-readable labels."""
+    pairs: list[tuple[str, str]] = []
+    for word in _IDENT_RE.findall(text):
+        parts = split_camel(word)
+        for part in parts:
+            tok = fold(part)
+            if (len(tok) < 2 and not tok.isdigit()) or tok in stopwords:
+                continue
+            stemmed = stem(tok)
+            if stemmed in stopwords:
+                continue
+            pairs.append((stemmed if do_stem else tok, tr_lower(part)))
+        if keep_compound and len(parts) > 1:
+            # Whole identifier, never stemmed: it must match the name exactly.
+            pairs.append((fold(word.replace("_", "")), tr_lower(word)))
+    return pairs
 
 
 def tokenize(
@@ -186,18 +190,12 @@ def tokenize(
     With ``keep_compound`` a CamelCase word also emits its whole folded form, so
     an exact identifier query (``CreditCardLimitRate``) still matches.
     """
-    tokens: list[str] = []
-    for word in _IDENT_RE.findall(text):
-        parts = split_camel(word)
-        for part in parts:
-            tok = fold(part)
-            if (len(tok) < 2 and not tok.isdigit()) or tok in stopwords:
-                continue
-            tokens.append(stem(tok) if do_stem else tok)
-        if keep_compound and len(parts) > 1:
-            # Whole identifier, never stemmed: it must match the name exactly.
-            tokens.append(fold(word.replace("_", "")))
-    return tokens
+    return [
+        t
+        for t, _ in tokenize_pairs(
+            text, stopwords=stopwords, do_stem=do_stem, keep_compound=keep_compound
+        )
+    ]
 
 
 def normalize_phrase(text: str, *, stopwords: frozenset[str] = frozenset()) -> str:

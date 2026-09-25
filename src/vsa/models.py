@@ -79,3 +79,76 @@ class Dictionary:
     @property
     def object_keys(self) -> set[str]:
         return {c.object_key for c in self.columns}
+
+
+# --------------------------------------------------------------------------- results
+
+
+class Level(StrEnum):
+    HIGH = "Yüksek"
+    MEDIUM = "Orta"
+    LOW = "Düşük"
+
+
+class Verdict(StrEnum):
+    FOUND = "VAR"
+    PARTIAL = "KISMEN VAR"
+    NOT_FOUND = "BULUNAMADI"
+
+
+@dataclass(slots=True)
+class ColumnHit:
+    """A candidate column with its rule score and the signals that produced it."""
+
+    col: DictColumn
+    search_score: float  # raw BM25
+    rule_score: float
+    raw_score: float = 0.0  # before clipping to [0, 1]; breaks ties between perfect matches
+    signals: list[str] = field(default_factory=list)  # Turkish, human-readable
+    caveats: list[str] = field(default_factory=list)
+    concepts: list[str] = field(default_factory=list)  # labels of concepts it covers
+    needs_derivation: bool = False
+    role: str = ""  # why it is listed under the object: "eşleşme" / "kavram" / "zaman"
+
+
+@dataclass(slots=True)
+class ObjectMatch:
+    object_key: str
+    database: str
+    schema: str
+    object_name: str
+    dataset_groups: list[str]
+    score: float
+    level: Level
+    columns: list[ColumnHit]
+    components: dict[str, float]
+    covered: list[str]
+    missing: list[str]
+    reason: str = ""
+    caveat: str = "-"
+    usage: str = ""
+
+
+@dataclass(slots=True)
+class Note:
+    scope: str  # Kapsam / Netleştirme / Yakın aday / Veri kalitesi / Doğrulama
+    title: str
+    text: str
+
+
+@dataclass(slots=True)
+class AnalysisResult:
+    query: str
+    verdict: Verdict
+    summary: str
+    objects: list[ObjectMatch]
+    near_misses: list[ObjectMatch]
+    notes: list[Note]
+    concepts: list[str]
+    expansion_terms: list[str]
+    dictionary_source: str
+    dictionary_version: str
+    generated_at: str
+    method: list[str]
+    dropped_by_validation: int = 0
+    elapsed_ms: int = 0

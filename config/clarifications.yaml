@@ -1,0 +1,26 @@
+# Netleştirme soruları (HANDOVER §2h). Talepte `when` ifadelerinden biri geçiyorsa ve
+# `unless` ifadelerinin hiçbiri geçmiyorsa soru rapora eklenir.
+# İfadeler Türkçe normalizasyondan geçirilerek eşlenir; çekim ekleri sorun değildir.
+
+- when: [risk]
+  unless: [kkb, memzuç, risk merkezi, sektör, findeks]
+  question: >-
+    “Risk” banka içi risk mi (kendi portföyümüz), yoksa sektör geneli mi (KKB / Memzuç)?
+
+- when: [transfer, havale, eft, fast, swift, virman, para gönderimi]
+  question: >-
+    Hangi transfer kanalları dahil: FAST, havale/EFT, SWIFT, virman, KAS?
+    Klasik EFT beklentisi var mı? Gelen, giden veya her iki yön mü isteniyor?
+
+- when: [kırılım, kırılımlı, breakdown]
+  question: >-
+    Kırılım hangi boyutta isteniyor (ürün, kanal, segment, şube)? Her kırılım ayrı kolon
+    olarak mı (geniş format), ayrı satır olarak mı (uzun format) bekleniyor?
+
+- when: [oran, yüzde, ratio, rate]
+  question: >-
+    Hazır bir oran alanı mı gerekli, yoksa pay ve payda alanlarından hesaplanması yeterli mi?
+
+- when: [aylık, monthly, dönemsel]
+  question: >-
+    Aylık değer ay sonu anlık görüntü mü, yoksa ay içi toplam / ortalama mı olmalı?

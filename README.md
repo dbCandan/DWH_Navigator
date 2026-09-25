@@ -24,4 +24,7 @@ vsa eval                                    # golden set metrikleri
 
 ## Durum
 
-Geliştirme aşamasında — M1 (LLM'siz çekirdek).
+M1 (LLM'siz çekirdek) tamamlandı — golden set recall@5 = 1.00. Sıradaki: M2 (değerlendirme
+altyapısı ve golden set'in büyütülmesi).
+
+Kararlar: [docs/DECISIONS.md](docs/DECISIONS.md)

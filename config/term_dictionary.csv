@@ -21,9 +21,8 @@ ihtiyaç kredisi,tüketici kredisi|consumer loan|ihtiyaç finansmanı|bireysel k
 konut kredisi,mortgage|housing finance|konut finansmanı,ürün,
 taşıt kredisi,araç kredisi|vehicle loan|otomobil kredisi,ürün,
 KMH,kredili mevduat hesabı|overdraft|artı para,ürün,
-müşteri numarası,CIF|müşteri no|customer id|customer number|müşteri kimlik no,anahtar,
+müşteri numarası,hesap numarası|CIF|müşteri no|hesap no|customer id|customer number|account number|müşteri kimlik no,anahtar,Kurum kararı: müşteri no ve hesap no aynı kavram (ADR-009)
 müşteri SKEY,customer party id|party id|DWH müşteri no|surrogate key,anahtar,
-hesap numarası,account number|hesap no,anahtar,
 periyot,dönem|ay yıl|YYYYMM|period|month,zaman,
 veri tarihi,data date|rapor tarihi|iş tarihi|dönem sonu,zaman,
 işlem tarihi,transaction date|tran date|transfer date,zaman,

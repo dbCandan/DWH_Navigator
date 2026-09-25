@@ -22,7 +22,8 @@ Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
 - Python 3.11+, tip ipuçları zorunlu, `ruff` + `mypy --strict` temiz.
 - **Hiçbir modülde doğrudan `.lower()` / `.upper()` / `.casefold()` çağrılmaz** —
   `vsa.text.normalize` kullanılır (Türkçe İ/ı sorunu).
-- I/O yalnızca `loader.py`, `report/`, `cli.py` içinde; diğer modüller saf fonksiyon.
+- I/O yalnızca `loader.py`, `index/store.py`, `report/`, `cli.py` içinde (+ `Engine.from_*`
+  kurucuları); diğer modüller saf fonksiyon.
 - Her yeni skorlama kuralı bir testle gelir.
 - Kullanıcıya dönük metin (rapor, gerekçe) **Türkçe**; kod, değişken adı, commit **İngilizce**.
 
@@ -32,6 +33,10 @@ Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
   Testler gerçek sözlüğe ihtiyaç duyarsa sözlük yoksa `skip` etmeli.
 - Sözlük kolonu `DAtabaseName` yazım hatalı; yükleyici her iki yazımı kabul eder.
 - Obje/kolon adlarında baş/son boşluk olabilir → `strip`.
+
+## Yeni kararlar
+`docs/DECISIONS.md`: ADR-009 (müşteri no = hesap no), ADR-010 (zaman/granülerlik yalnız obje
+skorunda), ADR-011 (uygulanamayan bileşen ağırlıktan çıkar), ADR-012 (kolon skoru tabanı).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -56,7 +61,8 @@ vsa ask "kredi kartı limit doluluk oranı"
 ```
 
 ## Yol haritası durumu
-- [ ] M1 — LLM'siz çekirdek (normalize, loader, BM25, genişletme, kural skoru, toplama, ask Excel)
+- [x] M1 — LLM'siz çekirdek (normalize, loader, BM25, genişletme, kural skoru, toplama, ask Excel)
+      Kabul: golden set recall@5 = 1.00 (3/3). `vsa eval` M2'den önce de çalışıyor.
 - [ ] M2 — Değerlendirme (recall@k, MRR)
 - [ ] M3 — Hibrit arama (dense + reranker)
 - [ ] M4 — LLM katmanı
