@@ -113,6 +113,17 @@ def explain(m: ObjectMatch, q: ExpandedQuery) -> None:
     m.usage = USAGE[m.level]
 
 
+def apply_llm_texts(m: ObjectMatch) -> None:
+    """LLM mode (§9.6): the judge writes reason / usage; its caveat goes first and the
+    rule-based caveats (quality flags, scope, derivation) are kept below it."""
+    m.reason = m.llm_reason
+    if m.llm_usage:
+        m.usage = m.llm_usage
+    lines = [m.llm_caveat] if m.llm_caveat and m.llm_caveat != "-" else []
+    lines += [c for c in m.caveat.split("\n") if c and c != "-" and c not in lines]
+    m.caveat = "\n".join(lines) if lines else "-"
+
+
 def join_suggestions(
     objects: Sequence[ObjectMatch],
     q: ExpandedQuery,

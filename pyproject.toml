@@ -13,6 +13,7 @@ dependencies = [
     "pyyaml>=6.0",
     "typer>=0.9",
     "rich>=13.0",
+    "numpy>=1.24",
 ]
 
 [project.optional-dependencies]
@@ -24,6 +25,9 @@ vsa = "vsa.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+vsa = ["web/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

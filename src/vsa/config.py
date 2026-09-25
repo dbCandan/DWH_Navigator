@@ -77,10 +77,23 @@ class ScoringSettings:
 @dataclass(slots=True)
 class LLMSettings:
     enabled: bool = False
-    endpoint: str = ""
-    model: str = ""
+    endpoint: str = ""  # OpenAI-compatible base URL, e.g. http://localhost:1234/v1
+    model: str = ""  # chat model for judge / query expansion
+    embedding_model: str = ""  # for the dense index (M3)
     temperature: float = 0.1
     timeout: int = 120
+    api_key: str = ""
+    judge: bool = True  # LLM judge on top candidates (§10)
+    judge_candidates: int = 8  # objects shown to the judge
+    expand_query: bool = False  # LLM query expansion into the BM25 arm (§7.2c)
+
+
+@dataclass(slots=True)
+class DenseSettings:
+    enabled: bool = False
+    top_k: int = 200  # dense column candidates
+    rrf_k: int = 60  # reciprocal rank fusion constant
+    weight: float = 0.35  # share of the dense similarity in the column search score
 
 
 @dataclass(slots=True)
@@ -96,6 +109,7 @@ class Settings:
     expansion: ExpansionSettings = field(default_factory=ExpansionSettings)
     scoring: ScoringSettings = field(default_factory=ScoringSettings)
     llm: LLMSettings = field(default_factory=LLMSettings)
+    dense: DenseSettings = field(default_factory=DenseSettings)
     report: ReportSettings = field(default_factory=ReportSettings)
 
 

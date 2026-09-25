@@ -9,12 +9,20 @@ from __future__ import annotations
 
 import logging
 import sys
+import webbrowser
 from pathlib import Path
 
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
 from rich.panel import Panel
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    TextColumn,
+    TimeRemainingColumn,
+)
 from rich.table import Table
 
 from vsa.batch import BatchAnalyzer
@@ -28,13 +36,17 @@ from vsa.evaluation import (
     load_yaml_list,
     read_history,
 )
+from vsa.index.dense import build_dense_index
 from vsa.index.store import IndexMissingError
+from vsa.llm.client import LLMError, OpenAICompatibleClient
 from vsa.loader import file_version, load_request_file
 from vsa.models import AnalysisResult, BatchResult, FieldStatus, Level, Verdict
 from vsa.pipeline import Engine
 from vsa.report.excel import report_path, write_ask_report, write_batch_report
+from vsa.web.server import serve as serve_app
 
 HISTORY_PATH = Path("eval/history.jsonl")
+FEEDBACK_PATH = Path("data/feedback.jsonl")
 NL = "\n"
 
 app = typer.Typer(add_completion=False, help="Veri Sözlüğü Asistanı (VSA)")
@@ -88,6 +100,9 @@ def _load_engine(settings: Settings) -> Engine:
 @app.command()
 def index(
     dictionary: Path | None = typer.Option(None, "--dictionary", "-d", help="Sözlük .xlsx"),
+    dense: bool = typer.Option(
+        False, "--dense", help="Vektör indeksini de kur (embedding modeli gerekir, M3)"
+    ),
     settings_path: Path | None = SettingsOpt,
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
@@ -98,6 +113,8 @@ def index(
     with console.status("Sözlük okunuyor ve indeks kuruluyor…"):
         engine = Engine.from_dictionary_file(settings)
         meta = engine.save()
+    if dense:
+        _build_dense(engine, settings)
     console.print(
         Panel.fit(
             f"[bold]{meta['columns']:,}[/bold] kolon · [bold]{meta['objects']}[/bold] obje\n"
@@ -108,6 +125,59 @@ def index(
             border_style="green",
         )
     )
+
+
+def _build_dense(engine: Engine, settings: Settings) -> None:
+    model = settings.llm.embedding_model
+    if not (settings.llm.endpoint and model):
+        console.print("[red]llm.endpoint ve llm.embedding_model ayarlanmalı.[/red]")
+        raise typer.Exit(2)
+    client = OpenAICompatibleClient(settings.llm.endpoint, settings.llm.model, model, timeout=600)
+    try:
+        client.ping()
+    except LLMError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+    with Progress(
+        TextColumn("Vektörler"), BarColumn(), MofNCompleteColumn(), TimeRemainingColumn(),
+        console=console,
+    ) as progress:  # fmt: skip
+        task = progress.add_task("dense", total=len(engine.dictionary.columns))
+        build_dense_index(
+            engine.dictionary.columns,
+            client,
+            model,
+            Path(settings.index.dir),
+            progress=lambda done, total: progress.update(task, completed=done),
+        )
+    console.print(f"[green]Vektör indeksi hazır[/green] ({model})")
+
+
+@app.command()
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", help="Dinlenecek adres"),
+    port: int = typer.Option(8765, "--port", "-p"),
+    open_browser: bool = typer.Option(False, "--open", help="Tarayıcıda aç"),
+    settings_path: Path | None = SettingsOpt,
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Web arayüzünü başlatır (M6)."""
+    settings = _setup(settings_path, verbose)
+    engine = _load_engine(settings)
+    url = f"http://{host}:{port}"
+    console.print(
+        Panel.fit(
+            f"[bold]{url}[/bold]\n"
+            f"Anlamsal arama: {'açık' if engine.hybrid else 'kapalı'} · "
+            f"LLM hakem: {engine.llm.model if engine.judge_enabled else 'kapalı'}\n"
+            "Durdurmak için Ctrl+C",
+            title="DWH Navigator",
+            border_style="green",
+        )
+    )
+    if open_browser:
+        webbrowser.open(url)
+    serve_app(engine, host, port, Path(settings.report.out_dir), FEEDBACK_PATH)
 
 
 def _print_result(r: AnalysisResult) -> None:

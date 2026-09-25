@@ -395,6 +395,11 @@ class BatchAnalyzer:
         lead = feats[m.columns[0].col.id]
         if not column_kind(lead) & wanted:
             return None
+        # The family must carry the field's specific terms: "kendi hesabına transfer
+        # sayısı" is not answered by a family of all-transfer counts.
+        specific = [c for c in run.q.content_concepts if len(c.alternatives) > 1]
+        if any(c.label not in m.columns[0].concepts for c in specific):
+            return None
         family = wide_siblings(obj, lead)
         if len(family) + 1 < WIDE_MIN_COLUMNS:
             return None

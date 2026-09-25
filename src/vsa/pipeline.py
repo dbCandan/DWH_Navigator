@@ -15,6 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import yaml
 
 from vsa.config import Settings
@@ -26,12 +27,17 @@ from vsa.expansion.query_expander import (
 )
 from vsa.features import ColumnFeatures, build_features
 from vsa.index.bm25 import BM25Index, weighted_fields
+from vsa.index.dense import DenseIndex, load_dense_index, normalize
 from vsa.index.store import load_index, save_index
+from vsa.llm.client import LLMClient, LLMError, NullClient, client_from_settings
+from vsa.llm.judge import JudgeResult, judge
 from vsa.loader import load_dictionary, load_stopword_file, load_term_dictionary
 from vsa.models import AnalysisResult, ColumnHit, Dictionary, Note, ObjectMatch, TermGroup, Verdict
 from vsa.scoring.aggregate import ObjectColumns, aggregate
+from vsa.scoring.combine import combine, level_for
 from vsa.scoring.explain import (
     Clarification,
+    apply_llm_texts,
     clarification_notes,
     compile_clarifications,
     explain,
@@ -76,10 +82,16 @@ class Engine:
         settings: Settings,
         resources: Resources,
         bm25: BM25Index | None = None,
+        llm: LLMClient | None = None,
+        dense: DenseIndex | None = None,
     ) -> None:
         self.dictionary = dictionary
         self.settings = settings
         self.resources = resources
+        self.llm: LLMClient = llm or NullClient()
+        self.dense = dense
+        self._qvec_cache: dict[str, np.ndarray] = {}
+        self._dense_error = ""
         self.features = [build_features(c, resources.stopwords) for c in dictionary.columns]
         if [f.col.id for f in self.features] != list(range(len(self.features))):
             raise ValueError("Kolon id'leri 0..N-1 sıralı olmalı")
@@ -116,14 +128,45 @@ class Engine:
     def from_dictionary_file(cls, settings: Settings) -> Engine:
         d = settings.dictionary
         dictionary = load_dictionary(Path(d.path), d.sheet, d.quality_sheet)
-        return cls(dictionary, settings, Resources.from_settings(settings))
+        return cls(
+            dictionary,
+            settings,
+            Resources.from_settings(settings),
+            llm=client_from_settings(settings.llm),
+            dense=_dense_for(settings, len(dictionary.columns)),
+        )
 
     @classmethod
     def from_index(cls, settings: Settings) -> Engine:
         dictionary, bm25, meta = load_index(Path(settings.index.dir))
-        engine = cls(dictionary, settings, Resources.from_settings(settings), bm25=bm25)
+        engine = cls(
+            dictionary,
+            settings,
+            Resources.from_settings(settings),
+            bm25=bm25,
+            llm=client_from_settings(settings.llm),
+            dense=_dense_for(settings, len(dictionary.columns)),
+        )
         engine.index_meta = meta
         return engine
+
+    @property
+    def hybrid(self) -> bool:
+        """Dense arm active: index loaded and the embedding model reachable so far."""
+        return self.dense is not None and not self._dense_error
+
+    def _query_vector(self, text: str) -> np.ndarray | None:
+        if not self.hybrid:
+            return None
+        if text not in self._qvec_cache:
+            try:
+                vec = np.asarray(self.llm.embed([text])[0], dtype=np.float32)
+            except LLMError as exc:
+                self._dense_error = str(exc)
+                log.warning("Vektör araması devre dışı, yalnız BM25 ile devam: %s", exc)
+                return None
+            self._qvec_cache[text] = normalize(vec)
+        return self._qvec_cache[text]
 
     index_meta: dict[str, Any] = {}
 
@@ -154,14 +197,37 @@ class Engine:
 
         pool = {doc for doc, _ in scored[: s.search.candidate_object_columns]}
         pool |= set(q.synonym_hits)
+
+        # M3: the dense arm uses the original wording (ADR-004) and widens the pool with
+        # semantically close columns that share no words with the request.
+        qvec = self._query_vector(q.dense_text) if s.dense.enabled else None
+        dense_lo = dense_hi = 0.0
+        if qvec is not None and self.dense is not None:
+            dense_top = self.dense.search(qvec, s.dense.top_k)
+            pool |= {i for i, _ in dense_top}
+            dense_hi, dense_lo = dense_top[0][1], dense_top[-1][1]
+
         forced = {k for k in include if k in self.objects}
         candidate_objects = {self.features[i].col.object_key for i in pool} | forced
+
+        dense_sim: dict[int, float] = {}
+        if qvec is not None and self.dense is not None and dense_hi > dense_lo:
+            ids = [f.col.id for k in candidate_objects for f in self.objects[k].features]
+            span = dense_hi - dense_lo
+            raw = self.dense.similarity(qvec, ids)
+            dense_sim = {i: max(0.0, min(1.0, (v - dense_lo) / span)) for i, v in raw.items()}
 
         hits: dict[int, ColumnHit] = {}
         for key in candidate_objects:
             for f in self.objects[key].features:
                 hits[f.col.id] = score_column(
-                    f, bm25_map.get(f.col.id, 0.0), max_bm25, q, s.scoring.flag_penalty
+                    f,
+                    bm25_map.get(f.col.id, 0.0),
+                    max_bm25,
+                    q,
+                    s.scoring.flag_penalty,
+                    dense=dense_sim.get(f.col.id) if dense_sim else None,
+                    dense_weight=s.dense.weight if dense_sim else 0.0,
                 )
         ranked = aggregate(
             hits,
@@ -177,6 +243,39 @@ class Engine:
             if m.object_key in forced or (i < limit and m.score >= s.scoring.min_candidate_score)
         ]
         return kept, q
+
+    def rank(
+        self, query: str, include: Iterable[str] = ()
+    ) -> tuple[list[ObjectMatch], ExpandedQuery, JudgeResult | None]:
+        """``rank_objects`` plus the LLM judge on the top candidates when enabled."""
+        ranked, q = self.rank_objects(query, include)
+        verdict = self._judge(query, ranked)
+        return ranked, q, verdict
+
+    @property
+    def judge_enabled(self) -> bool:
+        return self.llm.available and self.settings.llm.judge
+
+    def _judge(self, query: str, ranked: list[ObjectMatch]) -> JudgeResult | None:
+        """Re-score with the judge (ADR-003): final = w_rule × rule + w_llm × llm, where
+        objects the judge did not pick or did not see get llm = 0."""
+        if not self.judge_enabled or not ranked:
+            return None
+        s = self.settings
+        top = ranked[: s.llm.judge_candidates]
+        result = judge(query, top, self.llm)
+        if result is None:
+            return None  # LLM failure -> rule result stands (ADR-008)
+        for m in ranked:
+            v = result.verdicts.get(m.object_key)
+            m.rule_score = m.score
+            m.llm_confidence = v.confidence if v else 0.0
+            m.score = combine(m.score, m.llm_confidence, s.scoring.w_rule, s.scoring.w_llm)
+            m.level = level_for(m.score)
+            if v:
+                m.llm_reason, m.llm_caveat, m.llm_usage = v.reason, v.caveat, v.usage
+        ranked.sort(key=lambda m: (-m.score, m.object_key))
+        return result
 
     def _concept_df(self, concept: Concept) -> int:
         if concept not in self._df_cache:
@@ -195,7 +294,7 @@ class Engine:
     def analyze(self, query: str, top_n: int = 5) -> AnalysisResult:
         started = time.perf_counter()
         s = self.settings
-        ranked, q = self.rank_objects(query)
+        ranked, q, judged = self.rank(query)
         ranked, dropped = validate(ranked, self.column_keys)
 
         top = ranked[:top_n]
@@ -213,6 +312,8 @@ class Engine:
             verdict = Verdict.PARTIAL
         for m in (*top, *near):
             explain(m, q)
+            if m.llm_reason:
+                apply_llm_texts(m)
 
         notes: list[Note] = []
         if q.unknown_concepts:
@@ -252,8 +353,14 @@ class Engine:
             "Sorgu genişletme: kurumsal terim sözlüğü + sözlük içi eş anlamlılar",
             "Skorlama: kural tabanlı; obje seviyesinde en iyi kolon + kapsama + zaman "
             "+ granülerlik",
-            "LLM: kullanılmadı",
+            "LLM: kullanılmadı"
+            if judged is None
+            else f"LLM hakem: {self.llm.model} (ilk {s.llm.judge_candidates} aday; "
+            f"final = {s.scoring.w_rule:g} × kural + {s.scoring.w_llm:g} × LLM)",
         ]
+        if self.hybrid:
+            method.insert(1, f"Anlamsal arama: {self.dense.model if self.dense else ''} "
+                          f"(ağırlık {s.dense.weight:g}, ilk {s.dense.top_k} kolon)")  # fmt: skip
         return AnalysisResult(
             query=query,
             verdict=verdict,
@@ -269,7 +376,18 @@ class Engine:
             method=method,
             dropped_by_validation=dropped,
             elapsed_ms=round((time.perf_counter() - started) * 1000),
+            llm_model=self.llm.model if judged is not None else "",
+            llm_unknown_ids=judged.unknown_ids if judged is not None else 0,
         )
+
+
+def _dense_for(settings: Settings, n_columns: int) -> DenseIndex | None:
+    if not settings.dense.enabled:
+        return None
+    index = load_dense_index(Path(settings.index.dir), n_columns)
+    if index is None:
+        log.warning("Vektör indeksi bulunamadı; `vsa index --dense` ile kurun. Yalnız BM25.")
+    return index
 
 
 def ranked_keys(engine: Engine, queries: Sequence[str]) -> list[list[str]]:

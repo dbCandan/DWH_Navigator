@@ -1,6 +1,8 @@
 """Deterministic column-level rule score (HANDOVER §9.2, ADR-010, ADR-012).
 
-    base  = 0.35 × relative_bm25 + 0.25 × column_concept_coverage (IDF-weighted)
+    base  = 0.35 × search + 0.25 × column_concept_coverage (IDF-weighted)
+    search = relative BM25, or with the hybrid index (M3)
+             (1 − w) × relative BM25 + w × normalized dense similarity
     score = (base + bonuses − penalties) × flag multipliers, clipped to [0, 1]
 
 Time and granularity are NOT scored here — they are object properties (ADR-010).
@@ -22,6 +24,7 @@ BONUS_SYNONYM = 0.15
 BONUS_TERM_DICTIONARY = 0.10
 PENALTY_DERIVATION = 0.15
 PENALTY_SCOPE = 0.10
+DENSE_SIGNAL_MIN = 0.85  # normalized dense similarity worth mentioning in the reason
 NEGATION_WINDOW = 1  # "bazlı" is a stopword, so "Kart bazlı değil" -> (kart, değil)
 
 CAVEAT_MODEL_ESTIMATED = "Açıklama model tahmini; iş birimiyle doğrulanmalı"
@@ -41,10 +44,16 @@ def score_column(
     max_bm25: float,
     q: ExpandedQuery,
     penalty: FlagPenalty,
+    dense: float | None = None,
+    dense_weight: float = 0.0,
 ) -> ColumnHit:
+    """``dense`` is the column's normalized (0–1) semantic similarity to the query when
+    the hybrid index is on (M3); it takes ``dense_weight`` of the search component."""
     content = q.content_concepts
     covered = [c for c in content if covers(f.all_tokens, c)]
     relative = bm25 / max_bm25 if max_bm25 > 0 else 0.0
+    if dense is not None and dense_weight > 0:
+        relative = (1 - dense_weight) * relative + dense_weight * dense
     coverage = q.coverage(covered)
     score = W_BASE_RELATIVE * relative + W_BASE_COVERAGE * coverage
 
@@ -84,6 +93,10 @@ def score_column(
             needs_derivation = True
             score -= PENALTY_DERIVATION
             caveats.append(CAVEAT_DERIVATION)
+
+    # Last, so the reason text leads with the concrete (lexical) evidence.
+    if dense is not None and dense >= DENSE_SIGNAL_MIN:
+        signals.append(f"Anlamsal benzerlik yüksek (%{round(dense * 100)})")
 
     negated = _negated_concepts(f, covered)
     if negated:

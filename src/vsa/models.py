@@ -129,6 +129,12 @@ class ObjectMatch:
     usage: str = ""
     long_format_values: list[str] = field(default_factory=list)  # met via dimension column
     dimension_column: str = ""
+    # LLM judge (M4): rule score before combination and the judge's verdict, if any.
+    rule_score: float | None = None
+    llm_confidence: float | None = None
+    llm_reason: str = ""
+    llm_caveat: str = ""
+    llm_usage: str = ""
 
 
 @dataclass(slots=True)
@@ -154,6 +160,8 @@ class AnalysisResult:
     method: list[str]
     dropped_by_validation: int = 0
     elapsed_ms: int = 0
+    llm_model: str = ""  # set when the LLM judge ran
+    llm_unknown_ids: int = 0  # judge answers outside the candidate list (hallucination)
 
 
 # --------------------------------------------------------------------------- batch (M5)
