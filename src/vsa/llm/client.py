@@ -152,6 +152,8 @@ class OpenAICompatibleClient:
         self.calls = 0
         self.failures = 0
         self.seconds = 0.0
+        self.prompt_tokens = 0  # as reported by the server ("usage"), for hosted quotas
+        self.completion_tokens = 0
 
     @property
     def available(self) -> bool:
@@ -235,6 +237,9 @@ class OpenAICompatibleClient:
             self.calls += 1
             try:
                 data = self._post("/chat/completions", build(messages), self.timeout)
+                usage = data.get("usage") or {}
+                self.prompt_tokens += int(usage.get("prompt_tokens") or 0)
+                self.completion_tokens += int(usage.get("completion_tokens") or 0)
                 content = str(data["choices"][0]["message"].get("content") or "")
             except LLMError as exc:
                 if adaptations < 3 and self._adapt(str(exc)):

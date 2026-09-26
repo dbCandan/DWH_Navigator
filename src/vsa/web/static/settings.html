@@ -364,6 +364,7 @@ async function testConnection(btn, out) {
 // ---- Model laboratuvarı ------------------------------------------------------------
 let LAB = null, labTimer = null, labPicked = null, CLOUD = null, cloudFilter = "";
 const isCloud = id => id.startsWith("cloud:");
+const fmtTok = n => n >= 1e6 ? (n / 1e6).toFixed(2).replace(".", ",") + " M" : n >= 1e3 ? Math.round(n / 1e3) + " B" : String(n);
 const shortId = id => id.replace(/^cloud:/, "");
 const EFFORT = { none: "kapalı", low: "düşük", medium: "orta", high: "yüksek", "": "varsayılan" };
 const pct = x => h("span", {}, h("span", { class: "bar" }, h("i", { style: `width:${Math.round(x * 100)}%` })), `%${Math.round(x * 100)}`);
@@ -426,6 +427,13 @@ function renderLab() {
       h("p", { class: "note" }, `Kalite = ${W.judge}·hakem + ${W.final}·nihai + ${W.picks}·aynı seçim + ${W.order}·aynı sıra − ${W.drift}·sapma. `
         + "Geçersiz JSON veya uydurma aday kimliği üreten yapılandırma elenir (ADR-002)."));
   }
+  const cloudRows = rows.filter(r => isCloud(r.model) && r.usage && r.usage.requests);
+  if (cloudRows.length) {
+    const sum = k => cloudRows.reduce((a, r) => a + (r.usage[k] || 0), 0);
+    $("#bench").append(h("p", { class: "note" }, "Bulut kullanımı (kaydedilen ölçümler): ",
+      h("b", {}, `${sum("requests")} istek`), `, ${fmtTok(sum("prompt_tokens"))} giriş + ${fmtTok(sum("completion_tokens"))} çıkış token. `
+      + "NVIDIA'nın ücretsiz katmanı istek hızını sınırlar (dakikada ~40); sayaç bu makineden gönderilenleri gösterir."));
+  }
   const errs = Object.entries(LAB.errors || {});
   if (errs.length) $("#bench").append(h("div", { class: "warn" }, "Ölçülemeyen modeller: ", errs.map(([m, e]) => `${m} (${e.slice(-90)})`).join("; ")));
   renderRunner();
@@ -445,7 +453,9 @@ function renderRunner() {
         P.model ? h("span", {}, "Model: ", h("b", {}, P.model)) : null,
         P.step ? h("span", {}, P.step) : null,
         P.elapsed ? h("span", {}, "Geçen: ", h("b", {}, dur(P.elapsed))) : null,
-        eta ? h("span", {}, "Kalan ≈ ", h("b", {}, dur(eta))) : null),
+        eta ? h("span", {}, "Kalan ≈ ", h("b", {}, dur(eta))) : null,
+        P.cloud_usage && P.cloud_usage.requests ? h("span", {}, "NVIDIA'ya: ", h("b", {}, `${P.cloud_usage.requests} istek`),
+          ` · ${fmtTok(P.cloud_usage.prompt_tokens + P.cloud_usage.completion_tokens)} token`) : null),
       logBox,
       h("div", { style: "margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
         h("button", { class: "btn", disabled: P.stopping, onclick: async e => { e.currentTarget.disabled = true; await post("/api/lab/stop", {}); renderBench(); } },

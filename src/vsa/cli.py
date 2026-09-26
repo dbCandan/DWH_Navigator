@@ -584,6 +584,17 @@ def lab_cmd(
     any_local = any(not m.startswith(CLOUD_PREFIX) for m in todo)
     previously = _loaded_chat_models() if any_local else []
     last_call = [0.0]
+    usage = progress["cloud_usage"] = {"requests": 0, "prompt_tokens": 0, "completion_tokens": 0}
+
+    def judged(query: str, cands: Any, c: OpenAICompatibleClient, is_cloud: bool) -> Any:
+        """Judge once; hosted calls are counted (requests + tokens the API reported)."""
+        before = (c.calls, c.prompt_tokens, c.completion_tokens)
+        r = judge(query, cands, c)
+        if is_cloud:
+            usage["requests"] += c.calls - before[0]
+            usage["prompt_tokens"] += c.prompt_tokens - before[1]
+            usage["completion_tokens"] += c.completion_tokens - before[2]
+        return r
 
     def throttle(is_cloud: bool) -> None:
         """Stay under the hosted API's requests-per-minute limit."""
@@ -633,7 +644,7 @@ def lab_cmd(
                 def probe(effort: str, m: str = model, cl: bool = is_cloud) -> bool:
                     throttle(cl)
                     t = time.time()
-                    r = judge(probe_case["query"], probe_case["cands"], client(0.0, effort, m))
+                    r = judged(probe_case["query"], probe_case["cands"], client(0.0, effort, m), cl)
                     verdict = "geçerli" if r and r.verdicts else "boş/geçersiz"
                     note(f"  düşünme='{effort or 'varsayılan'}' denemesi: {verdict} "
                          f"({time.time() - t:.0f} sn)")
@@ -658,7 +669,7 @@ def lab_cmd(
                             check_stop()
                             throttle(is_cloud)
                             t = time.time()
-                            r = judge(case["query"], case["cands"], c)
+                            r = judged(case["query"], case["cands"], c, is_cloud)
                             conf = {k: v.confidence for k, v in r.verdicts.items()} if r else None
                             res = lab.score_reply(case, conf, r.unknown_ids if r else 0,
                                                   time.time() - t, *weights)
@@ -676,6 +687,8 @@ def lab_cmd(
                         "at": time.strftime("%Y-%m-%d %H:%M"), "cases": rows,
                         "source": "bulut" if is_cloud else "yerel",
                         # what the model actually accepted (hosted models may refuse some)
+                        "usage": {"requests": c.calls, "prompt_tokens": c.prompt_tokens,
+                                  "completion_tokens": c.completion_tokens},
                         "sent": {"reasoning_effort": c.reasoning_effort,
                                  "system_role": c.system_role, "json_schema": c.structured},
                     }

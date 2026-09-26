@@ -36,7 +36,8 @@ class FakeServer:
             raise LLMError(f"{path}: HTTP 400: JSON mode is not enabled for model")
         if "reasoning" in self.refuse and "reasoning_effort" in body:
             raise LLMError(f"{path}: HTTP 400: reasoning_effort is not supported")
-        return {"choices": [{"message": {"content": '```json\n{"ok": true}\n```'}}]}
+        return {"choices": [{"message": {"content": '```json\n{"ok": true}\n```'}}],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 7}}
 
 
 def _client(server: FakeServer, monkeypatch: pytest.MonkeyPatch) -> OpenAICompatibleClient:
@@ -64,6 +65,7 @@ def test_client_keeps_features_the_model_accepts(monkeypatch: pytest.MonkeyPatch
     body = server.bodies[0]
     assert "response_format" in body and body["messages"][0]["role"] == "system"
     assert len(server.bodies) == 1
+    assert (c.calls, c.prompt_tokens, c.completion_tokens) == (1, 100, 7)  # usage counter
 
 
 def test_client_gives_up_on_other_errors(monkeypatch: pytest.MonkeyPatch) -> None:
