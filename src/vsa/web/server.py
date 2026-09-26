@@ -329,6 +329,7 @@ class App:
                 "hybrid": self.engine.hybrid,
                 "judge": self.engine.judge_enabled,
                 "llm_model": self.engine.llm.model,
+                "llm_provider": self.engine.settings.llm.provider,
                 "dictionary_version": self.engine.dictionary.version,
                 "index_built_at": self.engine.index_meta.get("built_at", ""),
             },

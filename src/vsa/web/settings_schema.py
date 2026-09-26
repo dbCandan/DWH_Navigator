@@ -40,6 +40,19 @@ SECTIONS: list[dict[str, Any]] = [
                 "Windows'ta 'localhost' yerine 127.0.0.1 kullanılır.",
             },
             {
+                "key": "llm.provider",
+                "label": "Hakem nerede çalışsın",
+                "type": "select",
+                "effect": NOW,
+                "options": [
+                    ["local", "Yerel (LM Studio) — veri dışarı çıkmaz"],
+                    ["cloud", "Bulut (Bulut modelleri bölümündeki servis)"],
+                ],
+                "help": "Bulut seçilirse HER soruda aday tabloların adları, kolon adları ve açıklamaları "
+                "servise gönderilir (müşteri verisi gönderilmez). İnternet yoksa hakem çalışmaz, uygulama "
+                "kural tabanlı sonuç verir. Vektör araması her durumda yerelde kalır (ADR-026).",
+            },
+            {
                 "key": "llm.model",
                 "label": "Hakem modeli",
                 "type": "model",
@@ -72,6 +85,17 @@ SECTIONS: list[dict[str, Any]] = [
                 ],
                 "help": "Düşünen modeller (Qwen3.x) için. Kapalı değilse cevap çok uzar; qwen3.5 düşünmede "
                 "tüm bütçeyi harcayıp boş dönebiliyor (ADR-021).",
+            },
+            {
+                "key": "llm.seed",
+                "label": "Sabit tohum (seed)",
+                "type": "int",
+                "min": -1,
+                "max": 2147483647,
+                "step": 1,
+                "effect": NOW,
+                "help": "Aynı soruya aynı cevabın gelmesine yardım eder (sıcaklık 0 ile birlikte). "
+                "-1: gönderme. Bulut servisleri istekleri toplu işlediği için tam garanti vermez.",
             },
             {
                 "key": "llm.judge",

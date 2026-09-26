@@ -171,6 +171,7 @@ def rank(results: Mapping[str, Mapping[str, Any]]) -> list[dict[str, Any]]:
                 "at": entry.get("at", ""),
                 "size_gb": entry.get("size_gb", 0),
                 "usage": entry.get("usage", {}),
+                "seed": entry.get("seed"),
                 **s,
             })
     best_q = max((r["quality"] for r in rows), default=0.0)

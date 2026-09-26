@@ -241,19 +241,21 @@ function toast(title, lines, bad = false) {
 }
 
 function modelOptions(kind, current) {
-  const list = (S.models || []).filter(m => m.kind === kind);
+  const cloudChat = kind === "chat" && form["llm.provider"] === "cloud";
+  const list = cloudChat ? ((CLOUD && CLOUD.models) || []).map(m => ({ id: m.name, kind: "chat" }))
+    : (S.models || []).filter(m => m.kind === kind);
   const opts = list.map(m => {
     const bits = [m.loaded ? "● yüklü" : m.loaded === false ? "○" : "", m.arch, m.quant].filter(Boolean).join(" · ");
     return h("option", { value: m.id, selected: m.id === current }, bits ? `${m.id}   ${bits}` : m.id);
   });
   if (current && !list.some(m => m.id === current)) opts.unshift(h("option", { value: current, selected: true }, `${current}   (sunucuda bulunamadı)`));
-  if (!list.length) opts.push(h("option", { value: "", disabled: true }, "Sunucuya ulaşılamadı — adresi kontrol edin"));
+  if (!list.length) opts.push(h("option", { value: "", disabled: true }, cloudChat ? "Bulut listesi yok — Bulut modelleri bölümünü açın" : "Sunucuya ulaşılamadı — adresi kontrol edin"));
   return opts;
 }
 
 function control(f) {
   const key = f.key, v = form[key];
-  const set = val => { form[key] = val; refresh(key); };
+  const set = val => { form[key] = val; refresh(key); if (key === "llm.provider") rerender("llm.model"); };
   if (f.type === "bool") {
     const inp = h("input", { type: "checkbox", "aria-label": f.label });
     inp.checked = !!v; inp.onchange = () => set(inp.checked);
@@ -323,7 +325,7 @@ function renderChips() {
   const st = S.status;
   $("#chips").replaceChildren(
     h("span", { class: "pill" }, h("i", { class: "dot" + (st.hybrid ? " on" : "") }), "Anlamsal arama"),
-    h("span", { class: "pill", title: st.llm_model }, h("i", { class: "dot" + (st.judge ? " on" : "") }), st.judge ? `Hakem · ${st.llm_model.split("/").pop()}` : "Hakem kapalı"),
+    h("span", { class: "pill", title: st.llm_model }, h("i", { class: "dot" + (st.judge ? " on" : "") }), st.judge ? `Hakem · ${st.llm_model.split("/").pop()}${st.llm_provider === "cloud" ? " (bulut)" : ""}` : "Hakem kapalı"),
     h("span", { class: "pill", title: "Sözlük sürümü" }, st.dictionary_version));
 }
 
@@ -369,15 +371,19 @@ const shortId = id => id.replace(/^cloud:/, "");
 const EFFORT = { none: "kapalı", low: "düşük", medium: "orta", high: "yüksek", "": "varsayılan" };
 const pct = x => h("span", {}, h("span", { class: "bar" }, h("i", { style: `width:${Math.round(x * 100)}%` })), `%${Math.round(x * 100)}`);
 const dur = s => s >= 3600 ? `${Math.floor(s / 3600)} sa ${Math.round(s % 3600 / 60)} dk` : s >= 60 ? `${Math.round(s / 60)} dk` : `${Math.round(s)} sn`;
-const isCurrent = r => saved["llm.model"] === r.model && Number(saved["llm.temperature"]) === r.temperature && saved["llm.reasoning_effort"] === r.reasoning_effort;
+const providerOf = r => isCloud(r.model) ? "cloud" : "local";
+const isCurrent = r => saved["llm.provider"] === providerOf(r) && saved["llm.model"] === shortId(r.model)
+  && Number(saved["llm.temperature"]) === r.temperature && saved["llm.reasoning_effort"] === r.reasoning_effort;
 
 async function applyConfig(r, btn) {
   if (btn) { btn.disabled = true; btn.textContent = "Uygulanıyor…"; }
   try {
+    if (isCloud(r.model) && !confirm("Bulut hakemi seçiliyor: uygulamadaki HER soruda aday tabloların adları, kolon adları ve açıklamaları "
+      + "NVIDIA'ya gönderilecek (müşteri verisi gönderilmez). Devam edilsin mi?")) { renderLab(); return; }
     const res = await post("/api/settings", { values: {
-      "llm.enabled": true, "llm.judge": true, "llm.model": r.model,
+      "llm.enabled": true, "llm.judge": true, "llm.provider": providerOf(r), "llm.model": shortId(r.model),
       "llm.temperature": r.temperature, "llm.reasoning_effort": r.reasoning_effort } });
-    toast("Hakem yapılandırması uygulandı", [`${r.model} · sıcaklık ${r.temperature} · düşünme ${EFFORT[r.reasoning_effort]}`,
+    toast("Hakem yapılandırması uygulandı", [`${shortId(r.model)} (${isCloud(r.model) ? "bulut" : "yerel"}) · sıcaklık ${r.temperature} · düşünme ${EFFORT[r.reasoning_effort]}`,
       `Değişen: ${res.changed.join(", ") || "— (zaten bu ayardaydı)"}`]);
     await load(false);
   } catch (e) { toast("Uygulanamadı", [e.message], true); }
@@ -400,12 +406,10 @@ async function renderBench() {
 function renderLab() {
   if (!LAB) return;
   const rows = LAB.rows, W = LAB.weights;
-  // The app's judge stays local (ADR-026): recommend the best local configuration; cloud
-  // rows are there to compare model quality for the production GPU choice.
-  const best = rows.find(r => !isCloud(r.model) && r.quality > 0);
+  const best = rows.find(r => r.recommended);
   $("#labBest").replaceChildren(...[best && h("div", { class: "best-card" },
     h("div", { class: "star" }, "★"),
-    h("div", {}, h("div", {}, "Önerilen: ", h("b", {}, best.model), ` · sıcaklık ${best.temperature} · düşünme ${EFFORT[best.reasoning_effort]}`,
+    h("div", {}, h("div", {}, "Önerilen: ", h("b", {}, shortId(best.model)), h("span", { class: "pill" }, isCloud(best.model) ? "bulut" : "yerel"), ` · sıcaklık ${best.temperature} · düşünme ${EFFORT[best.reasoning_effort]}`,
         isCurrent(best) ? h("span", { class: "pill cur" }, "şu an kullanılıyor") : null),
       h("div", { class: "why" }, `Kalite ${best.quality.toFixed(3)} — hakem doğruluğu %${Math.round(best.judge_accuracy * 100)}, nihai %${Math.round(best.final_accuracy * 100)}, `
         + `aynı seçim %${Math.round(best.consistent_picks * 100)}, soru başına ${best.mean_sec.toFixed(0)} sn. Kalitesi ${W.tie} farkla eşit sayılanlardan en hızlısı seçilir.`)),
@@ -418,12 +422,13 @@ function renderLab() {
       h("tbody", {}, rows.map(r => h("tr", { class: r.recommended ? "best" : "", title: `${r.cases} vaka · ${r.at || ""}${r.size_gb ? " · " + r.size_gb + " GB" : ""}` },
         h("td", { class: "m" }, shortId(r.model), r.recommended ? " ★" : "", h("span", { class: "pill" }, isCloud(r.model) ? "bulut" : "yerel"),
           isCurrent(r) ? h("span", { class: "pill cur" }, "kullanılıyor") : null),
-        h("td", {}, String(r.temperature)), h("td", {}, EFFORT[r.reasoning_effort] ?? r.reasoning_effort),
+        h("td", {}, String(r.temperature), r.seed != null ? h("span", { class: "pill", title: "Sabit tohum" }, "seed " + r.seed) : null),
+        h("td", {}, EFFORT[r.reasoning_effort] ?? r.reasoning_effort),
         h("td", { class: "q" }, r.quality ? r.quality.toFixed(3) : "elendi"),
         h("td", {}, pct(r.judge_accuracy)), h("td", {}, pct(r.final_accuracy)),
         h("td", {}, pct(r.consistent_picks)), h("td", {}, pct(r.consistent_final_order)),
         h("td", {}, r.mean_conf_drift.toFixed(3)), h("td", {}, r.mean_sec.toFixed(0) + " sn"),
-        h("td", {}, isCurrent(r) || isCloud(r.model) ? null : h("button", { class: "btn", onclick: e => applyConfig(r, e.currentTarget) }, "Uygula")))))),
+        h("td", {}, isCurrent(r) ? null : h("button", { class: "btn", onclick: e => applyConfig(r, e.currentTarget) }, "Uygula")))))),
       h("p", { class: "note" }, `Kalite = ${W.judge}·hakem + ${W.final}·nihai + ${W.picks}·aynı seçim + ${W.order}·aynı sıra − ${W.drift}·sapma. `
         + "Geçersiz JSON veya uydurma aday kimliği üreten yapılandırma elenir (ADR-002)."));
   }
@@ -495,7 +500,7 @@ function renderRunner() {
     fill();
     return [head, h("div", { class: "opts" }, search, count), list,
       h("p", { class: "warn" }, "Bulut modeli seçilirse ölçüm sırasında test soruları ile aday tabloların adları, kolon adları ve açıklamaları NVIDIA'ya gönderilir. "
-        + "Müşteri verisi gönderilmez. Bulut sonuçları üretim GPU'su için model kıyaslamasıdır; uygulamanın hakemi yerelde kalır.")];
+        + "Müşteri verisi gönderilmez. Bir bulut satırını “Uygula” ile hakem yaparsanız uygulamanın her sorusu da gönderilir.")];
   }
   const go = h("button", { class: "btn primary", onclick: async e => {
     e.currentTarget.disabled = true;
@@ -565,6 +570,7 @@ async function load(first = true) {
   try { S = await api("/api/settings"); }
   catch (e) { $("#lead").replaceChildren(h("div", { class: "err" }, "Ayarlar okunamadı: " + e.message)); return; }
   saved = { ...S.values }; form = { ...S.values };
+  if (!CLOUD || !first) await loadCloud();
   renderChips(); renderSections(); renderMaint();
   if (first) renderBench(); else renderLab();
 }

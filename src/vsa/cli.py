@@ -635,9 +635,11 @@ def lab_cmd(
                 if m.startswith(CLOUD_PREFIX):
                     return OpenAICompatibleClient(
                         settings.cloud.endpoint, m.removeprefix(CLOUD_PREFIX), temperature=temp,
-                        timeout=300, api_key=cloud_key, reasoning_effort=effort, retries=6)
+                        timeout=300, api_key=cloud_key, reasoning_effort=effort, retries=6,
+                        seed=settings.llm.seed)
                 return OpenAICompatibleClient(s.llm.endpoint, m, temperature=temp, timeout=900,
-                                              api_key=s.llm.api_key, reasoning_effort=effort)
+                                              api_key=s.llm.api_key, reasoning_effort=effort,
+                                              seed=settings.llm.seed)
 
             if efforts == "auto":
 
@@ -681,7 +683,9 @@ def lab_cmd(
                                  f"→ {', '.join(res['picks'][:2]) or '(seçim yok)'}")
                     summary = lab.summarize(rows, counted)
                     results.setdefault(model, {}).pop("load_error", None)
-                    results[model][f"T{temp:g}|{effort}"] = {
+                    seed_tag = f"|s{c.seed}" if c.seed is not None else ""
+                    results[model][f"T{temp:g}|{effort}{seed_tag}"] = {
+                        "seed": c.seed,
                         "temperature": temp, "reasoning_effort": effort, "summary": summary,
                         "load_sec": load_sec, "size_gb": round(sizes.get(model, 0) / 1e9, 2),
                         "at": time.strftime("%Y-%m-%d %H:%M"), "cases": rows,
@@ -689,7 +693,7 @@ def lab_cmd(
                         # what the model actually accepted (hosted models may refuse some)
                         "usage": {"requests": c.calls, "prompt_tokens": c.prompt_tokens,
                                   "completion_tokens": c.completion_tokens},
-                        "sent": {"reasoning_effort": c.reasoning_effort,
+                        "sent": {"reasoning_effort": c.reasoning_effort, "seed": c.seed,
                                  "system_role": c.system_role, "json_schema": c.structured},
                     }
                     _write_json(LAB_RESULTS, results)
@@ -701,7 +705,8 @@ def lab_cmd(
         note("Kullanıcı durdurdu; tamamlanan ölçümler kaydedildi.")
     finally:
         # Leave LM Studio as we found it: the app's judge model loaded again.
-        for m in previously or ([s.llm.model] if any_local else []):
+        app_local = settings.llm.provider != "cloud"
+        for m in previously or ([s.llm.model] if any_local and app_local else []):
             if m and not any(x.get("identifier") == m for x in _lms_json("ps")):
                 _lms("load", m, "--context-length", "8192", "--gpu", "max", "-y")
         progress["running"] = False

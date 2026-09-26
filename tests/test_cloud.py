@@ -98,3 +98,37 @@ def test_chat_model_filter() -> None:
     assert not is_chat_model("nvidia/nv-embedqa-e5-v5")
     assert not is_chat_model("nvidia/llama-3.1-nemoguard-8b-content-safety")
     assert not is_chat_model("qwen/qwen2.5-vl-72b-instruct")
+
+
+def test_seed_is_sent_and_dropped_if_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    bodies: list[dict[str, Any]] = []
+
+    def server(path: str, body: dict[str, Any], timeout: float) -> dict[str, Any]:
+        bodies.append(body)
+        if "seed" in body and len(bodies) == 1:
+            raise LLMError(f"{path}: HTTP 400: unsupported parameter: seed")
+        return {"choices": [{"message": {"content": '{"ok": true}'}}]}
+
+    c = OpenAICompatibleClient("https://example.test/v1", "m", seed=42)
+    monkeypatch.setattr(c, "_post", server)
+    assert c.chat_json("s", "u", SCHEMA) == {"ok": True}
+    assert bodies[0]["seed"] == 42 and "seed" not in bodies[1] and c.seed is None
+    assert OpenAICompatibleClient("https://example.test/v1", "m", seed=-1).seed is None
+
+
+def test_cloud_provider_splits_chat_and_embeddings() -> None:
+    from vsa.config import LLMSettings
+    from vsa.llm.client import SplitClient, client_from_settings
+
+    llm = LLMSettings(enabled=True, endpoint="http://127.0.0.1:1234/v1",
+                      model="google/gemma-4-31b-it", embedding_model="bge", provider="cloud",
+                      seed=7)  # fmt: skip
+    cloud = CloudSettings(enabled=True, api_key="nvapi-x")
+    c = client_from_settings(llm, embeddings=True, cloud=cloud)
+    assert isinstance(c, SplitClient) and c.available and c.model == "google/gemma-4-31b-it"
+    assert isinstance(c.chat, OpenAICompatibleClient) and c.chat.endpoint == cloud.endpoint
+    assert c.chat.seed == 7 and c.chat.api_key == "nvapi-x"
+    assert isinstance(c.embedder, OpenAICompatibleClient)
+    assert c.embedder.endpoint == "http://127.0.0.1:1234/v1" and c.embedder.embedding_model == "bge"
+    no_key = client_from_settings(llm, embeddings=True, cloud=CloudSettings(enabled=True))
+    assert not no_key.available  # cloud chosen without a key: judge off, rules still work

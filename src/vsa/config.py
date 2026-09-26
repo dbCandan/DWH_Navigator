@@ -85,6 +85,11 @@ class LLMSettings:
     timeout: int = 120
     api_key: str = ""
     reasoning_effort: str = "none"  # reasoning models answer directly ("" = don't send)
+    # Where the judge runs: "local" (endpoint above) or "cloud" (the ``cloud`` section).
+    # Embeddings always stay on the local endpoint. "cloud" sends every request's
+    # candidate tables out of the network — the user's decision (ADR-026, 2026-09-26).
+    provider: str = "local"
+    seed: int = 42  # fixed sampling seed for repeatable judgments; -1 = don't send
     judge: bool = True  # LLM judge on top candidates (§10)
     judge_candidates: int = 8  # objects shown to the judge
     expand_query: bool = False  # LLM query expansion into the BM25 arm (§7.2c)

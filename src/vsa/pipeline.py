@@ -135,7 +135,9 @@ class Engine:
             dictionary,
             settings,
             Resources.from_settings(settings),
-            llm=client_from_settings(settings.llm, embeddings=settings.dense.enabled),
+            llm=client_from_settings(
+                settings.llm, embeddings=settings.dense.enabled, cloud=settings.cloud
+            ),
             dense=_dense_for(settings, len(dictionary.columns)),
         )
 
@@ -147,7 +149,9 @@ class Engine:
             settings,
             Resources.from_settings(settings),
             bm25=bm25,
-            llm=client_from_settings(settings.llm, embeddings=settings.dense.enabled),
+            llm=client_from_settings(
+                settings.llm, embeddings=settings.dense.enabled, cloud=settings.cloud
+            ),
             dense=_dense_for(settings, len(dictionary.columns)),
         )
         engine.index_meta = meta

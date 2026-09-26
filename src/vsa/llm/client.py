@@ -102,12 +102,38 @@ def parse_json_reply(text: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def client_from_settings(llm: Any, embeddings: bool = False) -> LLMClient:
+def client_from_settings(llm: Any, embeddings: bool = False, cloud: Any = None) -> LLMClient:
     """``LLMSettings`` -> client (ADR-008). ``llm.enabled`` governs the chat features
     (judge, query expansion); with ``embeddings`` the endpoint still serves the dense
-    index even when chat is off. Nothing configured -> NullClient."""
+    index even when chat is off. Nothing configured -> NullClient.
+
+    With ``llm.provider == "cloud"`` the chat goes to the hosted API of ``cloud``
+    (ADR-026) while embeddings stay on the local endpoint."""
     enabled = bool(getattr(llm, "enabled", False))
     want_embed = embeddings and bool(getattr(llm, "embedding_model", ""))
+    seed = getattr(llm, "seed", -1)
+    provider = str(getattr(llm, "provider", "local"))
+    use_cloud = enabled and provider == "cloud" and cloud is not None
+    if use_cloud:
+        from vsa.config import cloud_api_key  # local import: config does not need the client
+
+        key = cloud_api_key(cloud)
+        chat: LLMClient = NullClient()
+        if key and cloud.endpoint and llm.model:
+            chat = OpenAICompatibleClient(
+                endpoint=cloud.endpoint, model=llm.model, temperature=llm.temperature,
+                timeout=llm.timeout, api_key=key, reasoning_effort=llm.reasoning_effort,
+                retries=3, seed=seed,
+            )  # fmt: skip
+        else:
+            log.warning("Bulut hakemi seçili ama API anahtarı/adres yok; hakem kapalı")
+        local: LLMClient = NullClient()
+        if want_embed and bool(getattr(llm, "endpoint", "")):
+            local = OpenAICompatibleClient(
+                endpoint=llm.endpoint, model="", embedding_model=llm.embedding_model,
+                timeout=llm.timeout, api_key=llm.api_key,
+            )  # fmt: skip
+        return SplitClient(chat, local)
     if not getattr(llm, "endpoint", "") or not (enabled or want_embed):
         return NullClient()
     return OpenAICompatibleClient(
@@ -118,7 +144,37 @@ def client_from_settings(llm: Any, embeddings: bool = False) -> LLMClient:
         timeout=llm.timeout,
         api_key=llm.api_key,
         reasoning_effort=llm.reasoning_effort,
+        seed=seed,
     )
+
+
+class SplitClient:
+    """Chat from one server (the hosted judge), embeddings from another (local)."""
+
+    def __init__(self, chat: LLMClient, embedder: LLMClient) -> None:
+        self.chat = chat
+        self.embedder = embedder
+
+    @property
+    def available(self) -> bool:
+        return self.chat.available
+
+    @property
+    def model(self) -> str:
+        return self.chat.model
+
+    def chat_json(
+        self,
+        system: str,
+        user: str,
+        schema: Mapping[str, Any],
+        *,
+        max_tokens: int = 1024,
+    ) -> dict[str, Any] | None:
+        return self.chat.chat_json(system, user, schema, max_tokens=max_tokens)
+
+    def embed(self, texts: Sequence[str]) -> list[list[float]]:
+        return self.embedder.embed(texts)
 
 
 class OpenAICompatibleClient:
@@ -132,6 +188,7 @@ class OpenAICompatibleClient:
         api_key: str = "",
         reasoning_effort: str = "none",
         retries: int = 0,
+        seed: int | None = None,
     ) -> None:
         # "localhost" resolves to ::1 first on Windows; servers listening on IPv4 only
         # (LM Studio) then cost ~2 s per request before the fallback. Use IPv4 directly.
@@ -147,6 +204,7 @@ class OpenAICompatibleClient:
         # Hosted APIs (ADR-026): retry rate limits; some models (Gemma on Google AI Studio)
         # take neither a system message nor a JSON schema — learned from the first 400.
         self.retries = retries
+        self.seed = seed if seed is not None and seed >= 0 else None
         self.system_role = True
         self.structured = True
         self.calls = 0
@@ -223,6 +281,8 @@ class OpenAICompatibleClient:
             }
             if self.reasoning_effort:
                 body["reasoning_effort"] = self.reasoning_effort
+            if self.seed is not None:
+                body["seed"] = self.seed
             if self.structured:
                 body["response_format"] = {
                     "type": "json_schema",
@@ -283,6 +343,8 @@ class OpenAICompatibleClient:
             self.structured = False
         elif self.reasoning_effort and ("reasoning" in text or "thinking" in text):
             self.reasoning_effort = ""
+        elif self.seed is not None and "seed" in text:
+            self.seed = None
         else:
             return False
         log.info("Model bir özelliği desteklemiyor, onsuz yeniden deneniyor: %s", error[:160])
