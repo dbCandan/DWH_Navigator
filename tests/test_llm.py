@@ -175,6 +175,7 @@ def test_judge_rescoring(sample_dictionary_path: Path) -> None:
     s = Settings()
     s.dictionary.path = str(sample_dictionary_path)
     s.llm.enabled = True
+    s.analyst.enabled = False  # the judge path (M4); the analyst flow is ADR-029
     base = Engine.from_dictionary_file(s)
     reply = {"matches": [{"candidate_id": "t1", "confidence": 0.9, "reason": "LLM gerekçe",
                           "caveat": "LLM kısıt", "usage": "LLM kullanım"}]}  # fmt: skip

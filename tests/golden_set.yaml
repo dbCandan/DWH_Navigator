@@ -179,3 +179,105 @@
     - name: OwnAccountTotalAmountOriginal
       tr: "Kendi Hesabına Para Transfer Toplamı Original Amount"
       description: "Kendi hesabına gönderilen para transferlerinin kendi cinsinden toplamı"
+
+# --------------------------------------------------------------------------------------
+# Elle yapılmış analizler (2026-09-26, out/VSA_Analiz_*.xlsx): kullanıcının Claude chat'te
+# sözlüğün tamamını okutarak ürettiği ve doğru kabul ettiği cevaplar. Analist akışının
+# (ADR-029) ölçütü. expected_objects = o analizlerin ilk 5 önerisi; primary = 1. öneri.
+# --------------------------------------------------------------------------------------
+
+- id: q004
+  query: "Müşterinin kredi kartlarının bilgisi"
+  mode: ask
+  primary_object: EDWDM.CON.vCreditCardList
+  expected_objects:
+    - EDWDM.CON.vCreditCardList
+    - EDWDM.CON.vCreditCardBalanceSummary
+    - EDWDM.CON.vCreditCardLimit
+    - EDWDM.CON.vCreditCardStatistic
+    - EDWDM.TRX.vCreditCardTurnover
+  expected_columns:
+    - EDWDM.CON.vCreditCardList.MainCustomerId
+    - EDWDM.CON.vCreditCardList.CardStatusCodeName
+    - EDWDM.CON.vCreditCardLimit.CardLimit
+  traps:
+    - column: EDWDM.AIS.vRetailCustomerChurnPredictionInput.NumberOfCreditCards
+      rule: not_lead
+  notes: >-
+    Genel "X bilgisi" talebi: kartın ana (künye) tablosu ve bilgi aileleri (limit,
+    bakiye/ekstre, istatistik, işlem). vCreditCardList.CustomerId ek kart sahibidir; asıl
+    müşteri MainCustomerId. Kural tabanlı arama bu talepte 5 tablonun hiçbirini ilk 10'a
+    alamamıştı (churn/pazarlama tabloları öne çıkıyordu).
+  source: chat-analiz-2026-09-26
+
+- id: q005
+  query: "Müşterinin sektör bazlı mevduat dağılımı"
+  mode: ask
+  primary_object: EDWDM.PRC.vCustomerGeneralInfo
+  expected_objects:
+    - EDWDM.PRC.vCustomerGeneralInfo
+    - EDWDM.BDG.vCustomerProfitabilityAllProduct
+    - EDWDM.CUS.vCustomerDetail
+    - EDWDM.CON.vAccountBalanceSummary
+    - EDWDM.CON.vCustomerAssetDepositBalanceDaily
+  expected_columns:
+    - EDWDM.PRC.vCustomerGeneralInfo.CompanySectorCodeCurrP
+    - EDWDM.PRC.vCustomerGeneralInfo.TotalDeposit
+  traps:
+    - column: EDWDM.MDL.vPRCCustomerCorporateInfo.CompanySectorAge
+      rule: not_lead
+    - column: EDWDM.CUS.vCustomerInfo.EmployerSectorName
+      rule: not_lead
+  notes: >-
+    Sektör ve mevduatı aynı tabloda taşıyan vCustomerGeneralInfo tek tablo cevabıdır;
+    vCustomerDetail yalnız sektör boyutudur (birleştirme gerekir). CompanySectorAge firma
+    yaşıdır, EmployerSectorName işverenin sektörüdür.
+  source: chat-analiz-2026-09-26
+
+- id: q006
+  query: "Müşterinin kredi risk skoru"
+  mode: ask
+  primary_object: EDWDM.CON.vIFRSAccountStatus
+  expected_objects:
+    - EDWDM.CON.vIFRSAccountStatus
+    - EDWDM.CFM.vFinanceCustomerDetail
+    - EDWDM.EWS.vTriggerValue
+    - EDWDM.CON.vExpectedCreditLoss
+    - EDWDM.MDL.vPRCFundCollateral
+  expected_columns:
+    - EDWDM.CON.vIFRSAccountStatus.CurrentCustomerGrade
+    - EDWDM.CON.vIFRSAccountStatus.CurrentCustomerPD
+    - EDWDM.CFM.vFinanceCustomerDetail.CurrentKKBScore
+  traps:
+    - column: ERPDM.HRM.vPersonKKB.CurrentScore
+      rule: not_lead
+    - column: EDWDM.CON.vCarOwnerShipPrediction.CreditScore
+      rule: not_lead
+  notes: >-
+    İki skor ailesi: içsel (rating/PD) ve dışsal (KKB). vCustomerBehaviours *BehaviourScore
+    alanları eğilim skorudur; vPersonKKB personelin skorudur; *OwnerShipPrediction.CreditScore
+    model girdisidir.
+  source: chat-analiz-2026-09-26
+
+- id: q007
+  query: "Müşterinin müşterilik yaşı"
+  mode: ask
+  primary_object: EDWDM.CUS.vCustomerInfo
+  expected_objects:
+    - EDWDM.CUS.vCustomerInfo
+    - EDWDM.CUS.vStrategicValue
+    - EDWDM.CFM.vFinanceCustomerDetail
+    - EDWDM.FNS.vFinancialStory
+    - EDWDM.AIS.vRetailCustomerChurnTrainingInput
+  expected_columns:
+    - EDWDM.CUS.vCustomerInfo.Tenure
+    - EDWDM.CUS.vStrategicValue.TenureMonth
+  traps:
+    - column: EDWDM.PRC.vCustomerGeneralInfo.CustomerAgeMonth
+      rule: not_lead
+    - column: EDWDM.CFM.vFinanceCustomerDetail.Age
+      rule: not_lead
+  notes: >-
+    Müşterilik kıdemi (Tenure) — kişinin yaşı (Age, CustomerAgeMonth) değil. Birim tablodan
+    tabloya değişir (ay/yıl).
+  source: chat-analiz-2026-09-26

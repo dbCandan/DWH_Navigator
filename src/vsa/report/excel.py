@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 
 from openpyxl import Workbook
+from openpyxl.cell.cell import Cell
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
@@ -23,6 +24,7 @@ from vsa.models import (
     FlagKind,
     Level,
     Note,
+    ObjectMatch,
     Verdict,
 )
 from vsa.scoring.combine import level_for
@@ -36,6 +38,8 @@ HEADER_FONT = Font(name=FONT, bold=True, color="FFFFFF")
 BODY_FONT = Font(name=FONT, size=10)
 BOLD = Font(name=FONT, size=10, bold=True)
 TITLE_FONT = Font(name=FONT, size=14, bold=True, color="1F3864")
+SECTION_FONT = Font(name=FONT, size=11, bold=True, color="1F3864")
+SMALL_FONT = Font(name=FONT, size=9, color="595959")
 THIN = Side(style="thin", color="BFBFBF")
 BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 WRAP = Alignment(wrap_text=True, vertical="top")
@@ -100,57 +104,118 @@ def _finish_sheet(ws: Worksheet, header_row: int, n_cols: int, n_rows: int) -> N
         ws.auto_filter.ref = f"A{header_row}:{last}{header_row + n_rows}"
 
 
+def _merged(ws: Worksheet, row: int, first: int, last: int, value: CellValue) -> Cell:
+    """Value across merged cells ``first..last`` of a row, wrapped."""
+    cell = ws.cell(row=row, column=first, value=value)
+    cell.font, cell.alignment = BODY_FONT, WRAP
+    if last > first:
+        ws.merge_cells(start_row=row, start_column=first, end_row=row, end_column=last)
+    return cell
+
+
+def _grow(ws: Worksheet, row: int, text: str, chars_per_line: int) -> None:
+    """Merged cells do not auto-size in Excel: give long texts room."""
+    lines = sum(max(1, -(-len(part) // chars_per_line)) for part in text.split("\n"))
+    ws.row_dimensions[row].height = max(15, 14 * lines)
+
+
+def _section(ws: Worksheet, row: int, title: str) -> int:
+    ws.cell(row=row, column=1, value=title).font = SECTION_FONT
+    return row + 1
+
+
+def _bullets(ws: Worksheet, row: int, title: str, items: Sequence[str]) -> int:
+    if not items:
+        return row
+    row = _section(ws, row, title)
+    for item in items:
+        _merged(ws, row, 1, 5, f"• {item}")
+        _grow(ws, row, item, 150)
+        row += 1
+    return row + 1
+
+
+def _covers(m: ObjectMatch) -> str:
+    if m.covers:
+        return m.covers
+    return ", ".join(m.covered) or ", ".join(h.col.column for h in m.columns[:4])
+
+
+def _dictionary_line(r: AnalysisResult) -> str:
+    rows = r.dictionary_version.rsplit("-", 1)[-1]
+    size = f"{int(rows):,}".replace(",", ".") + " satır" if rows.isdigit() else r.dictionary_version
+    objects = f", {r.dictionary_objects} obje" if r.dictionary_objects else ""
+    return f"Kaynak sözlük: {r.dictionary_source} ({size}{objects})"
+
+
 def _summary(ws: Worksheet, r: AnalysisResult) -> None:
+    """Özet: request, verdict, suggestion table, design, traps, scale (HANDOVER §12.2)."""
     ws.title = "Özet"
     ws.sheet_view.showGridLines = False
-    ws.column_dimensions["A"].width = 24
-    ws.column_dimensions["B"].width = 100
-    ws["A1"] = "Veri Sözlüğü Asistanı — Analiz Raporu"
+    for col, width in zip("ABCDE", (16, 46, 70, 10, 12), strict=True):
+        ws.column_dimensions[col].width = width
+    ws["A1"] = "Veri Ambarı Veri Sözlüğü – İş Birimi Talep Analizi"
     ws["A1"].font = TITLE_FONT
-    info = [
-        ("Kaynak sözlük", f"{r.dictionary_source} (sürüm {r.dictionary_version})"),
-        ("Üretim tarihi", r.generated_at),
-        ("Talep", r.query),
-        ("Genel sonuç", r.summary),
-    ]
-    row = 3
+    _merged(ws, 2, 1, 3, _dictionary_line(r)).font = SMALL_FONT
+    stamp = datetime.strptime(r.generated_at, "%Y-%m-%d %H:%M").strftime("%d.%m.%Y %H:%M")
+    _merged(ws, 2, 4, 5, f"Üretim: {stamp}").font = SMALL_FONT
+
+    row = 4
+    info = [("Talep", r.query), ("Sonuç", r.summary)]
+    if r.interpretation:
+        info.append(("Talebin yorumu", r.interpretation))
     for label, value in info:
         ws.cell(row=row, column=1, value=label).font = BOLD
-        cell = ws.cell(row=row, column=2, value=value)
-        cell.font, cell.alignment = BODY_FONT, WRAP
-        if label == "Genel sonuç":
-            cell.fill = VERDICT_FILL[r.verdict]
-            cell.font = BOLD
+        ws.cell(row=row, column=1).alignment = WRAP
+        cell = _merged(ws, row, 2, 5, value)
+        _grow(ws, row, value, 120)
+        if label == "Sonuç":
+            cell.fill, cell.font = VERDICT_FILL[r.verdict], BOLD
         row += 1
 
-    row += 1
-    ws.cell(row=row, column=1, value="Güven skoru ölçeği").font = BOLD
+    row = _section(ws, row + 1, "Öneri Özeti")
+    rows: list[list[CellValue]] = [
+        [i, m.object_key, _covers(m), round(m.score, 2), m.level.value]
+        for i, m in enumerate(r.objects, 1)
+    ]
+    if not rows:
+        rows = [["-", "Sözlükte karşılığı bulunamadı", "-", "-", "-"]]
+    start = row
+    headers = ["Sıra", "Veritabanı.Şema.Obje", "Kapsadığı Bilgi", "Güven", "Seviye"]
+    row = _table(ws, start, headers, rows)
+    for i in range(start + 1, row):
+        ws.cell(row=i, column=4).number_format = "0.00"
+        for lvl in Level:
+            if ws.cell(row=i, column=5).value == lvl.value:
+                ws.cell(row=i, column=5).fill = LEVEL_FILL[lvl]
+
+    row = _bullets(ws, row + 1, "Önerilen Kurgu", r.design)
+    row = _bullets(ws, row, "Dikkat Edilmesi Gerekenler", r.attention)
+
+    row = _section(ws, row, "Güven Skoru Ölçeği")
+    start = row
     row = _table(
         ws,
-        row + 1,
-        ["Seviye", "Anlamı"],
+        start,
+        ["Seviye", "Aralık", "Anlamı"],
         [
-            ["Yüksek (%80–100)", "Alan adı veya açıklaması sorulan kavramla doğrudan örtüşüyor"],
-            ["Orta (%50–79)", "İlişkili; kapsam, granülerlik veya tanım farkı var"],
-            ["Düşük (%0–49)", "Dolaylı ilişki; sorulan veri bu alandan türetilebilir"],
+            ["Yüksek", "%80–100", "Alan adı veya açıklaması sorulan kavramla doğrudan örtüşüyor."],
+            ["Orta", "%50–79", "Anlam olarak ilişkili; kapsam, granülerlik veya tanım farkı var."],
+            ["Düşük", "%0–49", "Dolaylı ilişki var; sorulan veri bu alandan türetilebilir."],
         ],
     )
     for i, lvl in enumerate(Level):
-        ws.cell(row=row - 3 + i, column=1).fill = LEVEL_FILL[lvl]
+        ws.cell(row=start + 1 + i, column=1).fill = LEVEL_FILL[lvl]
 
-    row += 1
-    ws.cell(row=row, column=1, value="Yöntem notları").font = BOLD
+    row = _section(ws, row + 1, "Yöntem Notları")
     notes = [
         *r.method,
         "Talep kavramları: " + (", ".join(r.concepts) or "-"),
-        "Genişletme terimleri: " + (", ".join(r.expansion_terms) or "-"),
-        f"Sözlük doğrulaması: {r.dropped_by_validation} alan düşürüldü",
-        f"Süre: {r.elapsed_ms} ms",
+        f"Süre: {r.elapsed_ms / 1000:.1f} sn",
     ]
     for n in notes:
+        _merged(ws, row, 1, 5, n).font = SMALL_FONT
         row += 1
-        cell = ws.cell(row=row, column=2, value=n)
-        cell.font, cell.alignment = BODY_FONT, WRAP
 
 
 def _suggestions(ws: Worksheet, r: AnalysisResult) -> None:
@@ -158,7 +223,11 @@ def _suggestions(ws: Worksheet, r: AnalysisResult) -> None:
         "Sıra", "Veritabanı", "Şema", "Obje", "Veri Seti Grubu", "İlgili Alanlar",
         "Gerekçe", "Kısıt / Dikkat", "Güven Skoru", "Güven Seviyesi", "Kullanım Önerisi",
     ]  # fmt: skip
-    rows = [
+    ws["A1"] = f"Öneriler – Güven Skoruna Göre İlk {max(len(r.objects), 1)}"
+    ws["A1"].font = TITLE_FONT
+    ws["A2"], ws["B2"] = "Talep:", r.query
+    ws["A2"].font, ws["B2"].font = BOLD, BODY_FONT
+    rows: list[list[CellValue]] = [
         [
             i,
             m.database,
@@ -168,7 +237,7 @@ def _suggestions(ws: Worksheet, r: AnalysisResult) -> None:
             "\n".join(h.col.column for h in m.columns),
             m.reason,
             m.caveat,
-            round(m.score, 4),
+            round(m.score, 2),
             m.level.value,
             m.usage,
         ]
@@ -176,18 +245,28 @@ def _suggestions(ws: Worksheet, r: AnalysisResult) -> None:
     ]
     if not rows:
         rows = [["-", "-", "-", "-", "-", "-", r.summary, "-", 0, "-", "-"]]
-    _table(ws, 1, headers, rows, [6, 12, 8, 34, 22, 34, 60, 60, 11, 12, 40])
-    for i in range(2, len(rows) + 2):
-        ws.cell(row=i, column=9).number_format = "0%"
+    header_row = 3
+    _table(ws, header_row, headers, rows, [6, 10, 8, 30, 20, 30, 70, 60, 10, 11, 40])
+    for i in range(header_row + 1, header_row + len(rows) + 1):
+        ws.cell(row=i, column=9).number_format = "0.00"
         level = ws.cell(row=i, column=10).value
         for lvl in Level:
             if level == lvl.value:
                 ws.cell(row=i, column=10).fill = LEVEL_FILL[lvl]
-    _finish_sheet(ws, 1, len(headers), len(rows))
+    _finish_sheet(ws, header_row, len(headers), len(rows))
+
+
+def _column_text(col: DictColumn) -> str:
+    text = col.description
+    if col.synonyms:
+        text += f" Eş anlamlılar/aranabilir terimler: {', '.join(col.synonyms)}."
+    return text
 
 
 def _field_details(ws: Worksheet, r: AnalysisResult) -> None:
-    headers = ["Sıra", "Obje", "Alan Adı", "Sözlük Açıklaması", "Eş Anlamlılar", "Kalite Bayrağı"]
+    ws["A1"] = "Önerilen Alanların Sözlükteki Tanımları"
+    ws["A1"].font = TITLE_FONT
+    headers = ["Sıra", "Veritabanı.Şema.Obje", "Alan Adı", "Sözlük Açıklaması", "Kalite Bayrağı"]
     rows: list[list[CellValue]] = []
     for i, m in enumerate(r.objects, 1):
         for h in m.columns:
@@ -197,25 +276,18 @@ def _field_details(ws: Worksheet, r: AnalysisResult) -> None:
                 else FLAG_LABEL[f.kind]
                 for f in h.col.flags
             )
-            rows.append(
-                [
-                    i,
-                    m.object_key,
-                    h.col.column,
-                    h.col.description,
-                    ", ".join(h.col.synonyms) or "-",
-                    flags or "-",
-                ]
-            )
-    _table(ws, 1, headers, rows, [6, 40, 30, 80, 40, 40])
-    _finish_sheet(ws, 1, len(headers), len(rows))
+            rows.append([i, m.object_key, h.col.column, _column_text(h.col), flags or "-"])
+    _table(ws, 2, headers, rows, [6, 42, 30, 100, 34])
+    _finish_sheet(ws, 2, len(headers), len(rows))
 
 
 def _notes(ws: Worksheet, r: AnalysisResult) -> None:
+    ws["A1"] = "Notlar ve Öneriler"
+    ws["A1"].font = TITLE_FONT
     headers = ["Kapsam", "Başlık", "Açıklama"]
-    rows = [[n.scope, n.title, n.text] for n in r.notes]
-    _table(ws, 1, headers, rows, [18, 40, 100])
-    _finish_sheet(ws, 1, len(headers), len(rows))
+    rows: list[list[CellValue]] = [[n.scope, n.title, n.text] for n in r.notes]
+    _table(ws, 2, headers, rows, [16, 40, 110])
+    _finish_sheet(ws, 2, len(headers), len(rows))
 
 
 def write_ask_report(result: AnalysisResult, path: Path) -> Path:

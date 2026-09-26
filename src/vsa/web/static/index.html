@@ -207,6 +207,14 @@ table.notes td:first-child { white-space: nowrap; color: var(--muted); font-size
 .lc-Yüksek { --lc: var(--high); } .lc-Orta { --lc: var(--mid); } .lc-Düşük { --lc: var(--low); }
 .res-reason { margin: 10px 0 0; overflow-wrap: anywhere; }
 .res-warn { margin: 8px 0 0; font-size: 13.5px; color: var(--mid); overflow-wrap: anywhere; }
+.res-covers { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: .2px; overflow-wrap: anywhere; }
+.res-usage { margin: 6px 0 0; }
+.answer-read { margin: 10px 0 0; font-size: 13.5px; color: var(--muted); overflow-wrap: anywhere; }
+.guide { margin: 14px 0 0; padding: 14px 18px; border-radius: 16px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+.guide ul { margin: 6px 0 0; padding-left: 18px; }
+.guide li + li { margin-top: 5px; }
+.guide.warn { border-color: rgba(255, 209, 102, .28); background: rgba(255, 209, 102, .06); }
+.guide.plan { border-color: rgba(120, 170, 255, .25); background: rgba(120, 170, 255, .05); }
 .res .cols { margin-top: 12px; }
 .res .col { background: transparent; }
 .col.more { font-family: var(--sans); color: var(--muted); }
@@ -759,7 +767,11 @@ async function ask() {
   startStages($("#stage"), $("#stage-sub"), [
     ["Sözlük taranıyor…", "Türkçe normalizasyon, eş anlamlılar ve terim sözlüğü", 0],
     [STATUS && STATUS.hybrid ? "Anlamsal benzerlik hesaplanıyor…" : "Tablolar skorlanıyor…", "Kolonlar tablo seviyesinde toplanıyor", radar / 2],
-    ...(llm ? [["LLM hakem değerlendiriyor…", `${llm.split("/").pop()} ilk ${STATUS.judge_candidates} adayı okuyor`, radar]] : []),
+    ...(llm && STATUS.analyst ? [
+      ["Analist kataloğu okuyor…", `${llm.split("/").pop()} ${STATUS.objects} tablonun hepsine bakıp aday seçiyor`, radar],
+      ["Aday tabloların kolonları okunuyor…", `ilk ${STATUS.shortlist} adayın bütün sözlük açıklamaları`, radar + 60],
+      ["Rapor yazılıyor ve sözlüğe karşı doğrulanıyor…", "gerekçe, kısıtlar, kurgu ve uyarılar", radar + 120],
+    ] : llm ? [["LLM hakem değerlendiriyor…", `${llm.split("/").pop()} ilk ${STATUS.judge_candidates} adayı okuyor`, radar]] : []),
   ]);
   const radarDone = new Promise(res => setTimeout(res, Cosmos.active ? Cosmos.radarMs : 0));
   try {
@@ -850,13 +862,15 @@ function resultCard(m, query) {
         h("h2", {}, breakable(m.name)),
         h("div", { class: "res-path" }, h("code", {}, `${m.database}.${m.schema}`), m.groups.length ? " · " + m.groups.join(", ") : null)),
       h("div", { class: "score lc-" + m.level, title: "Güven skoru" }, h("b", {}, pct(m.score)), h("span", {}, m.level))),
+    m.covers ? h("div", { class: "res-covers" }, m.covers) : null,
     h("p", { class: "res-reason" }, m.reason),
     m.caveat.length ? h("div", { class: "res-warn" }, m.caveat.map(c => h("div", {}, "⚠ " + c))) : null,
+    m.covers && m.usage ? h("div", { class: "usage res-usage" }, "→ " + m.usage) : null,
     ...columnChips(m),
     h("div", { class: "res-foot" },
       h("details", {}, h("summary", {}, "Ayrıntılar"),
         concepts.length ? h("div", { class: "chips" }, concepts) : null,
-        m.usage ? h("div", { class: "usage" }, "Kullanım: " + m.usage) : null,
+        m.usage && !m.covers ? h("div", { class: "usage" }, "Kullanım: " + m.usage) : null,
         bars(m)),
       feedbackButtons(query, m.key, "").slice(1)));
 }
@@ -870,8 +884,12 @@ function renderAsk(r) {
   const out = $("#ask-out");
   const concepts = h("div", { class: "chips" }, r.concepts.map(conceptChip),
     r.expansion.length ? h("span", { class: "chip", title: r.expansion.join(", ") }, "+ " + r.expansion.length + " genişletme terimi") : null);
-  const clar = r.notes.filter(n => n.scope === "Netleştirme");
-  const other = r.notes.filter(n => n.scope !== "Netleştirme");
+  // Analyst answers (ADR-029) carry their notes as part of the answer, like the hand-made
+  // analyses; rule answers keep them behind "Arama ayrıntıları".
+  const clar = r.analyst ? [] : r.notes.filter(n => n.scope === "Netleştirme");
+  const other = r.analyst ? [] : r.notes.filter(n => n.scope !== "Netleştirme");
+  const guide = (title, items, cls) => items && items.length
+    ? h("section", { class: "guide " + cls }, h("div", { class: "label" }, title), h("ul", {}, items.map(x => h("li", {}, x)))) : null;
   const meta = `${(r.elapsed_ms / 1000).toFixed(1)} sn · sözlük ${r.dictionary_version}` + (r.llm_model ? ` · LLM ${r.llm_model}` : "");
   put(out,
     h("section", { class: "answer " + verdictClass(r.verdict) },
@@ -879,9 +897,13 @@ function renderAsk(r) {
         h("span", { class: "vbadge" }, r.verdict),
         h("span", { class: "answer-q", title: r.query }, r.query),
         r.report_id ? h("a", { class: "dl", href: "/api/report/" + r.report_id, download: "" }, "⬇ Excel raporu") : null),
-      h("p", { class: "answer-sum" }, r.summary.replace(/^[A-ZÇĞİÖŞÜ ]+ — /, "")),
+      h("p", { class: "answer-sum" }, r.summary.replace(/^(KISMEN VAR|VAR|BULUNAMADI)\s*[.—–-]\s*/, "").replace(/^[A-ZÇĞİÖŞÜ ]+ — /, "")),
+      r.interpretation ? h("p", { class: "answer-read" }, "Talebi şöyle okudum: " + r.interpretation) : null,
       clar.length ? h("div", { class: "ask-hints" }, clar.map(n => h("div", {}, n.text))) : null),
+    guide("Dikkat edilmesi gerekenler", r.attention, "warn"),
     ...r.objects.map(m => resultCard(m, r.query)),
+    guide("Önerilen kurgu", r.design, "plan"),
+    r.analyst && r.notes.length ? h("section", { class: "guide notes-block" }, h("div", { class: "label" }, "Notlar ve öneriler"), notesTable(r.notes)) : null,
     !r.objects.length ? h("div", { class: "empty" }, "Sözlükte bu talebin doğrudan karşılığı bulunamadı. Talebi farklı ifadelerle deneyin.") : null,
     r.near.length ? h("details", { class: "ask-more" }, h("summary", {}, `Yakın adaylar (${r.near.length})`),
       h("div", { class: "inner" }, r.near.map(m => resultCard(m, r.query)))) : null,

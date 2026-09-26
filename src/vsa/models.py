@@ -135,6 +135,7 @@ class ObjectMatch:
     llm_reason: str = ""
     llm_caveat: str = ""
     llm_usage: str = ""
+    covers: str = ""  # analyst flow (ADR-029): "Kapsadığı Bilgi" in a few words
 
 
 @dataclass(slots=True)
@@ -162,6 +163,13 @@ class AnalysisResult:
     elapsed_ms: int = 0
     llm_model: str = ""  # set when the LLM judge ran
     llm_unknown_ids: int = 0  # judge answers outside the candidate list (hallucination)
+    # Analyst flow (ADR-029): how the request was read, how to combine the suggested
+    # tables ("Önerilen Kurgu") and the traps to watch ("Dikkat Edilmesi Gerekenler").
+    interpretation: str = ""
+    design: list[str] = field(default_factory=list)
+    attention: list[str] = field(default_factory=list)
+    analyst: bool = False  # True when the analyst flow wrote this answer
+    dictionary_objects: int = 0  # tables in the dictionary, for the report header
 
 
 # --------------------------------------------------------------------------- batch (M5)

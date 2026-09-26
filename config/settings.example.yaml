@@ -49,7 +49,20 @@ llm:
   endpoint: ""                 # OpenAI uyumlu /v1/chat/completions
   model: ""
   temperature: 0.1
-  timeout: 120
+  timeout: 900                 # analist akışının 2. adımı uzun cevap yazar (ADR-029)
+
+# Analist akışı (ADR-029): LLM açıksa "ask" cevabını model yazar — önce tüm tablo kataloğundan
+# aday seçer, sonra adayların bütün kolon açıklamalarını okuyup raporu yazar. Kurallar ipucu,
+# doğrulayıcı ve yedektir (model yoksa / hata verirse kural tabanlı cevap döner).
+analyst:
+  enabled: true
+  shortlist: 14                # 2. adımda kolon kolon okunan aday tablo sayısı
+  confusables: 6               # uyarılar için okunan "benzer ama yanlış" tablo sayısı
+  evidence_columns: 60         # sözlüğün geri kalanından benzer alan sayısı
+  description_chars: 420       # kolon açıklaması başına karakter
+  full_table_columns: 90       # daha geniş tablolarda yalnız ilgili kolonların açıklaması
+  min_confidence: 0.5          # bu güvenin altındaki öneri gösterilmez (ADR-006)
+  max_tokens: 8000             # 2. adımın cevap bütçesi
 
 # Bulut modelleri — YALNIZ Model laboratuvarı ölçümü için (ADR-026). Uygulamanın hakemi
 # yerelde kalır. Açıkken ölçüm, test soruları ve aday tablo/kolon açıklamalarını dışarı gönderir.

@@ -31,12 +31,15 @@ def engine() -> Engine:
 
 def test_m1_acceptance(engine: Engine) -> None:
     """HANDOVER §17 M1: expected object in the top 5 for every golden ask item;
-    no trap violations; every negative item answered BULUNAMADI (ADR-006)."""
-    report = evaluate(
-        engine,
-        load_golden(ROOT / "tests" / "golden_set.yaml"),
-        load_golden(ROOT / "tests" / "negative_set.yaml"),
-    )
+    no trap violations; every negative item answered BULUNAMADI (ADR-006).
+    Items taken from the hand-made chat analyses measure the analyst flow (ADR-029),
+    which needs a model; the LLM-free core is held to the M1 items."""
+    golden = [
+        item
+        for item in load_golden(ROOT / "tests" / "golden_set.yaml")
+        if item.get("source") != "chat-analiz-2026-09-26"
+    ]
+    report = evaluate(engine, golden, load_golden(ROOT / "tests" / "negative_set.yaml"))
     asks = report.group("ask")
     assert asks
     misses = [i.id for i in asks if not i.rank or i.rank > 5]
@@ -57,11 +60,11 @@ def test_ask_report(engine: Engine, tmp_path: Path) -> None:
     wb = load_workbook(path)
     assert wb.sheetnames == ["Özet", "Öneriler", "Alan Detayları", "Notlar ve Öneriler"]
     ws = wb["Öneriler"]
-    assert ws["A1"].value == "Sıra"
-    assert ws["A1"].font.name == "Arial"
-    assert ws["I2"].number_format == "0%"
-    assert ws.freeze_panes == "A2"
-    assert "sürüm" in str(wb["Özet"]["B3"].value)
+    assert ws["A3"].value == "Sıra"
+    assert ws["A3"].font.name == "Arial"
+    assert ws["I4"].number_format == "0.00"
+    assert ws.freeze_panes == "A4"
+    assert str(wb["Özet"]["A2"].value).startswith("Kaynak sözlük:")
 
 
 def test_irrelevant_query_does_not_crash(engine: Engine) -> None:

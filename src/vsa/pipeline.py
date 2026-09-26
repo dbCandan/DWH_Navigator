@@ -35,6 +35,20 @@ from vsa.index.dense import (
     normalize,
 )
 from vsa.index.store import load_index, save_index
+from vsa.llm.analyst import (
+    STRUCTURAL,
+    AnalystAnswer,
+    Catalog,
+    MentionChecker,
+    Recommendation,
+    analyse,
+    build_answer,
+    build_catalog,
+    confusable_material,
+    shortlist,
+    table_material,
+    term_matcher,
+)
 from vsa.llm.client import LLMClient, LLMError, NullClient, client_from_settings
 from vsa.llm.judge import JudgeResult, judge
 from vsa.llm.prompts import EXPAND_SCHEMA, EXPAND_SYSTEM, expand_user
@@ -55,7 +69,7 @@ from vsa.scoring.explain import (
 )
 from vsa.scoring.rules import covers, score_column
 from vsa.scoring.topic import build_topic_index, topic_scores
-from vsa.text.normalize import tokenize
+from vsa.text.normalize import fold, tokenize
 from vsa.validate import validate
 
 log = logging.getLogger(__name__)
@@ -65,6 +79,10 @@ NEAR_MISS_COUNT = 3
 # Tables most similar to the request by their profile vector join the candidate pool
 # even when none of their columns did (ADR-028).
 OBJECT_POOL = 15
+# Rule results shown to the analyst model as hints (ADR-029).
+ANALYST_HINT_TABLES = 15
+ANALYST_RULE_POOL = 60  # rule-ranked tables the "together" hint picks from
+ANALYST_HINT_COLUMNS = 25
 
 
 @dataclass(slots=True)
@@ -366,7 +384,206 @@ class Engine:
             if df == 0:
                 q.unknown_concepts.append(c)
 
+    @property
+    def analyst_enabled(self) -> bool:
+        return self.llm.available and self.settings.analyst.enabled
+
     def analyze(self, query: str, top_n: int = 5) -> AnalysisResult:
+        """Analyst flow when the chat model is on (ADR-029); rule pipeline otherwise and
+        whenever the model fails (ADR-008)."""
+        if self.analyst_enabled:
+            result = self._analyze_llm(query, top_n)
+            if result is not None:
+                return result
+            log.warning("Analist akışı sonuç veremedi; kural tabanlı sonuca dönülüyor")
+        return self._analyze_rules(query, top_n)
+
+    # ------------------------------------------------------------------ analyst (ADR-029)
+
+    _catalog: Catalog | None = None
+    _checker: MentionChecker | None = None
+
+    def _analyst_parts(self) -> tuple[Catalog, MentionChecker]:
+        if self._catalog is None or self._checker is None:
+            self._catalog = build_catalog(
+                {k: [f.col for f in o.features] for k, o in self.objects.items()}
+            )
+            self._checker = MentionChecker.build(self.dictionary.columns)
+        return self._catalog, self._checker
+
+    def _column_relevance(self, q: ExpandedQuery) -> dict[int, float]:
+        """BM25 score of every matching column, scaled to 0..1."""
+        scored = self.bm25.search(q.sparse_terms, top_k=len(self.features))
+        top = scored[0][1] if scored else 0.0
+        return {i: v / top for i, v in scored if top > 0 and v > 0}
+
+    def _hints(
+        self, ranked: Sequence[ObjectMatch], relevance: Mapping[int, float], catalog: Catalog
+    ) -> str:
+        def line(m: ObjectMatch) -> str:
+            concepts = ", ".join(m.covered) or "-"
+            return f"- {catalog.keys[m.object_key]} {m.object_key} (kavramlar: {concepts})"
+
+        lines = ["Kural skoru en yüksek tablolar:"]
+        lines += [line(m) for m in ranked[:ANALYST_HINT_TABLES]]
+        # §8 / ADR-005: a table carrying the requested concepts together beats a join.
+        together = sorted(ranked, key=lambda m: (-len(m.covered), -m.score))
+        lines.append("Talebin kavramlarını en çok BİRLİKTE taşıyan tablolar:")
+        lines += [line(m) for m in together[:ANALYST_HINT_TABLES] if len(m.covered) > 1]
+        best = sorted(relevance, key=lambda i: -relevance[i])[:ANALYST_HINT_COLUMNS]
+        lines.append("Kelime eşleşmesi en güçlü kolonlar:")
+        lines += [f"- {self.features[i].col.key}" for i in best]
+        return "\n".join(lines)
+
+    def _analyze_llm(self, query: str, top_n: int) -> AnalysisResult | None:
+        started = time.perf_counter()
+        a = self.settings.analyst
+        catalog, checker = self._analyst_parts()
+        ranked, q = self.rank_objects(query, use_llm=False, limit=ANALYST_RULE_POOL)
+        relevance = self._column_relevance(q)
+
+        t1 = time.perf_counter()
+        short = shortlist(query, catalog, self._hints(ranked, relevance, catalog), self.llm,
+                          a.shortlist)  # fmt: skip
+        if short is None:
+            return None
+        t2 = time.perf_counter()
+        columns_of = {k: [f.col for f in o.features] for k, o in self.objects.items()}
+        answer: AnalystAnswer
+        if short.candidates:
+            hits = term_matcher(short.search_terms)
+            rel = {
+                c.id: relevance.get(c.id, 0.0) + 0.5 * hits(c)
+                for k in short.candidates
+                for c in columns_of[k]
+            }
+            material = "\n\n".join(
+                table_material(
+                    k,
+                    catalog.keys[k],
+                    columns_of[k],
+                    rel,
+                    a.description_chars,
+                    a.full_table_columns,
+                )  # fmt: skip
+                for k in short.candidates
+            )
+            confusables = confusable_material(
+                self.dictionary.columns, short.candidates, short.confusables[: a.confusables],
+                relevance, short.search_terms, a.evidence_columns,
+            )  # fmt: skip
+            reply = analyse(query, short.interpretation, material, confusables, self.llm,
+                            top_n, a.max_tokens)  # fmt: skip
+            if reply is None:
+                return None
+            answer = build_answer(
+                reply, {catalog.keys[k]: k for k in short.candidates}, columns_of, checker,
+                top_n, a.min_confidence, catalog.ids,
+            )  # fmt: skip
+        else:
+            answer = AnalystAnswer(
+                Verdict.NOT_FOUND,
+                "BULUNAMADI. Veri ambarı kataloğunda bu talebi karşılayan bir tablo bulunamadı.",
+                [], [], [], [],
+            )  # fmt: skip
+        t3 = time.perf_counter()
+
+        rules = {m.object_key: m for m in ranked}
+        objects = [self._recommended(r, rules.get(r.object_key), relevance)
+                   for r in answer.recommendations]  # fmt: skip
+        notes = list(answer.notes)
+        notes += quality_notes(objects)
+        dropped = answer.dropped + short.unknown_ids
+        notes.append(
+            Note(
+                "Genel",
+                "Doğrulama",
+                "Önerilen tüm tablo ve alanlar veri sözlüğüne karşı doğrulandı"
+                + (
+                    f"; sözlükte karşılığı olmayan {dropped} ad/cümle rapordan çıkarıldı"
+                    if dropped
+                    else ""
+                )  # fmt: skip
+                + ". Skorlar sözlük tanımlarına dayanır; kullanım öncesinde ilgili tablolarda "
+                "veri doluluğu, güncellik ve erişim yetkileri kontrol edilmelidir.",
+            )
+        )
+        method = [
+            f"Analist akışı (ADR-029): {self.llm.model}",
+            f"1. adım — {len(catalog.ids)} tablonun kataloğundan {len(short.candidates)} aday "
+            f"ve {len(short.confusables)} benzer tablo seçildi ({t2 - t1:.0f} sn)",
+            "Okunan adaylar: " + (", ".join(k.rsplit(".", 1)[-1] for k in short.candidates) or "-"),
+            "Benzer (uyarı) tablolar: "
+            + (", ".join(k.rsplit(".", 1)[-1] for k in short.confusables) or "-"),
+            f"2. adım — adayların {sum(len(columns_of[k]) for k in short.candidates)} kolonu "
+            f"sözlük açıklamalarıyla okundu, rapor yazıldı ({t3 - t2:.0f} sn)",
+            "Arama motoru (BM25"
+            + (" + anlamsal arama" if self.hybrid else "")
+            + ") sonuçları modele ipucu ve benzer alan kanıtı olarak verildi",
+            "Güven skoru: analist değerlendirmesi; kural skoru Ayrıntılar'da gösterilir",
+            f"Sözlük doğrulaması: {dropped} ad/cümle düşürüldü",
+        ]
+        return AnalysisResult(
+            query=query,
+            verdict=answer.verdict,
+            summary=answer.summary,
+            objects=objects,
+            near_misses=[],
+            notes=notes,
+            concepts=[c.display() for c in q.concepts],
+            expansion_terms=q.expansion_terms,
+            dictionary_source=Path(self.dictionary.source_path).name,
+            dictionary_version=self.dictionary.version,
+            dictionary_objects=len(self.objects),
+            generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            method=method,
+            dropped_by_validation=dropped,
+            elapsed_ms=round((time.perf_counter() - started) * 1000),
+            llm_model=self.llm.model,
+            llm_unknown_ids=short.unknown_ids,
+            interpretation=short.interpretation,
+            design=answer.design,
+            attention=answer.attention,
+            analyst=True,
+        )
+
+    def _recommended(
+        self, r: Recommendation, rule: ObjectMatch | None, relevance: Mapping[int, float]
+    ) -> ObjectMatch:
+        feats = self.objects[r.object_key].features
+        first = feats[0].col
+        hits = [
+            ColumnHit(
+                col=c,
+                search_score=0.0,
+                rule_score=relevance.get(c.id, 0.0),
+                role="yapısal" if fold(c.column) in STRUCTURAL else "eşleşme",
+            )
+            for c in r.columns
+        ]
+        return ObjectMatch(
+            object_key=r.object_key,
+            database=first.database,
+            schema=first.schema,
+            object_name=first.object_name,
+            dataset_groups=sorted({f.col.dataset_group for f in feats if f.col.dataset_group}),
+            score=r.confidence,
+            level=level_for(r.confidence),
+            columns=hits,
+            components=dict(rule.components) if rule else {},
+            covered=list(rule.covered) if rule else [],
+            missing=[],
+            reason=r.reason,
+            caveat=r.caveat,
+            usage=r.usage,
+            rule_score=rule.score if rule else None,
+            llm_confidence=r.confidence,
+            covers=r.covers,
+        )
+
+    # ------------------------------------------------------------------ rules
+
+    def _analyze_rules(self, query: str, top_n: int = 5) -> AnalysisResult:
         started = time.perf_counter()
         s = self.settings
         ranked, q, judged = self.rank(query)
@@ -447,6 +664,7 @@ class Engine:
             expansion_terms=q.expansion_terms,
             dictionary_source=Path(self.dictionary.source_path).name,
             dictionary_version=self.dictionary.version,
+            dictionary_objects=len(self.objects),
             generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
             method=method,
             dropped_by_validation=dropped,

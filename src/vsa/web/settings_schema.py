@@ -141,6 +141,63 @@ SECTIONS: list[dict[str, Any]] = [
         ],
     },
     {
+        "id": "analyst",
+        "title": "Analist akışı",
+        "intro": "LLM açıkken soruların cevabını model bir analist gibi yazar (ADR-029): önce tüm "
+        "tabloların kataloğundan aday seçer, sonra adayların bütün kolon açıklamalarını okuyup "
+        "gerekçe, kısıt, kurgu ve uyarıları yazar. Yazdığı her tablo ve kolon sözlüğe karşı "
+        "doğrulanır; model yoksa veya hata verirse kural tabanlı cevap döner.",
+        "fields": [
+            {
+                "key": "analyst.enabled",
+                "label": "Analist akışı açık",
+                "type": "bool",
+                "effect": NOW,
+                "help": "Kapalıysa LLM yalnız hakem olarak ilk adayları puanlar (eski akış).",
+            },
+            {
+                "key": "analyst.shortlist",
+                "label": "Kolon kolon okunan aday tablo",
+                "type": "int",
+                "min": 3,
+                "max": 20,
+                "step": 1,
+                "effect": NOW,
+                "help": "Çok = kaçırma riski az ama istem uzun ve cevap yavaş.",
+            },
+            {
+                "key": "analyst.confusables",
+                "label": "Uyarı için okunan benzer tablo",
+                "type": "int",
+                "min": 0,
+                "max": 12,
+                "step": 1,
+                "effect": NOW,
+                "help": "Talebe benzeyip yanlış cevap verecek tablolar; 'Uyarı' notlarının kaynağı.",
+            },
+            {
+                "key": "analyst.min_confidence",
+                "label": "Gösterilecek en düşük güven",
+                "type": "float",
+                "min": 0,
+                "max": 0.9,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Altındaki öneriler gösterilmez; 'Bulunamadı' geçerli cevaptır (ADR-006).",
+            },
+            {
+                "key": "analyst.max_tokens",
+                "label": "Rapor uzunluğu (token)",
+                "type": "int",
+                "min": 2000,
+                "max": 16000,
+                "step": 500,
+                "effect": NOW,
+                "help": "Cevap bu sınırda kesilirse rapor yazılamaz ve kural tabanlı sonuç döner.",
+            },
+        ],
+    },
+    {
         "id": "cloud",
         "title": "Bulut modelleri (yalnız ölçüm)",
         "intro": "NVIDIA API kataloğundaki (build.nvidia.com) modelleri Model laboratuvarında ölçmek için. "

@@ -397,3 +397,45 @@ negatif set yanlış cevap 0). Cevabı sözlükte açıkça bulunan 30 gerçekç
 tablo 1. sırada %30 → %47, ilk 3'te %53 → %60, ilk 5'te %60 → %73. Kalan kaçırmaların çoğu
 yine geniş model girdisi tabloları (`vRetailCustomerChurn*`, `vCrossSell*`): bunlar için
 tablo türü bilgisi (model girdisi / rapor / ana tablo) sözlüğe eklenirse ayrıca ele alınabilir.
+
+## ADR-029 — Analist akışı: cevabı LLM yazar, kurallar doğrular
+
+**Karar (2026-09-26, kullanıcı kararı).** LLM açıkken `ask` cevabını kural motoru değil, bir
+analist gibi çalışan model yazar (`llm/analyst.py`, istemler `llm/analyst_prompts.py`):
+
+1. **Aday seçimi (katalog).** Modele sözlükteki *bütün* tablolar verilir: id, tam ad, veri seti
+   grubu, kolon sayısı ve tüm kolon adları (~70k token, sistem mesajında; her talepte aynı olduğu
+   için vLLM önek önbelleği kataloğu bir kez okur). Kural motorunun sıralaması ve "talebin
+   kavramlarını birlikte taşıyan tablolar" listesi ipucu olarak eklenir. Model talebi yorumlar,
+   6–10 aday tablo, yanıltıcı "benzer" tablolar ve benzer alanları bulmak için arama kelimeleri seçer.
+2. **Kolon okuma ve rapor.** Adayların bütün kolonları sözlük açıklamaları ve kalite
+   bayraklarıyla (90 kolondan geniş tablolarda talebe en ilgili 90'ının açıklaması, kalanı adıyla)
+   ve sözlüğün geri kalanından benzer alanlar (tuzak adayları, "çok tabloda geçen" alanlar)
+   modele verilir. Model elle yapılan analizlerin biçiminde yazar: sonuç, ≤5 öneri (Kapsadığı
+   Bilgi, İlgili Alanlar, Gerekçe, Kısıt / Dikkat, Kullanım Önerisi, güven), Önerilen Kurgu,
+   Dikkat Edilmesi Gerekenler ve Uyarı / Netleştirme / Top 5 dışı / Türetme / Yaygınlık notları.
+3. **Doğrulama (ADR-002).** Öneri yalnızca 1. adımın adaylarından seçilebilir (id, tam ad veya
+   adaylar içinde tek anlamlı tablo adı). Her kolon kendi tablosunda aranır, yoksa düşer. Her
+   serbest metin `MentionChecker` ile taranır: sözlükte olmayan `DB.Şema.Obje(.Kolon)`,
+   `vObje.Kolon` veya `vObje` geçen cümle silinir. Silinenlerin sayısı rapora yazılır.
+   `min_confidence` (0.5) altı öneri gösterilmez; öneri kalmazsa cevap BULUNAMADI (ADR-006).
+4. **Yedek (ADR-008).** Model kapalıysa, bir adım hata verir ya da zaman aşımına uğrarsa kural
+   tabanlı cevap (hakem dahil) döner. `analyst.enabled: false` eski akışa geri alır.
+
+Güven skoru analist değerlendirmesidir; kural skoru `rule_score` olarak Ayrıntılar'da kalır.
+Batch modu değişmedi (kural tabanlı, hakemsiz). `vsa eval`, model açıkken analist cevabını ölçer.
+
+**Gerekçe.** Kullanıcı aynı talepleri Claude chat'te sözlüğün tamamını okutarak analiz etti;
+chat'in cevabı doğru, uygulamanınki uzaktı. Teşhis ("Müşterinin kredi kartlarının bilgisi"):
+chat'in 5 tablosu kural sıralamasında 11., 18., 24., 39., 47. sıradaydı; ilk 10'u adında
+"CreditCard" geçen churn girdisi, pazarlama izni, KKB özeti tabloları doldurmuştu. 118 adayın
+skoru 0.64–0.86 arasına sıkışmıştı (kapsama hepsinde 1.0). Hakem yalnız ilk 10'u gördüğü için
+doğru tabloyu hiç görmüyordu. Sorun aramadaydı: "kart bilgisi" talebinin cevabı, kavramın geçtiği
+kolonlar değil, *konusu kart olan* tablolardır — bunu kural değil tabloları okuyan bir model
+ayırt eder. Aynı model (gemma-4-31b) kataloğu görünce chat'in ilk 4 tablosunu aynı sırayla buldu.
+
+**Bedel.** Soru başına iki büyük çağrı: bulutta ~2–5 dk (1. adım ~70 sn, 2. adım 1.5–4 dk; 2.
+adımın süresi yazılan rapordan gelir). Her soruda kataloğun tamamı ve adayların açıklamaları
+modele gider (meta veri; müşteri verisi değil). Üretimde şirketin A100'leri: gemma-4-31b bf16
+tek A100-80GB'a sığar; vLLM `--enable-prefix-caching` ile katalog önbellekte kalır, 1. adım
+saniyelere iner. `llm.timeout` 900 sn.

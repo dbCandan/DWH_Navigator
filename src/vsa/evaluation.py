@@ -2,7 +2,8 @@
 
 Three item groups:
 
-* **ask**   — free-text requests. Hit at k when ANY ``expected_objects`` is in the top k
+* **ask**   — free-text requests (the analyst answer when the model is on, ADR-029).
+  Hit at k when ANY ``expected_objects`` is in the top k
   (several answers can be right, Ek A.1); ``primary_object`` tracks the manual first
   choice. Also column recall and trap checks (Ek A.2).
 * **batch** — fields of a target-table request (Ek A.3), run through the batch
@@ -254,7 +255,10 @@ def evaluate(
         eng = engine_for(item)
         if mode == "ask":
             q = str(item["query"])
-            report.items.append(_score_item(str(item["id"]), "ask", q, eng.rank(q)[0], item))
+            # With the model on, score the answer people see: the analyst's recommendations
+            # (ADR-029). Otherwise the rule ranking (+ judge) as before.
+            ranked = eng.analyze(q).objects if eng.analyst_enabled else eng.rank(q)[0]
+            report.items.append(_score_item(str(item["id"]), "ask", q, ranked, item))
         elif mode == "batch":
             specs = list(item["fields"])
             fields = [

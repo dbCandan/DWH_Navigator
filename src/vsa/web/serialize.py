@@ -60,6 +60,7 @@ def match(m: ObjectMatch, rank: int = 0) -> dict[str, Any]:
         "reason": m.reason,
         "caveat": [] if m.caveat == "-" else [c for c in m.caveat.split("\n") if c],
         "usage": m.usage,
+        "covers": m.covers,
         "columns": [hit(h) for h in m.columns],
     }
 
@@ -80,6 +81,10 @@ def analysis(r: AnalysisResult) -> dict[str, Any]:
         "dictionary_version": r.dictionary_version,
         "llm_model": r.llm_model,
         "dropped": r.dropped_by_validation,
+        "analyst": r.analyst,
+        "interpretation": r.interpretation,
+        "design": r.design,
+        "attention": r.attention,
     }
 
 

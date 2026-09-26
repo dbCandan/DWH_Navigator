@@ -143,8 +143,10 @@ class App:
             "objects": len(e.objects),
             "hybrid": e.hybrid,
             "embedding_model": e.dense.model if e.dense else "",
-            "llm": e.llm.model if e.judge_enabled else "",
+            "llm": e.llm.model if e.judge_enabled or e.analyst_enabled else "",
             "judge_candidates": s.llm.judge_candidates,
+            "analyst": e.analyst_enabled,  # ADR-029: the model writes the answer
+            "shortlist": s.analyst.shortlist,
             "examples": [
                 "Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?",
                 "Müşterilerin risk bilgilerini aylık bazda ve kırılımlı olarak (kredi kartı, "

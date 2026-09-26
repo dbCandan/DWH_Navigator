@@ -98,6 +98,21 @@ class LLMSettings:
 
 
 @dataclass(slots=True)
+class AnalystSettings:
+    """LLM analyst flow for ``ask`` (ADR-029). Runs whenever the chat model is on; the
+    rule pipeline stays as evidence, validator and fallback (ADR-002, ADR-008)."""
+
+    enabled: bool = True
+    shortlist: int = 14  # candidate tables the model reads column by column
+    confusables: int = 6  # look-alike tables it reads for the warnings
+    evidence_columns: int = 60  # look-alike columns from the whole dictionary
+    description_chars: int = 420  # per column description in the material
+    full_table_columns: int = 90  # wider tables: descriptions only for relevant columns
+    min_confidence: float = 0.5  # recommendations below this are not shown (ADR-006)
+    max_tokens: int = 8000  # answer budget of the second step
+
+
+@dataclass(slots=True)
 class DenseSettings:
     enabled: bool = False
     top_k: int = 200  # dense column candidates
@@ -140,6 +155,7 @@ class Settings:
     expansion: ExpansionSettings = field(default_factory=ExpansionSettings)
     scoring: ScoringSettings = field(default_factory=ScoringSettings)
     llm: LLMSettings = field(default_factory=LLMSettings)
+    analyst: AnalystSettings = field(default_factory=AnalystSettings)
     dense: DenseSettings = field(default_factory=DenseSettings)
     cloud: CloudSettings = field(default_factory=CloudSettings)
     report: ReportSettings = field(default_factory=ReportSettings)

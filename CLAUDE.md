@@ -6,6 +6,10 @@ numaralarıyla (§8, ADR-005 vb.) atıf yap.
 ## Ne yapar
 İş biriminin doğal dildeki veri talebini, veri sözlüğüne (11.158 kolon, 389 obje) karşı
 arar ve **tablo seviyesinde**, gerekçeli, güven skorlu öneriler içeren Excel raporu üretir.
+LLM açıkken `ask` cevabını **analist akışı** yazar (ADR-029, `llm/analyst.py`): model önce tüm
+tablo kataloğundan aday seçer, sonra adayların bütün kolon açıklamalarını okuyup raporu yazar
+(öneriler, kurgu, dikkat, notlar). Kural motoru ipucu, doğrulayıcı ve yedektir. Hedef: kullanıcının
+Claude chat'te elle yaptırdığı analizlerle (`out/VSA_Analiz_*.xlsx`, golden q004–q007) aynı kalite.
 Kapalı ağda çalışacak şekilde tasarlandı; varsayılan ayarlarda hiçbir dış adrese çıkmaz. İstisna:
 kullanıcı kararıyla hakem buluta alınabilir (`llm.provider: cloud`, ADR-026) — bu makinede açık.
 
@@ -13,7 +17,8 @@ kullanıcı kararıyla hakem buluta alınabilir (`llm.provider: cloud`, ADR-026)
 - **Obje seviyesine toplama** (`scoring/aggregate.py`, §8, ADR-005): arama kolon
   seviyesinde, cevap tablo seviyesinde. Refaktörlerde korunur.
 - **Var olmayan alan önerilmez** (`validate.py`, ADR-002): her (obje, kolon) sözlüğe
-  karşı doğrulanır; LLM yalnızca `candidate_id` seçer.
+  karşı doğrulanır; LLM tabloyu yalnızca aday id'siyle seçer. Analist akışında modelin yazdığı
+  her metin `MentionChecker` ile taranır; sözlükte olmayan tablo/kolon adı geçen cümle silinir.
 - **"Bulunamadı" geçerli cevap** (ADR-006): eşik altı aday gösterilmez, liste doldurulmaz.
 - **LLM'siz çalışabilirlik** (ADR-008): kural tabanlı mod her zaman çalışır.
 - **Kapsam filtresi koda gömülmez** (ADR-001): kapsam sözlük dosyasıyla yönetilir.
@@ -43,7 +48,8 @@ ADR-016/017 (batch: çekirdek tablo, yapısal alanlar, ölçü uyumu, kanal topl
 ADR-018..022 (yerel model, hibrit, hakem, ağırlıklar), ADR-023 (Keşfet araması), ADR-024 (Evren arayüzü),
 ADR-025 (Model laboratuvarı, `vsa lab`), ADR-026 (bulut modelleri yalnız ölçüm için, NVIDIA),
 ADR-027 (tek ekran, tek görünüm: yalnız soru sorma, Evren), ADR-028 (tablo seviyesinde
-konu uyumu: tablo BM25 + tablo profil vektörleri; `vsa index --dense` kurar).
+konu uyumu: tablo BM25 + tablo profil vektörleri; `vsa index --dense` kurar), ADR-029 (analist
+akışı: LLM katalogdan aday seçer, adayların kolonlarını okuyup raporu yazar; kurallar doğrular).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -89,6 +95,11 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
       Claude'da** (kullanıcı "beni şaşırt" dedi); seçenek menüsü sunma.
 - [~] M7 — Geri bildirim: 👍/👎 → `data/feedback.jsonl` → `vsa feedback` golden adayları.
       Eş anlamlı zenginleştirme akışı henüz yok.
+- [x] M8 — Analist akışı (ADR-029): `ask` cevabını LLM yazar (katalog → aday → kolon okuma →
+      rapor), kurallar ipucu/doğrulayıcı/yedek. Excel ve arayüz chat analizlerinin biçiminde
+      (Kapsadığı Bilgi, Önerilen Kurgu, Dikkat, Uyarı/Netleştirme/Top 5 dışı notları).
+      Soru başına ~2-4 dk bulutta (katalog ~70k token); üretimde A100 + vLLM önek önbelleği.
+      `vsa eval` model açıkken analist cevabını ölçer. Batch modu hâlâ kural tabanlı.
 
 ## Bu makinenin model ortamı
 LM Studio (http://127.0.0.1:1234; `localhost` Windows'ta IPv6 yüzünden ~2 sn yavaş, ADR-023), runtime `llama.cpp-win-x86_64-vulkan-avx2@2.46.0`.
