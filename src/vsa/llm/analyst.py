@@ -249,7 +249,8 @@ def confusable_material(
 _FULL = re.compile(r"\b([A-Za-z_]\w*)\.([A-Za-z_]\w*)\.([A-Za-z_]\w*)(?:\.([A-Za-z_]\w*))?\b")
 _SHORT = re.compile(r"\b((?:v|rpt_)[A-Z]\w*)\.([A-Za-z_]\w*)\b")
 _BARE = re.compile(r"\b((?:v|rpt_)[A-Z][A-Za-z0-9_]*)\b(?!\*)")
-_SENTENCE = re.compile(r"(?<=[.!?])\s+")
+# Sentence ends — but not the abbreviations "ör." and "vb.".
+_SENTENCE = re.compile(r"(?<!\bör\.)(?<!\bvb\.)(?<=[.!?])\s+")
 _CATALOG_ID = re.compile(r"\bT\d+\b")
 _ECHO = re.compile(r"\b([\w.]+) \(\1\)")
 _VERDICT_PREFIX = re.compile(r"^\s*(?:KISMEN VAR|VAR|BULUNAMADI|YOK)\b[\s.:—–-]*")
@@ -356,6 +357,18 @@ def analyse(
         ANALYST_SCHEMA,
         max_tokens=max_tokens,
     )
+
+
+def column_caveats(column: str, texts: Iterable[str]) -> list[str]:
+    """Sentences of the model's warnings that name ``column`` — shown on the column and
+    checked by the golden set's caveat traps."""
+    pattern = re.compile(rf"\b{re.escape(column)}\b")
+    out: list[str] = []
+    for text in texts:
+        for sentence in _SENTENCE.split(text):
+            if pattern.search(sentence) and sentence not in out:
+                out.append(sentence.strip())
+    return out
 
 
 def resolve_id(raw: object, ids: Mapping[str, str]) -> str | None:

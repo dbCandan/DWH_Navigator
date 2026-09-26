@@ -10,7 +10,13 @@ from typing import Any
 from openpyxl import load_workbook
 
 from vsa.config import Settings
-from vsa.llm.analyst import MentionChecker, build_answer, build_catalog, table_material
+from vsa.llm.analyst import (
+    MentionChecker,
+    build_answer,
+    build_catalog,
+    column_caveats,
+    table_material,
+)
 from vsa.models import DictColumn, Dictionary, Verdict
 from vsa.pipeline import Engine, Resources
 from vsa.report.excel import write_ask_report
@@ -176,6 +182,22 @@ class TestBuildAnswer:
         assert a.summary == "KISMEN VAR. birleştirme gerekir."
 
 
+def test_column_caveats_pick_sentences_naming_the_column() -> None:
+    texts = [
+        "CustomerId ek kart sahibidir. MainCustomerId asıl müşteridir.",
+        "vCreditCardList.CustomerId ile birleştirme yapılmamalı.",
+    ]
+    assert column_caveats("CustomerId", texts) == [
+        "CustomerId ek kart sahibidir.",
+        "vCreditCardList.CustomerId ile birleştirme yapılmamalı.",
+    ]
+    assert column_caveats("MainCustomerId", texts) == ["MainCustomerId asıl müşteridir."]
+    assert column_caveats("CardRefNumber", texts) == []
+    # "ör." does not end the sentence
+    sentence = "Oran türetilir (ör. vCreditCardLimit) CardLimit ile."
+    assert column_caveats("CardLimit", [sentence]) == [sentence]
+
+
 class TestEngine:
     def test_analyst_answer(self, tmp_path: Path) -> None:
         client = ScriptedClient(SHORTLIST, analyst_reply())
@@ -185,6 +207,9 @@ class TestEngine:
         m = r.objects[0]
         assert m.covers == "Kart künyesi" and m.score == 0.9 and m.llm_confidence == 0.9
         assert {h.role for h in m.columns} == {"yapısal"}
+        by_name = {h.col.column: h.caveats for h in m.columns}
+        # warnings name CustomerId, not the two recommended columns
+        assert by_name == {"CardRefNumber": [], "MainCustomerId": []}
         assert r.design and r.attention
         assert r.notes[-1].title == "Doğrulama"
         assert r.llm_unknown_ids == 1  # T99 in the shortlist

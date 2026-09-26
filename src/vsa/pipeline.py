@@ -44,6 +44,7 @@ from vsa.llm.analyst import (
     analyse,
     build_answer,
     build_catalog,
+    column_caveats,
     confusable_material,
     shortlist,
     table_material,
@@ -489,7 +490,8 @@ class Engine:
         t3 = time.perf_counter()
 
         rules = {m.object_key: m for m in ranked}
-        objects = [self._recommended(r, rules.get(r.object_key), relevance)
+        warnings = [*answer.attention, *(n.text for n in answer.notes)]
+        objects = [self._recommended(r, rules.get(r.object_key), relevance, warnings)
                    for r in answer.recommendations]  # fmt: skip
         notes = list(answer.notes)
         notes += quality_notes(objects)
@@ -548,7 +550,11 @@ class Engine:
         )
 
     def _recommended(
-        self, r: Recommendation, rule: ObjectMatch | None, relevance: Mapping[int, float]
+        self,
+        r: Recommendation,
+        rule: ObjectMatch | None,
+        relevance: Mapping[int, float],
+        warnings: Sequence[str] = (),
     ) -> ObjectMatch:
         feats = self.objects[r.object_key].features
         first = feats[0].col
@@ -558,6 +564,7 @@ class Engine:
                 search_score=0.0,
                 rule_score=relevance.get(c.id, 0.0),
                 role="yapısal" if fold(c.column) in STRUCTURAL else "eşleşme",
+                caveats=column_caveats(c.column, [r.caveat, *warnings]),
             )
             for c in r.columns
         ]

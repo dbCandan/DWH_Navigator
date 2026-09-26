@@ -439,3 +439,24 @@ adımın süresi yazılan rapordan gelir). Her soruda kataloğun tamamı ve aday
 modele gider (meta veri; müşteri verisi değil). Üretimde şirketin A100'leri: gemma-4-31b bf16
 tek A100-80GB'a sığar; vLLM `--enable-prefix-caching` ile katalog önbellekte kalır, 1. adım
 saniyelere iner. `llm.timeout` 900 sn.
+
+**Ölçüm (`vsa eval`, 2026-09-27, bulut gemma-4-31b).** Golden set'e kullanıcının chat analizleri
+q004–q007 olarak eklendi (8 ask maddesi). Aynı kod, aynı model:
+
+| | Kural + hakem (eski) | Analist akışı |
+|---|---|---|
+| ask recall@1 | 0.38 | **0.88** |
+| ask recall@3 | 0.62 | **1.00** |
+| ask recall@5 | 0.75 | **1.00** |
+| ask MRR | 0.55 | **0.94** |
+| beklenen kolonlar | 0.48 | **0.76** |
+| negatif set yanlış cevap | 0.00 | 0.00 |
+
+Batch metrikleri değişmedi (batch kural tabanlı). İlk koşuda 1 tuzak ihlali çıktı (q002:
+`TotalLimitFullness` kolon seviyesinde kısıtsız listelendi); modelin kısıt/uyarı cümlelerinden
+kolonu ananlar artık o kolonun kısıtı olarak da taşınıyor (`column_caveats`). Kalan açık:
+q005'te chat'in 1. önerisi `vCustomerGeneralInfo`, q006'da `vIFRSAccountStatus` (içsel rating +
+PD) ilk 5'e girmedi — doğru tablo ailesi (sektör boyutu, KKB/EWS skorları) bulundu ama
+"birincil" tablo kaçtı (bu ölçüm 14 aday ve "evreni dar tablolar geri planda" kuralıyla yapıldı).
+Sıradaki adım: 1. adımda bilgi ailesi başına aday garantisi (ör. PD/rating ailesi) ve üretimde
+A100 üzerinde daha büyük/yerel modelle karşılaştırma (`vsa lab`).
