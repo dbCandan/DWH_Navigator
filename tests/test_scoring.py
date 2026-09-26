@@ -116,3 +116,9 @@ def test_levels() -> None:
 def test_combine_without_llm_is_rule_score() -> None:
     assert combine(0.7, None, 0.6, 0.4) == 0.7
     assert abs(combine(1.0, 0.5, 0.6, 0.4) - 0.8) < 1e-9
+
+
+def test_level_matches_displayed_percent() -> None:
+    assert level_for(0.797) is Level.HIGH  # shown as %80
+    assert level_for(0.794) is Level.MEDIUM  # shown as %79
+    assert level_for(0.496) is Level.MEDIUM  # shown as %50

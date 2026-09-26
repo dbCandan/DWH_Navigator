@@ -72,7 +72,7 @@ header.top .wrap { display: flex; align-items: center; gap: 14px; height: 60px; 
   color: var(--muted); font-weight: 600; font-size: 14px; white-space: nowrap;
 }
 .tab[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
-.status { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.status { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; min-width: 0; }
 .pill {
   display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
   border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; background: var(--surface);
@@ -185,6 +185,8 @@ main { padding-bottom: 60px; }
 .card .sub { color: var(--muted); font-size: 12.5px; font-family: var(--mono); }
 .group-tag { font-size: 11px; font-family: var(--sans); background: var(--accent-soft); color: var(--text); padding: 1px 8px; border-radius: 999px; }
 .reason { margin: 10px 0 6px; }
+.card > div, .verdict > div { min-width: 0; }
+.reason, .caveats, .usage, .verdict .summary, .detail, table.notes td { overflow-wrap: anywhere; }
 .caveats { margin: 8px 0; padding: 8px 12px; border-radius: 10px; background: var(--mid-bg); font-size: 13.5px; }
 .caveats div + div { margin-top: 3px; }
 .usage { font-size: 13px; color: var(--muted); }
@@ -202,6 +204,8 @@ main { padding-bottom: 60px; }
   font-family: var(--mono); font-size: 12.5px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
 }
 .col:hover, .col[aria-expanded="true"] { border-color: var(--accent); }
+.col { max-width: 100%; text-align: left; flex-wrap: wrap; }
+.col .role { white-space: nowrap; }
 .col .role { font-family: var(--sans); font-size: 10.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .5px; }
 .col .flag { color: var(--low); }
 .detail {
@@ -290,15 +294,24 @@ table.notes td:first-child { white-space: nowrap; color: var(--muted); font-size
 .searchline input { flex: 1; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; background: var(--surface); outline: 0; }
 .searchline input:focus { border-color: var(--accent); }
 
-footer { color: var(--faint); font-size: 12px; text-align: center; padding: 30px 0 40px; }
+footer { color: var(--faint); font-size: 12px; text-align: center; padding: 30px 16px 40px; }
 .hidden { display: none !important; }
 kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--muted); }
 
 .hero.compact .examples { display: none; }
-@media (max-width: 1100px) { .brand span { display: none; } }
-@media (max-width: 900px) { .status .pill.opt { display: none; } }
+@media (max-width: 1240px) { .brand span, .status .pill.opt { display: none; } }
+@media (max-width: 1000px) {
+  /* two rows: brand + switches on top, full-width tabs below */
+  header.top .wrap { flex-wrap: wrap; height: auto; padding-top: 8px; padding-bottom: 8px; row-gap: 6px; }
+  .tabs { order: 3; width: 100%; margin-left: 0; justify-content: center; }
+}
 @media (max-width: 760px) {
-  .tabs { margin-left: 0; } .brand span, .status .pill.opt { display: none; }
+  .status { display: none; }
+  .brand ~ .skin-btn, .skin-btn { margin-left: auto; }
+  table.notes td:first-child { white-space: normal; }
+  /* score ring and level side by side above the card body */
+  .card > div:first-child { display: flex; align-items: center; gap: 12px; }
+  .card > div:first-child .lvl { margin-top: 0; font-size: 13px; }
   .verdict { grid-template-columns: 1fr; } .card { grid-template-columns: 1fr; }
   .explorer { grid-template-columns: 1fr; } .cov-row { grid-template-columns: 1fr; }
 }
@@ -344,7 +357,7 @@ html[data-skin="evren"] body::before {
   filter: blur(30px); animation: nebula 38s ease-in-out infinite alternate;
 }
 @keyframes nebula { from { transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1); } to { transform: translate3d(3%, 2%, 0) rotate(8deg) scale(1.08); } }
-html[data-skin="evren"] #cosmos { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; }
+html[data-skin="evren"] #cosmos { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }  /* 100vw would include the scrollbar and overflow */
 html[data-skin="evren"] header.top, html[data-skin="evren"] main, html[data-skin="evren"] footer { position: relative; z-index: 2; }
 
 /* ---------- floating glass command bar ---------- */
@@ -527,6 +540,15 @@ html[data-skin="evren"] #hud {
   font: 11px/1.5 var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: rgba(190, 205, 255, .6);
 }
 #hud b { color: #7cf4ff; font-weight: 700; }
+html[data-skin="evren"] #hud { transition: opacity .3s; }
+html[data-skin="evren"].scrolled #hud { opacity: 0; }
+@media (max-width: 760px) {
+  html[data-skin="evren"] #hud { display: none; }  /* no room for the voyage log on phones */
+  html[data-skin="evren"] .searchbox textarea { font-size: 16.5px; }
+  html[data-skin="evren"] .searchbox { padding: 12px 12px 12px 16px; }
+  html[data-skin="evren"] .verdict .word { font-size: 24px; }
+  html[data-skin="evren"] .searchbox::after { inset: -30px 0; }  /* glow must not widen the page */
+}
 #hud .focus { color: #fff; letter-spacing: .6px; text-transform: none; font-size: 12px; margin-top: 2px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 html[data-skin="evren"] #star-tip {
   position: fixed; z-index: 30; pointer-events: none; padding: 8px 11px; border-radius: 12px;
@@ -649,6 +671,8 @@ function h(tag, attrs, ...kids) {
   return e;
 }
 const pct = x => Math.round((x || 0) * 100);
+// Long identifiers may wrap only at CamelCase / underscore boundaries.
+const breakable = name => name.split(/(?<=[a-z0-9])(?=[A-Z])|(?<=_)/).flatMap((part, i) => i ? [h("wbr"), part] : [part]);
 // replaceChildren() would print null/false as text; drop them first.
 const put = (el, ...kids) => el.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
 async function api(path, opts = {}) {
@@ -706,8 +730,13 @@ async function loadStatus() {
 
 // ---------------------------------------------------------------- ask
 const q = $("#q");
-function autosize() { q.style.height = "auto"; q.style.height = Math.min(q.scrollHeight, 180) + "px"; }
+function autosize() {
+  q.style.height = "auto";
+  q.style.height = Math.min(q.scrollHeight, 180) + "px";
+  q.style.overflowY = q.scrollHeight > 180 ? "auto" : "hidden";  // no scrollbar while it fits
+}
 q.addEventListener("input", autosize);
+addEventListener("resize", () => requestAnimationFrame(autosize));
 q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } });
 $("#go").onclick = ask;
 
@@ -757,7 +786,8 @@ async function ask() {
 function conceptChip(c) {
   const [kind, ...rest] = c.split(":"); const label = rest.join(":");
   const cls = { "zaman": "k-zaman", "kırılım": "k-kirilim", "ölçü": "k-olcu", "kırılım değeri": "k-deger" }[kind] || "";
-  return h("span", { class: "chip " + cls }, kind === "terim" ? "" : kind + " · ", h("b", {}, label));
+  const prefix = kind === "terim" || kind === label ? "" : kind + " · ";
+  return h("span", { class: "chip " + cls }, prefix, h("b", {}, label));
 }
 
 function verdictBlock(r, extra) {
@@ -795,7 +825,7 @@ function columnChips(m) {
   const chips = m.columns.map(c => {
     const b = h("button", { class: "col", "aria-expanded": "false", title: c.description },
       c.role ? h("span", { class: "role" }, ROLE[c.role] || c.role) : null,
-      c.column,
+      h("span", {}, breakable(c.column)),
       c.flags.some(f => f.kind === "model_estimated") ? h("span", { class: "flag", title: "Açıklama model tahmini" }, "⚑") : null,
       c.pii ? h("span", { class: "flag", title: "Kişisel veri (KVKK)" }, "●") : null);
     b.onclick = () => {
@@ -1071,7 +1101,7 @@ const Cosmos = (() => {
 
   function resize() {
     dpr = Math.min(2, window.devicePixelRatio || 1);
-    W = innerWidth; H = innerHeight;
+    W = document.documentElement.clientWidth; H = document.documentElement.clientHeight;
     cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
@@ -1233,7 +1263,7 @@ const Cosmos = (() => {
     const sweep = age * 2.4;
     const g = ctx.createConicGradient ? ctx.createConicGradient(sweep, ox, oy) : null;
     if (g) {
-      g.addColorStop(0, "rgba(124,244,255,.16)"); g.addColorStop(0.08, "rgba(124,244,255,0)"); g.addColorStop(1, "rgba(124,244,255,0)");
+      g.addColorStop(0, "rgba(124,244,255,.09)"); g.addColorStop(0.035, "rgba(124,244,255,0)"); g.addColorStop(1, "rgba(124,244,255,0)");
       ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ox, oy, Math.max(W, H), 0, 6.2832); ctx.fill();
     }
     drawShip(ox, oy, -Math.PI / 2, 1);
@@ -1424,6 +1454,8 @@ const Cosmos = (() => {
   };
 })();
 
+addEventListener("scroll", () => document.documentElement.classList.toggle("scrolled", scrollY > 120), { passive: true });
+
 // Card tilt + light that follows the pointer (Evren skin only).
 document.addEventListener("pointermove", e => {
   if (document.documentElement.dataset.skin !== "evren") return;
@@ -1445,6 +1477,7 @@ document.addEventListener("pointermove", e => {
     btn.title = skin === "evren" ? "Klasik tasarıma dön" : "Evren tasarımına geç";
     store.set("vsa-skin", skin);
     Cosmos.setActive(skin === "evren");
+    requestAnimationFrame(autosize);  // the skins use different font sizes
   };
   btn.onclick = () => apply(document.documentElement.dataset.skin === "evren" ? "klasik" : "evren");
   apply(store.get("vsa-skin") || "klasik");

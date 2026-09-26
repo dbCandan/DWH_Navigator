@@ -551,7 +551,7 @@ class BatchAnalyzer:
         if best.wide_family:
             # Ek A.3: the sum of the core table's per-channel columns counts as ready.
             return FieldStatus.READY
-        if best.score >= READY_MIN and not best.notes:
+        if round(best.score, 2) >= READY_MIN and not best.notes:  # as displayed (%80)
             return FieldStatus.READY
         return FieldStatus.PARTIAL
 
