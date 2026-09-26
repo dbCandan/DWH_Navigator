@@ -65,8 +65,8 @@ class FlagPenalty:
 
 @dataclass(slots=True)
 class ScoringSettings:
-    w_rule: float = 0.6
-    w_llm: float = 0.4
+    w_rule: float = 0.75  # ADR-022 (HANDOVER default 0.6)
+    w_llm: float = 0.25
     min_candidate_score: float = 0.25
     min_answer_score: float = 0.35
     min_answer_coverage: float = 0.5  # ADR-013

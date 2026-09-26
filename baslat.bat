@@ -19,7 +19,7 @@ if exist "%LMS%" (
   "%LMS%" server start >nul 2>&1
   echo [2/3] Modeller yukleniyor: %EMBED_MODEL% + %CHAT_MODEL%
   "%LMS%" load %EMBED_MODEL% -y >nul 2>&1
-  "%LMS%" load %CHAT_MODEL% --context-length 8192 -y >nul 2>&1
+  "%LMS%" load %CHAT_MODEL% --context-length 8192 --gpu max -y >nul 2>&1
 ) else (
   echo [i] LM Studio bulunamadi; uygulama LLM'siz ^(yalniz kural tabanli^) calisacak.
 )

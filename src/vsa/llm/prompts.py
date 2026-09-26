@@ -13,6 +13,10 @@ Kurallar:
 doldurmak için zorlama.
 - confidence: 0.0–1.0. 0.8+ talebin doğrudan karşılığı; 0.5–0.79 ilişkili ama kapsam, \
 granülerlik veya tanım farkı var; 0.5 altı dolaylı.
+- Her adayın "karsilanan_kavramlar" / "eksik_kavramlar" alanları tablonun TÜM kolonlarına \
+bakılarak çıkarıldı; listelenen alanlar yalnızca örnektir. Talebin kavramlarını birlikte \
+karşılayan tabloyu, tek bir alanı iyi eşleşen tabloya tercih et.
+- Talep zaman boyutu (aylık vb.) istiyorsa "zaman_kolonu" olmayan tabloda bunu kısıt olarak yaz.
 - Gerekçeyi (reason) sözlük açıklamalarına dayandır; alan adlarını aynen yaz.
 - Kapsam farkı, zaman boyutu eksikliği, türetme ihtiyacı veya karıştırılma riski varsa \
 caveat alanına yaz; yoksa "-".

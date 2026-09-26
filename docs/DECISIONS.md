@@ -204,3 +204,54 @@ tümleşik), LM Studio kurulu.
 yok). FastAPI/uvicorn eklenmedi: kapalı ağa taşınacak bağımlılık sayısı artmıyor ve araç
 tek ekip içindir. Motor tek kilitle korunur. Geri bildirim `data/feedback.jsonl`'e yazılır
 (M7 başlangıcı).
+
+---
+
+## ADR-021 — Hakem modeli: qwen3.5-9b, Vulkan (Intel GPU), düşünme kapalı
+
+**Tarih.** 2026-09-26
+
+**Ölçüm.** Aynı aday listeleriyle (golden set'in 4 serbest metin maddesi + 3 negatif madde)
+makinedeki üç sohbet modeli hakem olarak denendi (`data/logs/bench_llm.py`):
+
+| Model | Doğru üst seçim (7) | Negatifte boş liste (3) | Geçerli JSON | Ort. süre |
+|---|---|---|---|---|
+| **qwen/qwen3.5-9b** (6,6 GB) | **7/7** | **3/3** | 7/7 | 45 sn |
+| qwen/qwen3-coder-30b (MoE, 14,6 GB) | 5/7 | 1/3 | 7/7 | 37 sn |
+| google/gemma-3-12b (8,2 GB) | 4/7 | 2/3 | 7/7 | 69 sn |
+
+Gemma ve coder modeli "uzay gemisi yakıt seviyesi" için gemi teminatı tablosunu seçti
+(uydurma eğilimi); qwen3.5 boş liste döndürdü ve gerekçeleri sözlük alanlarına dayandı.
+
+**Karar.**
+- Hakem: `qwen/qwen3.5-9b`, bağlam 8192.
+- Çalışma zamanı: LM Studio `llama.cpp-win-x86_64-vulkan-avx2@2.46.0`; Intel Arc tümleşik GPU
+  (17,9 GB paylaşımlı bellek) CPU'ya göre 2,1× hızlı (aynı istem 110 sn → 52 sn).
+- `reasoning_effort: none`: qwen3.5 aksi hâlde tüm token bütçesini gizli düşünmeye harcayıp
+  boş içerik döndürüyor.
+- Bu dizüstünde LLM'li bir soru ~45–90 sn sürüyor (HANDOVER §18.4 hedefi 5–15 sn, GPU'lu
+  sunucu için). Kurum donanımında model/boyut yeniden ölçülmeli; `bench_llm.py` bunun için.
+
+---
+
+## ADR-022 — Skor ağırlıkları: 0.75 × kural + 0.25 × LLM
+
+**Tarih.** 2026-09-26
+
+**Bağlam.** ADR-003'ün varsayılanı 0.6/0.4. Hibrit arama + qwen3.5-9b hakemle golden set
+(`eval/history.jsonl`):
+
+| Konfigürasyon | ask R@1 | ask MRR | Negatif yanlış cevap |
+|---|---|---|---|
+| Hibrit, hakem yok | 1.00 | 1.000 | 0.00 |
+| Hakem 0.4, yalnız alan listesi | 0.75 | 0.875 | 0.00 |
+| Hakem 0.4, + kural kanıtı (kapsanan/eksik kavram, zaman) | 0.75 | 0.875 | 0.00 |
+| **Hakem 0.25, + kural kanıtı** | **1.00** | **1.000** | **0.00** |
+
+0.4 ağırlıkta hakem, kapsam varyantında manuel listede olmayan (ama makul) bir tabloyu
+birinciliğe taşıyordu. 0.25'te sıralamayı ancak kural skorları yakınken değiştiriyor;
+gerekçe/kısıt metinlerini yazmaya ve "uygun aday yok" kararını güçlendirmeye devam ediyor.
+
+**Karar.** Varsayılan `w_rule = 0.75`, `w_llm = 0.25`. Hakeme adayların kapsanan/eksik
+kavramları, zaman kolonu ve uzun format bilgisi verilir. Golden set büyüdükçe yeniden
+kalibre edilmeli (§9.7).

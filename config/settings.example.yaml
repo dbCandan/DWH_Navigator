@@ -29,8 +29,8 @@ expansion:
   stopwords: config/stopwords_tr.txt
 
 scoring:
-  w_rule: 0.6
-  w_llm: 0.4
+  w_rule: 0.75                 # ADR-022
+  w_llm: 0.25
   min_candidate_score: 0.25
   min_answer_score: 0.35
   min_answer_coverage: 0.5      # en iyi obje talebin bilgi içeriğinin yarısını karşılamalı (ADR-013)

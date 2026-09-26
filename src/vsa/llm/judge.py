@@ -55,14 +55,22 @@ def candidate_payload(candidates: Sequence[ObjectMatch]) -> tuple[str, dict[str,
             if h.col.has_flag(FlagKind.MODEL_ESTIMATED):
                 entry["uyari"] = "açıklama doğrulanmamış model tahmini"
             columns.append(entry)
-        rows.append(
-            {
-                "candidate_id": cid,
-                "tablo": m.object_key,
-                "veri_seti": ", ".join(m.dataset_groups) or "-",
-                "alanlar": columns,
-            }
-        )
+        row: dict[str, object] = {
+            "candidate_id": cid,
+            "tablo": m.object_key,
+            "veri_seti": ", ".join(m.dataset_groups) or "-",
+            # Structured evidence from the rule layer, so the judge weighs the whole
+            # table (§8) and not only the few columns listed below.
+            "karsilanan_kavramlar": m.covered,
+            "eksik_kavramlar": m.missing,
+            "alanlar": columns,
+        }
+        time_hit = next((h for h in m.columns if h.role == "zaman"), None)
+        if "time" in m.components:
+            row["zaman_kolonu"] = time_hit.col.column if time_hit else "yok"
+        if m.long_format_values:
+            row["kirilim"] = f"{m.dimension_column} değerleri üzerinden (uzun format)"
+        rows.append(row)
     return json.dumps(rows, ensure_ascii=False, indent=1), ids
 
 

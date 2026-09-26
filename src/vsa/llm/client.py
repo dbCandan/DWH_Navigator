@@ -83,13 +83,17 @@ def parse_json_reply(text: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def client_from_settings(llm: Any) -> LLMClient:
-    """``LLMSettings`` -> client; NullClient when the LLM layer is off (ADR-008)."""
-    if not getattr(llm, "enabled", False) or not getattr(llm, "endpoint", ""):
+def client_from_settings(llm: Any, embeddings: bool = False) -> LLMClient:
+    """``LLMSettings`` -> client (ADR-008). ``llm.enabled`` governs the chat features
+    (judge, query expansion); with ``embeddings`` the endpoint still serves the dense
+    index even when chat is off. Nothing configured -> NullClient."""
+    enabled = bool(getattr(llm, "enabled", False))
+    want_embed = embeddings and bool(getattr(llm, "embedding_model", ""))
+    if not getattr(llm, "endpoint", "") or not (enabled or want_embed):
         return NullClient()
     return OpenAICompatibleClient(
         endpoint=llm.endpoint,
-        model=llm.model,
+        model=llm.model if enabled else "",
         embedding_model=llm.embedding_model,
         temperature=llm.temperature,
         timeout=llm.timeout,

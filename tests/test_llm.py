@@ -85,6 +85,11 @@ def test_null_client_and_factory() -> None:
     assert isinstance(client_from_settings(s.llm), NullClient)
     s.llm.enabled, s.llm.endpoint, s.llm.model = True, "http://localhost:1/v1", "m"
     assert client_from_settings(s.llm).available
+    # Chat off but dense on: embeddings still available, judge not.
+    s.llm.enabled, s.llm.embedding_model = False, "emb"
+    embed_only = client_from_settings(s.llm, embeddings=True)
+    assert not embed_only.available and not isinstance(embed_only, NullClient)
+    assert isinstance(client_from_settings(s.llm, embeddings=False), NullClient)
 
 
 class TestJudge:
@@ -177,7 +182,8 @@ def test_judge_rescoring(sample_dictionary_path: Path) -> None:
     result = engine.analyze("kart limit doluluk oranı")
     top = result.objects[0]
     assert top.llm_confidence == 0.9 and top.rule_score is not None
-    assert abs(top.score - (0.6 * top.rule_score + 0.4 * 0.9)) < 1e-9
+    w = s.scoring
+    assert abs(top.score - (w.w_rule * top.rule_score + w.w_llm * 0.9)) < 1e-9
     assert top.reason == "LLM gerekçe" and top.caveat.startswith("LLM kısıt")
     assert result.llm_model == "fake-llm"
     assert any("LLM hakem" in m for m in result.method)
