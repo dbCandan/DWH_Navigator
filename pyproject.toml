@@ -41,6 +41,9 @@ target-version = "py311"
 select = ["E", "F", "W", "I", "B", "UP", "SIM"]
 ignore = ["SIM905"]  # "a b c".split() is the readable form for word lists
 
+[tool.ruff.lint.per-file-ignores]
+"src/vsa/web/settings_schema.py" = ["E501"]  # Turkish help texts (a data table)
+
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["typer.Option", "typer.Argument"]
 

@@ -232,7 +232,7 @@ class BatchAnalyzer:
 
     def _run(self, f: RequestField, include: Sequence[str] = ()) -> _FieldRun:
         query = field_query(f)
-        ranked, q = self.engine.rank_objects(query, include=include)
+        ranked, q = self.engine.rank_objects(query, include=include, topic_fit=False)
         ranked, _ = validate(ranked, self.engine.column_keys)
         return _FieldRun(f, query, q, {m.object_key: m for m in ranked})
 
@@ -387,7 +387,9 @@ class BatchAnalyzer:
         }
         drop = DISTINCT_WORDS | COUNT_WORDS
         words = [t for t, _ in tokenize_pairs(run.query, keep_compound=False) if t not in drop]
-        ranked, _ = self.engine.rank_objects(" ".join(words), include=sorted(in_domain))
+        ranked, _ = self.engine.rank_objects(
+            " ".join(words), include=sorted(in_domain), topic_fit=False
+        )
         ranked, _ = validate(ranked, self.engine.column_keys)
         out = []
         for m in ranked:

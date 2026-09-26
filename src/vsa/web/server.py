@@ -10,29 +10,62 @@ network. One engine, one lock: the tool serves a team, not the internet.
     GET  /api/object/<key>      all columns of one object
     GET  /api/galaxy            all objects with their dataset group (star map)
     POST /api/feedback          {"query", "object", "vote": "up"|"down", "note"} (M7)
+    GET  /ayarlar               settings screen (static/settings.html)
+    GET  /api/settings          schema + current values + models offered by LM Studio
+    POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
+    POST /api/settings/test     try endpoint / chat model / embedding model from the form
+    POST /api/reindex           rebuild the BM25 index with the saved settings
+    GET  /api/cloud-models      chat models of the hosted catalog (lab only, ADR-026)
+    GET  /api/lab               model lab: ranked results + live progress (ADR-025)
+    POST /api/lab/start         {"models": [...], "temps": "0,0.1", "runs": 2} → `vsa lab`
+    POST /api/lab/stop          stop the running lab after its current call
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
+import subprocess
+import sys
 import tempfile
 import threading
 import time
+import urllib.error
+import urllib.request
 import uuid
+from dataclasses import asdict
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+import yaml
+
+from vsa import lab
 from vsa.batch import BatchAnalyzer
+from vsa.config import CLOUD_PREFIX, DEFAULT_SETTINGS_PATH, cloud_api_key, load_settings
+from vsa.llm.client import LLMError, OpenAICompatibleClient
 from vsa.loader import load_request_file
 from vsa.models import AnalysisResult, BatchResult, RequestField
 from vsa.pipeline import Engine
 from vsa.report.excel import report_path, write_ask_report, write_batch_report
 from vsa.text.normalize import fold
 from vsa.web import serialize
+from vsa.web.settings_schema import (
+    DENSE,
+    FIELDS,
+    REINDEX,
+    SECRET_KEYS,
+    SECTIONS,
+    coerce,
+    defaults,
+    get_path,
+    is_chat_model,
+    to_yaml_tree,
+    values_of,
+)
 
 log = logging.getLogger(__name__)
 
@@ -42,13 +75,27 @@ MAX_REPORTS = 50
 EXPLORER_LIMIT = 60
 EXPLORER_CONTENT_LIMIT = 25  # objects from the content (search pipeline) layer
 MIN_CONTENT_QUERY = 3  # shorter input: name matching only
+LAB_STALE_SEC = 1800  # no progress for this long: the lab process is gone
+LAB_LOG = Path("data/logs/lab.log")
 
 
 class App:
-    def __init__(self, engine: Engine, out_dir: Path, feedback_path: Path) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        out_dir: Path,
+        feedback_path: Path,
+        settings_path: Path | None = None,
+    ) -> None:
         self.engine = engine
         self.out_dir = out_dir
         self.feedback_path = feedback_path
+        self.settings_path = settings_path or DEFAULT_SETTINGS_PATH
+        self.reindex_pending: list[str] = []
+        self._lab_proc: subprocess.Popen[bytes] | None = None
+        self._cloud_cache: tuple[float, str, dict[str, Any]] | None = None
+        self.lab_results, self.lab_progress = lab.RESULTS_PATH, lab.PROGRESS_PATH
+        self.lab_stop_flag = lab.STOP_PATH
         self.lock = threading.Lock()
         self.results: dict[str, AnalysisResult | BatchResult] = {}
         self.object_index = self._object_index()
@@ -85,9 +132,13 @@ class App:
     def status(self) -> dict[str, Any]:
         e = self.engine
         s = e.settings
+        source = Path(e.dictionary.source_path)
         return {
-            "dictionary": Path(e.dictionary.source_path).name,
+            "dictionary": source.name,
             "version": e.dictionary.version,
+            # when the dictionary file was last changed ("" if the index outlived the file)
+            "updated": (datetime.fromtimestamp(source.stat().st_mtime).date().isoformat()
+                        if source.is_file() else ""),
             "columns": len(e.dictionary.columns),
             "objects": len(e.objects),
             "hybrid": e.hybrid,
@@ -203,6 +254,306 @@ class App:
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
+    # ------------------------------------------------------------------ settings screen
+
+    def _lmstudio_models(self, endpoint: str) -> list[dict[str, Any]]:
+        """Models offered by the server; LM Studio's REST API adds type and load state."""
+        base = endpoint.rstrip("/").replace("://localhost", "://127.0.0.1")
+        root = base[: -len("/v1")] if base.endswith("/v1") else base
+        for url, rich in ((f"{root}/api/v0/models", True), (f"{base}/models", False)):
+            try:
+                with urllib.request.urlopen(url, timeout=3) as resp:
+                    data = json.loads(resp.read().decode("utf-8")).get("data", [])
+            except (OSError, ValueError):
+                continue
+            out = []
+            for m in data:
+                mid = str(m.get("id", ""))
+                mtype = (
+                    str(m.get("type", "")) if rich else ("embeddings" if "embed" in mid else "llm")
+                )
+                out.append(
+                    {
+                        "id": mid,
+                        "kind": "embedding" if mtype.startswith("embed") else "chat",
+                        "loaded": m.get("state") == "loaded" if rich else None,
+                        "arch": m.get("arch", ""),
+                        "quant": m.get("quantization", ""),
+                        "context": m.get("max_context_length"),
+                    }
+                )
+            return out
+        return []
+
+    def cloud_models(self, refresh: bool = False) -> dict[str, Any]:
+        """Chat models of the hosted catalog (lab only, ADR-026); cached for 10 minutes."""
+        cloud = self.engine.settings.cloud
+        key = cloud_api_key(cloud)
+        if not cloud.enabled:
+            return {"ok": False, "reason": "Bulut ölçümü kapalı (Ayarlar → Bulut modelleri).",
+                    "models": []}  # fmt: skip
+        if not key:
+            return {"ok": False, "reason": "API anahtarı girilmemiş.", "models": []}
+        cached = self._cloud_cache
+        if cached and not refresh and time.time() - cached[0] < 600 and cached[1] == cloud.endpoint:
+            return cached[2]
+        req = urllib.request.Request(
+            cloud.endpoint.rstrip("/") + "/models", headers={"Authorization": f"Bearer {key}"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                data = json.loads(resp.read().decode("utf-8")).get("data", [])
+        except urllib.error.HTTPError as exc:
+            return {"ok": False, "reason": f"Servis HTTP {exc.code} döndürdü (anahtar geçersiz "
+                    "olabilir).", "models": []}  # fmt: skip
+        except (OSError, ValueError) as exc:
+            return {"ok": False, "reason": f"Servise ulaşılamadı: {exc}", "models": []}
+        ids = sorted({str(m.get("id", "")).removeprefix("models/") for m in data} - {""})
+        models = [
+            {"id": CLOUD_PREFIX + mid, "name": mid, "publisher": mid.split("/")[0] if "/" in mid
+             else "", "kind": "cloud"}
+            for mid in ids if is_chat_model(mid)
+        ]  # fmt: skip
+        out = {"ok": True, "reason": "", "models": models, "total": len(ids)}
+        self._cloud_cache = (time.time(), cloud.endpoint, out)
+        return out
+
+    def settings_get(self) -> dict[str, Any]:
+        st = self.engine.settings
+        raw = asdict(st)
+        return {
+            "sections": SECTIONS,
+            "values": values_of(st),
+            "defaults": defaults(),
+            "path": str(self.settings_path),
+            "has_api_key": bool(st.llm.api_key),
+            "has_secret": {k: bool(get_path(raw, k)) for k in SECRET_KEYS},
+            "models": self._lmstudio_models(st.llm.endpoint) if st.llm.endpoint else [],
+            "status": {
+                "hybrid": self.engine.hybrid,
+                "judge": self.engine.judge_enabled,
+                "llm_model": self.engine.llm.model,
+                "llm_provider": self.engine.settings.llm.provider,
+                "dictionary_version": self.engine.dictionary.version,
+                "index_built_at": self.engine.index_meta.get("built_at", ""),
+            },
+            "reindex_pending": self.reindex_pending,
+        }
+
+    def settings_save(self, body: dict[str, Any]) -> dict[str, Any]:
+        started = time.perf_counter()
+        submitted = body.get("values") or {}
+        if not isinstance(submitted, dict):
+            raise ValueError("values bekleniyor")
+        current = values_of(self.engine.settings)
+        new = dict(current)
+        errors = []
+        for key, value in submitted.items():
+            try:
+                new[key] = coerce(key, value)
+            except ValueError as exc:
+                errors.append(str(exc))
+        if errors:
+            raise ValueError("; ".join(errors))
+        raw = asdict(self.engine.settings)
+        for key in SECRET_KEYS:
+            if not new.get(key):
+                new[key] = get_path(raw, key)  # blank = keep the saved secret
+        changed = [k for k in FIELDS if k not in SECRET_KEYS and new[k] != current[k]]
+        changed += [k for k in SECRET_KEYS if submitted.get(k)]
+
+        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
+        header = (
+            "# DWH Navigator ayarları — Ayarlar ekranından kaydedildi "
+            f"({datetime.now().isoformat(timespec='seconds')}).\n"
+            "# Elle de düzenlenebilir; anlamları için: config/settings.example.yaml\n"
+        )
+        self.settings_path.write_text(
+            header + yaml.safe_dump(to_yaml_tree(new), allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        settings = load_settings(self.settings_path)
+        with self.lock:
+            engine = Engine.from_index(settings)
+            self.engine = engine
+            self.object_index = self._object_index()
+        labels = {k: FIELDS[k]["label"] for k in changed}
+        reindex = [labels[k] for k in changed if FIELDS[k]["effect"] == REINDEX]
+        dense = [labels[k] for k in changed if FIELDS[k]["effect"] == DENSE]
+        self.reindex_pending = sorted(set(self.reindex_pending) | set(reindex))
+        return {
+            "ok": True,
+            "changed": [labels[k] for k in changed],
+            "reindex_needed": self.reindex_pending,
+            "dense_needed": dense,
+            "elapsed_ms": round((time.perf_counter() - started) * 1000),
+            "status": self.settings_get()["status"],
+        }
+
+    def settings_test(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Try the (unsaved) model settings from the form: server, chat model, embeddings."""
+        endpoint = str(body.get("endpoint") or self.engine.settings.llm.endpoint)
+        model = str(body.get("model") or "")
+        embed = str(body.get("embedding_model") or "")
+        client = OpenAICompatibleClient(
+            endpoint,
+            model,
+            embed,
+            temperature=float(body.get("temperature", 0.0)),
+            timeout=float(body.get("timeout", 120)),
+            api_key=self.engine.settings.llm.api_key,
+            reasoning_effort=str(body.get("reasoning_effort", "none")),
+        )
+        steps: list[dict[str, Any]] = []
+
+        def step(name: str, fn: Any) -> None:
+            t0 = time.perf_counter()
+            try:
+                ok, detail = fn()
+            except LLMError as exc:
+                ok, detail = False, str(exc)
+            steps.append(
+                {
+                    "name": name,
+                    "ok": ok,
+                    "detail": detail,
+                    "ms": round((time.perf_counter() - t0) * 1000),
+                }
+            )
+
+        def server() -> tuple[bool, str]:
+            ids = client.ping()
+            return True, f"{len(ids)} model sunuluyor"
+
+        def chat() -> tuple[bool, str]:
+            if not model:
+                return False, "Hakem modeli seçilmedi"
+            reply = client.chat_json(
+                "Kısa ve doğru cevap ver. SADECE JSON döndür.",
+                "Türkiye'nin başkenti neresidir?",
+                {
+                    "type": "object",
+                    "properties": {"cevap": {"type": "string"}},
+                    "required": ["cevap"],
+                    "additionalProperties": False,
+                },
+                max_tokens=60,
+            )
+            if reply is None:
+                return False, "Geçerli JSON dönmedi (düşünme modu açık olabilir)"
+            return True, f"JSON geçerli · cevap: {str(reply.get('cevap', ''))[:40]}"
+
+        def embedding() -> tuple[bool, str]:
+            if not embed:
+                return False, "Embedding modeli seçilmedi"
+            vec = client.embed(["kredi kartı limit doluluk oranı"])[0]
+            ok = not self.engine.dense or len(vec) == self.engine.dense.dim
+            note = (
+                ""
+                if ok
+                else f" (indeks {self.engine.dense.dim if self.engine.dense else '?'} boyutlu!)"
+            )
+            return ok, f"{len(vec)} boyutlu vektör{note}"
+
+        step("Sunucu", server)
+        if steps[0]["ok"]:
+            step("Hakem modeli", chat)
+            step("Embedding modeli", embedding)
+        return {"steps": steps}
+
+    def reindex(self) -> dict[str, Any]:
+        """Rebuild the BM25 index from the dictionary with the saved settings (~10 s)."""
+        started = time.perf_counter()
+        settings = load_settings(self.settings_path)
+        with self.lock:
+            fresh = Engine.from_dictionary_file(settings)
+            meta = fresh.save()
+            self.engine = Engine.from_index(settings)
+            self.object_index = self._object_index()
+        self.reindex_pending = []
+        return {
+            "ok": True,
+            "columns": meta["columns"],
+            "objects": meta["objects"],
+            "version": meta["dictionary_version"],
+            "dense": self.engine.hybrid,
+            "elapsed_ms": round((time.perf_counter() - started) * 1000),
+        }
+
+    def lab_state(self) -> dict[str, Any]:
+        """Model lab results (ranked, best first) and the live progress of a running lab."""
+        results: dict[str, Any] = {}
+        if self.lab_results.exists():
+            results = json.loads(self.lab_results.read_text(encoding="utf-8"))
+        errors = {m: c["load_error"]["error"] for m, c in results.items() if "load_error" in c}
+        progress: dict[str, Any] = {}
+        if self.lab_progress.exists():
+            try:
+                progress = json.loads(self.lab_progress.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:  # being rewritten right now
+                progress = {"running": True}
+        if progress.get("running"):
+            proc = self._lab_proc
+            if proc is not None and proc.poll() is not None:
+                progress["running"] = False  # our child died without cleaning up
+            elif time.time() - self.lab_progress.stat().st_mtime > LAB_STALE_SEC:
+                progress["running"] = False
+        progress["stopping"] = self.lab_stop_flag.exists()
+        return {
+            "rows": lab.rank(results),
+            "errors": errors,
+            "progress": progress,
+            "weights": {"judge": lab.W_JUDGE, "final": lab.W_FINAL, "picks": lab.W_PICKS,
+                        "order": lab.W_ORDER, "drift": lab.W_DRIFT, "tie": lab.TIE},
+        }  # fmt: skip
+
+    def lab_start(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Run `vsa lab` as a child process; progress is read back from its state file."""
+        if self.lab_state()["progress"].get("running"):
+            raise ValueError("Bir ölçüm zaten çalışıyor")
+        models = [str(m) for m in body.get("models") or []]
+        if not models:
+            raise ValueError("En az bir model seçin")
+        temps = [float(x) for x in str(body.get("temps", "0")).split(",") if x.strip()]
+        if not temps or any(not 0 <= x <= 1 for x in temps):
+            raise ValueError("Sıcaklıklar 0 ile 1 arasında olmalı")
+        runs = int(body.get("runs", 2))
+        if not 1 <= runs <= 5:
+            raise ValueError("Tekrar sayısı 1 ile 5 arasında olmalı")
+        chat = {m["id"] for m in self._lmstudio_models(self.engine.settings.llm.endpoint)
+                if m["kind"] == "chat"}  # fmt: skip
+        if any(m.startswith(CLOUD_PREFIX) for m in models):
+            cloud = self.cloud_models()
+            if not cloud["ok"]:
+                raise ValueError(cloud["reason"])
+            chat |= {m["id"] for m in cloud["models"]}
+        unknown = [m for m in models if m not in chat]
+        if unknown:
+            raise ValueError(f"LM Studio'da bulunmayan model: {', '.join(unknown)}")
+        args = [sys.executable, "-m", "vsa.cli", "lab", *models,
+                "--temps", ",".join(f"{x:g}" for x in temps), "--runs", str(runs),
+                "--settings", str(self.settings_path)]  # fmt: skip
+        LAB_LOG.parent.mkdir(parents=True, exist_ok=True)
+        self.lab_stop_flag.unlink(missing_ok=True)
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8", "COLUMNS": "160"}
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        with LAB_LOG.open("w", encoding="utf-8") as logf:
+            self._lab_proc = subprocess.Popen(
+                args, stdout=logf, stderr=subprocess.STDOUT, env=env, creationflags=flags
+            )
+        # Mark as running at once, so a second click cannot start a second lab.
+        self.lab_progress.parent.mkdir(parents=True, exist_ok=True)
+        self.lab_progress.write_text(json.dumps({
+            "running": True, "pid": self._lab_proc.pid, "updated": time.time(),
+            "done": 0, "total": 0, "models": models, "log": ["Başlatılıyor…"],
+        }, ensure_ascii=False), encoding="utf-8")  # fmt: skip
+        return {"ok": True, "pid": self._lab_proc.pid}
+
+    def lab_stop(self) -> dict[str, Any]:
+        self.lab_stop_flag.parent.mkdir(parents=True, exist_ok=True)
+        self.lab_stop_flag.write_text("stop", encoding="utf-8")
+        return {"ok": True}
+
     def galaxy(self) -> list[dict[str, Any]]:
         """Every object with its main dataset group — the star map of the "Evren" skin."""
         out = []
@@ -294,6 +645,15 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                 if url.path in ("/", "/index.html"):
                     html = (STATIC / "index.html").read_bytes()
                     self._send(200, html, "text/html; charset=utf-8")
+                elif url.path in ("/ayarlar", "/settings"):
+                    html = (STATIC / "settings.html").read_bytes()
+                    self._send(200, html, "text/html; charset=utf-8")
+                elif url.path == "/api/settings":
+                    self._json(app.settings_get())
+                elif url.path == "/api/lab":
+                    self._json(app.lab_state())
+                elif url.path == "/api/cloud-models":
+                    self._json(app.cloud_models(refresh="refresh" in parse_qs(url.query)))
                 elif url.path == "/api/status":
                     self._json(app.status())
                 elif url.path == "/api/galaxy":
@@ -346,6 +706,16 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                             fields = load_request_file(path)
                         name = Path(name).stem
                     self._json(app.batch(fields, name))
+                elif url.path == "/api/settings":
+                    self._json(app.settings_save(json.loads(raw or b"{}")))
+                elif url.path == "/api/settings/test":
+                    self._json(app.settings_test(json.loads(raw or b"{}")))
+                elif url.path == "/api/reindex":
+                    self._json(app.reindex())
+                elif url.path == "/api/lab/start":
+                    self._json(app.lab_start(json.loads(raw or b"{}")))
+                elif url.path == "/api/lab/stop":
+                    self._json(app.lab_stop())
                 elif url.path == "/api/feedback":
                     self._json(app.feedback(json.loads(raw or b"{}")))
                 else:
@@ -361,8 +731,15 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
-def serve(engine: Engine, host: str, port: int, out_dir: Path, feedback_path: Path) -> None:
-    app = App(engine, out_dir, feedback_path)
+def serve(
+    engine: Engine,
+    host: str,
+    port: int,
+    out_dir: Path,
+    feedback_path: Path,
+    settings_path: Path | None = None,
+) -> None:
+    app = App(engine, out_dir, feedback_path, settings_path)
     httpd = ThreadingHTTPServer((host, port), make_handler(app))
     log.warning("VSA arayüzü: http://%s:%d", host, port)
     try:

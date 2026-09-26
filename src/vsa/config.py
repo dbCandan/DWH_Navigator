@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
 from typing import Any, TypeVar
@@ -51,10 +52,12 @@ class ExpansionSettings:
 
 @dataclass(slots=True)
 class ObjectWeights:
-    best_column: float = 0.50
-    coverage: float = 0.30
-    time: float = 0.10
-    granularity: float = 0.10
+    # 0.35 : 0.21 : 0.07 : 0.07 keeps the §8 ratio 5:3:1:1 when topic fit is off (ADR-028)
+    best_column: float = 0.35
+    coverage: float = 0.21
+    time: float = 0.07
+    granularity: float = 0.07
+    topic: float = 0.30  # object-level topic fit (ADR-028)
 
 
 @dataclass(slots=True)
@@ -84,6 +87,11 @@ class LLMSettings:
     timeout: int = 120
     api_key: str = ""
     reasoning_effort: str = "none"  # reasoning models answer directly ("" = don't send)
+    # Where the judge runs: "local" (endpoint above) or "cloud" (the ``cloud`` section).
+    # Embeddings always stay on the local endpoint. "cloud" sends every request's
+    # candidate tables out of the network — the user's decision (ADR-026, 2026-09-26).
+    provider: str = "local"
+    seed: int = 42  # fixed sampling seed for repeatable judgments; -1 = don't send
     judge: bool = True  # LLM judge on top candidates (§10)
     judge_candidates: int = 8  # objects shown to the judge
     expand_query: bool = False  # LLM query expansion into the BM25 arm (§7.2c)
@@ -95,6 +103,28 @@ class DenseSettings:
     top_k: int = 200  # dense column candidates
     rrf_k: int = 60  # reciprocal rank fusion constant
     weight: float = 0.35  # share of the dense similarity in the column search score
+
+
+@dataclass(slots=True)
+class CloudSettings:
+    """Hosted models, for the model lab only (NVIDIA API catalog, ADR-026).
+
+    The app's judge never uses this: the lab sends test questions and dictionary
+    metadata (table/column names and descriptions) out of the network, the app would
+    send real requests. Off unless the user switches it on.
+    """
+
+    enabled: bool = False
+    endpoint: str = "https://integrate.api.nvidia.com/v1"  # any OpenAI-compatible API
+    api_key: str = ""  # else the NVIDIA_API_KEY environment variable
+    rpm: int = 30  # requests per minute (NVIDIA's free tier allows ~40)
+
+
+CLOUD_PREFIX = "cloud:"  # lab model ids: "cloud:meta/llama-3.3-70b-instruct"
+
+
+def cloud_api_key(cloud: CloudSettings) -> str:
+    return cloud.api_key or os.environ.get("NVIDIA_API_KEY", "")
 
 
 @dataclass(slots=True)
@@ -111,6 +141,7 @@ class Settings:
     scoring: ScoringSettings = field(default_factory=ScoringSettings)
     llm: LLMSettings = field(default_factory=LLMSettings)
     dense: DenseSettings = field(default_factory=DenseSettings)
+    cloud: CloudSettings = field(default_factory=CloudSettings)
     report: ReportSettings = field(default_factory=ReportSettings)
 
 

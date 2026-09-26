@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DWH Navigator · Ayarlar</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231F3864'/%3E%3Cpath d='M16 5l4 11-4 11-4-11z' fill='%23F2B84B'/%3E%3C/svg%3E">
+<style>
+:root {
+  --paper: #f5f3ee; --surface: #ffffff; --surface-2: #f0ede6; --line: #dcd6ca;
+  --text: #17223a; --muted: #5d6679; --faint: #8b93a3; --ink-2: #1F3864;
+  --accent: #d9962b; --accent-soft: #f7e6c6;
+  --high: #1d7a4c; --high-bg: #d8f0e2; --mid: #9a6b00; --mid-bg: #fbeec2; --low: #b3362e; --low-bg: #f9d9d5;
+  --shadow: 0 1px 2px rgba(15,28,51,.06), 0 6px 24px rgba(15,28,51,.07); --radius: 14px;
+  --mono: "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --primary-bg: #1F3864; --primary-fg: #fff;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark;
+  --paper: #0c1322; --surface: #121c30; --surface-2: #19243b; --line: #26324b; --text: #e6e9f0; --muted: #a2abbd; --faint: #6f7a90;
+  --accent: #f2b84b; --accent-soft: #3a2f16; --high: #5fd39a; --high-bg: #123526; --mid: #f2c14e; --mid-bg: #3a3012; --low: #ff8a80; --low-bg: #3d1c1a;
+  --shadow: 0 8px 28px rgba(0,0,0,.35); --primary-bg: #f2b84b; --primary-fg: #1a1406; } }
+:root[data-theme="dark"] { color-scheme: dark;
+  --paper: #0c1322; --surface: #121c30; --surface-2: #19243b; --line: #26324b; --text: #e6e9f0; --muted: #a2abbd; --faint: #6f7a90;
+  --accent: #f2b84b; --accent-soft: #3a2f16; --high: #5fd39a; --high-bg: #123526; --mid: #f2c14e; --mid-bg: #3a3012; --low: #ff8a80; --low-bg: #3d1c1a;
+  --shadow: 0 8px 28px rgba(0,0,0,.35); --primary-bg: #f2b84b; --primary-fg: #1a1406; }
+/* Evren skin: same palette as the app's galaxy look (static sky, no canvas here) */
+html[data-skin="evren"] { color-scheme: dark;
+  --paper: #03040b; --surface: rgba(14,18,40,.72); --surface-2: rgba(130,150,255,.09); --line: rgba(140,165,255,.2);
+  --text: #eef1ff; --muted: #a3acd6; --faint: #6f78a3; --ink-2: #8b5cff; --accent: #7cf4ff; --accent-soft: rgba(124,244,255,.13);
+  --high: #3dfcb4; --high-bg: rgba(61,252,180,.13); --mid: #ffd166; --mid-bg: rgba(255,209,102,.13); --low: #ff5d8f; --low-bg: rgba(255,93,143,.14);
+  --shadow: 0 20px 60px rgba(0,0,0,.5); --radius: 18px; --primary-bg: linear-gradient(120deg,#7cf4ff,#8b5cff 55%,#ff5dd6); --primary-fg: #050a18;
+  background: radial-gradient(1100px 600px at 80% -10%, rgba(139,92,255,.22), transparent 60%),
+              radial-gradient(900px 600px at -10% 110%, rgba(255,93,214,.13), transparent 60%), #03040b;
+  background-attachment: fixed; }
+html[data-skin="evren"] body { background: transparent; }
+html[data-skin="evren"] .card, html[data-skin="evren"] .top, html[data-skin="evren"] nav.side, html[data-skin="evren"] .savebar { backdrop-filter: blur(16px) saturate(140%); }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--text); font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; padding-bottom: 90px; }
+button, input, select { font: inherit; color: inherit; }
+a { color: inherit; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+.top { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; gap: 14px; min-height: 60px; flex-wrap: wrap; padding-top: 6px; padding-bottom: 6px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); white-space: nowrap; }
+.brand b { font-size: 17px; } .brand span { color: var(--muted); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; background: var(--surface); white-space: nowrap; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); } .dot.on { background: var(--high); box-shadow: 0 0 0 3px var(--high-bg); }
+.back { text-decoration: none; font-weight: 600; font-size: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; background: var(--surface); white-space: nowrap; }
+.back:hover { border-color: var(--accent); }
+
+.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 22px; margin-top: 22px; }
+nav.side { position: sticky; top: 84px; align-self: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; box-shadow: var(--shadow); }
+nav.side a { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 9px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; }
+nav.side a:hover, nav.side a.cur { background: var(--surface-2); color: var(--text); }
+nav.side .cnt { font-size: 11px; font-weight: 700; background: var(--accent); color: var(--primary-fg); border-radius: 999px; padding: 0 7px; }
+h1 { font-family: var(--display); font-size: 28px; margin: 4px 0 2px; letter-spacing: -.4px; }
+.lead { color: var(--muted); margin: 0 0 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 18px; scroll-margin-top: 80px; }
+.card h2 { margin: 0; font-family: var(--display); font-size: 19px; }
+.card .intro { color: var(--muted); font-size: 13.5px; margin: 4px 0 8px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 330px); gap: 16px; padding: 14px 0; border-top: 1px solid var(--line); align-items: center; }
+.row:first-of-type { border-top: 0; }
+.row .lab { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.row .help { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+.row .key { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+.row.changed .lab::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.eff { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.eff.now { background: var(--high-bg); color: var(--high); }
+.eff.reindex { background: var(--mid-bg); color: var(--mid); }
+.eff.dense { background: var(--low-bg); color: var(--low); }
+.ctl { display: flex; align-items: center; gap: 10px; justify-content: flex-end; min-width: 0; }
+.ctl input[type=text], .ctl input[type=password], .ctl select, .ctl input[type=number] {
+  width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface-2); outline: 0; min-width: 0; }
+.ctl input[type=number] { width: 86px; text-align: right; font-family: var(--mono); }
+.ctl input:focus, .ctl select:focus { border-color: var(--accent); }
+.ctl input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
+.reset { border: 0; background: none; cursor: pointer; color: var(--faint); font-size: 16px; padding: 2px 4px; visibility: hidden; }
+.row.nondefault .reset { visibility: visible; } .reset:hover { color: var(--accent); }
+.switch { position: relative; width: 46px; height: 26px; flex: none; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch span { position: absolute; inset: 0; border-radius: 999px; background: var(--line); cursor: pointer; transition: background .2s; }
+.switch span::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .2s; }
+.switch input:checked + span { background: var(--high); }
+.switch input:checked + span::after { transform: translateX(20px); }
+.switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.warn { background: var(--mid-bg); color: var(--text); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; margin: 8px 0; }
+.err { background: var(--low-bg); color: var(--low); border-radius: 10px; padding: 10px 12px; font-size: 13.5px; margin: 8px 0; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--primary-bg); color: var(--primary-fg); border: 0; }
+.btn:disabled { opacity: .5; cursor: default; }
+.tests { list-style: none; padding: 0; margin: 10px 0 0; }
+.tests li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 13.5px; }
+.tests .ok { color: var(--high); font-weight: 700; } .tests .no { color: var(--low); font-weight: 700; }
+.tests .ms { margin-left: auto; font-family: var(--mono); color: var(--faint); font-size: 12px; }
+table.bench { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.bench th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 8px 6px; border-bottom: 1px solid var(--line); }
+table.bench td { padding: 8px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+table.bench tr.best td { background: var(--high-bg); }
+table.bench td.m { font-family: var(--mono); font-size: 12px; }
+.bar { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; width: 60px; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.bar i { display: block; height: 100%; background: var(--high); }
+.scroll { overflow-x: auto; }
+.best-card { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--high-bg); border: 1px solid color-mix(in srgb, var(--high) 35%, transparent); margin-bottom: 14px; }
+.best-card .star { font-size: 26px; color: var(--high); }
+.best-card b { font-family: var(--mono); font-size: 14px; }
+.best-card .why { font-size: 13px; color: var(--muted); margin-top: 3px; }
+@media (max-width: 600px) { .best-card { grid-template-columns: 1fr; } .best-card .star { display: none; } }
+.pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--surface-2); color: var(--muted); margin-left: 6px; font-family: var(--sans, inherit); }
+.pill.cur { background: var(--primary-bg); color: var(--primary-fg); }
+table.bench td.q { font-weight: 700; }
+.runner { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.runner h3 { margin: 0 0 10px; font-size: 15px; }
+.mlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 14px; margin: 8px 0 12px; }
+.mlist label { display: flex; gap: 8px; align-items: center; font-family: var(--mono); font-size: 12.5px; cursor: pointer; }
+.mlist .sub { color: var(--faint); font-family: inherit; font-size: 11.5px; margin-left: auto; }
+.opts { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 13.5px; margin-bottom: 12px; }
+.opts label { display: inline-flex; gap: 6px; align-items: center; }
+.opts select { padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: inherit; }
+.prog { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; margin: 10px 0 6px; }
+.prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--high)); transition: width .6s; }
+.prog.live i { background-size: 200% 100%; animation: flow 2s linear infinite; background-image: linear-gradient(90deg, var(--accent), var(--high), var(--accent)); }
+@keyframes flow { to { background-position: -200% 0; } }
+.labmeta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.labmeta b { color: var(--text, inherit); }
+h4.grp { margin: 14px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); display: flex; gap: 10px; align-items: center; }
+.btn.mini { padding: 3px 9px; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+input.msearch { flex: 1 1 260px; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: inherit; font: inherit; }
+.mlist { max-height: 340px; overflow: auto; }
+pre.log { max-height: 240px; overflow: auto; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.55; margin: 10px 0 0; white-space: pre-wrap; word-break: break-word; }
+.savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line); transform: translateY(100%); transition: transform .25s; }
+.savebar.on { transform: none; }
+.savebar .wrap { display: flex; align-items: center; gap: 10px; min-height: 64px; flex-wrap: wrap; }
+.savebar .msg { margin-right: auto; font-weight: 600; }
+.toast { position: fixed; right: 20px; top: 76px; z-index: 30; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--high); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); font-size: 13.5px; opacity: 0; visibility: hidden; transform: translateY(-8px); transition: opacity .25s, transform .25s, visibility .25s; }
+.toast.on { opacity: 1; visibility: visible; transform: none; } .toast.bad { border-left-color: var(--low); }
+.toast b { display: block; margin-bottom: 4px; }
+@media (max-width: 860px) {
+  .layout { grid-template-columns: 1fr; } nav.side { position: static; display: flex; flex-wrap: wrap; }
+  .row { grid-template-columns: 1fr; gap: 8px; } .ctl { justify-content: stretch; }
+  .chips { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#1F3864"/><circle cx="16" cy="16" r="10.5" fill="none" stroke="#F2B84B" stroke-opacity=".45"/><path d="M16 5l4 11-4 11-4-11z" fill="#F2B84B"/></svg>
+      <div><b>DWH Navigator</b> <span>· Ayarlar</span></div>
+    </div>
+    <div class="chips" id="chips"></div>
+    <a class="back" href="/">← Uygulamaya dön</a>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="side" id="nav" aria-label="Bölümler"></nav>
+  <main>
+    <h1>Ayarlar</h1>
+    <p class="lead" id="lead">Yükleniyor…</p>
+    <div id="sections"></div>
+
+    <section class="card" id="sec-bench">
+      <h2>Model laboratuvarı</h2>
+      <p class="intro">LM Studio'daki sohbet modellerini hakem olarak sınar: golden set soruları, doğrulanmış talep alanları
+        ve “bulunamadı” olması gereken sorular, her biri birkaç kez. Her model aynı aday listelerini görür; fark yalnız
+        hakemden gelir. Düşünme modu her model için otomatik bulunur. Komut satırı: <code>vsa lab</code> (ADR-025).</p>
+      <div id="labBest"></div>
+      <div class="scroll" id="bench"></div>
+      <div id="labRun"></div>
+    </section>
+
+    <section class="card" id="sec-maint">
+      <h2>Bakım</h2>
+      <p class="intro">İndeks işlemleri. BM25 indeksi birkaç saniyede yeniden kurulur; vektör indeksi CPU'da ~45 dakika
+        sürdüğü için komut satırından çalıştırılır.</p>
+      <div id="maint"></div>
+    </section>
+  </main>
+</div>
+
+<div class="savebar" id="savebar">
+  <div class="wrap">
+    <span class="msg" id="savemsg"></span>
+    <button class="btn" id="revert">Değişiklikleri geri al</button>
+    <button class="btn primary" id="save">Kaydet ve uygula</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) { if (kid == null || kid === false) continue; e.append(kid instanceof Node ? kid : document.createTextNode(String(kid))); }
+  return e;
+}
+// The app has a single look (Evren, ADR-027).
+document.documentElement.dataset.skin = "evren";
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({ error: "Beklenmeyen yanıt" }));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+const post = (path, body) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+let S = null;           // server payload
+let saved = {};         // values as saved on the server
+let form = {};          // values in the form
+const FIELD = {};       // key -> field schema
+const ROW = {};         // key -> row element
+const EFFECT = { "anında": ["now", "Anında"], "indeks": ["reindex", "İndeks gerekir"], "vektör": ["dense", "Vektör indeksi gerekir"] };
+const fmt = (v, step) => (typeof v === "number" ? (step && step < 1 ? v.toFixed(2) : String(v)) : v);
+const eq = (a, b) => (typeof a === "number" && typeof b === "number" ? Math.abs(a - b) < 1e-9 : a === b);
+
+function toast(title, lines, bad = false) {
+  const t = $("#toast");
+  t.className = "toast on" + (bad ? " bad" : "");
+  t.replaceChildren(h("b", {}, title), ...lines.map(l => h("div", {}, l)));
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("on"), 7000);
+}
+
+function modelOptions(kind, current) {
+  const cloudChat = kind === "chat" && form["llm.provider"] === "cloud";
+  const list = cloudChat ? ((CLOUD && CLOUD.models) || []).map(m => ({ id: m.name, kind: "chat" }))
+    : (S.models || []).filter(m => m.kind === kind);
+  const opts = list.map(m => {
+    const bits = [m.loaded ? "● yüklü" : m.loaded === false ? "○" : "", m.arch, m.quant].filter(Boolean).join(" · ");
+    return h("option", { value: m.id, selected: m.id === current }, bits ? `${m.id}   ${bits}` : m.id);
+  });
+  if (current && !list.some(m => m.id === current)) opts.unshift(h("option", { value: current, selected: true }, `${current}   (sunucuda bulunamadı)`));
+  if (!list.length) opts.push(h("option", { value: "", disabled: true }, cloudChat ? "Bulut listesi yok — Bulut modelleri bölümünü açın" : "Sunucuya ulaşılamadı — adresi kontrol edin"));
+  return opts;
+}
+
+function control(f) {
+  const key = f.key, v = form[key];
+  const set = val => { form[key] = val; refresh(key); if (key === "llm.provider") rerender("llm.model"); };
+  if (f.type === "bool") {
+    const inp = h("input", { type: "checkbox", "aria-label": f.label });
+    inp.checked = !!v; inp.onchange = () => set(inp.checked);
+    return [h("label", { class: "switch" }, inp, h("span"))];
+  }
+  if (f.type === "int" || f.type === "float") {
+    const step = f.step || (f.type === "int" ? 1 : 0.05);
+    const range = h("input", { type: "range", min: f.min, max: f.max, step, value: v, "aria-label": f.label });
+    const num = h("input", { type: "number", min: f.min, max: f.max, step, value: fmt(v, step), "aria-label": f.label });
+    const parse = x => (f.type === "int" ? parseInt(x, 10) : parseFloat(x));
+    range.oninput = () => { num.value = fmt(parse(range.value), step); set(parse(range.value)); };
+    num.oninput = () => { const x = parse(num.value); if (!Number.isNaN(x)) { range.value = x; set(x); } };
+    return [range, num];
+  }
+  if (f.type === "select") {
+    const sel = h("select", { "aria-label": f.label }, f.options.map(([val, text]) => h("option", { value: val, selected: val === v }, text)));
+    sel.onchange = () => set(sel.value);
+    return [sel];
+  }
+  if (f.type === "model") {
+    const sel = h("select", { "aria-label": f.label }, modelOptions(f.kind, v));
+    sel.onchange = () => set(sel.value);
+    return [sel];
+  }
+  const inp = h("input", { type: f.type === "secret" ? "password" : "text", value: v ?? "", "aria-label": f.label,
+    placeholder: f.type === "secret" ? ((S.has_secret || {})[f.key] ? "•••••• (kayıtlı, değiştirmek için yazın)" : "yok") : "" });
+  inp.oninput = () => set(inp.value);
+  return [inp];
+}
+
+function renderRow(f) {
+  const [cls, text] = EFFECT[f.effect] || ["now", f.effect];
+  const reset = h("button", { class: "reset", title: `Varsayılana dön (${fmt(S.defaults[f.key])})`, "aria-label": "Varsayılana dön",
+    onclick: () => { form[f.key] = S.defaults[f.key]; rerender(f.key); } }, "↺");
+  const row = h("div", { class: "row", id: "row-" + f.key },
+    h("div", {}, h("div", { class: "lab" }, f.label, h("span", { class: "eff " + cls }, text)),
+      f.help ? h("div", { class: "help" }, f.help) : null, h("div", { class: "key" }, f.key)),
+    h("div", { class: "ctl" }, control(f), reset));
+  ROW[f.key] = row;
+  return row;
+}
+function rerender(key) { const old = ROW[key]; const fresh = renderRow(FIELD[key]); old.replaceWith(fresh); refresh(key); }
+
+function refresh(key) {
+  const keys = key ? [key] : Object.keys(FIELD);
+  for (const k of keys) {
+    const row = ROW[k]; if (!row) continue;
+    const secret = FIELD[k].type === "secret";
+    row.classList.toggle("changed", !eq(form[k], saved[k]) && !(secret && !form[k]));
+    row.classList.toggle("nondefault", !secret && !eq(form[k], S.defaults[k]));
+  }
+  const changed = Object.keys(FIELD).filter(k => ROW[k] && ROW[k].classList.contains("changed"));
+  $("#savebar").classList.toggle("on", changed.length > 0);
+  $("#savemsg").textContent = `${changed.length} değişiklik kaydedilmedi`;
+  for (const sec of S.sections) {
+    const n = sec.fields.filter(f => changed.includes(f.key)).length;
+    const a = $(`#nav a[href="#sec-${sec.id}"] .cnt`); if (a) { a.textContent = n; a.style.display = n ? "" : "none"; }
+  }
+  const sum = $("#weightsum");
+  if (sum) {
+    const t = (form["scoring.w_rule"] || 0) + (form["scoring.w_llm"] || 0);
+    sum.textContent = `Ağırlık toplamı ${t.toFixed(2)} — nihai skor bu toplamla normalize edilir; LLM payı %${t ? Math.round(100 * (form["scoring.w_llm"] || 0) / t) : 0}.`;
+  }
+}
+
+function renderChips() {
+  const st = S.status;
+  $("#chips").replaceChildren(
+    h("span", { class: "pill" }, h("i", { class: "dot" + (st.hybrid ? " on" : "") }), "Anlamsal arama"),
+    h("span", { class: "pill", title: st.llm_model }, h("i", { class: "dot" + (st.judge ? " on" : "") }), st.judge ? `Hakem · ${st.llm_model.split("/").pop()}${st.llm_provider === "cloud" ? " (bulut)" : ""}` : "Hakem kapalı"),
+    h("span", { class: "pill", title: "Sözlük sürümü" }, st.dictionary_version));
+}
+
+function renderSections() {
+  $("#lead").textContent = `Değişiklikler ${S.path} dosyasına yazılır ve kaydedince uygulama yeniden başlatılmadan yeni ayarlarla çalışır.`;
+  const nav = [], cards = [];
+  for (const sec of S.sections) {
+    nav.push(h("a", { href: "#sec-" + sec.id }, sec.title, h("span", { class: "cnt", style: "display:none" }, "0")));
+    const rows = sec.fields.map(f => { FIELD[f.key] = f; return renderRow(f); });
+    const extra = [];
+    if (sec.id === "llm") {
+      const out = h("ul", { class: "tests" });
+      extra.push(h("div", { style: "margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
+        h("button", { class: "btn", onclick: e => testConnection(e.currentTarget, out) }, "Bağlantıyı test et"),
+        h("span", { class: "note" }, "Formdaki (kaydedilmemiş) değerlerle dener.")), out);
+    }
+    if (sec.id === "scoring") extra.push(h("div", { class: "note", id: "weightsum" }));
+    cards.push(h("section", { class: "card", id: "sec-" + sec.id }, h("h2", {}, sec.title), h("p", { class: "intro" }, sec.intro), rows, extra));
+  }
+  nav.push(h("a", { href: "#sec-bench" }, "Model laboratuvarı"), h("a", { href: "#sec-maint" }, "Bakım"));
+  $("#nav").replaceChildren(...nav);
+  $("#sections").replaceChildren(...cards);
+  refresh();
+}
+
+async function testConnection(btn, out) {
+  btn.disabled = true; btn.textContent = "Deneniyor…";
+  out.replaceChildren(h("li", {}, "Sunucu, hakem modeli ve embedding modeli deneniyor (model yüklü değilse ilk yükleme sürebilir)…"));
+  try {
+    const r = await post("/api/settings/test", {
+      endpoint: form["llm.endpoint"], model: form["llm.model"], embedding_model: form["llm.embedding_model"],
+      temperature: form["llm.temperature"], reasoning_effort: form["llm.reasoning_effort"], timeout: form["llm.timeout"] });
+    out.replaceChildren(...r.steps.map(s => h("li", {}, h("span", { class: s.ok ? "ok" : "no" }, s.ok ? "✓" : "✗"), h("b", {}, s.name), h("span", {}, s.detail), h("span", { class: "ms" }, (s.ms / 1000).toFixed(1) + " sn"))));
+  } catch (e) { out.replaceChildren(h("li", {}, h("span", { class: "no" }, "✗"), e.message)); }
+  btn.disabled = false; btn.textContent = "Bağlantıyı test et";
+}
+
+// ---- Model laboratuvarı ------------------------------------------------------------
+let LAB = null, labTimer = null, labPicked = null, CLOUD = null, cloudFilter = "";
+const isCloud = id => id.startsWith("cloud:");
+const fmtTok = n => n >= 1e6 ? (n / 1e6).toFixed(2).replace(".", ",") + " M" : n >= 1e3 ? Math.round(n / 1e3) + " B" : String(n);
+const shortId = id => id.replace(/^cloud:/, "");
+const EFFORT = { none: "kapalı", low: "düşük", medium: "orta", high: "yüksek", "": "varsayılan" };
+const pct = x => h("span", {}, h("span", { class: "bar" }, h("i", { style: `width:${Math.round(x * 100)}%` })), `%${Math.round(x * 100)}`);
+const dur = s => s >= 3600 ? `${Math.floor(s / 3600)} sa ${Math.round(s % 3600 / 60)} dk` : s >= 60 ? `${Math.round(s / 60)} dk` : `${Math.round(s)} sn`;
+const providerOf = r => isCloud(r.model) ? "cloud" : "local";
+const isCurrent = r => saved["llm.provider"] === providerOf(r) && saved["llm.model"] === shortId(r.model)
+  && Number(saved["llm.temperature"]) === r.temperature && saved["llm.reasoning_effort"] === r.reasoning_effort;
+
+async function applyConfig(r, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "Uygulanıyor…"; }
+  try {
+    if (isCloud(r.model) && !confirm("Bulut hakemi seçiliyor: uygulamadaki HER soruda aday tabloların adları, kolon adları ve açıklamaları "
+      + "NVIDIA'ya gönderilecek (müşteri verisi gönderilmez). Devam edilsin mi?")) { renderLab(); return; }
+    const res = await post("/api/settings", { values: {
+      "llm.enabled": true, "llm.judge": true, "llm.provider": providerOf(r), "llm.model": shortId(r.model),
+      "llm.temperature": r.temperature, "llm.reasoning_effort": r.reasoning_effort } });
+    toast("Hakem yapılandırması uygulandı", [`${shortId(r.model)} (${isCloud(r.model) ? "bulut" : "yerel"}) · sıcaklık ${r.temperature} · düşünme ${EFFORT[r.reasoning_effort]}`,
+      `Değişen: ${res.changed.join(", ") || "— (zaten bu ayardaydı)"}`]);
+    await load(false);
+  } catch (e) { toast("Uygulanamadı", [e.message], true); }
+  renderLab();
+}
+
+async function loadCloud(refresh = false) {
+  try { CLOUD = await api("/api/cloud-models" + (refresh ? "?refresh=1" : "")); }
+  catch (e) { CLOUD = { ok: false, reason: e.message, models: [] }; }
+}
+
+async function renderBench() {
+  if (!CLOUD) await loadCloud();
+  try { LAB = await api("/api/lab"); } catch (e) { $("#bench").replaceChildren(h("p", { class: "err" }, "Laboratuvar okunamadı: " + e.message)); return; }
+  renderLab();
+  clearTimeout(labTimer);
+  if (LAB.progress.running) labTimer = setTimeout(renderBench, 3000);
+}
+
+function renderLab() {
+  if (!LAB) return;
+  const rows = LAB.rows, W = LAB.weights;
+  const best = rows.find(r => r.recommended);
+  $("#labBest").replaceChildren(...[best && h("div", { class: "best-card" },
+    h("div", { class: "star" }, "★"),
+    h("div", {}, h("div", {}, "Önerilen: ", h("b", {}, shortId(best.model)), h("span", { class: "pill" }, isCloud(best.model) ? "bulut" : "yerel"), ` · sıcaklık ${best.temperature} · düşünme ${EFFORT[best.reasoning_effort]}`,
+        isCurrent(best) ? h("span", { class: "pill cur" }, "şu an kullanılıyor") : null),
+      h("div", { class: "why" }, `Kalite ${best.quality.toFixed(3)} — hakem doğruluğu %${Math.round(best.judge_accuracy * 100)}, nihai %${Math.round(best.final_accuracy * 100)}, `
+        + `aynı seçim %${Math.round(best.consistent_picks * 100)}, soru başına ${best.mean_sec.toFixed(0)} sn. Kalitesi ${W.tie} farkla eşit sayılanlardan en hızlısı seçilir.`)),
+    isCurrent(best) ? h("span") : h("button", { class: "btn primary", onclick: e => applyConfig(best, e.currentTarget) }, "Uygula ve kaydet"))].filter(Boolean));
+  if (!rows.length) {
+    $("#bench").replaceChildren(h("p", { class: "note" }, "Henüz ölçüm yok. Aşağıdan modelleri seçip başlatın."));
+  } else {
+    $("#bench").replaceChildren(h("table", { class: "bench" },
+      h("thead", {}, h("tr", {}, ["Model", "T", "Düşünme", "Kalite", "Hakem doğruluğu", "Nihai doğruluk", "Aynı seçim", "Aynı sıra", "Güven sapması", "Süre/soru", ""].map(t => h("th", {}, t)))),
+      h("tbody", {}, rows.map(r => h("tr", { class: r.recommended ? "best" : "", title: `${r.cases} vaka · ${r.at || ""}${r.size_gb ? " · " + r.size_gb + " GB" : ""}` },
+        h("td", { class: "m" }, shortId(r.model), r.recommended ? " ★" : "", h("span", { class: "pill" }, isCloud(r.model) ? "bulut" : "yerel"),
+          isCurrent(r) ? h("span", { class: "pill cur" }, "kullanılıyor") : null),
+        h("td", {}, String(r.temperature), r.seed != null ? h("span", { class: "pill", title: "Sabit tohum" }, "seed " + r.seed) : null),
+        h("td", {}, EFFORT[r.reasoning_effort] ?? r.reasoning_effort),
+        h("td", { class: "q" }, r.quality ? r.quality.toFixed(3) : "elendi"),
+        h("td", {}, pct(r.judge_accuracy)), h("td", {}, pct(r.final_accuracy)),
+        h("td", {}, pct(r.consistent_picks)), h("td", {}, pct(r.consistent_final_order)),
+        h("td", {}, r.mean_conf_drift.toFixed(3)), h("td", {}, r.mean_sec.toFixed(0) + " sn"),
+        h("td", {}, isCurrent(r) ? null : h("button", { class: "btn", onclick: e => applyConfig(r, e.currentTarget) }, "Uygula")))))),
+      h("p", { class: "note" }, `Kalite = ${W.judge}·hakem + ${W.final}·nihai + ${W.picks}·aynı seçim + ${W.order}·aynı sıra − ${W.drift}·sapma. `
+        + "Geçersiz JSON veya uydurma aday kimliği üreten yapılandırma elenir (ADR-002)."));
+  }
+  const cloudRows = rows.filter(r => isCloud(r.model) && r.usage && r.usage.requests);
+  if (cloudRows.length) {
+    const sum = k => cloudRows.reduce((a, r) => a + (r.usage[k] || 0), 0);
+    $("#bench").append(h("p", { class: "note" }, "Bulut kullanımı (kaydedilen ölçümler): ",
+      h("b", {}, `${sum("requests")} istek`), `, ${fmtTok(sum("prompt_tokens"))} giriş + ${fmtTok(sum("completion_tokens"))} çıkış token. `
+      + "NVIDIA'nın ücretsiz katmanı istek hızını sınırlar (dakikada ~40); sayaç bu makineden gönderilenleri gösterir."));
+  }
+  const errs = Object.entries(LAB.errors || {});
+  if (errs.length) $("#bench").append(h("div", { class: "warn" }, "Ölçülemeyen modeller: ", errs.map(([m, e]) => `${m} (${e.slice(-90)})`).join("; ")));
+  renderRunner();
+}
+
+function renderRunner() {
+  const P = LAB.progress || {};
+  if (P.running) {
+    const frac = P.total ? P.done / P.total : 0;
+    const eta = P.done && P.elapsed ? P.elapsed / P.done * (P.total - P.done) : null;
+    const logBox = h("pre", { class: "log" }, (P.log || []).join("\n"));
+    $("#labRun").replaceChildren(h("div", { class: "runner" },
+      h("h3", {}, "Ölçüm sürüyor"),
+      h("div", { class: "prog live" }, h("i", { style: `width:${Math.max(2, frac * 100)}%` })),
+      h("div", { class: "labmeta" },
+        h("span", {}, h("b", {}, `${P.done || 0}/${P.total || "?"}`), " çağrı"),
+        P.model ? h("span", {}, "Model: ", h("b", {}, P.model)) : null,
+        P.step ? h("span", {}, P.step) : null,
+        P.elapsed ? h("span", {}, "Geçen: ", h("b", {}, dur(P.elapsed))) : null,
+        eta ? h("span", {}, "Kalan ≈ ", h("b", {}, dur(eta))) : null,
+        P.cloud_usage && P.cloud_usage.requests ? h("span", {}, "NVIDIA'ya: ", h("b", {}, `${P.cloud_usage.requests} istek`),
+          ` · ${fmtTok(P.cloud_usage.prompt_tokens + P.cloud_usage.completion_tokens)} token`) : null),
+      logBox,
+      h("div", { style: "margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
+        h("button", { class: "btn", disabled: P.stopping, onclick: async e => { e.currentTarget.disabled = true; await post("/api/lab/stop", {}); renderBench(); } },
+          P.stopping ? "Durduruluyor…" : "Durdur"),
+        h("span", { class: "note" }, "Durdurunca o anki çağrı bitince çıkar; tamamlanan ölçümler kalır, uygulamanın modeli geri yüklenir."))));
+    logBox.scrollTop = logBox.scrollHeight;
+    return;
+  }
+  const chat = (S.models || []).filter(m => m.kind === "chat");
+  if (!chat.length) { $("#labRun").replaceChildren(h("div", { class: "runner" }, h("p", { class: "note" }, "LM Studio'ya ulaşılamadı veya sohbet modeli yok."))); return; }
+  const measured = new Set(LAB.rows.map(r => r.model));
+  if (!labPicked) labPicked = new Set();
+  const rpm = Number(saved["cloud.rpm"]) || 30;
+  const secOf = id => { const rs = LAB.rows.filter(r => r.model === id); return rs.length ? Math.min(...rs.map(r => r.mean_sec)) : isCloud(id) ? Math.max(60 / rpm, 6) : 45; };
+  const cases = P.cases || 16;
+  const temps = h("select", {}, [["0", "0"], ["0,0.1", "0 ve 0,1"], ["0,0.1,0.3", "0, 0,1 ve 0,3"]].map(([v, t]) => h("option", { value: v }, t)));
+  const runs = h("select", {}, [1, 2, 3].map(n => h("option", { value: n, selected: n === 2 }, String(n))));
+  const est = h("span", { class: "note" });
+  function pickBox(id, label, subs) {
+    const cb = h("input", { type: "checkbox", checked: labPicked.has(id), onchange: e => { e.target.checked ? labPicked.add(id) : labPicked.delete(id); updateEst(); } });
+    return h("label", {}, cb, label, h("span", { class: "sub" }, subs.filter(Boolean).join(" · ")));
+  }
+  function cloudBlock() {
+    const head = h("h4", { class: "grp" }, "Bulut (NVIDIA API kataloğu) ",
+      h("button", { class: "btn mini", onclick: async () => { await loadCloud(true); renderRunner(); } }, "Listeyi yenile"));
+    if (!CLOUD || !CLOUD.ok) return [head, h("p", { class: "note" }, (CLOUD && CLOUD.reason) || "Liste alınamadı.", " ", h("a", { href: "#sec-cloud" }, "Ayarlara git"))];
+    const list = h("div", { class: "mlist" });
+    const fill = () => {
+      const q = cloudFilter.trim().toLocaleLowerCase("tr");
+      const shown = CLOUD.models.filter(m => !q || m.name.toLocaleLowerCase("tr").includes(q));
+      list.replaceChildren(...shown.map(m => pickBox(m.id, m.name, [measured.has(m.id) ? "ölçüldü" : ""])));
+      count.textContent = `${shown.length} / ${CLOUD.models.length} sohbet modeli`;
+    };
+    const count = h("span", { class: "note" });
+    const search = h("input", { type: "search", class: "msearch", placeholder: "Ara: gemma, llama, qwen, mistral, gpt-oss…", value: cloudFilter,
+      oninput: e => { cloudFilter = e.target.value; fill(); } });
+    fill();
+    return [head, h("div", { class: "opts" }, search, count), list,
+      h("p", { class: "warn" }, "Bulut modeli seçilirse ölçüm sırasında test soruları ile aday tabloların adları, kolon adları ve açıklamaları NVIDIA'ya gönderilir. "
+        + "Müşteri verisi gönderilmez. Bir bulut satırını “Uygula” ile hakem yaparsanız uygulamanın her sorusu da gönderilir.")];
+  }
+  const go = h("button", { class: "btn primary", onclick: async e => {
+    e.currentTarget.disabled = true;
+    try { await post("/api/lab/start", { models: [...labPicked], temps: temps.value, runs: Number(runs.value) }); toast("Ölçüm başladı", ["İlerleme bu sayfada görünür; sayfayı kapatabilirsiniz."]); }
+    catch (err) { toast("Başlatılamadı", [err.message], true); }
+    renderBench();
+  } }, "Ölçümü başlat");
+  const updateEst = () => {
+    const nT = temps.value.split(",").length, nR = Number(runs.value);
+    const sec = [...labPicked].reduce((a, id) => a + secOf(id) * cases * nT * nR + 60, 0);
+    est.textContent = labPicked.size ? `≈ ${dur(sec)} (${labPicked.size} model × ${cases} vaka × ${nT} sıcaklık × ${nR} tekrar)` : "Model seçin";
+    go.disabled = !labPicked.size;
+  };
+  temps.onchange = runs.onchange = updateEst;
+  $("#labRun").replaceChildren(h("div", { class: "runner" },
+    h("h3", {}, "Yeni ölçüm"),
+    h("p", { class: "note" }, "Ölçüm süresince LM Studio'da yalnız ölçülen model yüklü tutulur; soru sorma yavaşlar. Bitince uygulamanın modeli geri yüklenir. "
+      + "Yeni modeli LM Studio'dan indirin; burada kendiliğinden görünür."),
+    h("h4", { class: "grp" }, "Yerel (LM Studio)"),
+    h("div", { class: "mlist" }, chat.map(m => pickBox(m.id, m.id, [m.quant, measured.has(m.id) ? "ölçüldü" : "yeni"]))),
+    cloudBlock(),
+    h("div", { class: "opts" }, h("label", {}, "Sıcaklık ", temps), h("label", {}, "Tekrar ", runs), est),
+    go,
+    P.log && P.log.length ? h("details", { style: "margin-top:12px" }, h("summary", { class: "note" }, "Son ölçümün kaydı"), h("pre", { class: "log" }, P.log.join("\n"))) : null));
+  updateEst();
+}
+
+function renderMaint() {
+  const pending = S.reindex_pending || [];
+  const out = h("div", { class: "note" });
+  $("#maint").replaceChildren(
+    pending.length ? h("div", { class: "warn" }, "İndeks yeniden kurulmalı: ", pending.join(", ")) : null,
+    h("div", { style: "display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
+      h("button", { class: "btn", onclick: e => reindex(e.currentTarget, out) }, "BM25 indeksini yeniden kur"),
+      h("span", { class: "note" }, S.status.index_built_at ? `Son kurulum: ${S.status.index_built_at.replace("T", " ")}` : "")),
+    out,
+    h("p", { class: "note" }, "Vektör indeksi (embedding modeli veya sözlük değiştiğinde): ",
+      h("code", {}, ".venv\\Scripts\\vsa index --dense"), " — kaldığı yerden devam eder."));
+}
+
+async function reindex(btn, out) {
+  btn.disabled = true; btn.textContent = "Kuruluyor…"; out.textContent = "";
+  try {
+    const r = await post("/api/reindex", {});
+    out.textContent = `Hazır: ${r.columns.toLocaleString("tr-TR")} kolon · ${r.objects} tablo · sürüm ${r.version} · ${(r.elapsed_ms / 1000).toFixed(1)} sn` + (r.dense ? "" : " · vektör indeksi sözlükle uyumsuz, yalnız BM25");
+    await load(false);
+  } catch (e) { out.textContent = "Hata: " + e.message; }
+  btn.disabled = false; btn.textContent = "BM25 indeksini yeniden kur";
+}
+
+async function save() {
+  const btn = $("#save"); btn.disabled = true; btn.textContent = "Kaydediliyor…";
+  const changed = {};
+  for (const k of Object.keys(FIELD)) if (ROW[k].classList.contains("changed")) changed[k] = form[k];
+  try {
+    const r = await post("/api/settings", { values: changed });
+    const lines = [`Değişen: ${r.changed.join(", ") || "—"}`, `Uygulandı (${(r.elapsed_ms / 1000).toFixed(1)} sn).`];
+    if (r.reindex_needed.length) lines.push("⚠ BM25 indeksi yeniden kurulmalı (Bakım bölümü).");
+    if (r.dense_needed.length) lines.push("⚠ Vektör indeksi yeniden kurulmalı: vsa index --dense");
+    toast("Ayarlar kaydedildi", lines);
+    await load(false);
+  } catch (e) { toast("Kaydedilemedi", [e.message], true); }
+  btn.disabled = false; btn.textContent = "Kaydet ve uygula";
+}
+
+async function load(first = true) {
+  try { S = await api("/api/settings"); }
+  catch (e) { $("#lead").replaceChildren(h("div", { class: "err" }, "Ayarlar okunamadı: " + e.message)); return; }
+  saved = { ...S.values }; form = { ...S.values };
+  if (!CLOUD || !first) await loadCloud();
+  renderChips(); renderSections(); renderMaint();
+  if (first) renderBench(); else renderLab();
+}
+
+$("#save").onclick = save;
+$("#revert").onclick = () => { form = { ...saved }; renderSections(); };
+addEventListener("beforeunload", e => { if ($("#savebar").classList.contains("on")) { e.preventDefault(); e.returnValue = ""; } });
+// highlight the section in view
+const io = new IntersectionObserver(entries => {
+  for (const en of entries) if (en.isIntersecting) document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("cur", a.getAttribute("href") === "#" + en.target.id));
+}, { rootMargin: "-40% 0px -55% 0px" });
+new MutationObserver(() => document.querySelectorAll("main .card").forEach(c => io.observe(c))).observe($("main"), { childList: true, subtree: true });
+load();
+</script>
+</body>
+</html>

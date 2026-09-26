@@ -1,0 +1,303 @@
+{
+ "qwen/qwen3.5-9b": {
+  "0.1": {
+   "summary": {
+    "valid_json": 1.0,
+    "judge_accuracy": 0.786,
+    "final_accuracy": 1.0,
+    "consistent_final_order": 1.0,
+    "consistent_picks": 0.857,
+    "mean_conf_drift": 0.0422,
+    "max_conf_drift": 0.15,
+    "mean_sec": 42.9,
+    "hallucinated_ids": 0
+   },
+   "cases": {
+    "q001": [
+     {
+      "sec": 65.0,
+      "valid": true,
+      "unknown": 0,
+      "conf": {
+       "vKKBGGCI": 0.95,
+       "vPRCArrayAllotment": 0.85,
+       "vPRCArrayCashFinancing": 0.82
+      },
+      "picks": [
+       "vKKBGGCI",
+       "vPRCArrayAllotment",
+       "vPRCArrayCashFinancing"
+      ],
+      "final": [
+       "vPRCArrayAllotment",
+       "vKKBGGCI",
+       "vPRCArrayCashFinancing",
+       "vCustomerBehaviours",
+       "vCustomerRiskInfoMonthly"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     },
+     {
+      "sec": 66.5,
+      "valid": true,
+      "unknown": 0,
+      "conf": {
+       "vPRCArrayCashFinancing": 0.95,
+       "vPRCArrayAllotment": 0.85,
+       "vKKBGGCI": 0.8
+      },
+      "picks": [
+       "vPRCArrayCashFinancing",
+       "vPRCArrayAllotment",
+       "vKKBGGCI"
+      ],
+      "final": [
+       "vPRCArrayAllotment",
+       "vKKBGGCI",
+       "vPRCArrayCashFinancing",
+       "vCustomerBehaviours",
+       "vCustomerRiskInfoMonthly"
+      ],
+      "judge_ok": false,
+      "final_ok": true
+     }
+    ],
+    "q002": [
+     {
+      "sec": 65.1,
+      "valid": true,
+      "unknown": 0,
+      "conf": {
+       "vCardLimitFullness": 1.0,
+       "vPRCCard": 0.85,
+       "vPRCArrayCard": 0.85
+      },
+      "picks": [
+       "vCardLimitFullness",
+       "vPRCCard",
+       "vPRCArrayCard"
+      ],
+      "final": [
+       "vCardLimitFullness",
+       "vPRCArrayCard",
+       "vPRCCard",
+       "vRetailCustomerChurnTrainingInput",
+       "vValueChainTracking"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     },
+     {
+      "sec": 71.4,
+      "valid": true,
+      "unknown": 0,
+      "conf": {
+       "vCardLimitFullness": 1.0,
+       "vPRCCard": 0.85,
+       "vPRCArrayCard": 0.85
+      },
+      "picks": [
+       "vCardLimitFullness",
+       "vPRCCard",
+       "vPRCArrayCard"
+      ],
+      "final": [
+       "vCardLimitFullness",
+       "vPRCArrayCard",
+       "vPRCCard",
+       "vRetailCustomerChurnTrainingInput",
+       "vValueChainTracking"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     }
+    ],
+    "q003": [
+     {
+      "sec": 59.5,
+      "valid": true,
+      "unknown": 0,
+      "conf": {
+       "vCustomerMoneyTransferSummary": 0.85
+      },
+      "picks": [
+       "vCustomerMoneyTransferSummary"
+      ],
+      "final": [
+       "vCustomerMoneyTransferSummary",
+       "rpt_EDWCorporateLoyaltySegmentationCustomerInput",
+       "vFinancialStory",
+       "vCustomerGeneralInfo",
+       "vLeasingFundPayment"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     },
+     {
+      "sec": 49.9,
+      "valid": true,
+      "unknown": 0,
+      "conf": {
+       "vCustomerMoneyTransferSummary": 0.75
+      },
+      "picks": [
+       "vCustomerMoneyTransferSummary"
+      ],
+      "final": [
+       "vCustomerMoneyTransferSummary",
+       "rpt_EDWCorporateLoyaltySegmentationCustomerInput",
+       "vFinancialStory",
+       "vCustomerGeneralInfo",
+       "vLeasingFundPayment"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     }
+    ],
+    "q001-kapsam": [
+     {
+      "sec": 100.8,
+      "valid": true,
+      "unknown": 0,
+      "conf": {
+       "vCreditRiskLimitSendDataAccount": 0.95,
+       "vKKBGGCI": 0.85
+      },
+      "picks": [
+       "vCreditRiskLimitSendDataAccount",
+       "vKKBGGCI"
+      ],
+      "final": [
+       "vKKBGGCI",
+       "vCreditRiskLimitSendDataAccount",
+       "vCustomerBehaviours",
+       "vCustomerRiskInfoMonthly",
+       "vCrossSellTrainingInput"
+      ],
+      "judge_ok": false,
+      "final_ok": true
+     },
+     {
+      "sec": 70.8,
+      "valid": true,
+      "unknown": 0,
+      "conf": {
+       "vCreditRiskLimitSendDataAccount": 0.95,
+       "vKKBGGCI": 0.85
+      },
+      "picks": [
+       "vCreditRiskLimitSendDataAccount",
+       "vKKBGGCI"
+      ],
+      "final": [
+       "vKKBGGCI",
+       "vCreditRiskLimitSendDataAccount",
+       "vCustomerBehaviours",
+       "vCustomerRiskInfoMonthly",
+       "vCrossSellTrainingInput"
+      ],
+      "judge_ok": false,
+      "final_ok": true
+     }
+    ],
+    "n001": [
+     {
+      "sec": 15.9,
+      "valid": true,
+      "unknown": 0,
+      "conf": {},
+      "picks": [],
+      "final": [
+       "vLicensePlatePledge",
+       "vLeasingVehiclePledge",
+       "vVehiclePledge",
+       "vCarOwnerShipPrediction",
+       "vCustomerBehaviours"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     },
+     {
+      "sec": 2.3,
+      "valid": true,
+      "unknown": 0,
+      "conf": {},
+      "picks": [],
+      "final": [
+       "vLicensePlatePledge",
+       "vLeasingVehiclePledge",
+       "vVehiclePledge",
+       "vCarOwnerShipPrediction",
+       "vCustomerBehaviours"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     }
+    ],
+    "n002": [
+     {
+      "sec": 10.7,
+      "valid": true,
+      "unknown": 0,
+      "conf": {},
+      "picks": [],
+      "final": [
+       "vForeignTradeScenarioandLabel",
+       "rpt_EDWCorporateProductSegmentationCustomerInput"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     },
+     {
+      "sec": 2.4,
+      "valid": true,
+      "unknown": 0,
+      "conf": {},
+      "picks": [],
+      "final": [
+       "vForeignTradeScenarioandLabel",
+       "rpt_EDWCorporateProductSegmentationCustomerInput"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     }
+    ],
+    "n003": [
+     {
+      "sec": 18.3,
+      "valid": true,
+      "unknown": 0,
+      "conf": {},
+      "picks": [],
+      "final": [
+       "vNeovaPolicyList",
+       "vCrossSellPredictionInput",
+       "vCrossSellTrainingInput",
+       "vRealEstateMortgageDetail",
+       "vPersonGeneralInfo"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     },
+     {
+      "sec": 2.3,
+      "valid": true,
+      "unknown": 0,
+      "conf": {},
+      "picks": [],
+      "final": [
+       "vNeovaPolicyList",
+       "vCrossSellPredictionInput",
+       "vCrossSellTrainingInput",
+       "vRealEstateMortgageDetail",
+       "vPersonGeneralInfo"
+      ],
+      "judge_ok": true,
+      "final_ok": true
+     }
+    ]
+   }
+  }
+ }
+}

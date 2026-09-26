@@ -300,3 +300,100 @@ seçim tarayıcıda saklanır. Klasik tasarım değişmedi. Evren, aynı DOM ve 
 - Cam paneller, dönen ışık halkalı arama kutusu, 3B eğilen kartlar, iki sütunlu sonuçlar.
 - LLM tümleşik GPU'yu paylaştığı için animasyon 30 fps (hakem beklenirken 20 fps) ile
   sınırlıdır; zaman gerçek saate bağlıdır (seyrek karede yolculuk yavaşlamaz); `prefers-reduced-motion` açıksa hareket kapanır. Dış kaynak yoktur.
+
+
+## ADR-025 — Model laboratuvarı: hakem seçimi ölçümle yapılır
+
+**Bağlam.** Hakem modeli (§10) ve sıcaklığı şimdiye kadar tek seferlik betiklerle seçildi;
+yeni model geldikçe elle tekrar gerekiyordu, tutarlılık (aynı girdiye aynı cevap) ölçülmüyordu.
+
+**Karar.** `vsa lab` ve Ayarlar → Model laboratuvarı. Her yapılandırma (model × sıcaklık ×
+düşünme modu) aynı sabit aday listelerini görür: golden set ask soruları, Ek A.3'ün doğrulanmış
+talep alanları (yapısal alanlar hariç) ve negatif sorular; her soru birkaç kez sorulur.
+Beklenen tablo aday listesinde yoksa vaka doğruluğa sayılmaz, tutarlılığa sayılır.
+Kalite = 0.45·hakem doğruluğu + 0.25·nihai doğruluk + 0.15·aynı seçim + 0.15·aynı sıra
+− 0.5·güven sapması. Geçersiz JSON veya uydurma aday kimliği (ADR-002) yapılandırmayı eler.
+Kaliteleri 0.02 içinde olanlardan hızlısı önerilir. Düşünme modu model başına otomatik
+bulunur (none → low → gönderme). Sonuçlar `eval/lab.json`'a birikir.
+
+**Sonuç.** Model değişikliği bir tıklık ölçüm + "Uygula" ile yapılır; karar sayılara dayanır.
+
+## ADR-026 — Bulut modelleri yalnız ölçüm için (NVIDIA API kataloğu)
+
+**Bağlam.** Bu laptopta (Intel iGPU) büyük modeller soru başına dakikalar sürüyor; üretim ise
+daha güçlü GPU'lu makinelerde çalışacak. Hangi açık modelin üretime kurulacağına karar vermek
+için büyük modellerin kalitesini ölçmek gerekiyor. Kullanıcı, ölçüm için verinin kurum
+dışına çıkmasını kabul etti (2026-09-26).
+
+**Karar.** `cloud` ayarları (varsayılan kapalı; NVIDIA `integrate.api.nvidia.com/v1`, OpenAI
+uyumlu). Bulut modelleri laboratuvarda `cloud:` önekiyle ölçülür; uygulamanın hakemi hiçbir
+zaman buluta bağlanmaz ve ekran bulut satırları için "Uygula" sunmaz. Ölçüm sırasında dışarı
+çıkan: test soruları, aday tabloların adları, veri seti grupları, kolon adları ve açıklamaları
+(müşteri verisi yok). İstemci 429/5xx'te bekleyip yeniden dener; modelin reddettiği özellikleri
+(sistem mesajı, JSON şeması, düşünme parametresi) ilk HTTP 400'den öğrenip onsuz devam eder.
+Anahtar tarayıcıya gönderilmez.
+
+**Sonuç.** Açık ağırlıklı bir modelin bulutta ölçülen kalitesi, aynı model kurum içi GPU'ya
+kurulduğunda da geçerlidir; kapalı modeller (yalnız bulutta olanlar) referans niteliğindedir.
+
+**Güncelleme (2026-09-26, kullanıcı kararı).** Kullanıcı hakemi de buluta almaya karar verdi:
+`llm.provider: cloud`, model `google/gemma-4-31b-it` (NVIDIA), sıcaklık 0, düşünme kapalı,
+`llm.seed: 42`. Sohbet bulutta, embedding (bge-m3, vektör indeksi) yerelde kalır
+(`SplitClient`). Bu ayarla uygulamadaki her soruda aday tabloların adları, kolon adları ve
+açıklamaları NVIDIA'ya gider; müşteri verisi gitmez. Servis erişilemezse hakem sessizce devre
+dışı kalır ve sonuç kural tabanlıdır (ADR-008). Gerekçe (laboratuvar): gemma-4-31b hakem
+doğruluğu %85 / nihai %88 ile en doğru model; seed'siz tutarlılığı %81 idi — seed ile yeniden
+ölçüldü (eval/lab.json, `|s42` satırı). Üretimde aynı açık model kurum içi GPU'ya kurulup
+`provider: local` ile çalıştırılabilir.
+
+**Seed ölçümü (2026-09-26).** seed 42 ile 3 tekrarda aynı seçim %81 → %88; hakem doğruluğu
+%85, nihai %87. Modelin ilk tercihi 16/16 vakada her tekrarda aynı; oynama yalnız kuyrukta
+(2 vakada 0,60–0,65 güvenli üçüncü aday bazen ekleniyor), nihai 1. tablo 16'da 1 vakada
+değişti. Neden: paylaşımlı sunucunun toplu işlemesi; seed tam belirlenimcilik sağlamıyor.
+Çoğunluk oyu (hakemi N kez çağırıp ortalama) önerildi; kullanıcı gerek görmedi — mevcut
+haliyle kalır. Kurum içi GPU'da tek kullanıcılı çalışmada sorun beklenmez.
+
+## ADR-027 — Arayüz tek ekran, tek görünüm
+
+**Karar (2026-09-26, kullanıcı kararı).** Web arayüzünde yalnız soru sorma ekranı kalır;
+"Hedef tablo" (toplu talep) ve "Keşfet" sekmeleri ile sekme şeridi kaldırıldı. Klasik görünüm
+ve açık/koyu tema düğmesi de kaldırıldı; tek görünüm Evren'dir (ADR-024), ayarlar sayfası da
+onu kullanır.
+
+**Gerekçe.** İş birimi kullanıcısı tek bir şey yapar: talebini yazar, cevabı okur. Ekranlar
+sadeleştirildi: açılışta yalnız başlık ve arama çubuğu; soru sorulunca çubuk sağ üstte bir
+düğmeye toplanır. Sonuç ekranında cevap ve tablo kartları öne çıkar; kavram kapsaması, skor
+bileşenleri, notlar ve yöntem kapalı "Ayrıntılar" bölümlerindedir.
+
+**Sonuç.** Toplu talep yalnız `vsa batch` ile yapılır; `/api/batch` ve `/api/objects` sunucuda
+kalır (galaksi, aramada aday tabloları `/api/objects`'ten çeker). Alt bilgi yalnız sözlük
+dosyasının güncellenme tarihini gösterir (`/api/status` → `updated`).
+
+## ADR-028 — Tablo seviyesinde konu uyumu
+
+**Karar (2026-09-26).** Obje skoruna beşinci bileşen eklendi: **konu uyumu** (`topic`,
+`scoring/topic.py`). İki parçası var:
+- *Seyrek:* her tablo tek bir BM25 dokümanıdır (tablo adı ×4, kolon adları, eş anlamlılar,
+  açıklamalar ×0.3). BM25 uzunluk normalizasyonu geniş tabloları doğal olarak cezalandırır.
+- *Yoğun:* her tablo için bir profil metni (adı, kolon adları, Türkçe eş anlamlılar;
+  `index/dense.py::object_text`) bge-m3 ile vektörlenir (`object_vectors.npy`,
+  `vsa index --dense` kurar, ~45 sn). Sorgu vektörüne en yakın 15 tablo aday havuzuna da
+  eklenir. Model çok dilli olduğu için "günlük kredi kartı işlemleri" ile
+  `vDailyCreditCardTransactionPool` ortak kelime olmadan eşleşir.
+Konu = 0.4 × seyrek + 0.6 × yoğun, her ikisi aynı talebin adayları içinde 0–1'e ölçeklenir.
+
+Ağırlıklar: en iyi kolon 0.35, kapsama 0.21, zaman 0.07, granülerlik 0.07, konu 0.30.
+İlk dördü §8'in 5:3:1:1 oranını korur; konu uyumu olmadığında (batch modu, vektör indeksi
+yok) ADR-011 gereği yeniden normalize olur ve eski davranış birebir döner. Batch modu konu
+uyumunu kullanmaz (alan arar, tablo değil; ADR-016/017 ayarları korunur).
+
+**Gerekçe.** Kapsama "kavram tablonun herhangi bir kolonunda geçiyor mu" diye bakar; 80–200
+kolonlu model girdisi ve rapor tabloları neredeyse her kavramı taşıdığı için kapsama ve en
+iyi kolon tavana çıkıyor, sıralamayı eşitlik bozucular belirliyordu. Türkçe talep ile
+İngilizce tablo/kolon adları arasındaki köprü de yalnız terim sözlüğüne kalıyordu.
+
+**Ölçüm (hakem kapalı).** Golden set değişmedi (ask recall@1 1.00, batch 0.70/0.80/0.90,
+negatif set yanlış cevap 0). Cevabı sözlükte açıkça bulunan 30 gerçekçi iş sorusunda doğru
+tablo 1. sırada %30 → %47, ilk 3'te %53 → %60, ilk 5'te %60 → %73. Kalan kaçırmaların çoğu
+yine geniş model girdisi tabloları (`vRetailCustomerChurn*`, `vCrossSell*`): bunlar için
+tablo türü bilgisi (model girdisi / rapor / ana tablo) sözlüğe eklenirse ayrıca ele alınabilir.

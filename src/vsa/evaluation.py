@@ -32,7 +32,7 @@ import yaml
 from vsa.batch import BatchAnalyzer
 from vsa.batch import field_query as batch_field_query
 from vsa.expansion.query_expander import QueryExpander
-from vsa.index.dense import DenseIndex
+from vsa.index.dense import DenseIndex, ObjectDenseIndex
 from vsa.models import Dictionary, ObjectMatch, RequestField, Verdict
 from vsa.pipeline import Engine
 from vsa.text.normalize import split_camel
@@ -159,7 +159,14 @@ def restricted_engine(engine: Engine, exclude_object_prefix: str) -> Engine:
     dense = None
     if engine.dense is not None:
         dense = DenseIndex(engine.dense.vectors[[c.id for c in kept]], engine.dense.model)
-    return Engine(dictionary, engine.settings, engine.resources, llm=engine.llm, dense=dense)
+    restricted = Engine(dictionary, engine.settings, engine.resources, llm=engine.llm, dense=dense)
+    if engine.object_dense is not None:
+        od = engine.object_dense
+        rows = [i for i, k in enumerate(od.keys) if k in restricted.objects]
+        restricted.object_dense = ObjectDenseIndex(
+            [od.keys[i] for i in rows], od.vectors[rows], od.model
+        )
+    return restricted
 
 
 def with_expansion(engine: Engine, terms: bool, synonyms: bool) -> Engine:

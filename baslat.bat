@@ -6,7 +6,7 @@ cd /d "%~dp0"
 chcp 65001 >nul
 set PYTHONIOENCODING=utf-8
 set LMS=%USERPROFILE%\.lmstudio\bin\lms.exe
-set CHAT_MODEL=qwen/qwen3.5-9b
+set CHAT_MODEL=
 set EMBED_MODEL=text-embedding-bge-m3
 
 if not exist ".venv\Scripts\vsa.exe" (
@@ -14,12 +14,15 @@ if not exist ".venv\Scripts\vsa.exe" (
   pause & exit /b 1
 )
 
+rem Hakem modeli ayarlardan okunur; hakem bulutta ise yerelde yalniz embedding yuklenir.
+for /f "usebackq delims=" %%m in (`.venv\Scripts\python -c "from vsa.config import load_settings as l; s=l(); print(s.llm.model if s.llm.enabled and s.llm.provider == 'local' else '')"`) do set CHAT_MODEL=%%m
+
 if exist "%LMS%" (
   echo [1/3] LM Studio sunucusu baslatiliyor...
   "%LMS%" server start >nul 2>&1
-  echo [2/3] Modeller yukleniyor: %EMBED_MODEL% + %CHAT_MODEL%
+  echo [2/3] Modeller yukleniyor: %EMBED_MODEL% %CHAT_MODEL%
   "%LMS%" load %EMBED_MODEL% -y >nul 2>&1
-  "%LMS%" load %CHAT_MODEL% --context-length 8192 --gpu max -y >nul 2>&1
+  if defined CHAT_MODEL "%LMS%" load %CHAT_MODEL% --context-length 8192 --gpu max -y >nul 2>&1
 ) else (
   echo [i] LM Studio bulunamadi; uygulama LLM'siz ^(yalniz kural tabanli^) calisacak.
 )

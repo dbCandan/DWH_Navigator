@@ -14,7 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -28,6 +28,10 @@ log = logging.getLogger(__name__)
 
 VECTORS_FILE = "dense_vectors.npy"
 META_FILE = "dense_meta.json"
+OBJECT_VECTORS_FILE = "object_vectors.npy"
+OBJECT_META_FILE = "object_meta.json"
+OBJECT_TEXT_COLUMNS = 60
+OBJECT_TEXT_SYNONYMS = 40
 
 
 def column_text(col: DictColumn) -> str:
@@ -38,6 +42,24 @@ def column_text(col: DictColumn) -> str:
         parts.append("Eş anlamlılar: " + ", ".join(col.synonyms))
     parts.append(f"Tablo: {col.object_name}")
     return " | ".join(p for p in parts if p)
+
+
+def object_text(columns: Sequence[DictColumn]) -> str:
+    """What the embedding model sees for one table (ADR-028): its name spelled out,
+    its column names and the Turkish synonyms the dictionary gives them. The model is
+    multilingual, so a Turkish request meets English table and column names here."""
+    first = columns[0]
+    parts = [f"Tablo: {first.object_name} ({' '.join(split_camel(first.object_name))})"]
+    names = [" ".join(split_camel(c.column)) for c in columns[:OBJECT_TEXT_COLUMNS]]
+    parts.append("Kolonlar: " + ", ".join(names))
+    synonyms: list[str] = []
+    for c in columns:
+        for s in c.synonyms:
+            if s not in synonyms:
+                synonyms.append(s)
+    if synonyms:
+        parts.append("Eş anlamlılar: " + ", ".join(synonyms[:OBJECT_TEXT_SYNONYMS]))
+    return " | ".join(parts)
 
 
 def text_key(model: str, text: str) -> str:
@@ -113,6 +135,58 @@ def build_dense_index(
         encoding="utf-8",
     )
     return DenseIndex(matrix, model)
+
+
+@dataclass(slots=True)
+class ObjectDenseIndex:
+    """One vector per table (ADR-028); row i belongs to ``keys[i]``."""
+
+    keys: list[str]
+    vectors: np.ndarray
+    model: str
+
+    def similarity(self, query: np.ndarray) -> dict[str, float]:
+        sims = self.vectors @ query
+        return {k: float(s) for k, s in zip(self.keys, sims, strict=True)}
+
+
+def build_object_index(
+    objects: Mapping[str, Sequence[DictColumn]],
+    client: LLMClient,
+    model: str,
+    directory: Path,
+    batch_size: int = 16,
+) -> ObjectDenseIndex:
+    """Embed every table profile (sharing the column vector cache) and save."""
+    directory.mkdir(parents=True, exist_ok=True)
+    cache = _load_cache(directory, model)
+    keys = sorted(objects)
+    texts = [object_text(objects[k]) for k in keys]
+    hashes = [text_key(model, t) for t in texts]
+    missing = [i for i, h in enumerate(hashes) if h not in cache]
+    for start in range(0, len(missing), batch_size):
+        chunk = missing[start : start + batch_size]
+        for i, vec in zip(chunk, client.embed([texts[i] for i in chunk]), strict=True):
+            cache[hashes[i]] = np.asarray(vec, dtype=np.float32)
+    _save_cache(directory, model, cache)
+    matrix = normalize(np.stack([cache[h] for h in hashes]))
+    np.save(directory / OBJECT_VECTORS_FILE, matrix)
+    (directory / OBJECT_META_FILE).write_text(
+        json.dumps({"model": model, "keys": keys}), encoding="utf-8"
+    )
+    return ObjectDenseIndex(keys, matrix, model)
+
+
+def load_object_index(directory: Path, object_keys: Iterable[str]) -> ObjectDenseIndex | None:
+    meta_path = directory / OBJECT_META_FILE
+    if not meta_path.exists() or not (directory / OBJECT_VECTORS_FILE).exists():
+        return None
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    if sorted(object_keys) != meta["keys"]:
+        log.warning("Tablo vektörleri sözlükle uyumsuz; `vsa index --dense` çalıştırın")
+        return None
+    vectors = np.load(directory / OBJECT_VECTORS_FILE).astype(np.float32)
+    return ObjectDenseIndex(list(meta["keys"]), vectors, str(meta["model"]))
 
 
 def load_dense_index(directory: Path, n_columns: int) -> DenseIndex | None:

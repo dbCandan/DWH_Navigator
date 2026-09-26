@@ -9,7 +9,7 @@ import logging
 import math
 import time
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -27,7 +27,13 @@ from vsa.expansion.query_expander import (
 )
 from vsa.features import ColumnFeatures, build_features
 from vsa.index.bm25 import BM25Index, weighted_fields
-from vsa.index.dense import DenseIndex, load_dense_index, normalize
+from vsa.index.dense import (
+    DenseIndex,
+    ObjectDenseIndex,
+    load_dense_index,
+    load_object_index,
+    normalize,
+)
 from vsa.index.store import load_index, save_index
 from vsa.llm.client import LLMClient, LLMError, NullClient, client_from_settings
 from vsa.llm.judge import JudgeResult, judge
@@ -48,6 +54,7 @@ from vsa.scoring.explain import (
     summary_sentence,
 )
 from vsa.scoring.rules import covers, score_column
+from vsa.scoring.topic import build_topic_index, topic_scores
 from vsa.text.normalize import tokenize
 from vsa.validate import validate
 
@@ -55,6 +62,9 @@ log = logging.getLogger(__name__)
 
 CLARIFICATIONS_PATH = Path("config/clarifications.yaml")
 NEAR_MISS_COUNT = 3
+# Tables most similar to the request by their profile vector join the candidate pool
+# even when none of their columns did (ADR-028).
+OBJECT_POOL = 15
 
 
 @dataclass(slots=True)
@@ -92,6 +102,7 @@ class Engine:
         self.resources = resources
         self.llm: LLMClient = llm or NullClient()
         self.dense = dense
+        self.object_dense: ObjectDenseIndex | None = None
         self._qvec_cache: dict[str, np.ndarray] = {}
         self._expand_cache: dict[str, list[str]] = {}
         self._dense_error = ""
@@ -107,6 +118,9 @@ class Engine:
             k: key_columns([f.col.column for f in o.features]) for k, o in self.objects.items()
         }
         self.column_keys = frozenset(c.key for c in dictionary.columns)
+        self.topic_keys, self.topic_index = build_topic_index(
+            {k: o.features for k, o in self.objects.items()}
+        )
         self._df_cache: dict[Concept, int] = {}
 
         s = settings.search
@@ -131,13 +145,17 @@ class Engine:
     def from_dictionary_file(cls, settings: Settings) -> Engine:
         d = settings.dictionary
         dictionary = load_dictionary(Path(d.path), d.sheet, d.quality_sheet)
-        return cls(
+        engine = cls(
             dictionary,
             settings,
             Resources.from_settings(settings),
-            llm=client_from_settings(settings.llm, embeddings=settings.dense.enabled),
+            llm=client_from_settings(
+                settings.llm, embeddings=settings.dense.enabled, cloud=settings.cloud
+            ),
             dense=_dense_for(settings, len(dictionary.columns)),
         )
+        engine.object_dense = _object_dense_for(settings, engine.objects)
+        return engine
 
     @classmethod
     def from_index(cls, settings: Settings) -> Engine:
@@ -147,9 +165,12 @@ class Engine:
             settings,
             Resources.from_settings(settings),
             bm25=bm25,
-            llm=client_from_settings(settings.llm, embeddings=settings.dense.enabled),
+            llm=client_from_settings(
+                settings.llm, embeddings=settings.dense.enabled, cloud=settings.cloud
+            ),
             dense=_dense_for(settings, len(dictionary.columns)),
         )
+        engine.object_dense = _object_dense_for(settings, engine.objects)
         engine.index_meta = meta
         return engine
 
@@ -192,12 +213,14 @@ class Engine:
         *,
         use_llm: bool = True,
         limit: int | None = None,
+        topic_fit: bool = True,
     ) -> tuple[list[ObjectMatch], ExpandedQuery]:
         """Ranked objects for a query (no answer threshold). Objects in ``include`` are
         always scored and kept, even when search alone would not reach them — batch
         mode uses this to judge every field against the core table. ``use_llm=False``
         skips the chat model (LLM query expansion); embeddings still run. ``limit``
-        overrides how many objects are returned."""
+        overrides how many objects are returned. ``topic_fit=False`` leaves out the
+        table-level topic component (ADR-028); batch mode scores fields, not tables."""
         s = self.settings
         q = self.expander.expand(query)
         self._weigh_concepts(q)
@@ -221,6 +244,12 @@ class Engine:
 
         forced = {k for k in include if k in self.objects}
         candidate_objects = {self.features[i].col.object_key for i in pool} | forced
+        object_sim: dict[str, float] | None = None
+        if qvec is not None and self.object_dense is not None:
+            object_sim = self.object_dense.similarity(qvec)
+            if topic_fit:
+                best = sorted(object_sim, key=lambda k: -object_sim[k])[:OBJECT_POOL]
+                candidate_objects |= set(best)
 
         dense_sim: dict[int, float] = {}
         if qvec is not None and self.dense is not None and dense_hi > dense_lo:
@@ -241,12 +270,26 @@ class Engine:
                     dense=dense_sim.get(f.col.id) if dense_sim else None,
                     dense_weight=s.dense.weight if dense_sim else 0.0,
                 )
+        topic = (
+            topic_scores(
+                self.topic_keys,
+                self.topic_index,
+                q.sparse_terms,
+                sorted(candidate_objects),
+                {k: self.objects[k].features for k in candidate_objects},
+                dense_sim or None,
+                object_sim,
+            )
+            if topic_fit and s.scoring.object.topic > 0
+            else None
+        )
         ranked = aggregate(
             hits,
             q,
             {k: self.objects[k] for k in candidate_objects},
             s.scoring.object,
             s.scoring.min_candidate_score,
+            topic,
         )
         if limit is None:
             limit = s.search.top_k_objects + NEAR_MISS_COUNT
@@ -411,6 +454,14 @@ class Engine:
             llm_model=self.llm.model if judged is not None else "",
             llm_unknown_ids=judged.unknown_ids if judged is not None else 0,
         )
+
+
+def _object_dense_for(
+    settings: Settings, objects: Mapping[str, ObjectColumns]
+) -> ObjectDenseIndex | None:
+    if not settings.dense.enabled:
+        return None
+    return load_object_index(Path(settings.index.dir), objects)
 
 
 def _dense_for(settings: Settings, n_columns: int) -> DenseIndex | None:
