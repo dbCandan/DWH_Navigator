@@ -303,9 +303,249 @@ kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); 
   .explorer { grid-template-columns: 1fr; } .cov-row { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* =====================================================================
+   SKIN 2 — "EVREN": the warehouse as a living galaxy.
+   Everything below is scoped to html[data-skin="evren"]; the classic skin
+   above is untouched. Shared DOM, shared JS — only the look and motion differ.
+   ===================================================================== */
+#cosmos, #hud, #star-tip, .orb { display: none; }
+@property --ang { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+
+html[data-skin="evren"] {
+  color-scheme: dark;
+  --paper: #03040b; --surface: rgba(14, 18, 40, .58); --surface-2: rgba(130, 150, 255, .09);
+  --line: rgba(140, 165, 255, .2); --text: #eef1ff; --muted: #a3acd6; --faint: #6f78a3;
+  --ink: #ffffff; --ink-2: #8b5cff; --accent: #7cf4ff; --accent-soft: rgba(124, 244, 255, .13);
+  --high: #3dfcb4; --high-bg: rgba(61, 252, 180, .13); --mid: #ffd166; --mid-bg: rgba(255, 209, 102, .13);
+  --low: #ff5d8f; --low-bg: rgba(255, 93, 143, .14); --derive: #ff9f5a; --derive-bg: rgba(255, 159, 90, .14);
+  --shadow: 0 0 0 1px rgba(124, 244, 255, .05), 0 24px 70px rgba(0, 0, 0, .55);
+  --radius: 20px;
+  --glow: 0 0 24px rgba(124, 244, 255, .35), 0 0 60px rgba(139, 92, 255, .25);
+  --grad: linear-gradient(120deg, #7cf4ff 0%, #8b5cff 45%, #ff5dd6 75%, #7cf4ff 100%);
+}
+html[data-skin="evren"] body { background: transparent; min-height: 100vh; }
+html[data-skin="evren"] {
+  background-attachment: fixed;
+  background:
+    radial-gradient(1200px 700px at 78% -10%, rgba(139, 92, 255, .22), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(255, 93, 214, .14), transparent 60%),
+    radial-gradient(700px 500px at 50% 50%, rgba(40, 60, 160, .18), transparent 70%),
+    #03040b;
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+html[data-skin="evren"] body::before {
+  content: ""; position: fixed; inset: -20%; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(40% 30% at 30% 40%, rgba(124, 244, 255, .10), transparent 70%),
+    radial-gradient(35% 25% at 70% 65%, rgba(255, 93, 214, .09), transparent 70%),
+    radial-gradient(30% 30% at 55% 25%, rgba(139, 92, 255, .12), transparent 70%);
+  filter: blur(30px); animation: nebula 38s ease-in-out infinite alternate;
+}
+@keyframes nebula { from { transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1); } to { transform: translate3d(3%, 2%, 0) rotate(8deg) scale(1.08); } }
+html[data-skin="evren"] #cosmos { display: block; position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; }
+html[data-skin="evren"] header.top, html[data-skin="evren"] main, html[data-skin="evren"] footer { position: relative; z-index: 2; }
+
+/* ---------- floating glass command bar ---------- */
+html[data-skin="evren"] header.top {
+  position: sticky; top: 12px; margin: 12px auto 0; max-width: 1180px; width: calc(100% - 24px);
+  border: 1px solid var(--line); border-radius: 18px;
+  background: rgba(8, 11, 28, .55); backdrop-filter: blur(18px) saturate(150%);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+html[data-skin="evren"] header.top .wrap { max-width: none; }
+html[data-skin="evren"] .brand b {
+  background: var(--grad); background-size: 300% 100%; -webkit-background-clip: text; background-clip: text;
+  color: transparent; animation: shimmer 9s linear infinite; letter-spacing: .6px;
+}
+html[data-skin="evren"] .brand svg { filter: drop-shadow(0 0 8px rgba(124, 244, 255, .7)); animation: spin 24s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { to { background-position: 300% 0; } }
+html[data-skin="evren"] .tab { color: var(--muted); letter-spacing: .3px; transition: color .2s, box-shadow .3s, background .3s; }
+html[data-skin="evren"] .tab[aria-selected="true"] {
+  color: #fff; background: linear-gradient(135deg, rgba(124, 244, 255, .2), rgba(139, 92, 255, .3));
+  box-shadow: 0 0 0 1px rgba(124, 244, 255, .35), 0 0 22px rgba(124, 244, 255, .25);
+}
+html[data-skin="evren"] .pill, html[data-skin="evren"] .icon-btn, html[data-skin="evren"] .ghost {
+  background: rgba(20, 26, 56, .6); border-color: var(--line); color: var(--muted);
+}
+html[data-skin="evren"] .dot.on { background: var(--high); box-shadow: 0 0 10px var(--high); animation: beacon 2.4s ease-in-out infinite; }
+@keyframes beacon { 50% { box-shadow: 0 0 2px var(--high); } }
+html[data-skin="evren"] #theme { display: none; }
+.skin-btn { font-weight: 700; letter-spacing: .3px; white-space: nowrap; }
+.brand b { white-space: nowrap; }
+html[data-skin="evren"] .skin-btn {
+  color: #06121a; border: 0; background: var(--grad); background-size: 300% 100%;
+  animation: shimmer 6s linear infinite; box-shadow: var(--glow);
+}
+
+/* ---------- hero: an orb above the galaxy ---------- */
+html[data-skin="evren"] .hero { min-height: calc(100vh - 170px); display: flex; flex-direction: column; justify-content: center; padding: 30px 0 40px; }
+html[data-skin="evren"] .hero.compact { min-height: 0; padding: 26px 0 6px; }
+html[data-skin="evren"] .compass-big { display: none; }
+html[data-skin="evren"] .orb {
+  display: block; position: relative; width: 132px; height: 132px; margin: 0 auto 6px;
+  animation: float 7s ease-in-out infinite;
+}
+html[data-skin="evren"] .hero.compact .orb { display: none; }
+.orb::before {
+  content: ""; position: absolute; inset: 26px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff 0%, #9ff8ff 12%, #7cf4ff 30%, #8b5cff 62%, #2a0f5c 100%);
+  box-shadow: 0 0 40px rgba(124, 244, 255, .7), 0 0 120px rgba(139, 92, 255, .6), inset -10px -14px 30px rgba(20, 0, 60, .7);
+  animation: breathe 5s ease-in-out infinite;
+}
+.orb i { position: absolute; inset: 0; border-radius: 50%; border: 1.5px solid rgba(124, 244, 255, .55); transform-style: preserve-3d; }
+.orb i:nth-child(1) { animation: ring1 9s linear infinite; }
+.orb i:nth-child(2) { inset: 8px; border-color: rgba(255, 93, 214, .5); animation: ring2 12s linear infinite; }
+.orb i:nth-child(3) { inset: -10px; border-style: dashed; border-color: rgba(139, 92, 255, .45); animation: ring3 18s linear infinite; }
+.orb i::after { content: ""; position: absolute; top: -4px; left: 50%; width: 7px; height: 7px; border-radius: 50%; background: #fff; box-shadow: 0 0 12px #7cf4ff, 0 0 24px #7cf4ff; }
+@keyframes ring1 { from { transform: rotateX(70deg) rotateZ(0deg); } to { transform: rotateX(70deg) rotateZ(360deg); } }
+@keyframes ring2 { from { transform: rotateY(65deg) rotateZ(0deg); } to { transform: rotateY(65deg) rotateZ(-360deg); } }
+@keyframes ring3 { from { transform: rotateX(20deg) rotateY(40deg) rotateZ(0deg); } to { transform: rotateX(20deg) rotateY(40deg) rotateZ(360deg); } }
+@keyframes breathe { 50% { transform: scale(1.06); filter: brightness(1.15); } }
+@keyframes float { 50% { transform: translateY(-10px); } }
+html[data-skin="evren"] .hero h1 {
+  font-size: clamp(36px, 6.4vw, 76px); letter-spacing: -1.6px; font-weight: 800; line-height: 1.02; margin: 18px 0 14px;
+  background: linear-gradient(120deg, #ffffff 0%, #bff9ff 30%, #b9a2ff 55%, #ffffff 80%); background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  animation: shimmer 12s linear infinite; filter: drop-shadow(0 0 30px rgba(124, 244, 255, .25));
+}
+html[data-skin="evren"] .hero .lead { color: var(--muted); font-size: 16.5px; }
+html[data-skin="evren"] .hero > .searchbox, html[data-skin="evren"] .hero > .examples { width: 100%; }
+
+/* ---------- search: a beam with a rotating light rim ---------- */
+html[data-skin="evren"] .searchbox {
+  position: relative; isolation: isolate; border: 0; border-radius: 22px; padding: 14px 14px 14px 22px;
+  background: rgba(8, 12, 30, .72); backdrop-filter: blur(16px); box-shadow: 0 20px 80px rgba(0, 0, 0, .6);
+}
+html[data-skin="evren"] .searchbox::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; z-index: -1;
+  background: conic-gradient(from var(--ang), transparent 0 12%, #7cf4ff 22%, #8b5cff 34%, #ff5dd6 44%, transparent 56% 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: rim 5s linear infinite;
+}
+html[data-skin="evren"] .searchbox::after {
+  content: ""; position: absolute; inset: -30px; z-index: -2; border-radius: 40px; pointer-events: none;
+  background: radial-gradient(60% 60% at 50% 50%, rgba(124, 244, 255, .16), transparent 70%); opacity: .0; transition: opacity .4s;
+}
+html[data-skin="evren"] .searchbox:focus-within { box-shadow: 0 20px 80px rgba(0, 0, 0, .6), var(--glow); }
+html[data-skin="evren"] .searchbox:focus-within::after { opacity: 1; }
+html[data-skin="evren"] .searchbox:focus-within::before { animation-duration: 1.8s; }
+@keyframes rim { to { --ang: 360deg; } }
+html[data-skin="evren"] .searchbox textarea { font-size: 19px; color: #fff; }
+html[data-skin="evren"] .searchbox textarea::placeholder { color: #7880a8; }
+html[data-skin="evren"] .primary {
+  background: var(--grad); background-size: 300% 100%; color: #050a18; box-shadow: var(--glow);
+  animation: shimmer 7s linear infinite; transition: transform .15s;
+}
+html[data-skin="evren"] .primary:hover { transform: translateY(-1px) scale(1.03); }
+html[data-skin="evren"] .primary kbd { border-color: rgba(0, 0, 0, .3) !important; color: inherit; }
+html[data-skin="evren"] .example {
+  border: 1px solid var(--line); background: rgba(16, 20, 46, .55); backdrop-filter: blur(8px); color: var(--muted);
+  transition: transform .2s, color .2s, box-shadow .2s;
+}
+html[data-skin="evren"] .example:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 0 18px rgba(124, 244, 255, .3); border-color: rgba(124, 244, 255, .5); }
+
+/* ---------- loader: text over the warp jump on the canvas ---------- */
+html[data-skin="evren"] .loader svg { display: none; }
+html[data-skin="evren"] .loader { padding: 70px 0 30px; }
+html[data-skin="evren"] .loader .stage {
+  font-size: 22px; font-weight: 800; letter-spacing: .5px; background: var(--grad); background-size: 300% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: shimmer 3s linear infinite;
+}
+html[data-skin="evren"] .loader .sub { color: var(--muted); font-family: var(--mono); font-size: 12.5px; }
+
+/* ---------- glass panels, cards with 3D tilt ---------- */
+html[data-skin="evren"] .panel, html[data-skin="evren"] .verdict, html[data-skin="evren"] .card,
+html[data-skin="evren"] .objlist, html[data-skin="evren"] .drop, html[data-skin="evren"] .searchline input {
+  background: rgba(12, 16, 38, .62); backdrop-filter: blur(16px) saturate(140%); border-color: var(--line);
+}
+html[data-skin="evren"] #ask-out { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 18px; }
+html[data-skin="evren"] #ask-out > :not(.card) { grid-column: 1 / -1; }
+html[data-skin="evren"] #ask-out > .card:first-of-type { grid-column: 1 / -1; }
+@media (max-width: 980px) { html[data-skin="evren"] #ask-out { grid-template-columns: 1fr; } }
+html[data-skin="evren"] .card {
+  position: relative; transform-style: preserve-3d; will-change: transform;
+  transform: perspective(1000px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(0);
+  transition: transform .25s ease-out, box-shadow .3s, border-color .3s;
+  animation: warpIn .8s cubic-bezier(.16, 1, .3, 1) both; animation-delay: calc(var(--i, 0) * 110ms);
+}
+html[data-skin="evren"] .card::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(420px circle at var(--mx, 50%) var(--my, 0%), rgba(124, 244, 255, .12), transparent 60%);
+  opacity: 0; transition: opacity .3s;
+}
+html[data-skin="evren"] .card:hover { border-color: rgba(124, 244, 255, .45); box-shadow: var(--shadow), var(--glow); }
+html[data-skin="evren"] .card:hover::before { opacity: 1; }
+@keyframes warpIn { from { opacity: 0; transform: perspective(1000px) translateZ(-260px) translateY(30px) scale(.9); filter: blur(10px); } to { opacity: 1; filter: blur(0); } }
+html[data-skin="evren"] .card h2 { color: #fff; }
+html[data-skin="evren"] .group-tag { background: linear-gradient(135deg, rgba(124, 244, 255, .2), rgba(139, 92, 255, .25)); color: #dff; }
+html[data-skin="evren"] .ring svg { filter: drop-shadow(0 0 6px currentColor); overflow: visible; }
+html[data-skin="evren"] .ring { color: var(--accent); }
+html[data-skin="evren"] .ring::after {
+  content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px dashed rgba(124, 244, 255, .35);
+  animation: spin 14s linear infinite;
+}
+html[data-skin="evren"] .ring .val { color: #fff; text-shadow: 0 0 12px rgba(124, 244, 255, .8); }
+html[data-skin="evren"] .l-Yüksek { color: var(--high); text-shadow: 0 0 10px rgba(61, 252, 180, .5); }
+html[data-skin="evren"] .l-Orta { color: var(--mid); } html[data-skin="evren"] .l-Düşük { color: var(--low); }
+html[data-skin="evren"] .bar .fill { background: linear-gradient(90deg, #7cf4ff, #8b5cff); box-shadow: 0 0 10px rgba(124, 244, 255, .6); }
+html[data-skin="evren"] .bar.llm .fill { background: linear-gradient(90deg, #ff5dd6, #8b5cff); }
+html[data-skin="evren"] .col { background: rgba(124, 244, 255, .06); border-color: rgba(124, 244, 255, .2); color: #dff9ff; }
+html[data-skin="evren"] .col:hover, html[data-skin="evren"] .col[aria-expanded="true"] { box-shadow: 0 0 14px rgba(124, 244, 255, .35); }
+html[data-skin="evren"] .detail { background: rgba(6, 10, 26, .7); }
+html[data-skin="evren"] .caveats { background: rgba(255, 209, 102, .08); border: 1px solid rgba(255, 209, 102, .2); }
+html[data-skin="evren"] .chip { background: rgba(130, 150, 255, .08); }
+html[data-skin="evren"] .chip.on { background: rgba(61, 252, 180, .14); color: var(--high); box-shadow: 0 0 10px rgba(61, 252, 180, .18); }
+
+/* ---------- verdict: a signal that powers on ---------- */
+html[data-skin="evren"] .verdict { animation: warpIn .7s cubic-bezier(.16, 1, .3, 1) both; }
+html[data-skin="evren"] .verdict::before { width: 4px; box-shadow: 0 0 22px var(--vc); }
+html[data-skin="evren"] .verdict .word {
+  font-size: 30px; letter-spacing: 2px; text-shadow: 0 0 18px var(--vc), 0 0 42px var(--vc); animation: powerOn 1.1s steps(1, end) both;
+}
+@keyframes powerOn { 0% { opacity: 0; } 12% { opacity: 1; } 18% { opacity: .2; } 26% { opacity: 1; } 34% { opacity: .5; } 44%, 100% { opacity: 1; } }
+html[data-skin="evren"] .clarify { border-left: 0; box-shadow: inset 3px 0 0 var(--accent), var(--shadow); }
+
+/* ---------- batch & explorer ---------- */
+html[data-skin="evren"] .drop { border: 1.5px dashed rgba(124, 244, 255, .35); transition: transform .25s, box-shadow .25s, border-color .25s; }
+html[data-skin="evren"] .drop:hover, html[data-skin="evren"] .drop.hot { transform: scale(1.01); box-shadow: var(--glow); border-color: var(--accent); background: rgba(124, 244, 255, .08); }
+html[data-skin="evren"] .stack { box-shadow: 0 0 16px rgba(124, 244, 255, .2); }
+html[data-skin="evren"] .cov-track span, html[data-skin="evren"] .stack span { filter: saturate(1.3) brightness(1.1); }
+html[data-skin="evren"] .fields tr.frow:hover td, html[data-skin="evren"] .obj:hover, html[data-skin="evren"] .obj.sel { background: rgba(124, 244, 255, .07); }
+html[data-skin="evren"] .obj.sel { box-shadow: inset 3px 0 0 var(--accent); }
+html[data-skin="evren"] .objhead { background: rgba(10, 14, 34, .92); }
+html[data-skin="evren"] .coltable tr.hit td { background: rgba(61, 252, 180, .1); }
+html[data-skin="evren"] .derivation { box-shadow: 0 0 12px rgba(255, 159, 90, .2); }
+html[data-skin="evren"] .status-pill { box-shadow: 0 0 12px var(--sbg); }
+html[data-skin="evren"] footer { color: var(--faint); }
+
+/* ---------- HUD + star tooltip ---------- */
+html[data-skin="evren"] #hud {
+  display: block; position: fixed; left: 16px; bottom: 14px; z-index: 1; pointer-events: none;
+  font: 11px/1.5 var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: rgba(190, 205, 255, .6);
+}
+#hud b { color: #7cf4ff; font-weight: 700; }
+#hud .focus { color: #fff; letter-spacing: .6px; text-transform: none; font-size: 12px; margin-top: 2px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+html[data-skin="evren"] #star-tip {
+  position: fixed; z-index: 30; pointer-events: none; padding: 8px 11px; border-radius: 12px;
+  background: rgba(8, 12, 30, .9); border: 1px solid rgba(124, 244, 255, .4); box-shadow: var(--glow);
+  font-size: 12.5px; color: #fff; transform: translate(14px, 14px); opacity: 0; transition: opacity .15s;
+}
+html[data-skin="evren"] #star-tip.on { display: block; opacity: 1; }
+#star-tip .t { font-family: var(--mono); font-weight: 700; }
+#star-tip .g { color: #a3acd6; font-size: 11.5px; }
+html[data-skin="evren"].star-hover, html[data-skin="evren"].star-hover body { cursor: pointer; }
+@media (prefers-reduced-motion: reduce) {
+  html[data-skin="evren"] body::before, .orb, .orb * { animation: none !important; }
+}
 </style>
 </head>
 <body>
+<canvas id="cosmos" aria-hidden="true"></canvas>
+<div id="hud" aria-hidden="true"><div><b>Veri evreni</b> · <span id="hud-count"></span></div><div class="focus" id="hud-focus"></div></div>
+<div id="star-tip" role="tooltip"></div>
 <header class="top">
   <div class="wrap">
     <div class="brand">
@@ -318,6 +558,7 @@ kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); 
       <button class="tab" role="tab" data-tab="explore" aria-selected="false">Keşfet</button>
     </nav>
     <div class="status" id="status"></div>
+    <button class="ghost skin-btn" id="skin" title="Arayüz tasarımını değiştir">✦ Evren</button>
     <button class="icon-btn" id="theme" title="Tema değiştir" aria-label="Tema değiştir">◐</button>
   </div>
 </header>
@@ -326,6 +567,7 @@ kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); 
   <!-- ================= ASK ================= -->
   <section id="tab-ask">
     <div class="hero" id="hero">
+      <div class="orb" aria-hidden="true"><i></i><i></i><i></i></div>
       <div class="compass-big" id="compass">
         <svg viewBox="0 0 100 100" aria-hidden="true">
           <circle cx="50" cy="50" r="46" fill="none" stroke="var(--line)" stroke-width="2"/>
@@ -487,6 +729,7 @@ async function ask() {
   $("#hero").classList.add("compact");
   $("#ask-out").replaceChildren();
   $("#loader").classList.add("on"); $("#go").disabled = true;
+  Cosmos.warp(true);
   const llm = STATUS && STATUS.llm;
   startStages($("#stage"), $("#stage-sub"), [
     ["Sözlük taranıyor…", "Türkçe normalizasyon, eş anlamlılar ve terim sözlüğü", 0],
@@ -500,6 +743,7 @@ async function ask() {
     $("#ask-out").replaceChildren(h("div", { class: "error" }, "Analiz başarısız: " + e.message));
   } finally {
     clearInterval(stageTimer); $("#loader").classList.remove("on"); $("#go").disabled = false;
+    Cosmos.warp(false);
   }
 }
 
@@ -585,7 +829,7 @@ function objectCard(m, query) {
   const covered = new Set(m.covered), longv = new Set(m.long_format);
   const concepts = [...m.covered, ...m.missing].map(c =>
     h("span", { class: "chip " + (longv.has(c) ? "long" : covered.has(c) ? "on" : "off"), title: longv.has(c) ? `${m.dimension} değerleri üzerinden (uzun format)` : covered.has(c) ? "Karşılanıyor" : "Karşılanmıyor" }, c));
-  return h("article", { class: "card" },
+  return h("article", { class: "card", style: `--i:${m.rank || 0}` },
     ring(m.score, m.level),
     h("div", {},
       h("h2", {}, m.rank ? h("span", { class: "rank" }, "#" + m.rank) : null, m.name,
@@ -620,6 +864,7 @@ function renderAsk(r) {
     other.length ? h("details", { class: "more" }, h("summary", {}, `Notlar ve yöntem (${other.length})`),
       h("div", { class: "panel" }, notesTable(other), h("h3", { style: "margin-top:12px" }, "Yöntem"), h("ul", {}, r.method.map(x => h("li", { class: "muted" }, x))))) : null);
   store.set("vsa-last-query", r.query);
+  Cosmos.focus(r.objects.map(o => ({ key: o.key, name: o.name, score: o.score })), r.query);
 }
 
 // ---------------------------------------------------------------- batch
@@ -632,7 +877,7 @@ drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) r
 file.onchange = () => { if (file.files[0]) runBatch(file.files[0]); file.value = ""; };
 
 async function runBatch(f) {
-  $("#batch-out").replaceChildren(); $("#bloader").classList.add("on");
+  $("#batch-out").replaceChildren(); $("#bloader").classList.add("on"); Cosmos.warp(true);
   $("#bstage").textContent = `${f.name} analiz ediliyor…`;
   try {
     const buf = await f.arrayBuffer();
@@ -640,7 +885,7 @@ async function runBatch(f) {
     renderBatch(r);
   } catch (e) {
     $("#batch-out").replaceChildren(h("div", { class: "error" }, "Analiz başarısız: " + e.message));
-  } finally { $("#bloader").classList.remove("on"); }
+  } finally { $("#bloader").classList.remove("on"); Cosmos.warp(false); }
 }
 
 const STATUSES = ["Hazır", "Kısmen hazır", "Türetilmeli", "Bulunamadı"];
@@ -687,6 +932,7 @@ function renderBatch(r) {
     h("table", { class: "fields" }, h("thead", {}, h("tr", {}, ["#", "Talep alanı", "Durum", "En iyi eşleşme", "Güven"].map(x => h("th", {}, x)))), tbody),
     h("div", { class: "faint", style: "margin-top:8px" }, "Bir satıra tıklayarak alternatifleri, gerekçeleri ve kısıtları görün."));
 
+  Cosmos.focus(r.coverage.map(c => ({ key: c.key, name: c.name, score: c.fields.length / n })), r.name);
   const clar = r.notes.filter(x => x.scope === "Netleştirme");
   const other = r.notes.filter(x => x.scope !== "Netleştirme");
   put($("#batch-out"),
@@ -737,6 +983,7 @@ async function loadObjects(text) {
       return el;
     });
     put($("#objlist"), head, rows.length ? rows : h("div", { class: "empty" }, "Eşleşen tablo yok."));
+    Cosmos.focus(r.items.slice(0, 14).map(o => ({ key: o.key, name: o.name, score: o.score ?? 0.6 })), r.query);
   } catch (e) {
     if (seq === oqSeq) { $("#oqhint").textContent = ""; put($("#objlist"), h("div", { class: "error" }, e.message)); }
   }
@@ -744,6 +991,7 @@ async function loadObjects(text) {
 async function showObject(key) {
   const d = await api("/api/object/" + encodeURIComponent(key));
   const hits = new Set(HILITE[key] || []);
+  Cosmos.pulse(key);
   let first = null;
   const table = h("table", { class: "coltable", style: "margin-top:10px" }, d.columns.map(c => {
     const tr = h("tr", { class: hits.has(c.column) ? "hit" : "" },
@@ -765,6 +1013,238 @@ async function showObject(key) {
     panel.scrollTo({ top: Math.max(0, y - panel.clientHeight / 3), behavior: "smooth" });
   }
 }
+
+// ---------------------------------------------------------------- "Evren" skin
+// The warehouse as a galaxy: every table is a star, clustered by dataset group.
+// Searching jumps to warp speed; results light up as a constellation.
+const Cosmos = (() => {
+  const cv = $("#cosmos"), ctx = cv.getContext("2d"), tip = $("#star-tip");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W = 0, H = 0, dpr = 1, active = false, raf = 0, loaded = false;
+  let nodes = [], byKey = new Map(), groups = [], dust = [];
+  let warp = 0, warpTarget = 0, rot = 0, t = 0, last = performance.now();
+  let focusList = [], focusAt = 0, pulseKey = "", pulseAt = 0, hover = null;
+  const mouse = { x: 0.5, y: 0.5, sx: 0.5, sy: 0.5 };
+
+  const hash = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  const rnd = seed => () => ((seed = Math.imul(seed ^ (seed >>> 15), 2246822507) ^ Math.imul(seed ^ (seed >>> 13), 3266489909)) >>> 0) / 4294967296;
+
+  function build(stars) {
+    const byGroup = new Map();
+    for (const s of stars) { if (!byGroup.has(s.group)) byGroup.set(s.group, []); byGroup.get(s.group).push(s); }
+    groups = [...byGroup.entries()].sort((a, b) => b[1].length - a[1].length);
+    const G = groups.length, golden = Math.PI * (3 - Math.sqrt(5));
+    nodes = []; byKey = new Map();
+    groups = groups.map(([name, members], gi) => {
+      const r = 0.1 + 0.82 * Math.sqrt((gi + 0.5) / G), a = gi * golden;
+      const hue = (hash(name) % 360);
+      const g = { name, x: Math.cos(a) * r, y: Math.sin(a) * r, hue, n: members.length };
+      const R = rnd(hash(name));
+      members.forEach((m, j) => {
+        const rr = 0.018 + 0.022 * Math.sqrt(j) + R() * 0.012, aa = j * golden + R() * 0.8;
+        const node = { ...m, g, x: g.x + Math.cos(aa) * rr, y: g.y + Math.sin(aa) * rr,
+          z: 0.35 + R() * 0.65, size: 0.9 + Math.sqrt(m.columns) * 0.32, tw: R() * Math.PI * 2, hue };
+        nodes.push(node); byKey.set(m.key, node);
+      });
+      return g;
+    });
+    const R = rnd(7);
+    dust = Array.from({ length: 520 }, () => ({ x: R() * 2 - 1, y: R() * 2 - 1, z: R(), tw: R() * 6.3 }));
+    $("#hud-count").textContent = `${nodes.length} tablo · ${groups.length} küme`;
+    loaded = true;
+  }
+
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function screen(n) {
+    const c = Math.cos(rot * n.z), s = Math.sin(rot * n.z);
+    const x = n.x * c - n.y * s, y = n.x * s + n.y * c;
+    const px = (mouse.sx - 0.5) * 60 * n.z, py = (mouse.sy - 0.5) * 40 * n.z;
+    return [W / 2 + x * W * 0.47 + px, H / 2 + y * H * 0.46 + py];
+  }
+
+  // The chat model shares the (integrated) GPU with the browser: keep the sky light.
+  // 30 fps normally, 20 fps while waiting for the LLM (warp), thinner dust in warp.
+  function frame(now) {
+    if (active) raf = requestAnimationFrame(frame);
+    const budget = warpTarget > 0 ? 50 : 33;
+    if (now - last < budget) return;
+    const dt = Math.min(80, now - last); last = now; t += dt;
+    warp += (warpTarget - warp) * (warpTarget > warp ? 0.06 : 0.035);
+    if (!reduce) rot += dt * (0.000018 + warp * 0.0006);
+    mouse.sx += (mouse.x - mouse.sx) * 0.05; mouse.sy += (mouse.y - mouse.sy) * 0.05;
+    draw();
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    // dust — tiny background stars, stretched into streaks during warp
+    const step = warp > 0.3 ? 2 : 1;
+    for (let di = 0; di < dust.length; di += step) {
+      const d = dust[di];
+      const x = cx + d.x * W * 0.6, y = cy + d.y * H * 0.6;
+      const a = 0.25 + 0.35 * Math.sin(t * 0.002 + d.tw);
+      if (warp > 0.02) {
+        const k = warp * (0.08 + d.z * 0.35), dx = (x - cx) * k, dy = (y - cy) * k;
+        ctx.strokeStyle = `rgba(190,220,255,${0.15 + warp * 0.5})`; ctx.lineWidth = 0.6 + d.z;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+      } else {
+        ctx.fillStyle = `rgba(200,215,255,${a * (0.3 + d.z * 0.5)})`; ctx.fillRect(x, y, 1, 1);
+      }
+    }
+    if (!loaded) return;
+    const dim = focusList.length ? 0.45 : 1;
+    // cluster threads
+    if (warp < 0.3) {
+      ctx.lineWidth = 0.5;
+      for (const n of nodes) {
+        const [x, y] = screen(n), [gx, gy] = screen({ x: n.g.x, y: n.g.y, z: n.z });
+        ctx.strokeStyle = `hsla(${n.hue},80%,70%,${0.05 * dim * (1 - warp * 3)})`;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(gx, gy); ctx.stroke();
+      }
+    }
+    // stars
+    for (const n of nodes) {
+      const [x, y] = screen(n); n.sx = x; n.sy = y;
+      const tw = 0.65 + 0.35 * Math.sin(t * 0.0022 + n.tw);
+      const r = n.size * (0.6 + n.z * 0.7);
+      if (warp > 0.02) {
+        const k = warp * 0.25 * n.z;
+        ctx.strokeStyle = `hsla(${n.hue},90%,78%,${0.35 + warp * 0.4})`; ctx.lineWidth = r;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (x - cx) * k, y + (y - cy) * k); ctx.stroke();
+      }
+      ctx.fillStyle = `hsla(${n.hue},90%,${72 + n.z * 18}%,${(0.35 + 0.55 * n.z) * tw * dim})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+    }
+    drawFocus();
+    if (hover) ring(hover.sx, hover.sy, 10, "rgba(255,255,255,.8)", 1.2);
+  }
+
+  function glow(x, y, r, color) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+  }
+  function ring(x, y, r, color, w) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.stroke(); }
+
+  function drawFocus() {
+    const age = (t - focusAt) / 1000;
+    const pts = focusList.map(f => byKey.get(f.key)).filter(Boolean);
+    if (pts.length > 1) {
+      // constellation path in rank order, drawn in progressively
+      const grow = Math.min(1, age / 1.2);
+      ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 0.03;
+      ctx.strokeStyle = "rgba(124,244,255,.55)"; ctx.lineWidth = 1.3;
+      ctx.beginPath(); ctx.moveTo(pts[0].sx, pts[0].sy);
+      const upto = 1 + Math.floor((pts.length - 1) * grow);
+      for (let i = 1; i < upto; i++) ctx.lineTo(pts[i].sx, pts[i].sy);
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+    focusList.forEach((f, i) => {
+      const n = byKey.get(f.key); if (!n) return;
+      const appear = Math.max(0, Math.min(1, age * 2 - i * 0.18));
+      if (!appear) return;
+      const s = Math.max(0.15, f.score || 0), pulse = 1 + 0.25 * Math.sin(t * 0.004 - i);
+      glow(n.sx, n.sy, (18 + 30 * s) * pulse * appear, `rgba(124,244,255,${0.35 * appear})`);
+      ring(n.sx, n.sy, (8 + 10 * s) * pulse, `rgba(255,255,255,${0.7 * appear})`, 1.4);
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(n.sx, n.sy, 2.6 + 2 * s, 0, 6.2832); ctx.fill();
+      if (i < 8) label(n.sx, n.sy, `${i + 1}. ${f.name}`, f.score != null ? `%${Math.round(f.score * 100)}` : "", appear);
+    });
+    if (pulseKey && byKey.has(pulseKey)) {
+      const n = byKey.get(pulseKey), a = (t - pulseAt) / 1000;
+      for (let k = 0; k < 3; k++) {
+        const p = (a * 0.6 + k / 3) % 1;
+        ring(n.sx, n.sy, 6 + p * 60, `rgba(255,93,214,${0.7 * (1 - p)})`, 1.5);
+      }
+    }
+  }
+
+  function label(x, y, text, score, alpha) {
+    ctx.font = "600 12px 'Cascadia Code', Consolas, monospace";
+    const w = ctx.measureText(text).width + (score ? 44 : 14), lx = Math.min(W - w - 8, x + 14), ly = y - 22;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "rgba(8,12,30,.82)"; ctx.strokeStyle = "rgba(124,244,255,.45)"; ctx.lineWidth = 1;
+    const r = 9; ctx.beginPath(); ctx.roundRect(lx, ly, w, 20, r); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#eaf6ff"; ctx.fillText(text, lx + 7, ly + 14);
+    if (score) { ctx.fillStyle = "#3dfcb4"; ctx.fillText(score, lx + w - 37, ly + 14); }
+    ctx.globalAlpha = 1;
+  }
+
+  // --------------------------------------------------------------- interaction
+  const blocked = el => el.closest("header, .card, .panel, .verdict, .searchbox, .objlist, #objdetail, .drop, button, a, textarea, input, table, details, .examples, .loader, footer");
+  function nearest(x, y) {
+    let best = null, bd = 14 * 14;
+    for (const n of nodes) { const d = (n.sx - x) ** 2 + (n.sy - y) ** 2; if (d < bd) { bd = d; best = n; } }
+    return best;
+  }
+  addEventListener("pointermove", e => {
+    mouse.x = e.clientX / innerWidth; mouse.y = e.clientY / innerHeight;
+    if (!active) return;
+    const n = !blocked(e.target) ? nearest(e.clientX, e.clientY) : null;
+    hover = n;
+    document.documentElement.classList.toggle("star-hover", !!n);
+    if (n) {
+      tip.replaceChildren(h("div", { class: "t" }, n.name), h("div", { class: "g" }, `${n.schema} · ${n.columns} kolon`), h("div", { class: "g" }, n.group));
+      tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.classList.add("on");
+    } else tip.classList.remove("on");
+  }, { passive: true });
+  addEventListener("click", e => {
+    if (!active || !hover || blocked(e.target)) return;
+    selectTab("explore"); $("#oq").value = hover.name; loadObjects(hover.name); showObject(hover.key);
+  });
+  addEventListener("resize", () => { if (active) resize(); });
+  document.addEventListener("visibilitychange", () => { if (active) { cancelAnimationFrame(raf); if (!document.hidden) raf = requestAnimationFrame(frame); } });
+
+  async function ensureLoaded() {
+    if (loaded) return;
+    try { build(await api("/api/galaxy")); } catch { /* the skin still works without the map */ }
+  }
+
+  return {
+    async setActive(on) {
+      active = on; cancelAnimationFrame(raf); tip.classList.remove("on");
+      if (!on) return;
+      resize(); await ensureLoaded(); last = performance.now(); raf = requestAnimationFrame(frame);
+    },
+    warp(on) { warpTarget = on && !reduce ? 1 : 0; },
+    focus(list, query) {
+      focusList = list.filter(f => f && f.key); focusAt = t;
+      $("#hud-focus").textContent = focusList.length ? `◎ ${query || ""} — ${focusList.length} yıldız` : "";
+    },
+    pulse(key) { pulseKey = key; pulseAt = t; },
+  };
+})();
+
+// Card tilt + light that follows the pointer (Evren skin only).
+document.addEventListener("pointermove", e => {
+  if (document.documentElement.dataset.skin !== "evren") return;
+  const card = e.target.closest && e.target.closest(".card");
+  document.querySelectorAll(".card.tilt").forEach(c => { if (c !== card) { c.classList.remove("tilt"); c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); } });
+  if (!card) return;
+  const r = card.getBoundingClientRect(), px = (e.clientX - r.left) / r.width, py = (e.clientY - r.top) / r.height;
+  card.classList.add("tilt");
+  card.style.setProperty("--rx", `${(0.5 - py) * 5}deg`); card.style.setProperty("--ry", `${(px - 0.5) * 7}deg`);
+  card.style.setProperty("--mx", `${px * 100}%`); card.style.setProperty("--my", `${py * 100}%`);
+}, { passive: true });
+
+// Skin switch: "klasik" (the original design) ↔ "evren".
+(function initSkin() {
+  const btn = $("#skin");
+  const apply = skin => {
+    document.documentElement.dataset.skin = skin;
+    btn.textContent = skin === "evren" ? "◧ Klasik" : "✦ Evren";
+    btn.title = skin === "evren" ? "Klasik tasarıma dön" : "Evren tasarımına geç";
+    store.set("vsa-skin", skin);
+    Cosmos.setActive(skin === "evren");
+  };
+  btn.onclick = () => apply(document.documentElement.dataset.skin === "evren" ? "klasik" : "evren");
+  apply(store.get("vsa-skin") || "klasik");
+})();
 
 // ---------------------------------------------------------------- boot
 loadStatus();

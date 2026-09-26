@@ -39,7 +39,7 @@ Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
 skorunda), ADR-011 (uygulanamayan bileşen ağırlıktan çıkar), ADR-012 (kolon skoru tabanı),
 ADR-013 (IDF ağırlıklı kapsama + cevap eşiği), ADR-014 (uzun format kırılım), ADR-015 (obje havuzu),
 ADR-016/017 (batch: çekirdek tablo, yapısal alanlar, ölçü uyumu, kanal toplamları, terim kapsam notları),
-ADR-018..022 (yerel model, hibrit, hakem, ağırlıklar), ADR-023 (Keşfet araması).
+ADR-018..022 (yerel model, hibrit, hakem, ağırlıklar), ADR-023 (Keşfet araması), ADR-024 (Evren arayüzü).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -79,7 +79,8 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 - [x] M5 — Batch modu: `vsa batch -i talep.xlsx` (TR/EN/açıklama). Çekirdek tablo, yapısal
       alanlar, türetme ipuçları (ADR-016/017). Ek A.3: recall@3 0.90, durum doğruluğu 0.90.
       QuestionList-2 (günlük) ve A.3 dışı alanlar için doğrulanmış cevap yok.
-- [x] M6 — Arayüz: `vsa serve` / `baslat.bat` → http://127.0.0.1:8765. Stdlib sunucu +
+- [x] M6 — Arayüz: `vsa serve` / `baslat.bat` → http://127.0.0.1:8765. İki görünüm: Klasik ve
+      Evren (galaksi, ADR-024), başlıktaki düğmeyle. Stdlib sunucu +
       `src/vsa/web/static/index.html` (tek dosya, dış kaynak yok). **Tasarım kararları
       Claude'da** (kullanıcı "beni şaşırt" dedi); seçenek menüsü sunma.
 - [~] M7 — Geri bildirim: 👍/👎 → `data/feedback.jsonl` → `vsa feedback` golden adayları.

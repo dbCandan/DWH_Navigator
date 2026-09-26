@@ -153,3 +153,10 @@ def test_explorer_short_and_empty_queries(base_url: str) -> None:
     assert len(json.loads(body)["items"]) == 2  # browse mode lists every object
     _, body, _ = get(base_url + "/api/objects?q=vc")
     assert {i["match"] for i in json.loads(body)["items"]} == {"ad"}  # < 3 chars: names only
+
+
+def test_galaxy(base_url: str) -> None:
+    _, body, _ = get(base_url + "/api/galaxy")
+    stars = json.loads(body)
+    assert {s["name"] for s in stars} == {"vCardLimitFullness", "vCreditCardLimit"}
+    assert all(s["group"] and s["columns"] > 0 for s in stars)

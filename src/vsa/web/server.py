@@ -8,6 +8,7 @@ network. One engine, one lock: the tool serves a team, not the internet.
     GET  /api/report/<id>       Excel report of an earlier ask/batch result
     GET  /api/objects?q=...     dictionary explorer: objects matching a name
     GET  /api/object/<key>      all columns of one object
+    GET  /api/galaxy            all objects with their dataset group (star map)
     POST /api/feedback          {"query", "object", "vote": "up"|"down", "note"} (M7)
 """
 
@@ -202,6 +203,22 @@ class App:
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
+    def galaxy(self) -> list[dict[str, Any]]:
+        """Every object with its main dataset group — the star map of the "Evren" skin."""
+        out = []
+        for r in self.object_index:
+            groups = r["groups"]
+            out.append(
+                {
+                    "key": r["key"],
+                    "name": r["name"],
+                    "schema": r["schema"],
+                    "group": groups[0] if groups else "Diğer",
+                    "columns": r["columns"],
+                }
+            )
+        return out
+
     def object_detail(self, key: str) -> dict[str, Any]:
         obj = self.engine.objects.get(key)
         if obj is None:
@@ -279,6 +296,8 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._send(200, html, "text/html; charset=utf-8")
                 elif url.path == "/api/status":
                     self._json(app.status())
+                elif url.path == "/api/galaxy":
+                    self._json(app.galaxy())
                 elif url.path.startswith("/api/report/"):
                     path = app.report(url.path.rsplit("/", 1)[-1])
                     name = path.name

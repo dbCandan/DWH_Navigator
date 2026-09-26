@@ -273,3 +273,21 @@ kullanır. LLM hakem burada kullanılmaz (arama başına ~40 sn).
 **Ek bulgu.** Windows'ta `localhost` önce IPv6'ya (`::1`) çözülüyor; yalnız IPv4 dinleyen
 LM Studio'ya her istek ~2 sn gecikmeyle ulaşıyordu. İstemci `localhost`'u `127.0.0.1`'e
 çeviriyor: Keşfet araması 2.100 ms → ~100 ms; hakem çağrıları da ~2 sn kısaldı.
+
+---
+
+## ADR-024 — İkinci arayüz tasarımı: "Evren"
+
+**Tarih.** 2026-09-26
+
+**Karar.** Arayüzün iki görünümü var; başlıktaki **✦ Evren / ◧ Klasik** düğmesiyle geçilir,
+seçim tarayıcıda saklanır. Klasik tasarım değişmedi. Evren, aynı DOM ve JS üzerinde
+`html[data-skin="evren"]` kapsamlı stil + bir canvas katmanıdır:
+- Veri ambarı bir galaksi olarak çizilir: 390 tablonun her biri bir yıldız, veri seti
+  grubuna göre kümelenmiş (`/api/galaxy`), yavaş dönen, fareyle paralaks.
+- Arama/batch sürerken yıldızlar ışık hızına geçer (warp); sonuç gelince bulunan tablolar
+  sıra, ad ve skor etiketleriyle parlar ve takımyıldızı çizgisiyle bağlanır. Keşfet sonuçları
+  da aynı şekilde yanar; yıldıza tıklamak tabloyu Keşfet'te açar.
+- Cam paneller, dönen ışık halkalı arama kutusu, 3B eğilen kartlar, iki sütunlu sonuçlar.
+- LLM tümleşik GPU'yu paylaştığı için animasyon 30 fps (warp sırasında 20 fps) ile
+  sınırlıdır; `prefers-reduced-motion` açıksa hareket kapanır. Dış kaynak yoktur.
