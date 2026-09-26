@@ -94,6 +94,7 @@ def client_from_settings(llm: Any) -> LLMClient:
         temperature=llm.temperature,
         timeout=llm.timeout,
         api_key=llm.api_key,
+        reasoning_effort=llm.reasoning_effort,
     )
 
 
@@ -106,6 +107,7 @@ class OpenAICompatibleClient:
         temperature: float = 0.1,
         timeout: float = 120.0,
         api_key: str = "",
+        reasoning_effort: str = "none",
     ) -> None:
         self.endpoint = endpoint.rstrip("/")
         self._model = model
@@ -113,6 +115,9 @@ class OpenAICompatibleClient:
         self.temperature = temperature
         self.timeout = timeout
         self.api_key = api_key
+        # Reasoning models (Qwen3.x) otherwise spend the whole budget "thinking" and return
+        # empty content; "none" makes them answer directly. Ignored by other models.
+        self.reasoning_effort = reasoning_effort
         self.calls = 0
         self.failures = 0
         self.seconds = 0.0
@@ -168,6 +173,7 @@ class OpenAICompatibleClient:
             "messages": messages,
             "temperature": self.temperature,
             "max_tokens": max_tokens,
+            **({"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}),
             "response_format": {
                 "type": "json_schema",
                 "json_schema": {"name": "result", "strict": True, "schema": dict(schema)},

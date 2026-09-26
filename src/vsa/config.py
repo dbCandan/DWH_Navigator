@@ -83,6 +83,7 @@ class LLMSettings:
     temperature: float = 0.1
     timeout: int = 120
     api_key: str = ""
+    reasoning_effort: str = "none"  # reasoning models answer directly ("" = don't send)
     judge: bool = True  # LLM judge on top candidates (§10)
     judge_candidates: int = 8  # objects shown to the judge
     expand_query: bool = False  # LLM query expansion into the BM25 arm (§7.2c)
