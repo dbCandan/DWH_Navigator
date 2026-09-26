@@ -87,6 +87,8 @@ class App:
         self.settings_path = settings_path or DEFAULT_SETTINGS_PATH
         self.reindex_pending: list[str] = []
         self._lab_proc: subprocess.Popen[bytes] | None = None
+        self.lab_results, self.lab_progress = lab.RESULTS_PATH, lab.PROGRESS_PATH
+        self.lab_stop_flag = lab.STOP_PATH
         self.lock = threading.Lock()
         self.results: dict[str, AnalysisResult | BatchResult] = {}
         self.object_index = self._object_index()
@@ -433,22 +435,22 @@ class App:
     def lab_state(self) -> dict[str, Any]:
         """Model lab results (ranked, best first) and the live progress of a running lab."""
         results: dict[str, Any] = {}
-        if lab.RESULTS_PATH.exists():
-            results = json.loads(lab.RESULTS_PATH.read_text(encoding="utf-8"))
+        if self.lab_results.exists():
+            results = json.loads(self.lab_results.read_text(encoding="utf-8"))
         errors = {m: c["load_error"]["error"] for m, c in results.items() if "load_error" in c}
         progress: dict[str, Any] = {}
-        if lab.PROGRESS_PATH.exists():
+        if self.lab_progress.exists():
             try:
-                progress = json.loads(lab.PROGRESS_PATH.read_text(encoding="utf-8"))
+                progress = json.loads(self.lab_progress.read_text(encoding="utf-8"))
             except json.JSONDecodeError:  # being rewritten right now
                 progress = {"running": True}
         if progress.get("running"):
             proc = self._lab_proc
             if proc is not None and proc.poll() is not None:
                 progress["running"] = False  # our child died without cleaning up
-            elif time.time() - lab.PROGRESS_PATH.stat().st_mtime > LAB_STALE_SEC:
+            elif time.time() - self.lab_progress.stat().st_mtime > LAB_STALE_SEC:
                 progress["running"] = False
-        progress["stopping"] = lab.STOP_PATH.exists()
+        progress["stopping"] = self.lab_stop_flag.exists()
         return {
             "rows": lab.rank(results),
             "errors": errors,
@@ -479,7 +481,7 @@ class App:
                 "--temps", ",".join(f"{x:g}" for x in temps), "--runs", str(runs),
                 "--settings", str(self.settings_path)]  # fmt: skip
         LAB_LOG.parent.mkdir(parents=True, exist_ok=True)
-        lab.STOP_PATH.unlink(missing_ok=True)
+        self.lab_stop_flag.unlink(missing_ok=True)
         env = {**os.environ, "PYTHONIOENCODING": "utf-8", "COLUMNS": "160"}
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
         with LAB_LOG.open("w", encoding="utf-8") as logf:
@@ -487,16 +489,16 @@ class App:
                 args, stdout=logf, stderr=subprocess.STDOUT, env=env, creationflags=flags
             )
         # Mark as running at once, so a second click cannot start a second lab.
-        lab.PROGRESS_PATH.parent.mkdir(parents=True, exist_ok=True)
-        lab.PROGRESS_PATH.write_text(json.dumps({
+        self.lab_progress.parent.mkdir(parents=True, exist_ok=True)
+        self.lab_progress.write_text(json.dumps({
             "running": True, "pid": self._lab_proc.pid, "updated": time.time(),
             "done": 0, "total": 0, "models": models, "log": ["Başlatılıyor…"],
         }, ensure_ascii=False), encoding="utf-8")  # fmt: skip
         return {"ok": True, "pid": self._lab_proc.pid}
 
     def lab_stop(self) -> dict[str, Any]:
-        lab.STOP_PATH.parent.mkdir(parents=True, exist_ok=True)
-        lab.STOP_PATH.write_text("stop", encoding="utf-8")
+        self.lab_stop_flag.parent.mkdir(parents=True, exist_ok=True)
+        self.lab_stop_flag.write_text("stop", encoding="utf-8")
         return {"ok": True}
 
     def galaxy(self) -> list[dict[str, Any]]:

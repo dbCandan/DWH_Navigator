@@ -222,8 +222,10 @@ def test_settings_page_served(base_url: str) -> None:
     assert "https://" not in body.decode("utf-8")
 
 
-def test_lab_start_validation(app_with_settings: App) -> None:
+def test_lab_start_validation(app_with_settings: App, tmp_path: Path) -> None:
     app = app_with_settings
+    app.lab_results, app.lab_progress = tmp_path / "lab.json", tmp_path / "progress.json"
+    app.lab_stop_flag = tmp_path / "stop"
     with pytest.raises(ValueError, match="En az bir model"):
         app.lab_start({"models": []})
     with pytest.raises(ValueError, match="Sıcaklık"):
@@ -232,6 +234,10 @@ def test_lab_start_validation(app_with_settings: App) -> None:
         app.lab_start({"models": ["m"], "runs": 9})
     with pytest.raises(ValueError, match="bulunmayan"):
         app.lab_start({"models": ["yok/boyle-bir-model"]})
+    app.lab_progress.write_text('{"running": true}', encoding="utf-8")
+    with pytest.raises(ValueError, match="zaten"):  # one lab at a time
+        app.lab_start({"models": ["m"]})
+    assert app.lab_stop()["ok"] and app.lab_state()["progress"]["stopping"]
 
 
 def test_lab_state_shape(base_url: str) -> None:
