@@ -398,12 +398,178 @@ html.scrolled #hud { opacity: 0; }
 #star-tip .t { font-family: var(--mono); font-weight: 700; }
 #star-tip .g { color: #a3acd6; font-size: 11.5px; }
 @media (prefers-reduced-motion: reduce) { body::before { animation: none !important; } }
+
+/* ---------- star dossier: a click on a star opens the table's dictionary entry ---------- */
+html.star-hover, html.star-hover body { cursor: pointer; }
+html.dossier-open main, html.dossier-open #foot { opacity: .14; filter: blur(2px); transition: opacity .4s, filter .4s; }
+html.dossier-open #cosmos { opacity: 1; }
+html.dossier-open body::before { opacity: 1; }
+html.dossier-open #hud, html.dossier-open #hero.compact .dock-btn { opacity: 0; pointer-events: none; }
+main, #foot { transition: opacity .4s, filter .4s; }
+.dossier {
+  --hue: 190; --tone: hsl(var(--hue), 95%, 72%); --tone-soft: hsla(var(--hue), 95%, 70%, .14);
+  position: fixed; z-index: 40; top: 12px; right: 12px; bottom: 12px; width: min(540px, calc(100% - 24px));
+  display: flex; flex-direction: column; overflow: hidden; border-radius: 24px;
+  background: linear-gradient(180deg, rgba(14, 18, 44, .86), rgba(6, 9, 24, .9));
+  border: 1px solid rgba(140, 165, 255, .22); backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .07), -30px 0 80px -40px var(--tone);
+  transform: translateX(calc(100% + 30px)); opacity: 0; visibility: hidden;
+  transition: transform .5s cubic-bezier(.16, 1, .3, 1), opacity .3s, visibility 0s .5s;
+}
+.dossier.on { transform: none; opacity: 1; visibility: visible; transition: transform .5s cubic-bezier(.16, 1, .3, 1), opacity .3s; }
+.dossier::before {  /* the star's light spilling over the panel's top edge */
+  content: ""; position: absolute; inset: -120px -80px auto auto; width: 340px; height: 340px; pointer-events: none;
+  background: radial-gradient(closest-side, hsla(var(--hue), 95%, 65%, .28), transparent); filter: blur(10px);
+}
+.dossier::after {  /* scanning line on open */
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, var(--tone), transparent);
+}
+.dossier.on::after { animation: scan 1.1s .1s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes scan { 0% { top: 0; opacity: 0; } 15% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+.ds-head { position: relative; display: flex; gap: 16px; align-items: flex-start; padding: 22px 22px 14px; }
+.ds-planet {
+  flex: none; width: 54px; height: 54px; border-radius: 50%; position: relative; margin-top: 2px;
+  background: radial-gradient(circle at 34% 30%, #fff 0 6%, hsl(var(--hue), 95%, 72%) 22%, hsl(calc(var(--hue) + 40), 80%, 38%) 70%, hsl(calc(var(--hue) + 60), 70%, 16%));
+  box-shadow: 0 0 26px hsla(var(--hue), 95%, 65%, .55), inset -6px -8px 16px rgba(0, 0, 0, .45);
+}
+.ds-planet::after {
+  content: ""; position: absolute; inset: -9px -16px; border-radius: 50%; border: 1.5px solid hsla(var(--hue), 95%, 80%, .55);
+  transform: rotate(-22deg) scaleY(.32); border-top-color: transparent;
+}
+.dossier.on .ds-planet { animation: planetIn .8s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes planetIn { from { transform: scale(.2) rotate(-90deg); opacity: 0; } }
+.ds-title { flex: 1; min-width: 0; }
+.ds-kicker { font: 600 11px/1.4 var(--mono); letter-spacing: 1.6px; text-transform: uppercase; color: var(--tone); }
+.ds-title h2 {
+  margin: 4px 0 6px; font: 700 24px/1.15 var(--display); letter-spacing: -.4px; overflow-wrap: anywhere; padding-bottom: .08em;
+  background: linear-gradient(120deg, #fff 40%, hsl(var(--hue), 90%, 82%)); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ds-path { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--faint); min-width: 0; }
+.ds-path code { font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-mini {
+  flex: none; border: 1px solid var(--line); background: rgba(20, 26, 56, .6); color: var(--muted); border-radius: 7px;
+  font-size: 11px; padding: 1px 7px; cursor: pointer;
+}
+.ds-mini:hover { color: #fff; border-color: var(--tone); }
+.ds-close {
+  flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); cursor: pointer;
+  background: rgba(20, 26, 56, .6); color: var(--muted); font-size: 15px; display: grid; place-items: center; transition: transform .2s, color .2s, border-color .2s;
+}
+.ds-close:hover { color: #fff; border-color: var(--tone); transform: rotate(90deg); }
+.ds-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; padding: 0 22px 14px; }
+.ds-stat {
+  border: 1px solid rgba(140, 165, 255, .14); background: rgba(130, 150, 255, .05); border-radius: 14px; padding: 9px 10px 8px;
+  animation: rise .45s ease both; animation-delay: calc(120ms + var(--i, 0) * 60ms);
+}
+.ds-stat b { display: block; font: 700 22px/1.1 var(--display); color: #fff; font-variant-numeric: tabular-nums; }
+.ds-stat span { font-size: 11px; color: var(--muted); letter-spacing: .3px; }
+.ds-stat.pii b { color: var(--low); } .ds-stat.warn b { color: var(--mid); } .ds-stat.key b { color: var(--tone); }
+.ds-stat.zero b { color: var(--faint); }
+.ds-tools { padding: 0 22px 12px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--line); }
+.ds-search {
+  display: flex; align-items: center; gap: 8px; border: 1px solid rgba(140, 165, 255, .22); border-radius: 12px;
+  background: rgba(4, 7, 20, .6); padding: 0 12px; transition: border-color .2s, box-shadow .2s;
+}
+.ds-search:focus-within { border-color: var(--tone); box-shadow: 0 0 0 3px var(--tone-soft); }
+.ds-search svg { flex: none; color: var(--faint); }
+.ds-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 9px 0; font-size: 14px; color: #fff; }
+.ds-search input::placeholder { color: #6f78a3; }
+.ds-count { flex: none; font: 11.5px var(--mono); color: var(--faint); }
+.ds-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.ds-filter {
+  border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 3px 11px;
+  font-size: 12.5px; cursor: pointer; transition: all .15s;
+}
+.ds-filter:hover { color: #fff; }
+.ds-filter[aria-pressed="true"] { background: var(--tone-soft); border-color: transparent; color: var(--tone); font-weight: 600; }
+.ds-filter:disabled { opacity: .35; cursor: default; }
+.ds-list { flex: 1; overflow-y: auto; padding: 8px 12px 14px; scrollbar-width: thin; scrollbar-color: rgba(140, 165, 255, .25) transparent; }
+.ds-col {
+  position: relative; padding: 11px 12px 11px 22px; border-radius: 14px; cursor: pointer; outline: 0;
+  border: 1px solid transparent; transition: background .15s, border-color .15s;
+  animation: rise .35s ease both; animation-delay: calc(min(var(--i, 0), 18) * 22ms + 150ms);
+}
+.ds-col::before {  /* a small orbiting dot marks the kind of column */
+  content: ""; position: absolute; left: 9px; top: 18px; width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(190, 205, 255, .35);
+}
+.ds-col.is-key::before { background: var(--tone); box-shadow: 0 0 8px var(--tone); }
+.ds-col.is-pii::before { background: var(--low); box-shadow: 0 0 8px var(--low); }
+.ds-col:hover, .ds-col:focus-visible { background: rgba(130, 150, 255, .07); border-color: rgba(140, 165, 255, .14); }
+.ds-col.open { background: rgba(130, 150, 255, .09); border-color: hsla(var(--hue), 95%, 70%, .3); }
+.ds-col + .ds-col { margin-top: 2px; }
+.ds-ctop { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ds-cname { font: 600 13.5px var(--mono); color: #eef3ff; overflow-wrap: anywhere; }
+.ds-badge { font-size: 10.5px; font-weight: 600; letter-spacing: .4px; border-radius: 999px; padding: 0 7px; line-height: 18px; white-space: nowrap; }
+.ds-badge.key { color: var(--tone); background: var(--tone-soft); }
+.ds-badge.pii { color: var(--low); background: var(--low-bg); }
+.ds-badge.flag { color: var(--mid); background: var(--mid-bg); }
+.ds-desc {
+  margin: 4px 0 0; font-size: 13.5px; color: #bcc5ea; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ds-col.open .ds-desc { -webkit-line-clamp: unset; display: block; color: #dfe5ff; }
+.ds-desc.none { font-style: italic; color: var(--faint); }
+.ds-more { display: none; margin-top: 8px; font-size: 12.5px; }
+.ds-col.open .ds-more { display: block; animation: rise .2s ease both; }
+.ds-syn { color: var(--muted); }
+.ds-syn b { color: var(--faint); font-weight: 600; margin-right: 4px; }
+.ds-flagtxt { margin-top: 4px; padding: 6px 9px; border-radius: 9px; background: rgba(255, 209, 102, .07); border: 1px solid rgba(255, 209, 102, .18); color: #f3dfaa; }
+.ds-col mark { background: hsla(var(--hue), 95%, 65%, .28); color: #fff; border-radius: 3px; padding: 0 1px; }
+.ds-empty { text-align: center; color: var(--muted); padding: 40px 16px; }
+.ds-skel { height: 58px; border-radius: 14px; margin: 6px 0; background: linear-gradient(90deg, rgba(130,150,255,.05), rgba(130,150,255,.12), rgba(130,150,255,.05)); background-size: 300% 100%; animation: shimmer 1.4s linear infinite; }
+.ds-foot { border-top: 1px solid var(--line); padding: 12px 22px 16px; }
+.ds-foot .lbl { font: 600 10.5px var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+.ds-sibs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; scrollbar-color: rgba(140, 165, 255, .25) transparent; }
+.ds-sib {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(20, 26, 56, .5); color: #dfe6ff; font: 12px var(--mono); padding: 4px 10px; cursor: pointer; transition: border-color .15s;
+}
+.ds-sib::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 6px var(--tone); }
+.ds-sib:hover { border-color: var(--tone); }
+.ds-sib small { color: var(--faint); font-family: var(--sans); }
+@media (max-width: 760px) {
+  .dossier { top: 8px; right: 8px; bottom: 8px; width: calc(100% - 16px); border-radius: 20px; }
+  .ds-head { padding: 18px 16px 12px; gap: 12px; }
+  .ds-planet { width: 40px; height: 40px; margin-left: 4px; }
+  .ds-planet::after { inset: -6px -11px; }
+  .ds-head { gap: 16px; }
+  .ds-title h2 { font-size: 20px; }
+  .ds-stats { padding: 0 16px 12px; gap: 6px; }
+  .ds-stat b { font-size: 18px; }
+  .ds-tools { padding: 0 16px 12px; }
+  .ds-list { padding: 6px 6px 12px; }
+  .ds-foot { padding: 10px 16px 14px; }
+}
 </style>
 </head>
 <body>
 <canvas id="cosmos" aria-hidden="true"></canvas>
 <div id="hud" aria-hidden="true"><div><b>Veri evreni</b> · <span id="hud-count"></span></div><div class="focus" id="hud-focus"></div></div>
 <div id="star-tip" role="tooltip"></div>
+<aside class="dossier" id="dossier" role="dialog" aria-labelledby="ds-name" aria-hidden="true">
+  <header class="ds-head">
+    <div class="ds-planet" aria-hidden="true"></div>
+    <div class="ds-title">
+      <div class="ds-kicker" id="ds-kicker"></div>
+      <h2 id="ds-name"></h2>
+      <div class="ds-path"><code id="ds-path"></code><button class="ds-mini" id="ds-copy" type="button" title="Tam adı kopyala">Kopyala</button></div>
+    </div>
+    <button class="ds-close" id="ds-close" type="button" aria-label="Kapat (Esc)" title="Kapat (Esc)">✕</button>
+  </header>
+  <div class="ds-stats" id="ds-stats"></div>
+  <div class="ds-tools">
+    <label class="ds-search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+      <input id="ds-q" type="search" placeholder="Kolon, açıklama, eş anlamlı ara…" aria-label="Kolonlarda ara" autocomplete="off">
+      <span class="ds-count" id="ds-count"></span>
+    </label>
+    <div class="ds-filters" id="ds-filters"></div>
+  </div>
+  <div class="ds-list" id="ds-list" tabindex="-1"></div>
+  <div class="ds-foot" id="ds-foot"></div>
+</aside>
 <header class="top">
   <div class="wrap">
     <div class="brand">
@@ -576,7 +742,7 @@ document.addEventListener("keydown", e => {
 
 async function ask() {
   const text = q.value.trim(); if (!text) { q.focus(); return; }
-  foldSearch(); q.blur(); scrollTo({ top: 0 });
+  Dossier.close(); foldSearch(); q.blur(); scrollTo({ top: 0 });
   dock.title = `Yeni soru sor (/) — son soru: ${text}`;
   $("#ask-out").replaceChildren(); document.documentElement.classList.remove("has-results");
   $("#loader").classList.add("on"); $("#go").disabled = true;
@@ -743,6 +909,9 @@ const Cosmos = (() => {
   let rot = 0, t = 0, last = performance.now();
   let focusList = [], focusAt = 0, pulseKey = "", pulseAt = 0, hover = null;
   const mouse = { x: 0.5, y: 0.5, sx: 0.5, sy: 0.5 };
+  // A clicked star: the camera glides it into the free space left of the dossier.
+  let selected = null, selectedAt = 0;
+  const cam = { x: 0, y: 0 };
 
   // voyage state
   let mode = "idle", modeAt = 0, judgeExpected = false, origin = [0, 0];
@@ -793,7 +962,7 @@ const Cosmos = (() => {
     const c = Math.cos(rot * n.z), s = Math.sin(rot * n.z);
     const x = n.x * c - n.y * s, y = n.x * s + n.y * c;
     const px = (mouse.sx - 0.5) * 60 * n.z, py = (mouse.sy - 0.5) * 40 * n.z;
-    return [W / 2 + x * W * 0.47 + px, H / 2 + y * H * 0.46 + py];
+    return [W / 2 + x * W * 0.47 + px + cam.x, H / 2 + y * H * 0.46 + py + cam.y];
   }
 
   // Where the voyage starts: under the visible search field.
@@ -861,8 +1030,20 @@ const Cosmos = (() => {
     const cruising = mode === "idle" || mode === "done";
     if (!reduce && cruising) rot += dt * 0.000018;
     mouse.sx += (mouse.x - mouse.sx) * 0.05; mouse.sy += (mouse.y - mouse.sy) * 0.05;
+    steer(dt);
     step(dt);
     draw();
+  }
+
+  function steer(dt) {
+    const panel = $("#dossier").offsetWidth;
+    let tx = 0, ty = 0;
+    if (selected && W - panel > 320) {  // phones: the dossier covers the sky, no need to move it
+      const [x, y] = screen(selected);
+      tx = cam.x + ((W - panel - 12) / 2 - x); ty = cam.y + (H / 2 - y);
+    }
+    const k = reduce ? 1 : 1 - Math.pow(0.94, dt / 16);
+    cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
   }
 
   function step(dt) {
@@ -934,14 +1115,40 @@ const Cosmos = (() => {
     for (const n of nodes) {
       const [x, y] = screen(n); n.sx = x; n.sy = y;
       const tw = 0.65 + 0.35 * Math.sin(t * 0.0022 + n.tw), r = n.size * (0.6 + n.z * 0.7);
-      const a = (0.35 + 0.55 * n.z) * tw * (onRoute.has(n) ? 1 : dim);
+      const kin = !selected || n.g === selected.g ? 1 : 0.4;
+      const a = (0.35 + 0.55 * n.z) * tw * (onRoute.has(n) ? 1 : dim) * kin;
       ctx.fillStyle = `hsla(${n.hue},90%,${72 + n.z * 18}%,${a})`;
       ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
     }
     if (mode === "plan") drawPlanning();
     if (route.length > 1 && mode !== "idle") drawRoute();
     drawFocus();
-    if (hover) ring(hover.sx, hover.sy, 10, "rgba(255,255,255,.8)", 1.2);
+    if (selected) drawSelected();
+    if (hover && hover !== selected) ring(hover.sx, hover.sy, 10, "rgba(255,255,255,.8)", 1.2);
+  }
+
+  function drawSelected() {  // constellation of its cluster + a turning reticle
+    const n = selected, x = n.sx, y = n.sy, age = (t - selectedAt) / 1000, grow = Math.min(1, age * 2.5);
+    ctx.lineWidth = 0.8;
+    for (const m of n.g.members) {
+      if (m === n) continue;
+      ctx.strokeStyle = `hsla(${n.hue},90%,75%,${0.16 * grow})`;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (m.sx - x) * grow, y + (m.sy - y) * grow); ctx.stroke();
+      ctx.fillStyle = `hsla(${n.hue},95%,85%,${0.8 * grow})`; ctx.beginPath(); ctx.arc(m.sx, m.sy, 1.6, 0, 6.2832); ctx.fill();
+    }
+    glow(x, y, 40 * grow, `hsla(${n.hue},95%,68%,.4)`);
+    const r = 15 + 14 * (1 - grow), spin = t * 0.0011;
+    ctx.strokeStyle = `hsla(${n.hue},95%,82%,${0.95 * grow})`; ctx.lineWidth = 1.6;
+    for (let k = 0; k < 4; k++) { const a0 = spin + k * Math.PI / 2 + 0.22; ctx.beginPath(); ctx.arc(x, y, r, a0, a0 + Math.PI / 2 - 0.44); ctx.stroke(); }
+    ctx.strokeStyle = `hsla(${n.hue},95%,82%,${0.35 * grow})`; ctx.lineWidth = 1;
+    for (let k = 0; k < 4; k++) {  // crosshair ticks
+      const a = k * Math.PI / 2; ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * (r + 5), y + Math.sin(a) * (r + 5)); ctx.lineTo(x + Math.cos(a) * (r + 12), y + Math.sin(a) * (r + 12)); ctx.stroke();
+    }
+    const p = (age * 0.45) % 1;
+    ring(x, y, r + p * 46, `hsla(${n.hue},95%,75%,${0.45 * (1 - p)})`, 1);
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 3, 0, 6.2832); ctx.fill();
+    label(x + 8, y - 6, n.name, "", grow);
   }
 
   function drawPlanning() {  // radar pings from the search field while the route is computed
@@ -1068,7 +1275,7 @@ const Cosmos = (() => {
   }
 
   // --------------------------------------------------------------- interaction
-  const blocked = el => el.closest("header, .res, .answer, .searchbox, button, a, textarea, input, table, details, .loader, footer");
+  const blocked = el => el.closest("header, .res, .answer, .searchbox, button, a, textarea, input, table, details, .loader, footer, .dossier");
   function nearest(x, y) {
     let best = null, bd = 14 * 14;
     for (const n of nodes) { const d = (n.sx - x) ** 2 + (n.sy - y) ** 2; if (d < bd) { bd = d; best = n; } }
@@ -1079,12 +1286,20 @@ const Cosmos = (() => {
     if (!active) return;
     const n = !blocked(e.target) ? nearest(e.clientX, e.clientY) : null;
     hover = n;
+    document.documentElement.classList.toggle("star-hover", !!n);
     if (n) {
       tip.replaceChildren(h("div", { class: "t" }, n.name), h("div", { class: "g" }, `${n.schema} · ${n.columns} kolon`), h("div", { class: "g" }, n.group));
       tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.classList.add("on");
     } else tip.classList.remove("on");
   }, { passive: true });
   addEventListener("resize", () => { if (active) resize(); });
+  // A click on a star opens its dossier; a click elsewhere closes an open one.
+  document.addEventListener("click", e => {
+    if (!active || !loaded || !e.target.isConnected) return;  // a re-rendered control inside the dossier
+    const n = !blocked(e.target) ? nearest(e.clientX, e.clientY) : null;
+    if (n) { tip.classList.remove("on"); Dossier.open(n.key); }
+    else if (selected && !e.target.closest(".dossier")) Dossier.close();
+  });
   document.addEventListener("visibilitychange", () => { if (active) { cancelAnimationFrame(raf); if (!document.hidden) raf = requestAnimationFrame(frame); } });
 
   async function ensureLoaded() {
@@ -1125,6 +1340,13 @@ const Cosmos = (() => {
       if (["plan", "travel", "judge", "wait"].includes(mode)) { mode = "idle"; route = []; }
     },
     pulse(key) { pulseKey = key; pulseAt = t; },
+    /** Mark a star as the open dossier's (null clears); returns its node. */
+    select(key) {
+      const n = key ? byKey.get(key) || null : null;
+      if (n !== selected) { selected = n; selectedAt = t; }
+      return n;
+    },
+    node: key => byKey.get(key) || null,
   };
 
   function showCandidates(list) {
@@ -1152,6 +1374,132 @@ const Cosmos = (() => {
       if (!hudSteps.length && query) hudSteps.push(`◎ ${query}`);
       hud(`${focusList.length} sonuç · varış: ${focusList[0].name}`);
   }
+})();
+
+// ---------------------------------------------------------------- star dossier
+// A click on a star opens that table's dictionary entry: every column with its
+// description, synonyms, quality flags, KVKK marks and join keys.
+const Dossier = (() => {
+  const el = $("#dossier"), list = $("#ds-list"), input = $("#ds-q");
+  const FLAG = { model_estimated: "Model tahmini", corrected: "Açıklama düzeltildi", needs_verification: "Doğrulanmalı", naming_mismatch: "İsim/içerik uyumsuz", quality_note: "Kalite notu" };
+  const FILTERS = [["all", "Tümü"], ["key", "Anahtar"], ["pii", "KVKK"], ["flag", "Uyarılı"]];
+  // Turkish-aware folding: "İŞLEM", "işlem" and "islem" all match.
+  const fold = s => (s || "").toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  let data = null, keys = new Set(), filter = "all", seq = 0, returnFocus = null;
+
+  // Wraps the matched parts in <mark>; folding keeps one character per character for Turkish text.
+  function marked(text, term) {
+    const f = fold(text);
+    if (!term || f.length !== text.length) return text;
+    const out = []; let i = 0, j;
+    while ((j = f.indexOf(term, i)) !== -1) { out.push(text.slice(i, j), h("mark", {}, text.slice(j, j + term.length))); i = j + term.length; }
+    out.push(text.slice(i));
+    return out;
+  }
+  const kind = c => ({ key: keys.has(c.column), pii: c.pii, flag: c.flags.length > 0 });
+
+  function row(c, i, term) {
+    const k = kind(c);
+    const r = h("div", { class: "ds-col" + (k.key ? " is-key" : "") + (k.pii ? " is-pii" : ""), role: "button", tabindex: "0", "aria-expanded": "false", style: `--i:${i}` },
+      h("div", { class: "ds-ctop" },
+        h("span", { class: "ds-cname" }, marked(c.column, term)),
+        k.key ? h("span", { class: "ds-badge key", title: "Diğer tablolarla birleştirme anahtarı" }, "ANAHTAR") : null,
+        k.pii ? h("span", { class: "ds-badge pii", title: "Kişisel veri (KVKK)" }, "KVKK") : null,
+        ...[...new Set(c.flags.map(f => f.kind))].map(f => h("span", { class: "ds-badge flag" }, FLAG[f] || f))),
+      c.description ? h("p", { class: "ds-desc" }, marked(c.description, term)) : h("p", { class: "ds-desc none" }, "Açıklama yok"),
+      h("div", { class: "ds-more" },
+        c.synonyms.length ? h("div", { class: "ds-syn" }, h("b", {}, "Eş anlamlılar"), marked(c.synonyms.join(", "), term)) : null,
+        ...c.flags.map(f => h("div", { class: "ds-flagtxt" }, "⚑ " + f.text)),
+        !c.synonyms.length && !c.flags.length && c.description.length < 140 ? h("div", { class: "faint" }, "Ek not yok") : null));
+    const toggle = () => r.setAttribute("aria-expanded", r.classList.toggle("open"));
+    r.addEventListener("click", e => { if (!getSelection().toString()) toggle(); e.stopPropagation(); });
+    r.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    return r;
+  }
+
+  function renderList() {
+    if (!data) return;
+    const term = fold(input.value.trim());
+    const cols = data.columns.filter(c => (filter === "all" || kind(c)[filter]) &&
+      (!term || fold(`${c.column} ${c.description} ${c.synonyms.join(" ")}`).includes(term)));
+    $("#ds-count").textContent = cols.length === data.columns.length ? `${cols.length}` : `${cols.length} / ${data.columns.length}`;
+    put(list, cols.length ? cols.map((c, i) => row(c, i, term))
+      : h("div", { class: "ds-empty" }, "Bu filtreye uyan kolon yok."));
+    list.scrollTop = 0;
+  }
+
+  function renderFilters() {
+    put($("#ds-filters"), FILTERS.map(([id, name]) => {
+      const n = id === "all" ? data.columns.length : data.columns.filter(c => kind(c)[id]).length;
+      return h("button", { class: "ds-filter", type: "button", "aria-pressed": String(filter === id), disabled: !n && id !== "all",
+        onclick: () => { filter = id; renderFilters(); renderList(); } }, `${name} · ${n}`);
+    }));
+  }
+
+  function stat(cls, n, label, i) {
+    return h("div", { class: `ds-stat ${cls}${n ? "" : " zero"}`, style: `--i:${i}` }, h("b", {}, n.toLocaleString("tr-TR")), h("span", {}, label));
+  }
+
+  async function open(key) {
+    const node = Cosmos.select(key);
+    const my = ++seq;
+    if (!el.classList.contains("on")) returnFocus = document.activeElement;
+    el.style.setProperty("--hue", node ? node.hue : 190);
+    $("#ds-kicker").textContent = node ? node.group : "Tablo";
+    put($("#ds-name"), breakable(node ? node.name : key.split(".").pop()));
+    $("#ds-path").textContent = key; $("#ds-path").title = key;
+    put($("#ds-stats")); put($("#ds-filters")); put($("#ds-foot")); $("#ds-count").textContent = "";
+    put(list, [0, 1, 2, 3, 4].map(() => h("div", { class: "ds-skel" })));
+    input.value = ""; filter = "all";
+    el.classList.remove("on"); void el.offsetWidth;  // replay the entrance for a new star
+    el.classList.add("on"); el.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("dossier-open");
+    try {
+      const d = await api("/api/object/" + encodeURIComponent(key));
+      if (my !== seq) return;
+      data = d; keys = new Set(d.join_keys || []);
+      if (d.groups && d.groups.length) $("#ds-kicker").textContent = d.groups.join(" · ");
+      const c = d.columns;
+      put($("#ds-stats"),
+        stat("", c.length, "kolon", 0),
+        stat("key", c.filter(x => keys.has(x.column)).length, "anahtar", 1),
+        stat("pii", c.filter(x => x.pii).length, "KVKK", 2),
+        stat("warn", c.filter(x => x.flags.length).length, "uyarılı", 3));
+      renderFilters(); renderList();
+      const sibs = node ? node.g.members.filter(m => m !== node).sort((a, b) => b.columns - a.columns).slice(0, 14) : [];
+      put($("#ds-foot"), sibs.length ? [h("div", { class: "lbl" }, `Aynı kümede · ${node.g.members.length - 1} tablo`),
+        h("div", { class: "ds-sibs" }, sibs.map(m => h("button", { class: "ds-sib", type: "button", title: `${m.schema} · ${m.columns} kolon`, onclick: () => open(m.key) },
+          m.name, h("small", {}, m.columns))))] : null);
+      if (!$("#ds-foot").childElementCount) $("#ds-foot").classList.add("hidden"); else $("#ds-foot").classList.remove("hidden");
+      $("#ds-close").focus({ preventScroll: true });
+    } catch (e) {
+      if (my === seq) put(list, h("div", { class: "ds-empty" }, "Tablo yüklenemedi: " + e.message));
+    }
+  }
+
+  function close() {
+    if (!el.classList.contains("on")) return;
+    seq++; data = null;
+    el.classList.remove("on"); el.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("dossier-open");
+    Cosmos.select(null);
+    if (returnFocus && document.contains(returnFocus)) returnFocus.focus({ preventScroll: true });
+  }
+
+  input.addEventListener("input", renderList);
+  $("#ds-close").onclick = close;
+  $("#ds-copy").onclick = async e => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText($("#ds-path").textContent); b.textContent = "Kopyalandı ✓"; }
+    catch { b.textContent = "Kopyalanamadı"; }
+    setTimeout(() => { b.textContent = "Kopyala"; }, 1400);
+  };
+  document.addEventListener("keydown", e => {
+    if (!el.classList.contains("on")) return;
+    if (e.key === "Escape") { e.stopImmediatePropagation(); close(); }
+    else if (e.key === "/" && document.activeElement !== input) { e.preventDefault(); e.stopImmediatePropagation(); input.focus(); }
+  }, true);
+  return { open, close, get isOpen() { return el.classList.contains("on"); } };
 })();
 
 addEventListener("scroll", () => document.documentElement.classList.toggle("scrolled", scrollY > 120), { passive: true });

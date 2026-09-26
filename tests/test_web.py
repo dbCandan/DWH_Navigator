@@ -100,7 +100,8 @@ def test_explorer(base_url: str) -> None:
     assert {r["name"] for r in rows} >= {"vCardLimitFullness", "vCreditCardLimit"}
     assert {r["match"] for r in rows} == {"ad"}  # both names contain "limit"
     _, body, _ = get(base_url + "/api/object/" + rows[0]["key"])
-    assert json.loads(body)["columns"]
+    detail = json.loads(body)
+    assert detail["columns"] and isinstance(detail["groups"], list)
     status, _, _ = get(base_url + "/api/object/DB.S.yok")
     assert status == 404
 

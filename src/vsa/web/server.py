@@ -579,6 +579,7 @@ class App:
             "key": key,
             "name": first.object_name,
             "schema": f"{first.database}.{first.schema}",
+            "groups": sorted({f.col.dataset_group for f in obj.features if f.col.dataset_group}),
             "columns": [serialize.column(f.col) for f in obj.features],
             "join_keys": self.engine.join_keys.get(key, []),
         }
