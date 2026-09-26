@@ -186,15 +186,23 @@ class Engine:
     # ------------------------------------------------------------------ analysis
 
     def rank_objects(
-        self, query: str, include: Iterable[str] = ()
+        self,
+        query: str,
+        include: Iterable[str] = (),
+        *,
+        use_llm: bool = True,
+        limit: int | None = None,
     ) -> tuple[list[ObjectMatch], ExpandedQuery]:
         """Ranked objects for a query (no answer threshold). Objects in ``include`` are
         always scored and kept, even when search alone would not reach them — batch
-        mode uses this to judge every field against the core table."""
+        mode uses this to judge every field against the core table. ``use_llm=False``
+        skips the chat model (LLM query expansion); embeddings still run. ``limit``
+        overrides how many objects are returned."""
         s = self.settings
         q = self.expander.expand(query)
         self._weigh_concepts(q)
-        self._llm_expand(q)
+        if use_llm:
+            self._llm_expand(q)
         scored = self.bm25.search(q.sparse_terms, top_k=len(self.features))
         bm25_map = dict(scored)
         max_bm25 = scored[0][1] if scored else 0.0
@@ -240,7 +248,8 @@ class Engine:
             s.scoring.object,
             s.scoring.min_candidate_score,
         )
-        limit = s.search.top_k_objects + NEAR_MISS_COUNT
+        if limit is None:
+            limit = s.search.top_k_objects + NEAR_MISS_COUNT
         kept = [
             m
             for i, m in enumerate(ranked)

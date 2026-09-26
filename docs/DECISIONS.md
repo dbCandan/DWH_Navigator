@@ -255,3 +255,21 @@ gerekçe/kısıt metinlerini yazmaya ve "uygun aday yok" kararını güçlendirm
 **Karar.** Varsayılan `w_rule = 0.75`, `w_llm = 0.25`. Hakeme adayların kapsanan/eksik
 kavramları, zaman kolonu ve uzun format bilgisi verilir. Golden set büyüdükçe yeniden
 kalibre edilmeli (§9.7).
+
+---
+
+## ADR-023 — Keşfet ekranı LLM dışındaki tüm arama katmanlarını kullanır
+
+**Tarih.** 2026-09-26
+
+**Karar.** Keşfet araması üç katmanlı: (1) **ad** — tablo/şema/veri seti grubu metni
+içerir (anlık, en üstte); (2) **içerik** — sohbet modeli hariç tam arama hattı
+(Türkçe normalizasyon, terim sözlüğü, sözlük eş anlamlıları, BM25, BGE-M3 vektör araması,
+obje seviyesine toplama; `rank_objects(use_llm=False)`); (3) **kolon adı** — bir kolon adı
+metni içerir. Her sonuç eşleşme türünü, tablo skorunu ve eşleşen kolonları gösterir;
+tablo açıldığında bu kolonlar vurgulanır. 3 karakterden kısa aramalar yalnız ad katmanını
+kullanır. LLM hakem burada kullanılmaz (arama başına ~40 sn).
+
+**Ek bulgu.** Windows'ta `localhost` önce IPv6'ya (`::1`) çözülüyor; yalnız IPv4 dinleyen
+LM Studio'ya her istek ~2 sn gecikmeyle ulaşıyordu. İstemci `localhost`'u `127.0.0.1`'e
+çeviriyor: Keşfet araması 2.100 ms → ~100 ms; hakem çağrıları da ~2 sn kısaldı.

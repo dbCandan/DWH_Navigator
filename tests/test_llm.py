@@ -203,3 +203,10 @@ def test_llm_expansion_only_widens_bm25(sample_dictionary_path: Path) -> None:
     _, q = engine.rank_objects("kart doluluk")
     assert q.sparse_terms.get("utilization") == s.expansion.weight
     assert "utilization" not in {c.label for c in q.concepts}
+
+
+def test_localhost_is_pinned_to_ipv4() -> None:
+    from vsa.llm.client import OpenAICompatibleClient
+
+    c = OpenAICompatibleClient("http://localhost:1234/v1/", "m")
+    assert c.endpoint == "http://127.0.0.1:1234/v1"

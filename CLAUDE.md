@@ -38,7 +38,8 @@ Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
 `docs/DECISIONS.md`: ADR-009 (müşteri no = hesap no), ADR-010 (zaman/granülerlik yalnız obje
 skorunda), ADR-011 (uygulanamayan bileşen ağırlıktan çıkar), ADR-012 (kolon skoru tabanı),
 ADR-013 (IDF ağırlıklı kapsama + cevap eşiği), ADR-014 (uzun format kırılım), ADR-015 (obje havuzu),
-ADR-016/017 (batch: çekirdek tablo, yapısal alanlar, ölçü uyumu, kanal toplamları, terim kapsam notları).
+ADR-016/017 (batch: çekirdek tablo, yapısal alanlar, ölçü uyumu, kanal toplamları, terim kapsam notları),
+ADR-018..022 (yerel model, hibrit, hakem, ağırlıklar), ADR-023 (Keşfet araması).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -85,6 +86,6 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
       Eş anlamlı zenginleştirme akışı henüz yok.
 
 ## Bu makinenin model ortamı
-LM Studio (http://localhost:1234), runtime `llama.cpp-win-x86_64-vulkan-avx2@2.46.0`.
+LM Studio (http://127.0.0.1:1234; `localhost` Windows'ta IPv6 yüzünden ~2 sn yavaş, ADR-023), runtime `llama.cpp-win-x86_64-vulkan-avx2@2.46.0`.
 Modeller: `qwen/qwen3.5-9b` (hakem), `text-embedding-bge-m3` (vektör). Yerel ayar
 `config/settings.yaml` (repoda yok). Model karşılaştırma: `eval/bench_llm.py`.

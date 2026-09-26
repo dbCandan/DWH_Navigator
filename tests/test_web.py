@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import threading
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections.abc import Iterator
 from http.server import ThreadingHTTPServer
@@ -94,8 +95,9 @@ def test_batch_json(base_url: str) -> None:
 
 def test_explorer(base_url: str) -> None:
     _, body, _ = get(base_url + "/api/objects?q=limit")
-    rows = json.loads(body)
+    rows = json.loads(body)["items"]
     assert {r["name"] for r in rows} >= {"vCardLimitFullness", "vCreditCardLimit"}
+    assert {r["match"] for r in rows} == {"ad"}  # both names contain "limit"
     _, body, _ = get(base_url + "/api/object/" + rows[0]["key"])
     assert json.loads(body)["columns"]
     status, _, _ = get(base_url + "/api/object/DB.S.yok")
@@ -129,3 +131,25 @@ def test_feedback_to_golden_candidates(tmp_path: Path) -> None:
     items = yaml.safe_load(out.read_text(encoding="utf-8"))
     assert items[0]["expected_objects"] == ["DB.S.vA"]
     assert items[0]["rejected_objects"] == ["DB.S.vB"]
+
+
+def test_explorer_content_and_column_layers(base_url: str) -> None:
+    # "doluluk oranı" is in no table or column name — only the content layer finds it.
+    _, body, _ = get(base_url + "/api/objects?q=" + urllib.parse.quote("doluluk oranı"))
+    data = json.loads(body)
+    first = data["items"][0]
+    assert first["name"] == "vCardLimitFullness" and first["match"] == "içerik"
+    assert first["score"] > 0 and "CardLimitFullnessToday" in first["matched"]
+    assert any("doluluk oranı" in c for c in data["concepts"])
+    # A column-name fragment that is not in any table name.
+    _, body, _ = get(base_url + "/api/objects?q=PartyId")
+    items = json.loads(body)["items"]
+    assert items and items[0]["match"] in ("içerik", "kolon adı")
+    assert any("CustomerPartyId" in i.get("matched", []) for i in items)
+
+
+def test_explorer_short_and_empty_queries(base_url: str) -> None:
+    _, body, _ = get(base_url + "/api/objects?q=")
+    assert len(json.loads(body)["items"]) == 2  # browse mode lists every object
+    _, body, _ = get(base_url + "/api/objects?q=vc")
+    assert {i["match"] for i in json.loads(body)["items"]} == {"ad"}  # < 3 chars: names only

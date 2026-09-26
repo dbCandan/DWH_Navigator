@@ -269,6 +269,20 @@ table.notes td:first-child { white-space: nowrap; color: var(--muted); font-size
 .obj:hover, .obj.sel { background: var(--surface-2); }
 .obj .n { font-family: var(--mono); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .obj .m { font-size: 12px; color: var(--muted); }
+.obj .top { display: flex; align-items: center; gap: 8px; }
+.obj .top .n { flex: 1; min-width: 0; }
+.badge { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; border-radius: 999px; padding: 1px 7px; white-space: nowrap; }
+.b-ad { background: var(--accent-soft); color: var(--text); }
+.b-icerik { background: var(--high-bg); color: var(--high); }
+.b-kolon { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.obj .hits { font-family: var(--mono); font-size: 11.5px; color: var(--text); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.obj .why { font-size: 11.5px; color: var(--high); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.objhead { padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--surface); z-index: 1; }
+.objhead .chips { margin-top: 4px; }
+#objdetail > .panel { max-height: 70vh; overflow-y: auto; margin-top: 0; }
+.coltable tr.hit td { background: var(--high-bg); }
+.coltable tr.hit td:first-child { box-shadow: inset 3px 0 0 var(--high); }
+.searchline .hint { align-self: center; font-size: 12px; color: var(--faint); white-space: nowrap; }
 .coltable { width: 100%; border-collapse: collapse; font-size: 13px; }
 .coltable td { border-top: 1px solid var(--line); padding: 8px; vertical-align: top; }
 .coltable td:first-child { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
@@ -364,7 +378,7 @@ kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); 
   <!-- ================= EXPLORE ================= -->
   <section id="tab-explore" class="hidden">
     <div class="hero compact"></div>
-    <div class="searchline"><input id="oq" placeholder="Tablo, kolon adı ya da veri seti grubu ara… (ör. vFASTOutgoing, Period, Kart)" aria-label="Sözlükte ara"></div>
+    <div class="searchline"><input id="oq" placeholder="Tablo adı, kolon adı ya da anlam ile ara… (ör. vFASTOutgoing, Period, limit doluluk, ihtiyaç kredisi)" aria-label="Sözlükte ara"><span class="hint" id="oqhint"></span></div>
     <div class="explorer">
       <div class="objlist" id="objlist"></div>
       <div id="objdetail"><div class="empty">Soldan bir tablo seçin.</div></div>
@@ -684,27 +698,72 @@ function renderBatch(r) {
 }
 
 // ---------------------------------------------------------------- explore
-let oqTimer = null;
-$("#oq").addEventListener("input", e => { clearTimeout(oqTimer); oqTimer = setTimeout(() => loadObjects(e.target.value), 200); });
+// Every search layer except the chat model: names first (instant), then content
+// (normalization, term dictionary, synonyms, BM25, semantic vectors, table aggregation).
+let oqTimer = null, oqSeq = 0, HILITE = {};
+$("#oq").addEventListener("input", e => {
+  clearTimeout(oqTimer);
+  const v = e.target.value;
+  oqTimer = setTimeout(() => loadObjects(v), v.trim().length >= 3 ? 350 : 150);
+});
+const MATCH = { "ad": ["b-ad", "ad"], "içerik": ["b-icerik", "içerik"], "kolon adı": ["b-kolon", "kolon adı"] };
 async function loadObjects(text) {
+  const seq = ++oqSeq;
+  if (text.trim().length >= 3) $("#oqhint").textContent = "aranıyor…";
   try {
-    const rows = await api("/api/objects?q=" + encodeURIComponent(text));
-    $("#objlist").replaceChildren(...(rows.length ? rows.map(o => {
-      const el = h("div", { class: "obj", tabindex: "0" }, h("div", { class: "n" }, o.name), h("div", { class: "m" }, `${o.schema} · ${o.columns} kolon` + (o.groups.length ? " · " + o.groups.join(", ") : "")));
-      el.onclick = el.onkeydown = ev => { if (ev.type === "keydown" && ev.key !== "Enter") return; document.querySelectorAll(".obj").forEach(x => x.classList.remove("sel")); el.classList.add("sel"); showObject(o.key); };
+    const r = await api("/api/objects?q=" + encodeURIComponent(text));
+    if (seq !== oqSeq) return;  // a newer search is already under way
+    HILITE = {};
+    const c = r.counts || {};
+    $("#oqhint").textContent = r.query ? `${r.items.length} tablo · ${r.elapsed_ms} ms` + (r.hybrid ? " · anlamsal" : "") : "";
+    const head = r.query ? h("div", { class: "objhead" },
+      [c["ad"] ? `${c["ad"]} ad` : null, c["içerik"] ? `${c["içerik"]} içerik` : null, c["kolon adı"] ? `${c["kolon adı"]} kolon adı` : null].filter(Boolean).join(" · ") + " eşleşmesi",
+      r.concepts && r.concepts.length ? h("div", { class: "chips" }, r.concepts.map(conceptChip)) : null) : null;
+    const rows = r.items.map(o => {
+      HILITE[o.key] = o.matched || [];
+      const [cls, label] = MATCH[o.match] || ["", ""];
+      const el = h("div", { class: "obj", tabindex: "0" },
+        h("div", { class: "top" }, h("div", { class: "n", title: o.key }, o.name),
+          o.score != null ? h("span", { class: "badge l-" + o.level, title: `Tablo skoru (${o.level})` }, "%" + pct(o.score)) : null,
+          label ? h("span", { class: "badge " + cls }, label) : null),
+        h("div", { class: "m" }, `${o.schema} · ${o.columns} kolon` + (o.groups.length ? " · " + o.groups.join(", ") : "")),
+        o.matched && o.matched.length ? h("div", { class: "hits", title: o.matched.join(", ") }, "↳ " + o.matched.join(" · ")) : null,
+        o.signal ? h("div", { class: "why", title: o.signal }, "✓ " + o.signal) : null);
+      el.onclick = el.onkeydown = ev => {
+        if (ev.type === "keydown" && ev.key !== "Enter") return;
+        document.querySelectorAll(".obj").forEach(x => x.classList.remove("sel"));
+        el.classList.add("sel"); showObject(o.key);
+      };
       return el;
-    }) : [h("div", { class: "empty" }, "Eşleşen tablo yok.")]));
-  } catch (e) { $("#objlist").replaceChildren(h("div", { class: "error" }, e.message)); }
+    });
+    put($("#objlist"), head, rows.length ? rows : h("div", { class: "empty" }, "Eşleşen tablo yok."));
+  } catch (e) {
+    if (seq === oqSeq) { $("#oqhint").textContent = ""; put($("#objlist"), h("div", { class: "error" }, e.message)); }
+  }
 }
 async function showObject(key) {
   const d = await api("/api/object/" + encodeURIComponent(key));
-  $("#objdetail").replaceChildren(h("div", { class: "panel" },
-    h("h2", { style: "margin:0;font-family:var(--display)" }, d.name), h("div", { class: "sub", style: "font-family:var(--mono);color:var(--muted)" }, d.schema),
-    d.join_keys.length ? h("div", { class: "chips" }, h("span", { class: "chip" }, "Birleştirme anahtarları:"), d.join_keys.map(k => h("span", { class: "chip on" }, k))) : null,
-    h("table", { class: "coltable", style: "margin-top:10px" }, d.columns.map(c => h("tr", {},
+  const hits = new Set(HILITE[key] || []);
+  let first = null;
+  const table = h("table", { class: "coltable", style: "margin-top:10px" }, d.columns.map(c => {
+    const tr = h("tr", { class: hits.has(c.column) ? "hit" : "" },
       h("td", {}, c.column, c.pii ? h("span", { class: "flag", style: "color:var(--low)", title: "Kişisel veri" }, " ●") : null),
       h("td", {}, c.description, c.synonyms.length ? h("div", { class: "faint" }, c.synonyms.join(", ")) : null,
-        c.flags.length ? h("div", { class: "faint", style: "color:var(--mid)" }, c.flags.map(f => "⚑ " + f.text).join(" · ")) : null))))));
+        c.flags.length ? h("div", { class: "faint", style: "color:var(--mid)" }, c.flags.map(f => "⚑ " + f.text).join(" · ")) : null));
+    if (c.column === (HILITE[key] || [])[0]) first = tr;  // strongest match, not table order
+    return tr;
+  }));
+  put($("#objdetail"), h("div", { class: "panel" },
+    h("h2", { style: "margin:0;font-family:var(--display)" }, d.name), h("div", { class: "sub", style: "font-family:var(--mono);color:var(--muted)" }, d.schema),
+    d.join_keys.length ? h("div", { class: "chips" }, h("span", { class: "chip" }, "Birleştirme anahtarları:"), d.join_keys.map(k => h("span", { class: "chip on" }, k))) : null,
+    hits.size ? h("div", { class: "faint", style: "margin-top:6px" }, `Aramayla eşleşen ${hits.size} kolon vurgulandı.`) : null,
+    table));
+  // Scroll inside the detail panel only, so the result list stays in view.
+  const panel = $("#objdetail > .panel");
+  if (first && panel) {
+    const y = first.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop;
+    panel.scrollTo({ top: Math.max(0, y - panel.clientHeight / 3), behavior: "smooth" });
+  }
 }
 
 // ---------------------------------------------------------------- boot

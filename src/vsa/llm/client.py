@@ -113,7 +113,9 @@ class OpenAICompatibleClient:
         api_key: str = "",
         reasoning_effort: str = "none",
     ) -> None:
-        self.endpoint = endpoint.rstrip("/")
+        # "localhost" resolves to ::1 first on Windows; servers listening on IPv4 only
+        # (LM Studio) then cost ~2 s per request before the fallback. Use IPv4 directly.
+        self.endpoint = endpoint.rstrip("/").replace("://localhost", "://127.0.0.1")
         self._model = model
         self.embedding_model = embedding_model
         self.temperature = temperature

@@ -27,7 +27,7 @@ Veri sözlüğünü `data/` altına koyun (bu klasör repoya girmez). Yerel mode
 ```yaml
 llm:
   enabled: true
-  endpoint: http://localhost:1234/v1     # LM Studio / vLLM / llama.cpp / Ollama
+  endpoint: http://127.0.0.1:1234/v1     # LM Studio / vLLM / llama.cpp / Ollama
   model: qwen/qwen3.5-9b                  # LLM hakem
   embedding_model: text-embedding-bge-m3  # anlamsal arama
 dense:

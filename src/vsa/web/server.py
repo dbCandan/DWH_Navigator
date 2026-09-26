@@ -38,6 +38,9 @@ log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 20 * 1024 * 1024
 MAX_REPORTS = 50
+EXPLORER_LIMIT = 60
+EXPLORER_CONTENT_LIMIT = 25  # objects from the content (search pipeline) layer
+MIN_CONTENT_QUERY = 3  # shorter input: name matching only
 
 
 class App:
@@ -63,6 +66,7 @@ class App:
                     "groups": groups,
                     "_fold": fold(f"{key} {' '.join(groups)}"),
                     "_cols": fold(" ".join(f.col.column for f in obj.features)),
+                    "_colnames": [f.col.column for f in obj.features],
                 }
             )
         rows.sort(key=lambda r: str(r["name"]))
@@ -126,14 +130,77 @@ class App:
             return write_ask_report(result, report_path(self.out_dir, "ask", result.query))
         return write_batch_report(result, report_path(self.out_dir, "batch", result.name))
 
-    def objects(self, q: str) -> list[dict[str, Any]]:
-        needle = fold(q.strip())
+    def objects(self, q: str) -> dict[str, Any]:
+        """Explorer search: every search layer except the chat model.
+
+        1. name — table / schema / dataset group contains the text (instant, listed first)
+        2. content — the full pipeline without the LLM: Turkish normalization, term
+           dictionary, dictionary synonyms, BM25, dense (BGE-M3) and object aggregation;
+           finds tables by what their columns *mean*, not only by their names
+        3. column name — a column name contains the text
+        """
+        started = time.perf_counter()
+        text = q.strip()
+        needle = fold(text)
         rows = self.object_index
-        if needle:
-            by_name = [r for r in rows if needle in r["_fold"]]
-            by_col = [r for r in rows if needle in r["_cols"] and r not in by_name]
-            rows = by_name + by_col
-        return [{k: v for k, v in r.items() if not k.startswith("_")} for r in rows[:60]]
+
+        def clean(r: dict[str, Any]) -> dict[str, Any]:
+            return {k: v for k, v in r.items() if not k.startswith("_")}
+
+        if not needle:
+            browse = [{**clean(r), "match": ""} for r in rows[:EXPLORER_LIMIT]]
+            return {"query": "", "items": browse, "counts": {}, "concepts": [], "elapsed_ms": 0}
+
+        items: dict[str, dict[str, Any]] = {}
+        for r in rows:
+            if needle in r["_fold"]:
+                items[r["key"]] = {**clean(r), "match": "ad"}
+
+        concepts: list[str] = []
+        if len(needle) >= MIN_CONTENT_QUERY:
+            with self.lock:
+                ranked, eq = self.engine.rank_objects(
+                    text, use_llm=False, limit=EXPLORER_CONTENT_LIMIT
+                )
+            concepts = [c.display() for c in eq.concepts]
+            by_key = {r["key"]: r for r in rows}
+            for m in ranked:
+                entry = items.get(m.object_key) or {
+                    **clean(by_key[m.object_key]),
+                    "match": "içerik",
+                }
+                entry.update(
+                    score=round(m.score, 4),
+                    level=m.level.value,
+                    matched=[h.col.column for h in m.columns[:5]],
+                    covered=m.covered,
+                    missing=m.missing,
+                    signal=next((s for h in m.columns for s in h.signals), ""),
+                )
+                items[m.object_key] = entry
+
+        for r in rows:
+            if r["key"] in items or needle not in r["_cols"]:
+                continue
+            cols = [c for c in r["_colnames"] if needle in fold(c)]
+            items[r["key"]] = {**clean(r), "match": "kolon adı", "matched": cols[:5]}
+
+        order = {"ad": 0, "içerik": 1, "kolon adı": 2}
+        result = sorted(
+            items.values(),
+            key=lambda i: (order[i["match"]], -float(i.get("score") or 0), str(i["name"])),
+        )[:EXPLORER_LIMIT]
+        counts: dict[str, int] = {}
+        for i in result:
+            counts[i["match"]] = counts.get(i["match"], 0) + 1
+        return {
+            "query": text,
+            "items": result,
+            "counts": counts,
+            "concepts": concepts,
+            "hybrid": self.engine.hybrid,
+            "elapsed_ms": round((time.perf_counter() - started) * 1000),
+        }
 
     def object_detail(self, key: str) -> dict[str, Any]:
         obj = self.engine.objects.get(key)
