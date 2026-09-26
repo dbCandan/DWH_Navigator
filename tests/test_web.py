@@ -245,3 +245,20 @@ def test_lab_state_shape(base_url: str) -> None:
     data = json.loads(body)
     assert set(data) >= {"rows", "errors", "progress", "weights"}
     assert all("quality" in r and "recommended" in r for r in data["rows"])
+
+
+def test_settings_save_keeps_cloud_secret(app_with_settings: App) -> None:
+    app = app_with_settings
+    res = app.settings_save({"values": {"cloud.enabled": True, "cloud.api_key": "nvapi-x"}})
+    assert "API anahtarı" in res["changed"] and app.engine.settings.cloud.api_key == "nvapi-x"
+    app.settings_save({"values": {"cloud.rpm": 20, "cloud.api_key": ""}})  # blank = keep
+    assert app.engine.settings.cloud.api_key == "nvapi-x"
+    got = app.settings_get()
+    assert got["values"]["cloud.api_key"] == "" and got["has_secret"]["cloud.api_key"]
+
+
+def test_lab_rejects_cloud_models_when_disabled(app_with_settings: App, tmp_path: Path) -> None:
+    app = app_with_settings
+    app.lab_progress = tmp_path / "progress.json"
+    with pytest.raises(ValueError, match="kapalı"):
+        app.lab_start({"models": ["cloud:meta/llama-3.3-70b-instruct"]})

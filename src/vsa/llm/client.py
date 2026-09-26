@@ -23,8 +23,27 @@ _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 _THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
+RETRY_CODES = (429, 500, 502, 503, 504)
+_RETRY_DELAY = re.compile(r'"retryDelay"\s*:\s*"(\d+)')
+_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
+
+
 class LLMError(RuntimeError):
     pass
+
+
+def retry_delay(header: str | None, body: str, attempt: int) -> float:
+    """Seconds before retrying a rate-limited call: Retry-After, a ``retryDelay`` in the body,
+    else exponential backoff; capped at 90 s."""
+    for raw in (header, *_RETRY_DELAY.findall(body)[:1]):
+        if raw and str(raw).strip().isdigit():
+            return min(90.0, float(raw) + 1)
+    return float(min(90, 5 * 2**attempt))
+
+
+def fold_error(text: str) -> str:
+    """Lower-cased ASCII of an API error message, for keyword checks."""
+    return text.encode("ascii", "ignore").decode().translate(_ASCII_LOWER)
 
 
 class LLMClient(Protocol):
@@ -112,6 +131,7 @@ class OpenAICompatibleClient:
         timeout: float = 120.0,
         api_key: str = "",
         reasoning_effort: str = "none",
+        retries: int = 0,
     ) -> None:
         # "localhost" resolves to ::1 first on Windows; servers listening on IPv4 only
         # (LM Studio) then cost ~2 s per request before the fallback. Use IPv4 directly.
@@ -124,6 +144,11 @@ class OpenAICompatibleClient:
         # Reasoning models (Qwen3.x) otherwise spend the whole budget "thinking" and return
         # empty content; "none" makes them answer directly. Ignored by other models.
         self.reasoning_effort = reasoning_effort
+        # Hosted APIs (ADR-026): retry rate limits; some models (Gemma on Google AI Studio)
+        # take neither a system message nor a JSON schema — learned from the first 400.
+        self.retries = retries
+        self.system_role = True
+        self.structured = True
         self.calls = 0
         self.failures = 0
         self.seconds = 0.0
@@ -143,11 +168,21 @@ class OpenAICompatibleClient:
         req = urllib.request.Request(
             f"{self.endpoint}{path}", data=json.dumps(body).encode("utf-8"), headers=headers
         )
-        try:
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
-            raise LLMError(f"{path}: {exc}") from exc
+        for attempt in range(self.retries + 1):
+            try:
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                break
+            except urllib.error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", "replace")[:600]
+                if exc.code in RETRY_CODES and attempt < self.retries:
+                    wait = retry_delay(exc.headers.get("Retry-After"), detail, attempt)
+                    log.warning("HTTP %s, %.0f sn sonra yeniden denenecek", exc.code, wait)
+                    time.sleep(wait)
+                    continue
+                raise LLMError(f"{path}: HTTP {exc.code}: {detail}") from exc
+            except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
+                raise LLMError(f"{path}: {exc}") from exc
         if not isinstance(data, dict):
             raise LLMError(f"{path}: beklenmeyen yanıt")
         return data
@@ -173,34 +208,52 @@ class OpenAICompatibleClient:
         """Schema-constrained JSON (HANDOVER §10.4); one repair attempt, then None (§10.6)."""
         if not self.available:
             return None
+
+        def build(messages: list[dict[str, str]]) -> dict[str, Any]:
+            if not self.system_role:  # fold the instructions into the first user turn
+                first = {"role": "user", "content": f"{system}\n\n{messages[1]['content']}"}
+                messages = [first, *messages[2:]]
+            body: dict[str, Any] = {
+                "model": self._model,
+                "messages": messages,
+                "temperature": self.temperature,
+                "max_tokens": max_tokens,
+            }
+            if self.reasoning_effort:
+                body["reasoning_effort"] = self.reasoning_effort
+            if self.structured:
+                body["response_format"] = {
+                    "type": "json_schema",
+                    "json_schema": {"name": "result", "strict": True, "schema": dict(schema)},
+                }
+            return body
+
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
-        body: dict[str, Any] = {
-            "model": self._model,
-            "messages": messages,
-            "temperature": self.temperature,
-            "max_tokens": max_tokens,
-            **({"reasoning_effort": self.reasoning_effort} if self.reasoning_effort else {}),
-            "response_format": {
-                "type": "json_schema",
-                "json_schema": {"name": "result", "strict": True, "schema": dict(schema)},
-            },
-        }
-        for attempt in range(2):
+        attempt = adaptations = 0
+        while attempt < 2:
             started = time.perf_counter()
             self.calls += 1
             try:
-                data = self._post("/chat/completions", body, self.timeout)
+                data = self._post("/chat/completions", build(messages), self.timeout)
                 content = str(data["choices"][0]["message"].get("content") or "")
-            except (LLMError, KeyError, IndexError) as exc:
+            except LLMError as exc:
+                if adaptations < 3 and self._adapt(str(exc)):
+                    adaptations += 1
+                    continue  # same attempt, without the feature the model refused
+                self.failures += 1
+                log.warning("LLM çağrısı başarısız: %s", exc)
+                return None
+            except (KeyError, IndexError) as exc:
                 self.failures += 1
                 log.warning("LLM çağrısı başarısız: %s", exc)
                 return None
             finally:
                 self.seconds += time.perf_counter() - started
+            attempt += 1
             parsed = parse_json_reply(content)
             if parsed is not None:
                 return parsed
-            log.warning("LLM yanıtı JSON değil (deneme %d)", attempt + 1)
+            log.warning("LLM yanıtı JSON değil (deneme %d)", attempt)
             messages = [
                 *messages,
                 {"role": "assistant", "content": content[:2000]},
@@ -209,9 +262,26 @@ class OpenAICompatibleClient:
                     "content": "Yanıtın geçerli JSON değil. SADECE şemaya uyan JSON döndür.",
                 },
             ]
-            body["messages"] = messages
         self.failures += 1
         return None
+
+    def _adapt(self, error: str) -> bool:
+        """Drop a request feature the model rejected with HTTP 400; True if a retry helps."""
+        if "HTTP 400" not in error:
+            return False
+        text = fold_error(error)
+        if self.system_role and ("developer instruction" in text or "system instruction" in text):
+            self.system_role = False
+        elif self.structured and any(
+            k in text for k in ("json mode", "response_format", "response_mime_type", "schema")
+        ):
+            self.structured = False
+        elif self.reasoning_effort and ("reasoning" in text or "thinking" in text):
+            self.reasoning_effort = ""
+        else:
+            return False
+        log.info("Model bir özelliği desteklemiyor, onsuz yeniden deneniyor: %s", error[:160])
+        return True
 
     def embed(self, texts: Sequence[str]) -> list[list[float]]:
         if not self.embedding_model:

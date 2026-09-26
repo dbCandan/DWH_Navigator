@@ -33,7 +33,7 @@ from rich.table import Table
 
 from vsa import lab
 from vsa.batch import BatchAnalyzer
-from vsa.config import Settings, load_settings
+from vsa.config import CLOUD_PREFIX, Settings, cloud_api_key, load_settings
 from vsa.evaluation import (
     KS,
     EvalReport,
@@ -531,10 +531,17 @@ def lab_cmd(
     if show:
         _print_lab(results)
         return
-    installed = _lms_json("ls")
+    todo_in = list(models or [])
+    remote = [m for m in todo_in if m.startswith(CLOUD_PREFIX)]
+    cloud_key = cloud_api_key(settings.cloud)
+    if remote and not (settings.cloud.enabled and cloud_key):
+        console.print("[red]Bulut modelleri için ayarlarda 'Bulut modelleri' açık olmalı ve "
+                      "API anahtarı girilmeli (veya NVIDIA_API_KEY).[/red]")
+        raise typer.Exit(2)
+    installed = _lms_json("ls") if len(remote) < len(todo_in) or not todo_in else []
     chat = [m["modelKey"] for m in installed if m.get("type") == "llm"]
-    todo = list(models) if models else chat
-    missing = [m for m in todo if m not in chat]
+    todo = todo_in or chat
+    missing = [m for m in todo if m not in chat and not m.startswith(CLOUD_PREFIX)]
     if missing:
         console.print(f"[red]LM Studio'da yok: {', '.join(missing)}[/red]")
         raise typer.Exit(2)
@@ -574,16 +581,31 @@ def lab_cmd(
 
     note(f"{len(cases)} vaka ({len(counted)} ölçülebilir) × {runs} tekrar × "
          f"{len(temperatures)} sıcaklık × {len(todo)} model = {total} çağrı")
-    previously = _loaded_chat_models()
+    any_local = any(not m.startswith(CLOUD_PREFIX) for m in todo)
+    previously = _loaded_chat_models() if any_local else []
+    last_call = [0.0]
+
+    def throttle(is_cloud: bool) -> None:
+        """Stay under the hosted API's requests-per-minute limit."""
+        if is_cloud:
+            gap = 60.0 / max(1, settings.cloud.rpm) - (time.time() - last_call[0])
+            if gap > 0:
+                time.sleep(gap)
+            last_call[0] = time.time()
+
     try:
         for model in todo:
             progress["model"] = model
-            for other in _loaded_chat_models():
-                if other != model:
-                    _lms("unload", other)
-            loaded = any(m.get("identifier") == model for m in _lms_json("ps"))
+            is_cloud = model.startswith(CLOUD_PREFIX)
+            if not is_cloud:
+                for other in _loaded_chat_models():
+                    if other != model:
+                        _lms("unload", other)
+            loaded = is_cloud or any(m.get("identifier") == model for m in _lms_json("ps"))
             t0 = time.time()
-            ok = loaded
+            ok, out = loaded, ""
+            if is_cloud:
+                note(f"▶ {model}: bulut ({settings.cloud.endpoint})")
             if not loaded:
                 note(f"▶ {model}: yükleniyor ({sizes.get(model, 0) / 1e9:.1f} GB)…")
                 ok, out = _lms("load", model, "--context-length", "8192", "--gpu", "max", "-y")
@@ -599,12 +621,17 @@ def lab_cmd(
             note(f"  yüklendi ({load_sec} sn)")
 
             def client(temp: float, effort: str, m: str = model) -> OpenAICompatibleClient:
+                if m.startswith(CLOUD_PREFIX):
+                    return OpenAICompatibleClient(
+                        settings.cloud.endpoint, m.removeprefix(CLOUD_PREFIX), temperature=temp,
+                        timeout=300, api_key=cloud_key, reasoning_effort=effort, retries=6)
                 return OpenAICompatibleClient(s.llm.endpoint, m, temperature=temp, timeout=900,
                                               api_key=s.llm.api_key, reasoning_effort=effort)
 
             if efforts == "auto":
 
-                def probe(effort: str, m: str = model) -> bool:
+                def probe(effort: str, m: str = model, cl: bool = is_cloud) -> bool:
+                    throttle(cl)
                     t = time.time()
                     r = judge(probe_case["query"], probe_case["cands"], client(0.0, effort, m))
                     verdict = "geçerli" if r and r.verdicts else "boş/geçersiz"
@@ -629,6 +656,7 @@ def lab_cmd(
                     for case in cases:
                         for run in range(runs):
                             check_stop()
+                            throttle(is_cloud)
                             t = time.time()
                             r = judge(case["query"], case["cands"], c)
                             conf = {k: v.confidence for k, v in r.verdicts.items()} if r else None
@@ -646,16 +674,21 @@ def lab_cmd(
                         "temperature": temp, "reasoning_effort": effort, "summary": summary,
                         "load_sec": load_sec, "size_gb": round(sizes.get(model, 0) / 1e9, 2),
                         "at": time.strftime("%Y-%m-%d %H:%M"), "cases": rows,
+                        "source": "bulut" if is_cloud else "yerel",
+                        # what the model actually accepted (hosted models may refuse some)
+                        "sent": {"reasoning_effort": c.reasoning_effort,
+                                 "system_role": c.system_role, "json_schema": c.structured},
                     }
                     _write_json(LAB_RESULTS, results)
                     note(f"  ■ {model} T={temp:g}: kalite {lab.quality(summary):.3f}, hakem "
                          f"{summary['judge_accuracy']:.2f}, {summary['mean_sec']:.0f} sn/soru")
-            _lms("unload", model)
+            if not is_cloud:
+                _lms("unload", model)
     except _LabStopped:
         note("Kullanıcı durdurdu; tamamlanan ölçümler kaydedildi.")
     finally:
         # Leave LM Studio as we found it: the app's judge model loaded again.
-        for m in previously or [s.llm.model]:
+        for m in previously or ([s.llm.model] if any_local else []):
             if m and not any(x.get("identifier") == m for x in _lms_json("ps")):
                 _lms("load", m, "--context-length", "8192", "--gpu", "max", "-y")
         progress["running"] = False

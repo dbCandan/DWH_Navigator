@@ -15,6 +15,7 @@ network. One engine, one lock: the tool serves a team, not the internet.
     POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
     POST /api/settings/test     try endpoint / chat model / embedding model from the form
     POST /api/reindex           rebuild the BM25 index with the saved settings
+    GET  /api/cloud-models      chat models of the hosted catalog (lab only, ADR-026)
     GET  /api/lab               model lab: ranked results + live progress (ADR-025)
     POST /api/lab/start         {"models": [...], "temps": "0,0.1", "runs": 2} → `vsa lab`
     POST /api/lab/stop          stop the running lab after its current call
@@ -30,8 +31,10 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.error
 import urllib.request
 import uuid
+from dataclasses import asdict
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -42,7 +45,7 @@ import yaml
 
 from vsa import lab
 from vsa.batch import BatchAnalyzer
-from vsa.config import DEFAULT_SETTINGS_PATH, load_settings
+from vsa.config import CLOUD_PREFIX, DEFAULT_SETTINGS_PATH, cloud_api_key, load_settings
 from vsa.llm.client import LLMError, OpenAICompatibleClient
 from vsa.loader import load_request_file
 from vsa.models import AnalysisResult, BatchResult, RequestField
@@ -54,9 +57,12 @@ from vsa.web.settings_schema import (
     DENSE,
     FIELDS,
     REINDEX,
+    SECRET_KEYS,
     SECTIONS,
     coerce,
     defaults,
+    get_path,
+    is_chat_model,
     to_yaml_tree,
     values_of,
 )
@@ -87,6 +93,7 @@ class App:
         self.settings_path = settings_path or DEFAULT_SETTINGS_PATH
         self.reindex_pending: list[str] = []
         self._lab_proc: subprocess.Popen[bytes] | None = None
+        self._cloud_cache: tuple[float, str, dict[str, Any]] | None = None
         self.lab_results, self.lab_progress = lab.RESULTS_PATH, lab.PROGRESS_PATH
         self.lab_stop_flag = lab.STOP_PATH
         self.lock = threading.Lock()
@@ -274,14 +281,49 @@ class App:
             return out
         return []
 
+    def cloud_models(self, refresh: bool = False) -> dict[str, Any]:
+        """Chat models of the hosted catalog (lab only, ADR-026); cached for 10 minutes."""
+        cloud = self.engine.settings.cloud
+        key = cloud_api_key(cloud)
+        if not cloud.enabled:
+            return {"ok": False, "reason": "Bulut ölçümü kapalı (Ayarlar → Bulut modelleri).",
+                    "models": []}  # fmt: skip
+        if not key:
+            return {"ok": False, "reason": "API anahtarı girilmemiş.", "models": []}
+        cached = self._cloud_cache
+        if cached and not refresh and time.time() - cached[0] < 600 and cached[1] == cloud.endpoint:
+            return cached[2]
+        req = urllib.request.Request(
+            cloud.endpoint.rstrip("/") + "/models", headers={"Authorization": f"Bearer {key}"}
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                data = json.loads(resp.read().decode("utf-8")).get("data", [])
+        except urllib.error.HTTPError as exc:
+            return {"ok": False, "reason": f"Servis HTTP {exc.code} döndürdü (anahtar geçersiz "
+                    "olabilir).", "models": []}  # fmt: skip
+        except (OSError, ValueError) as exc:
+            return {"ok": False, "reason": f"Servise ulaşılamadı: {exc}", "models": []}
+        ids = sorted({str(m.get("id", "")).removeprefix("models/") for m in data} - {""})
+        models = [
+            {"id": CLOUD_PREFIX + mid, "name": mid, "publisher": mid.split("/")[0] if "/" in mid
+             else "", "kind": "cloud"}
+            for mid in ids if is_chat_model(mid)
+        ]  # fmt: skip
+        out = {"ok": True, "reason": "", "models": models, "total": len(ids)}
+        self._cloud_cache = (time.time(), cloud.endpoint, out)
+        return out
+
     def settings_get(self) -> dict[str, Any]:
         st = self.engine.settings
+        raw = asdict(st)
         return {
             "sections": SECTIONS,
             "values": values_of(st),
             "defaults": defaults(),
             "path": str(self.settings_path),
             "has_api_key": bool(st.llm.api_key),
+            "has_secret": {k: bool(get_path(raw, k)) for k in SECRET_KEYS},
             "models": self._lmstudio_models(st.llm.endpoint) if st.llm.endpoint else [],
             "status": {
                 "hybrid": self.engine.hybrid,
@@ -308,11 +350,12 @@ class App:
                 errors.append(str(exc))
         if errors:
             raise ValueError("; ".join(errors))
-        if not new.get("llm.api_key"):
-            new["llm.api_key"] = self.engine.settings.llm.api_key  # blank = keep
-        changed = [k for k in FIELDS if k != "llm.api_key" and new[k] != current[k]]
-        if submitted.get("llm.api_key"):
-            changed.append("llm.api_key")
+        raw = asdict(self.engine.settings)
+        for key in SECRET_KEYS:
+            if not new.get(key):
+                new[key] = get_path(raw, key)  # blank = keep the saved secret
+        changed = [k for k in FIELDS if k not in SECRET_KEYS and new[k] != current[k]]
+        changed += [k for k in SECRET_KEYS if submitted.get(k)]
 
         self.settings_path.parent.mkdir(parents=True, exist_ok=True)
         header = (
@@ -474,6 +517,11 @@ class App:
             raise ValueError("Tekrar sayısı 1 ile 5 arasında olmalı")
         chat = {m["id"] for m in self._lmstudio_models(self.engine.settings.llm.endpoint)
                 if m["kind"] == "chat"}  # fmt: skip
+        if any(m.startswith(CLOUD_PREFIX) for m in models):
+            cloud = self.cloud_models()
+            if not cloud["ok"]:
+                raise ValueError(cloud["reason"])
+            chat |= {m["id"] for m in cloud["models"]}
         unknown = [m for m in models if m not in chat]
         if unknown:
             raise ValueError(f"LM Studio'da bulunmayan model: {', '.join(unknown)}")
@@ -599,6 +647,8 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._json(app.settings_get())
                 elif url.path == "/api/lab":
                     self._json(app.lab_state())
+                elif url.path == "/api/cloud-models":
+                    self._json(app.cloud_models(refresh="refresh" in parse_qs(url.query)))
                 elif url.path == "/api/status":
                     self._json(app.status())
                 elif url.path == "/api/galaxy":

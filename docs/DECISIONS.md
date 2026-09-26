@@ -300,3 +300,38 @@ seçim tarayıcıda saklanır. Klasik tasarım değişmedi. Evren, aynı DOM ve 
 - Cam paneller, dönen ışık halkalı arama kutusu, 3B eğilen kartlar, iki sütunlu sonuçlar.
 - LLM tümleşik GPU'yu paylaştığı için animasyon 30 fps (hakem beklenirken 20 fps) ile
   sınırlıdır; zaman gerçek saate bağlıdır (seyrek karede yolculuk yavaşlamaz); `prefers-reduced-motion` açıksa hareket kapanır. Dış kaynak yoktur.
+
+
+## ADR-025 — Model laboratuvarı: hakem seçimi ölçümle yapılır
+
+**Bağlam.** Hakem modeli (§10) ve sıcaklığı şimdiye kadar tek seferlik betiklerle seçildi;
+yeni model geldikçe elle tekrar gerekiyordu, tutarlılık (aynı girdiye aynı cevap) ölçülmüyordu.
+
+**Karar.** `vsa lab` ve Ayarlar → Model laboratuvarı. Her yapılandırma (model × sıcaklık ×
+düşünme modu) aynı sabit aday listelerini görür: golden set ask soruları, Ek A.3'ün doğrulanmış
+talep alanları (yapısal alanlar hariç) ve negatif sorular; her soru birkaç kez sorulur.
+Beklenen tablo aday listesinde yoksa vaka doğruluğa sayılmaz, tutarlılığa sayılır.
+Kalite = 0.45·hakem doğruluğu + 0.25·nihai doğruluk + 0.15·aynı seçim + 0.15·aynı sıra
+− 0.5·güven sapması. Geçersiz JSON veya uydurma aday kimliği (ADR-002) yapılandırmayı eler.
+Kaliteleri 0.02 içinde olanlardan hızlısı önerilir. Düşünme modu model başına otomatik
+bulunur (none → low → gönderme). Sonuçlar `eval/lab.json`'a birikir.
+
+**Sonuç.** Model değişikliği bir tıklık ölçüm + "Uygula" ile yapılır; karar sayılara dayanır.
+
+## ADR-026 — Bulut modelleri yalnız ölçüm için (NVIDIA API kataloğu)
+
+**Bağlam.** Bu laptopta (Intel iGPU) büyük modeller soru başına dakikalar sürüyor; üretim ise
+daha güçlü GPU'lu makinelerde çalışacak. Hangi açık modelin üretime kurulacağına karar vermek
+için büyük modellerin kalitesini ölçmek gerekiyor. Kullanıcı, ölçüm için verinin kurum
+dışına çıkmasını kabul etti (2026-09-26).
+
+**Karar.** `cloud` ayarları (varsayılan kapalı; NVIDIA `integrate.api.nvidia.com/v1`, OpenAI
+uyumlu). Bulut modelleri laboratuvarda `cloud:` önekiyle ölçülür; uygulamanın hakemi hiçbir
+zaman buluta bağlanmaz ve ekran bulut satırları için "Uygula" sunmaz. Ölçüm sırasında dışarı
+çıkan: test soruları, aday tabloların adları, veri seti grupları, kolon adları ve açıklamaları
+(müşteri verisi yok). İstemci 429/5xx'te bekleyip yeniden dener; modelin reddettiği özellikleri
+(sistem mesajı, JSON şeması, düşünme parametresi) ilk HTTP 400'den öğrenip onsuz devam eder.
+Anahtar tarayıcıya gönderilmez.
+
+**Sonuç.** Açık ağırlıklı bir modelin bulutta ölçülen kalitesi, aynı model kurum içi GPU'ya
+kurulduğunda da geçerlidir; kapalı modeller (yalnız bulutta olanlar) referans niteliğindedir.

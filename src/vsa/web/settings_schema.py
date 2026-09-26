@@ -10,6 +10,7 @@ from dataclasses import asdict
 from typing import Any
 
 from vsa.config import Settings
+from vsa.text.normalize import fold
 
 # effect: when does a change take hold?
 NOW = "anında"  # engine is rebuilt from the index on save (seconds)
@@ -112,6 +113,47 @@ SECTIONS: list[dict[str, Any]] = [
                 "type": "secret",
                 "effect": NOW,
                 "help": "Yalnız sunucu anahtar istiyorsa. Boş bırakılırsa mevcut anahtar korunur.",
+            },
+        ],
+    },
+    {
+        "id": "cloud",
+        "title": "Bulut modelleri (yalnız ölçüm)",
+        "intro": "NVIDIA API kataloğundaki (build.nvidia.com) modelleri Model laboratuvarında ölçmek için. "
+        "Uygulamanın hakemi yerelde kalır; bu ayar yalnız ölçüme etki eder. Ölçüm sırasında test soruları "
+        "ile aday tabloların adları, kolon adları ve açıklamaları kurum dışına gönderilir (ADR-026).",
+        "fields": [
+            {
+                "key": "cloud.enabled",
+                "label": "Bulut ölçümü açık",
+                "type": "bool",
+                "effect": NOW,
+                "help": "Kapalıyken laboratuvar bulut modellerini listelemez ve hiçbir istek dışarı çıkmaz.",
+            },
+            {
+                "key": "cloud.api_key",
+                "label": "API anahtarı",
+                "type": "secret",
+                "effect": NOW,
+                "help": "build.nvidia.com → bir model → 'Get API Key' (nvapi-… ile başlar). Boş bırakılırsa "
+                "kayıtlı anahtar korunur; NVIDIA_API_KEY ortam değişkeni de kullanılabilir.",
+            },
+            {
+                "key": "cloud.endpoint",
+                "label": "API adresi",
+                "type": "str",
+                "effect": NOW,
+                "help": "OpenAI uyumlu uç nokta. Varsayılan NVIDIA: https://integrate.api.nvidia.com/v1",
+            },
+            {
+                "key": "cloud.rpm",
+                "label": "Dakikadaki istek sınırı",
+                "type": "int",
+                "min": 1,
+                "max": 120,
+                "step": 1,
+                "effect": NOW,
+                "help": "Ücretsiz katman dakikada ~40 istek tanır; sınır aşılırsa istemci bekleyip yeniden dener.",
             },
         ],
     },
@@ -463,6 +505,7 @@ SECTIONS: list[dict[str, Any]] = [
 ]
 
 FIELDS = {f["key"]: f for sec in SECTIONS for f in sec["fields"]}
+SECRET_KEYS = [k for k, f in FIELDS.items() if f["type"] == "secret"]
 
 
 def get_path(data: dict[str, Any], key: str) -> Any:
@@ -481,7 +524,8 @@ def set_path(data: dict[str, Any], key: str, value: Any) -> None:
 def values_of(settings: Settings) -> dict[str, Any]:
     raw = asdict(settings)
     out = {k: get_path(raw, k) for k in FIELDS}
-    out["llm.api_key"] = ""  # never sent to the browser
+    for key in SECRET_KEYS:
+        out[key] = ""  # never sent to the browser
     return out
 
 
@@ -526,3 +570,19 @@ def to_yaml_tree(values: dict[str, Any]) -> dict[str, Any]:
             value = None
         set_path(tree, key, value)
     return tree
+
+
+# Hosted catalogs list every kind of model; the lab only wants text chat models.
+NON_CHAT = (
+    "embed", "rerank", "reward", "guard", "safety", "clip", "parse", "retriever", "-vl",
+    "vision", "vila", "neva", "kosmos", "fuyu", "paligemma", "deplot", "cosmos", "tts",
+    "asr", "whisper", "riva", "detector", "pii", "usdcode", "usdsearch", "bge", "e5-",
+    "sdxl", "flux", "stable-diffusion", "audio", "speech", "ocr", "esm", "molmim", "genmol",
+    "diffdock", "alphafold", "openfold", "proteinmpnn", "rfdiffusion", "streampetr",
+    "content-safety", "topic-control", "jailbreak", "calibration", "translate",
+)
+
+
+def is_chat_model(model_id: str) -> bool:
+    folded = fold(model_id)
+    return not any(k in folded for k in NON_CHAT)

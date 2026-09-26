@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
 from typing import Any, TypeVar
@@ -98,6 +99,28 @@ class DenseSettings:
 
 
 @dataclass(slots=True)
+class CloudSettings:
+    """Hosted models, for the model lab only (NVIDIA API catalog, ADR-026).
+
+    The app's judge never uses this: the lab sends test questions and dictionary
+    metadata (table/column names and descriptions) out of the network, the app would
+    send real requests. Off unless the user switches it on.
+    """
+
+    enabled: bool = False
+    endpoint: str = "https://integrate.api.nvidia.com/v1"  # any OpenAI-compatible API
+    api_key: str = ""  # else the NVIDIA_API_KEY environment variable
+    rpm: int = 30  # requests per minute (NVIDIA's free tier allows ~40)
+
+
+CLOUD_PREFIX = "cloud:"  # lab model ids: "cloud:meta/llama-3.3-70b-instruct"
+
+
+def cloud_api_key(cloud: CloudSettings) -> str:
+    return cloud.api_key or os.environ.get("NVIDIA_API_KEY", "")
+
+
+@dataclass(slots=True)
 class ReportSettings:
     out_dir: str = "out"
 
@@ -111,6 +134,7 @@ class Settings:
     scoring: ScoringSettings = field(default_factory=ScoringSettings)
     llm: LLMSettings = field(default_factory=LLMSettings)
     dense: DenseSettings = field(default_factory=DenseSettings)
+    cloud: CloudSettings = field(default_factory=CloudSettings)
     report: ReportSettings = field(default_factory=ReportSettings)
 
 

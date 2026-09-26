@@ -39,7 +39,8 @@ Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
 skorunda), ADR-011 (uygulanamayan bileşen ağırlıktan çıkar), ADR-012 (kolon skoru tabanı),
 ADR-013 (IDF ağırlıklı kapsama + cevap eşiği), ADR-014 (uzun format kırılım), ADR-015 (obje havuzu),
 ADR-016/017 (batch: çekirdek tablo, yapısal alanlar, ölçü uyumu, kanal toplamları, terim kapsam notları),
-ADR-018..022 (yerel model, hibrit, hakem, ağırlıklar), ADR-023 (Keşfet araması), ADR-024 (Evren arayüzü).
+ADR-018..022 (yerel model, hibrit, hakem, ağırlıklar), ADR-023 (Keşfet araması), ADR-024 (Evren arayüzü),
+ADR-025 (Model laboratuvarı, `vsa lab`), ADR-026 (bulut modelleri yalnız ölçüm için, NVIDIA).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden

@@ -130,6 +130,10 @@ table.bench td.q { font-weight: 700; }
 @keyframes flow { to { background-position: -200% 0; } }
 .labmeta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
 .labmeta b { color: var(--text, inherit); }
+h4.grp { margin: 14px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); display: flex; gap: 10px; align-items: center; }
+.btn.mini { padding: 3px 9px; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
+input.msearch { flex: 1 1 260px; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: inherit; font: inherit; }
+.mlist { max-height: 340px; overflow: auto; }
 pre.log { max-height: 240px; overflow: auto; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.55; margin: 10px 0 0; white-space: pre-wrap; word-break: break-word; }
 .savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line); transform: translateY(100%); transition: transform .25s; }
 .savebar.on { transform: none; }
@@ -275,7 +279,7 @@ function control(f) {
     return [sel];
   }
   const inp = h("input", { type: f.type === "secret" ? "password" : "text", value: v ?? "", "aria-label": f.label,
-    placeholder: f.type === "secret" ? (S.has_api_key ? "•••••• (kayıtlı, değiştirmek için yazın)" : "yok") : "" });
+    placeholder: f.type === "secret" ? ((S.has_secret || {})[f.key] ? "•••••• (kayıtlı, değiştirmek için yazın)" : "yok") : "" });
   inp.oninput = () => set(inp.value);
   return [inp];
 }
@@ -297,8 +301,9 @@ function refresh(key) {
   const keys = key ? [key] : Object.keys(FIELD);
   for (const k of keys) {
     const row = ROW[k]; if (!row) continue;
-    row.classList.toggle("changed", !eq(form[k], saved[k]) && !(k === "llm.api_key" && !form[k]));
-    row.classList.toggle("nondefault", k !== "llm.api_key" && !eq(form[k], S.defaults[k]));
+    const secret = FIELD[k].type === "secret";
+    row.classList.toggle("changed", !eq(form[k], saved[k]) && !(secret && !form[k]));
+    row.classList.toggle("nondefault", !secret && !eq(form[k], S.defaults[k]));
   }
   const changed = Object.keys(FIELD).filter(k => ROW[k] && ROW[k].classList.contains("changed"));
   $("#savebar").classList.toggle("on", changed.length > 0);
@@ -357,7 +362,9 @@ async function testConnection(btn, out) {
 }
 
 // ---- Model laboratuvarı ------------------------------------------------------------
-let LAB = null, labTimer = null, labPicked = null;
+let LAB = null, labTimer = null, labPicked = null, CLOUD = null, cloudFilter = "";
+const isCloud = id => id.startsWith("cloud:");
+const shortId = id => id.replace(/^cloud:/, "");
 const EFFORT = { none: "kapalı", low: "düşük", medium: "orta", high: "yüksek", "": "varsayılan" };
 const pct = x => h("span", {}, h("span", { class: "bar" }, h("i", { style: `width:${Math.round(x * 100)}%` })), `%${Math.round(x * 100)}`);
 const dur = s => s >= 3600 ? `${Math.floor(s / 3600)} sa ${Math.round(s % 3600 / 60)} dk` : s >= 60 ? `${Math.round(s / 60)} dk` : `${Math.round(s)} sn`;
@@ -376,7 +383,13 @@ async function applyConfig(r, btn) {
   renderLab();
 }
 
+async function loadCloud(refresh = false) {
+  try { CLOUD = await api("/api/cloud-models" + (refresh ? "?refresh=1" : "")); }
+  catch (e) { CLOUD = { ok: false, reason: e.message, models: [] }; }
+}
+
 async function renderBench() {
+  if (!CLOUD) await loadCloud();
   try { LAB = await api("/api/lab"); } catch (e) { $("#bench").replaceChildren(h("p", { class: "err" }, "Laboratuvar okunamadı: " + e.message)); return; }
   renderLab();
   clearTimeout(labTimer);
@@ -385,7 +398,10 @@ async function renderBench() {
 
 function renderLab() {
   if (!LAB) return;
-  const rows = LAB.rows, W = LAB.weights, best = rows.find(r => r.recommended);
+  const rows = LAB.rows, W = LAB.weights;
+  // The app's judge stays local (ADR-026): recommend the best local configuration; cloud
+  // rows are there to compare model quality for the production GPU choice.
+  const best = rows.find(r => !isCloud(r.model) && r.quality > 0);
   $("#labBest").replaceChildren(...[best && h("div", { class: "best-card" },
     h("div", { class: "star" }, "★"),
     h("div", {}, h("div", {}, "Önerilen: ", h("b", {}, best.model), ` · sıcaklık ${best.temperature} · düşünme ${EFFORT[best.reasoning_effort]}`,
@@ -399,13 +415,14 @@ function renderLab() {
     $("#bench").replaceChildren(h("table", { class: "bench" },
       h("thead", {}, h("tr", {}, ["Model", "T", "Düşünme", "Kalite", "Hakem doğruluğu", "Nihai doğruluk", "Aynı seçim", "Aynı sıra", "Güven sapması", "Süre/soru", ""].map(t => h("th", {}, t)))),
       h("tbody", {}, rows.map(r => h("tr", { class: r.recommended ? "best" : "", title: `${r.cases} vaka · ${r.at || ""}${r.size_gb ? " · " + r.size_gb + " GB" : ""}` },
-        h("td", { class: "m" }, r.model, r.recommended ? " ★" : "", isCurrent(r) ? h("span", { class: "pill cur" }, "kullanılıyor") : null),
+        h("td", { class: "m" }, shortId(r.model), r.recommended ? " ★" : "", h("span", { class: "pill" }, isCloud(r.model) ? "bulut" : "yerel"),
+          isCurrent(r) ? h("span", { class: "pill cur" }, "kullanılıyor") : null),
         h("td", {}, String(r.temperature)), h("td", {}, EFFORT[r.reasoning_effort] ?? r.reasoning_effort),
         h("td", { class: "q" }, r.quality ? r.quality.toFixed(3) : "elendi"),
         h("td", {}, pct(r.judge_accuracy)), h("td", {}, pct(r.final_accuracy)),
         h("td", {}, pct(r.consistent_picks)), h("td", {}, pct(r.consistent_final_order)),
         h("td", {}, r.mean_conf_drift.toFixed(3)), h("td", {}, r.mean_sec.toFixed(0) + " sn"),
-        h("td", {}, isCurrent(r) ? null : h("button", { class: "btn", onclick: e => applyConfig(r, e.currentTarget) }, "Uygula")))))),
+        h("td", {}, isCurrent(r) || isCloud(r.model) ? null : h("button", { class: "btn", onclick: e => applyConfig(r, e.currentTarget) }, "Uygula")))))),
       h("p", { class: "note" }, `Kalite = ${W.judge}·hakem + ${W.final}·nihai + ${W.picks}·aynı seçim + ${W.order}·aynı sıra − ${W.drift}·sapma. `
         + "Geçersiz JSON veya uydurma aday kimliği üreten yapılandırma elenir (ADR-002)."));
   }
@@ -440,12 +457,36 @@ function renderRunner() {
   const chat = (S.models || []).filter(m => m.kind === "chat");
   if (!chat.length) { $("#labRun").replaceChildren(h("div", { class: "runner" }, h("p", { class: "note" }, "LM Studio'ya ulaşılamadı veya sohbet modeli yok."))); return; }
   const measured = new Set(LAB.rows.map(r => r.model));
-  if (!labPicked) labPicked = new Set(chat.filter(m => !measured.has(m.id)).map(m => m.id));
-  const secOf = id => { const rs = LAB.rows.filter(r => r.model === id); return rs.length ? Math.min(...rs.map(r => r.mean_sec)) : 45; };
+  if (!labPicked) labPicked = new Set();
+  const rpm = Number(saved["cloud.rpm"]) || 30;
+  const secOf = id => { const rs = LAB.rows.filter(r => r.model === id); return rs.length ? Math.min(...rs.map(r => r.mean_sec)) : isCloud(id) ? Math.max(60 / rpm, 6) : 45; };
   const cases = P.cases || 16;
   const temps = h("select", {}, [["0", "0"], ["0,0.1", "0 ve 0,1"], ["0,0.1,0.3", "0, 0,1 ve 0,3"]].map(([v, t]) => h("option", { value: v }, t)));
   const runs = h("select", {}, [1, 2, 3].map(n => h("option", { value: n, selected: n === 2 }, String(n))));
   const est = h("span", { class: "note" });
+  function pickBox(id, label, subs) {
+    const cb = h("input", { type: "checkbox", checked: labPicked.has(id), onchange: e => { e.target.checked ? labPicked.add(id) : labPicked.delete(id); updateEst(); } });
+    return h("label", {}, cb, label, h("span", { class: "sub" }, subs.filter(Boolean).join(" · ")));
+  }
+  function cloudBlock() {
+    const head = h("h4", { class: "grp" }, "Bulut (NVIDIA API kataloğu) ",
+      h("button", { class: "btn mini", onclick: async () => { await loadCloud(true); renderRunner(); } }, "Listeyi yenile"));
+    if (!CLOUD || !CLOUD.ok) return [head, h("p", { class: "note" }, (CLOUD && CLOUD.reason) || "Liste alınamadı.", " ", h("a", { href: "#sec-cloud" }, "Ayarlara git"))];
+    const list = h("div", { class: "mlist" });
+    const fill = () => {
+      const q = cloudFilter.trim().toLocaleLowerCase("tr");
+      const shown = CLOUD.models.filter(m => !q || m.name.toLocaleLowerCase("tr").includes(q));
+      list.replaceChildren(...shown.map(m => pickBox(m.id, m.name, [measured.has(m.id) ? "ölçüldü" : ""])));
+      count.textContent = `${shown.length} / ${CLOUD.models.length} sohbet modeli`;
+    };
+    const count = h("span", { class: "note" });
+    const search = h("input", { type: "search", class: "msearch", placeholder: "Ara: gemma, llama, qwen, mistral, gpt-oss…", value: cloudFilter,
+      oninput: e => { cloudFilter = e.target.value; fill(); } });
+    fill();
+    return [head, h("div", { class: "opts" }, search, count), list,
+      h("p", { class: "warn" }, "Bulut modeli seçilirse ölçüm sırasında test soruları ile aday tabloların adları, kolon adları ve açıklamaları NVIDIA'ya gönderilir. "
+        + "Müşteri verisi gönderilmez. Bulut sonuçları üretim GPU'su için model kıyaslamasıdır; uygulamanın hakemi yerelde kalır.")];
+  }
   const go = h("button", { class: "btn primary", onclick: async e => {
     e.currentTarget.disabled = true;
     try { await post("/api/lab/start", { models: [...labPicked], temps: temps.value, runs: Number(runs.value) }); toast("Ölçüm başladı", ["İlerleme bu sayfada görünür; sayfayı kapatabilirsiniz."]); }
@@ -463,10 +504,9 @@ function renderRunner() {
     h("h3", {}, "Yeni ölçüm"),
     h("p", { class: "note" }, "Ölçüm süresince LM Studio'da yalnız ölçülen model yüklü tutulur; soru sorma yavaşlar. Bitince uygulamanın modeli geri yüklenir. "
       + "Yeni modeli LM Studio'dan indirin; burada kendiliğinden görünür."),
-    h("div", { class: "mlist" }, chat.map(m => {
-      const cb = h("input", { type: "checkbox", checked: labPicked.has(m.id), onchange: e => { e.target.checked ? labPicked.add(m.id) : labPicked.delete(m.id); updateEst(); } });
-      return h("label", {}, cb, m.id, h("span", { class: "sub" }, [m.quant, measured.has(m.id) ? "ölçüldü" : "yeni"].filter(Boolean).join(" · ")));
-    })),
+    h("h4", { class: "grp" }, "Yerel (LM Studio)"),
+    h("div", { class: "mlist" }, chat.map(m => pickBox(m.id, m.id, [m.quant, measured.has(m.id) ? "ölçüldü" : "yeni"]))),
+    cloudBlock(),
     h("div", { class: "opts" }, h("label", {}, "Sıcaklık ", temps), h("label", {}, "Tekrar ", runs), est),
     go,
     P.log && P.log.length ? h("details", { style: "margin-top:12px" }, h("summary", { class: "note" }, "Son ölçümün kaydı"), h("pre", { class: "log" }, P.log.join("\n"))) : null));

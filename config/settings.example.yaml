@@ -50,5 +50,13 @@ llm:
   temperature: 0.1
   timeout: 120
 
+# Bulut modelleri — YALNIZ Model laboratuvarı ölçümü için (ADR-026). Uygulamanın hakemi
+# yerelde kalır. Açıkken ölçüm, test soruları ve aday tablo/kolon açıklamalarını dışarı gönderir.
+cloud:
+  enabled: false
+  endpoint: https://integrate.api.nvidia.com/v1   # NVIDIA API kataloğu (build.nvidia.com)
+  api_key: ""        # nvapi-… ; boşsa NVIDIA_API_KEY ortam değişkeni
+  rpm: 30            # dakikadaki istek sınırı (ücretsiz katman ~40)
+
 report:
   out_dir: out
