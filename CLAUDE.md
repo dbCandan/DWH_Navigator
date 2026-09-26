@@ -6,7 +6,8 @@ numaralarıyla (§8, ADR-005 vb.) atıf yap.
 ## Ne yapar
 İş biriminin doğal dildeki veri talebini, veri sözlüğüne (11.158 kolon, 389 obje) karşı
 arar ve **tablo seviyesinde**, gerekçeli, güven skorlu öneriler içeren Excel raporu üretir.
-Kapalı ağda çalışır; hiçbir dış adrese çıkmaz.
+Kapalı ağda çalışacak şekilde tasarlandı; varsayılan ayarlarda hiçbir dış adrese çıkmaz. İstisna:
+kullanıcı kararıyla hakem buluta alınabilir (`llm.provider: cloud`, ADR-026) — bu makinede açık.
 
 ## Çekirdek kurallar (pazarlıksız)
 - **Obje seviyesine toplama** (`scoring/aggregate.py`, §8, ADR-005): arama kolon
@@ -74,7 +75,7 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
       `--compare` (§13.4), `--save` → `eval/history.jsonl`. Golden set hâlâ küçük (4 ask).
 - [x] M3 — Hibrit arama: BGE-M3 (LM Studio) + BM25, `vsa index --dense` (~45 dk CPU, devam
       edebilir). Reranker yok (LM Studio cross-encoder sunmuyor). ADR-019.
-- [x] M4 — LLM hakem: qwen/qwen3.5-9b, Vulkan (Intel iGPU), `reasoning_effort: none`,
+- [x] M4 — LLM hakem: başta qwen/qwen3.5-9b (yerel); şimdi gemma-4-31b bulutta (ADR-025/026), `reasoning_effort: none`,
       final = 0.75 kural + 0.25 LLM (ADR-021/022). Opsiyonel LLM sorgu genişletme (kapalı).
       Batch modunda hakem yok (süre).
 - [x] M5 — Batch modu: `vsa batch -i talep.xlsx` (TR/EN/açıklama). Çekirdek tablo, yapısal
@@ -89,5 +90,7 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 
 ## Bu makinenin model ortamı
 LM Studio (http://127.0.0.1:1234; `localhost` Windows'ta IPv6 yüzünden ~2 sn yavaş, ADR-023), runtime `llama.cpp-win-x86_64-vulkan-avx2@2.46.0`.
-Modeller: `qwen/qwen3.5-9b` (hakem), `text-embedding-bge-m3` (vektör). Yerel ayar
+Modeller: `text-embedding-bge-m3` (vektör, yerel). Hakem: `google/gemma-4-31b-it` NVIDIA API
+kataloğu üzerinden (`llm.provider: cloud`, seed 42; ADR-026) — her soru dışarı gider; yerel yedek
+`google/gemma-4-12b` (laboratuvarın en iyi yerel sonucu). Model seçimi: `vsa lab` / Ayarlar → Model laboratuvarı. Yerel ayar
 `config/settings.yaml` (repoda yok). Model karşılaştırma: `eval/bench_llm.py`.

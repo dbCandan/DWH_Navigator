@@ -335,3 +335,13 @@ Anahtar tarayıcıya gönderilmez.
 
 **Sonuç.** Açık ağırlıklı bir modelin bulutta ölçülen kalitesi, aynı model kurum içi GPU'ya
 kurulduğunda da geçerlidir; kapalı modeller (yalnız bulutta olanlar) referans niteliğindedir.
+
+**Güncelleme (2026-09-26, kullanıcı kararı).** Kullanıcı hakemi de buluta almaya karar verdi:
+`llm.provider: cloud`, model `google/gemma-4-31b-it` (NVIDIA), sıcaklık 0, düşünme kapalı,
+`llm.seed: 42`. Sohbet bulutta, embedding (bge-m3, vektör indeksi) yerelde kalır
+(`SplitClient`). Bu ayarla uygulamadaki her soruda aday tabloların adları, kolon adları ve
+açıklamaları NVIDIA'ya gider; müşteri verisi gitmez. Servis erişilemezse hakem sessizce devre
+dışı kalır ve sonuç kural tabanlıdır (ADR-008). Gerekçe (laboratuvar): gemma-4-31b hakem
+doğruluğu %85 / nihai %88 ile en doğru model; seed'siz tutarlılığı %81 idi — seed ile yeniden
+ölçüldü (eval/lab.json, `|s42` satırı). Üretimde aynı açık model kurum içi GPU'ya kurulup
+`provider: local` ile çalıştırılabilir.
