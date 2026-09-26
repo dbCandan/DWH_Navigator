@@ -132,9 +132,13 @@ class App:
     def status(self) -> dict[str, Any]:
         e = self.engine
         s = e.settings
+        source = Path(e.dictionary.source_path)
         return {
-            "dictionary": Path(e.dictionary.source_path).name,
+            "dictionary": source.name,
             "version": e.dictionary.version,
+            # when the dictionary file was last changed ("" if the index outlived the file)
+            "updated": (datetime.fromtimestamp(source.stat().st_mtime).date().isoformat()
+                        if source.is_file() else ""),
             "columns": len(e.dictionary.columns),
             "objects": len(e.objects),
             "hybrid": e.hybrid,

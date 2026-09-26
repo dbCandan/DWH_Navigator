@@ -211,10 +211,8 @@ function h(tag, attrs, ...kids) {
   for (const kid of kids.flat()) { if (kid == null || kid === false) continue; e.append(kid instanceof Node ? kid : document.createTextNode(String(kid))); }
   return e;
 }
-const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } } };
-// Inherit the look chosen in the app.
-if (store.get("vsa-theme")) document.documentElement.dataset.theme = store.get("vsa-theme");
-if (store.get("vsa-skin")) document.documentElement.dataset.skin = store.get("vsa-skin");
+// The app has a single look (Evren, ADR-027).
+document.documentElement.dataset.skin = "evren";
 
 async function api(path, opts = {}) {
   const r = await fetch(path, opts);

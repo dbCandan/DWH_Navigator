@@ -65,6 +65,7 @@ def test_status(base_url: str) -> None:
     status, body, _ = get(base_url + "/api/status")
     data = json.loads(body)
     assert status == 200 and data["columns"] == 3 and data["llm"] == ""
+    assert len(data["updated"]) == 10  # ISO date of the dictionary file
 
 
 def test_ask_and_report(base_url: str) -> None:
