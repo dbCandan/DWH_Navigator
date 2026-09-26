@@ -460,3 +460,22 @@ PD) ilk 5'e girmedi — doğru tablo ailesi (sektör boyutu, KKB/EWS skorları) 
 "birincil" tablo kaçtı (bu ölçüm 14 aday ve "evreni dar tablolar geri planda" kuralıyla yapıldı).
 Sıradaki adım: 1. adımda bilgi ailesi başına aday garantisi (ör. PD/rating ailesi) ve üretimde
 A100 üzerinde daha büyük/yerel modelle karşılaştırma (`vsa lab`).
+
+**Ek (2026-09-27): aile araması, kavram kanıtı, batch.**
+- *Aile araması.* 1. adım talebin bilgi ailelerini ve her aile için kolon adı / açıklama
+  terimlerini de döndürür ("temerrüt olasılığı: PD, temerrüt olasılığı"). Her aile için tablo
+  seviyesinde BM25 (`scoring/topic.py` indeksi) en iyi 2 tabloyu okunacaklara ekler (en fazla
+  6). Model katalogda `vIFRSAccountStatus`'u atlasa da aile araması onu okutur.
+- *Kavram kanıtı.* 2. adımda her adayın başında kural katmanının eşleşmesi yazar ("sektör ✓
+  CompanySectorCodeCurrP · mevduat ✓ TotalDeposit") — §8'in "birlikte taşıma" kuralı modele
+  kanıt olarak. Kararı model verir.
+- *Batch.* Toplu talep için analist yolu yazıldı (çekirdek tablo + alan başına durum ve ≤3
+  kaynak, 12'şerli parçalar), ama b001'de kural yolunun gerisinde kaldı (recall@5 0.70 / 0.90,
+  kolon 0.57 / 0.86). Varsayılan kapalı: `analyst.batch: false`.
+
+Ölçüm (v2, tek koşu): ask recall@1 0.75, @3 1.00, @5 1.00, MRR 0.88, kolon 0.86, tuzak ihlali
+0, negatif 0. v1'e göre kolon +0.10 ve tuzak 1 → 0; recall@1 bir madde düştü (q005'te
+`vEExportProductUsage` 1., `vCustomerGeneralInfo` 2. — v1'de ilk 5'te yoktu). Tek koşuda bu
+fark model değişkenliğinden ayrılamıyor. Sonraki adımlar `docs/METODOLOJI_KARSILASTIRMASI.md`
+§4: deterministik skor (modelden yapılandırılmış bulgu), yapılandırılmış talep ayrıştırma,
+otomatik kalite kontrol, tekrar ölçümüyle tutarlılık.

@@ -41,6 +41,7 @@ from vsa.llm.analyst import (
     Catalog,
     MentionChecker,
     Recommendation,
+    Shortlist,
     analyse,
     build_answer,
     build_catalog,
@@ -54,7 +55,16 @@ from vsa.llm.client import LLMClient, LLMError, NullClient, client_from_settings
 from vsa.llm.judge import JudgeResult, judge
 from vsa.llm.prompts import EXPAND_SCHEMA, EXPAND_SYSTEM, expand_user
 from vsa.loader import load_dictionary, load_stopword_file, load_term_dictionary
-from vsa.models import AnalysisResult, ColumnHit, Dictionary, Note, ObjectMatch, TermGroup, Verdict
+from vsa.models import (
+    AnalysisResult,
+    ColumnHit,
+    DictColumn,
+    Dictionary,
+    Note,
+    ObjectMatch,
+    TermGroup,
+    Verdict,
+)
 from vsa.scoring.aggregate import ObjectColumns, aggregate
 from vsa.scoring.combine import combine, level_for
 from vsa.scoring.explain import (
@@ -104,6 +114,29 @@ class Resources:
         if CLARIFICATIONS_PATH.exists():
             clar = yaml.safe_load(CLARIFICATIONS_PATH.read_text(encoding="utf-8")) or []
         return cls(groups, load_stopword_file(Path(settings.expansion.stopwords)), clar)
+
+
+@dataclass(slots=True)
+class AnalystReading:
+    """What the analyst model reads in step 2 (ADR-029), shared by ``ask`` and batch."""
+
+    catalog: Catalog
+    checker: MentionChecker
+    ranked: list[ObjectMatch]  # rule ranking, shown as hints
+    q: ExpandedQuery
+    relevance: dict[int, float]
+    short: Shortlist
+    added: dict[str, str]  # tables added by family search -> family
+    readable: list[str]  # candidates + added, in reading order
+    material: str
+    confusables: str
+    columns_of: dict[str, list[DictColumn]]
+    seconds: float  # step 1
+
+    @property
+    def ids(self) -> dict[str, str]:
+        """Catalog ids the model may recommend -> object key."""
+        return {self.catalog.keys[k]: k for k in self.readable}
 
 
 class Engine:
@@ -436,26 +469,31 @@ class Engine:
         lines += [f"- {self.features[i].col.key}" for i in best]
         return "\n".join(lines)
 
-    def _analyze_llm(self, query: str, top_n: int) -> AnalysisResult | None:
-        started = time.perf_counter()
+    def analyst_read(self, query: str) -> AnalystReading | None:
+        """Step 1 of the analyst flow and the material for step 2 (ADR-029): the model
+        picks candidates from the catalog, family search adds tables it overlooked, and
+        every readable table is laid out with its columns, descriptions and concept
+        evidence. None when the model fails (the caller falls back to rules)."""
         a = self.settings.analyst
         catalog, checker = self._analyst_parts()
         ranked, q = self.rank_objects(query, use_llm=False, limit=ANALYST_RULE_POOL)
         relevance = self._column_relevance(q)
-
-        t1 = time.perf_counter()
-        short = shortlist(query, catalog, self._hints(ranked, relevance, catalog), self.llm,
-                          a.shortlist)  # fmt: skip
+        started = time.perf_counter()
+        hints = self._hints(ranked, relevance, catalog)
+        short = shortlist(query, catalog, hints, self.llm, a.shortlist)
         if short is None:
             return None
-        t2 = time.perf_counter()
+        seconds = time.perf_counter() - started
         columns_of = {k: [f.col for f in o.features] for k, o in self.objects.items()}
-        answer: AnalystAnswer
-        if short.candidates:
-            hits = term_matcher(short.search_terms)
+        added = self._family_tables(short) if short.candidates else {}
+        readable = [*short.candidates, *added]
+        material = confusables = ""
+        if readable:
+            terms = [*short.search_terms, *(w for _, words in short.families for w in words)]
+            hits = term_matcher(terms)
             rel = {
                 c.id: relevance.get(c.id, 0.0) + 0.5 * hits(c)
-                for k in short.candidates
+                for k in readable
                 for c in columns_of[k]
             }
             material = "\n\n".join(
@@ -466,21 +504,39 @@ class Engine:
                     rel,
                     a.description_chars,
                     a.full_table_columns,
+                    self._concept_evidence(k, q, rel)
+                    + (f"\nAile aramasıyla eklendi: {added[k]}" if k in added else ""),
                 )  # fmt: skip
-                for k in short.candidates
+                for k in readable
             )
             confusables = confusable_material(
-                self.dictionary.columns, short.candidates, short.confusables[: a.confusables],
+                self.dictionary.columns, readable, short.confusables[: a.confusables],
                 relevance, short.search_terms, a.evidence_columns,
             )  # fmt: skip
-            reply = analyse(query, short.interpretation, material, confusables, self.llm,
-                            top_n, a.max_tokens)  # fmt: skip
+        return AnalystReading(
+            catalog, checker, ranked, q, relevance, short, added, readable, material,
+            confusables, columns_of, seconds,
+        )  # fmt: skip
+
+    def _analyze_llm(self, query: str, top_n: int) -> AnalysisResult | None:
+        started = time.perf_counter()
+        a = self.settings.analyst
+        reading = self.analyst_read(query)
+        if reading is None:
+            return None
+        catalog, checker, ranked, q = reading.catalog, reading.checker, reading.ranked, reading.q
+        relevance, short, added = reading.relevance, reading.short, reading.added
+        readable, columns_of = reading.readable, reading.columns_of
+        t2 = time.perf_counter()
+        answer: AnalystAnswer
+        if readable:
+            reply = analyse(query, short.interpretation, reading.material, reading.confusables,
+                            self.llm, top_n, a.max_tokens)  # fmt: skip
             if reply is None:
                 return None
             answer = build_answer(
-                reply, {catalog.keys[k]: k for k in short.candidates}, columns_of, checker,
-                top_n, a.min_confidence, catalog.ids,
-            )  # fmt: skip
+                reply, reading.ids, columns_of, checker, top_n, a.min_confidence, catalog.ids
+            )
         else:
             answer = AnalystAnswer(
                 Verdict.NOT_FOUND,
@@ -491,7 +547,7 @@ class Engine:
 
         rules = {m.object_key: m for m in ranked}
         warnings = [*answer.attention, *(n.text for n in answer.notes)]
-        objects = [self._recommended(r, rules.get(r.object_key), relevance, warnings)
+        objects = [self.recommended_match(r, rules.get(r.object_key), relevance, warnings)
                    for r in answer.recommendations]  # fmt: skip
         notes = list(answer.notes)
         notes += quality_notes(objects)
@@ -513,11 +569,13 @@ class Engine:
         method = [
             f"Analist akışı (ADR-029): {self.llm.model}",
             f"1. adım — {len(catalog.ids)} tablonun kataloğundan {len(short.candidates)} aday "
-            f"ve {len(short.confusables)} benzer tablo seçildi ({t2 - t1:.0f} sn)",
+            f"ve {len(short.confusables)} benzer tablo seçildi ({reading.seconds:.0f} sn)",
             "Okunan adaylar: " + (", ".join(k.rsplit(".", 1)[-1] for k in short.candidates) or "-"),
             "Benzer (uyarı) tablolar: "
             + (", ".join(k.rsplit(".", 1)[-1] for k in short.confusables) or "-"),
-            f"2. adım — adayların {sum(len(columns_of[k]) for k in short.candidates)} kolonu "
+            "Aile aramasıyla eklenen: "
+            + (", ".join(f"{k.rsplit('.', 1)[-1]} ({f})" for k, f in added.items()) or "-"),
+            f"2. adım — adayların {sum(len(columns_of[k]) for k in readable)} kolonu "
             f"sözlük açıklamalarıyla okundu, rapor yazıldı ({t3 - t2:.0f} sn)",
             "Arama motoru (BM25"
             + (" + anlamsal arama" if self.hybrid else "")
@@ -549,7 +607,45 @@ class Engine:
             analyst=True,
         )
 
-    def _recommended(
+    def _family_tables(self, short: Shortlist) -> dict[str, str]:
+        """Tables the model did not pick but whose names / columns / descriptions carry
+        one of the request's information families (table-level BM25 over the family's
+        terms, ADR-029). Returns object key -> family name."""
+        a = self.settings.analyst
+        taken = {*short.candidates, *short.confusables}
+        added: dict[str, str] = {}
+        for name, words in short.families:
+            query = {
+                tok: 1.0 for w in words for tok in tokenize(w, stopwords=self.resources.stopwords)
+            }
+            if not query:
+                continue
+            found = 0
+            for doc, _ in self.topic_index.search(query, top_k=a.family_tables * 4):
+                key = self.topic_keys[doc]
+                if key in taken or key in added:
+                    continue
+                added[key] = name
+                found += 1
+                if found >= a.family_tables or len(added) >= a.family_extra:
+                    break
+            if len(added) >= a.family_extra:
+                break
+        return added
+
+    def _concept_evidence(self, key: str, q: ExpandedQuery, relevance: Mapping[int, float]) -> str:
+        """Which request concepts the table carries, and in which column (§8, lexical)."""
+        parts: list[str] = []
+        for concept in q.content_concepts:
+            carriers = [f for f in self.objects[key].features if covers(f.all_tokens, concept)]
+            if carriers:
+                best = max(carriers, key=lambda f: relevance.get(f.col.id, 0.0))
+                parts.append(f"{concept.label} ✓ {best.col.column}")
+            else:
+                parts.append(f"{concept.label} ✗")
+        return ("Talep kavramları (kelime eşleşmesi): " + " · ".join(parts)) if parts else ""
+
+    def recommended_match(
         self,
         r: Recommendation,
         rule: ObjectMatch | None,

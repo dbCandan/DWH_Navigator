@@ -9,6 +9,7 @@ from typing import Any
 
 from openpyxl import load_workbook
 
+from vsa.batch import BatchAnalyzer
 from vsa.config import Settings
 from vsa.llm.analyst import (
     MentionChecker,
@@ -17,9 +18,9 @@ from vsa.llm.analyst import (
     column_caveats,
     table_material,
 )
-from vsa.models import DictColumn, Dictionary, Verdict
+from vsa.models import DictColumn, Dictionary, FieldStatus, RequestField, Verdict
 from vsa.pipeline import Engine, Resources
-from vsa.report.excel import write_ask_report
+from vsa.report.excel import write_ask_report, write_batch_report
 
 
 def col(i: int, obj: str, name: str, desc: str, schema: str = "CON") -> DictColumn:
@@ -198,6 +199,23 @@ def test_column_caveats_pick_sentences_naming_the_column() -> None:
     assert column_caveats("CardLimit", [sentence]) == [sentence]
 
 
+def test_family_search_adds_overlooked_tables() -> None:
+    """A table the model missed in the catalog is read when its columns carry one of the
+    request's information families; every candidate shows which concepts it carries."""
+    cols = [*COLUMNS, col(6, "vCardTurnover", "TrnAmount", "Kart işlem tutarı (turnover).", "TRX")]
+    families = [{"name": "kart işlemleri", "terms": ["Turnover", "TrnAmount"]}]
+    client = ScriptedClient({**SHORTLIST, "families": families}, analyst_reply())
+    e = Engine(Dictionary(cols, "sozluk.xlsx", "abc-7"), Settings(), Resources(), llm=client)
+    r = e.analyze("müşterinin kredi kartı bilgisi")
+    step2 = client.users[1]
+    assert "### T3 · EDWDM.TRX.vCardTurnover" in step2
+    assert "Aile aramasıyla eklendi: kart işlemleri" in step2
+    assert "Talep kavramları (kelime eşleşmesi):" in step2
+    assert any("vCardTurnover (kart işlemleri)" in m for m in r.method)
+    # the confusable table is never re-added as a candidate
+    assert "### T1 ·" not in step2
+
+
 class TestEngine:
     def test_analyst_answer(self, tmp_path: Path) -> None:
         client = ScriptedClient(SHORTLIST, analyst_reply())
@@ -243,3 +261,75 @@ class TestEngine:
         e = engine(client)
         e.settings.analyst.enabled = False
         assert not e.analyze("kredi kartı").analyst
+
+
+def test_batch_analyst() -> None:
+    """Target-table request through the analyst flow: every field gets a validated
+    answer; fields the model skipped or answered with unknown columns are "Bulunamadı"."""
+    fields = [
+        RequestField(1, "Kart Referans No", "CardRefNumber"),
+        RequestField(2, "Asıl Müşteri", "MainCustomerId"),
+        RequestField(3, "Kart Rengi", "CardColour"),
+    ]
+    cand = {"id": "T2", "derivation": "", "reason": "Kart listesi.", "caveat": "-"}
+    reply = {
+        "verdict": "VAR",
+        "summary": "VAR. Çekirdek tablo vCreditCardList.",
+        "core": "T2",
+        "fields": [
+            {"index": 1, "status": "Hazır",
+             "candidates": [{**cand, "columns": ["CardRefNumber"], "confidence": 0.95}]},
+            {"index": 2, "status": "Hazır",
+             "candidates": [{**cand, "columns": ["MainCustomerId"], "confidence": 0.9}]},
+            {"index": 3, "status": "Hazır",
+             "candidates": [{**cand, "columns": ["CardColour"], "confidence": 0.9}]},
+        ],
+        "design": ["Tek tablo: vCreditCardList."],
+        "attention": [],
+        "notes": [],
+    }  # fmt: skip
+    e = engine(ScriptedClient(SHORTLIST, reply))
+    e.settings.analyst.batch = True
+    r = BatchAnalyzer(e).analyze(fields, "Kart listesi")
+    assert r.analyst
+    assert [fr.status for fr in r.fields] == [
+        FieldStatus.READY, FieldStatus.READY, FieldStatus.NOT_FOUND
+    ]  # fmt: skip
+    assert r.fields[0].candidates[0].in_core
+    assert r.fields[0].candidates[0].match.columns[0].col.column == "CardRefNumber"
+    assert r.verdict is Verdict.PARTIAL and r.summary.startswith("KISMEN VAR.")
+    assert "2 hazır, 1 bulunamadı" in r.summary
+    assert r.coverage[0].object_key == LIST and r.coverage[0].ready == 2
+    assert r.design == ["Tek tablo: vCreditCardList."]
+
+
+def test_batch_analyst_falls_back_to_rules() -> None:
+    fields = [RequestField(1, "Kart Referans No", "CardRefNumber")]
+    e = engine(ScriptedClient(SHORTLIST, None))
+    e.settings.analyst.batch = True
+    assert not BatchAnalyzer(e).analyze(fields, "Kart").analyst
+
+
+def test_batch_report_has_design(tmp_path: Path) -> None:
+    fields = [RequestField(1, "Kart Referans No", "CardRefNumber")]
+    reply = {
+        "verdict": "VAR", "summary": "VAR.", "core": "T2",
+        "fields": [{"index": 1, "status": "Hazır", "candidates": [
+            {"id": "T2", "columns": ["CardRefNumber"], "derivation": "", "reason": "-",
+             "caveat": "-", "confidence": 0.9}]}],
+        "design": ["Tek tablo yeterli."], "attention": ["Ek kart ayrımı."], "notes": [],
+    }  # fmt: skip
+    e = engine(ScriptedClient(SHORTLIST, reply))
+    e.settings.analyst.batch = True
+    r = BatchAnalyzer(e).analyze(fields, "Kart")
+    wb = load_workbook(write_batch_report(r, tmp_path / "b.xlsx"))
+    cells = [str(c.value) for row in wb["Özet"].iter_rows() for c in row if c.value]
+    assert "Önerilen Kurgu" in cells and "• Tek tablo yeterli." in cells
+    assert "Talebin yorumu" in cells
+
+
+def test_batch_analyst_off_by_default() -> None:
+    fields = [RequestField(1, "Kart Referans No", "CardRefNumber")]
+    client = ScriptedClient(SHORTLIST)
+    assert not BatchAnalyzer(engine(client)).analyze(fields, "Kart").analyst
+    assert client.users == []  # the model was never asked

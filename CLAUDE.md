@@ -99,7 +99,9 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
       rapor), kurallar ipucu/doğrulayıcı/yedek. Excel ve arayüz chat analizlerinin biçiminde
       (Kapsadığı Bilgi, Önerilen Kurgu, Dikkat, Uyarı/Netleştirme/Top 5 dışı notları).
       Soru başına ~2-4 dk bulutta (katalog ~70k token); üretimde A100 + vLLM önek önbelleği.
-      `vsa eval` model açıkken analist cevabını ölçer. Batch modu hâlâ kural tabanlı.
+      `vsa eval` model açıkken analist cevabını ölçer. Aile araması + kavram kanıtı (v2).
+      Batch analist yolu var ama kapalı (`analyst.batch`, b001'de kuraldan geride).
+      Sıradaki: deterministik skor, yapılandırılmış ayrıştırma (METODOLOJI_KARSILASTIRMASI.md).
 
 ## Bu makinenin model ortamı
 LM Studio (http://127.0.0.1:1234; `localhost` Windows'ta IPv6 yüzünden ~2 sn yavaş, ADR-023), runtime `llama.cpp-win-x86_64-vulkan-avx2@2.46.0`.

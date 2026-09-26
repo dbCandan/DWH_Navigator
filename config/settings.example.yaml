@@ -58,6 +58,9 @@ analyst:
   enabled: true
   shortlist: 14                # 2. adımda kolon kolon okunan aday tablo sayısı
   confusables: 6               # uyarılar için okunan "benzer ama yanlış" tablo sayısı
+  family_tables: 2             # bilgi ailesi başına terim aramasıyla eklenen tablo
+  family_extra: 6              # bu yolla en fazla eklenen tablo
+  batch: false                 # toplu talep de analistle (ölçümde kuraldan geride; ADR-029)
   evidence_columns: 60         # sözlüğün geri kalanından benzer alan sayısı
   description_chars: 420       # kolon açıklaması başına karakter
   full_table_columns: 90       # daha geniş tablolarda yalnız ilgili kolonların açıklaması

@@ -38,6 +38,12 @@ kampanya, pazarlama izni, personel, başvuru) ancak gerçekten cevapsa aday olur
 YANLIŞ cevap verecek tabloları "confusables" listesine koy; bunlar uyarı olarak yazılacak.
 - search_terms: sözlükte benzer / karıştırılabilir alanları bulmak için kolon adı ve açıklama \
 kelimeleri (İngilizce ve Türkçe; ör. Tenure, Age, kıdem, Sector, Score, Limit). 4–12 kelime.
+- families: talebin karşılık gelebileceği BÜTÜN bilgi aileleri (2-6 aile). Her aile için \
+sözlükteki kolon adlarında ve açıklamalarında geçebilecek 3-8 terim yaz (İngilizce kolon adı \
+parçaları ve Türkçe açıklama kelimeleri). Ör. "kredi risk skoru" için: içsel derecelendirme \
+[Grade, Rating, IDM, derecelendirme notu], temerrüt olasılığı [PD, temerrüt olasılığı, ECL], \
+kredi bürosu skoru [KKBScore, KKB skoru], erken uyarı [EWS, erken uyarı, Colour]. Bu terimlerle \
+sözlükte ayrıca arama yapılır; senin seçmediğin ama aileyi taşıyan tablolar da okunur.
 - Talep birden çok kavramı birlikte istiyorsa (ör. sektör + mevduat) bu kavramları AYNI \
 tabloda birlikte taşıyan tabloları mutlaka aday yap: tek tabloda hazır cevap, birleştirme \
 gerektiren cevaptan iyidir. Ayrıca her kavramın ayrı ana tablosunu (boyut + ölçü) da ekle. \
@@ -66,8 +72,20 @@ SHORTLIST_SCHEMA: dict[str, Any] = {
         "candidates": {"type": "array", "items": _ITEM},
         "confusables": {"type": "array", "items": _ITEM},
         "search_terms": {"type": "array", "items": {"type": "string"}},
+        "families": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "terms": {"type": "array", "items": {"type": "string"}},
+                },
+                "required": ["name", "terms"],
+                "additionalProperties": False,
+            },
+        },
     },
-    "required": ["interpretation", "candidates", "confusables", "search_terms"],
+    "required": ["interpretation", "candidates", "confusables", "search_terms", "families"],
     "additionalProperties": False,
 }
 
@@ -84,7 +102,9 @@ def shortlist_user(query: str, hints: str) -> str:
         '{"interpretation": "talebin 1-3 cümlelik yorumu", '
         '"candidates": [{"id": "T12", "why": "kısa neden"}], '
         '"confusables": [{"id": "T40", "why": "neden yanıltıcı"}], '
-        '"search_terms": ["Tenure", "kıdem"]}'
+        '"search_terms": ["Tenure", "kıdem"], '
+        '"families": [{"name": "müşterilik kıdemi", '
+        '"terms": ["Tenure", "kıdem", "RecordingTime"]}]}'
     )
 
 
@@ -102,6 +122,10 @@ anabilirsin; tam adıyla yaz (VeriTabanı.Şema.Obje veya VeriTabanı.Şema.Obje
 Age geçip kişinin yaşını tutan alan, adında Sector geçip firma yaşını tutan alan, ek kart \
 sahibini tutan CustomerId) mutlaka uyarı olarak yaz.
 - "Bulunamadı" geçerli cevaptır. Talebi karşılamayan tabloyu listeyi doldurmak için önerme.
+- Her aday tablonun başlığındaki "Talep kavramları" satırı kelime eşleşmesidir (kanıt, karar \
+değil): ✓ kavramın hangi kolonda geçtiğini gösterir. Kavramları birlikte taşıyan tabloyu mutlaka \
+değerlendir ve kolon açıklamasıyla doğrula. "Aile aramasıyla eklendi" yazan tablolar 1. adımda \
+gözden kaçmış olabilir; talebin bir bilgi ailesini karşılıyorsa diğer adaylarla eşit şekilde öner.
 - Tablonun müşteri EVRENİNE bak (veri seti grubu, tablo adı ve açıklamalar): yalnız belirli bir \
 kitleyi kapsayan tablolar (e-ihracat, özel bankacılık, kampanya hedef kitlesi, model eğitim \
 örneklemi, personel) genel bir talepte ana kaynak olamaz; önerirsen evren kısıtını caveat'e yaz. \
@@ -207,5 +231,113 @@ def analyst_user(query: str, interpretation: str, material: str, confusables: st
         '"recommendations": [{"id": "T12", "covers": "…", "columns": ["Kolon1", "Kolon2"], '
         '"reason": "…", "caveat": "… veya -", "usage": "…", "confidence": 0.85}], '
         '"design": ["…"], "attention": ["…"], '
+        '"notes": [{"scope": "Uyarı", "title": "…", "text": "…"}]}'
+    )
+
+
+# --------------------------------------------------------------------------- batch
+
+BATCH_RULES = """GÖREV (2. adım — hedef tablo talebi, alan alan):
+İş birimi kurmak istediği bir hedef tablonun alanlarını listeledi (Türkçe başlık, İngilizce \
+başlık, açıklama). Sana ADAY TABLOLAR (kolonları ve sözlük açıklamalarıyla) ve sözlüğün geri \
+kalanından KARIŞTIRILABİLİR ALANLAR verildi. Her alanın veri ambarındaki kaynağını bul.
+
+Doğruluk kuralları (pazarlıksız):
+- YALNIZCA malzemede geçen tablo ve kolon adlarını kullan; ad UYDURMA. Sözlükte olmayan ad \
+içeren cümle silinir, olmayan kolon öneriden düşer.
+- Kaynak tablolar yalnız ADAY TABLOLAR içinden, id ile seçilir.
+- Kararı kolon ADINA değil sözlük AÇIKLAMASINA göre ver; adı yanıltıcı alanları uyarı olarak yaz.
+- Talebin zaman düzeyine (aylık → Period; günlük → işlem/veri tarihi) ve müşteri seviyesine \
+dikkat et.
+
+Yöntem:
+- Önce ÇEKİRDEK tabloyu belirle: talebin en çok alanını, doğru zaman düzeyinde ve doğru kayıt \
+seviyesinde birlikte karşılayan tablo. Genel alanlar (CustomerId, Period gibi) çekirdek tablodan \
+alınır. Çekirdek tablonun karşılayamadığı alanlar için diğer adaylara bak.
+- Her alan için status:
+  · "Hazır": alan hazır bir kolonla (veya çekirdek tablodaki kanal kolonlarının toplamıyla) \
+karşılanıyor.
+  · "Kısmen hazır": ilişkili kolon var ama kapsam / granülerlik / tanım farkı var.
+  · "Türetilmeli": hazır kolon yok; işlem seviyesi bir tablodan hesaplanabilir — derivation \
+alanına formülü yaz (ör. COUNT(DISTINCT ReceiverBankName), SUM(Amount) WHERE …).
+  · "Bulunamadı": sözlükte karşılığı yok. Liste doldurmak için zorlama.
+- candidates: alan başına en fazla 3 kaynak, en iyisi önce; her biri id, columns (1-4 kolon, \
+adları aynen), derivation (yoksa ""), reason (1-2 cümle, açıklamaya dayanarak), caveat (yoksa \
+"-"), confidence (0.80+ doğrudan, 0.50-0.79 kısmi, altı gösterilmez).
+- summary: verdict ile başlayan 2-3 cümle; çekirdek tabloyu ve kaç alanın nasıl karşılandığını \
+söyle.
+- design: birleştirme / kurgu reçeteleri (hangi tablolar, hangi anahtar), 0-4 madde.
+- attention: en önemli tuzaklar, 0-4 madde.
+- notes: Uyarı / Netleştirme / Türetme / Kapsam notları, 0-6.
+- Metinlerde id (T12) KULLANMA; tabloyu adıyla yaz. Dil: Türkçe, net.
+- Sana verilen alan listesinin HER alanı için fields içinde tam bir kayıt döndür (index aynen).
+- JSON dışında hiçbir şey yazma."""
+
+_BATCH_CANDIDATE: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "id": {"type": "string"},
+        "columns": {"type": "array", "items": {"type": "string"}},
+        "derivation": {"type": "string"},
+        "reason": {"type": "string"},
+        "caveat": {"type": "string"},
+        "confidence": {"type": "number"},
+    },
+    "required": ["id", "columns", "derivation", "reason", "caveat", "confidence"],
+    "additionalProperties": False,
+}
+
+BATCH_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "verdict": {"type": "string", "enum": ["VAR", "KISMEN VAR", "BULUNAMADI"]},
+        "summary": {"type": "string"},
+        "core": {"type": "string"},
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "index": {"type": "integer"},
+                    "status": {
+                        "type": "string",
+                        "enum": ["Hazır", "Kısmen hazır", "Türetilmeli", "Bulunamadı"],
+                    },
+                    "candidates": {"type": "array", "items": _BATCH_CANDIDATE},
+                },
+                "required": ["index", "status", "candidates"],
+                "additionalProperties": False,
+            },
+        },
+        "design": {"type": "array", "items": {"type": "string"}},
+        "attention": {"type": "array", "items": {"type": "string"}},
+        "notes": ANALYST_SCHEMA["properties"]["notes"],
+    },
+    "required": ["verdict", "summary", "core", "fields", "design", "attention", "notes"],
+    "additionalProperties": False,
+}
+
+
+def batch_system() -> str:
+    return f"{ANALYST_ROLE}\n\n{BATCH_RULES}"
+
+
+def batch_user(
+    name: str, fields: str, interpretation: str, material: str, confusables: str, core: str
+) -> str:
+    fixed = f"ÇEKİRDEK TABLO (önceki parçada belirlendi, aynen kullan): {core}\n\n" if core else ""
+    return (
+        f"TALEP: {name}\n\n"
+        f"TALEBİN YORUMU (1. adım): {interpretation or '-'}\n\n"
+        f"{fixed}"
+        f"BU PARÇADAKİ ALANLAR (index | TR | EN | açıklama):\n{fields}\n\n"
+        f"ADAY TABLOLAR:\n{material}\n\n"
+        "KARIŞTIRILABİLİR ALANLAR (öneri değil, uyarı malzemesi):\n"
+        f"{confusables or '-'}\n\n"
+        "Şu şemada JSON üret:\n"
+        '{"verdict": "VAR|KISMEN VAR|BULUNAMADI", "summary": "KISMEN VAR. …", "core": "T12", '
+        '"fields": [{"index": 1, "status": "Hazır", "candidates": [{"id": "T12", '
+        '"columns": ["Kolon"], "derivation": "", "reason": "…", "caveat": "-", '
+        '"confidence": 0.9}]}], "design": ["…"], "attention": ["…"], '
         '"notes": [{"scope": "Uyarı", "title": "…", "text": "…"}]}'
     )

@@ -342,17 +342,22 @@ def _batch_summary(ws: Worksheet, r: BatchResult) -> None:
         ("Zaman düzeyi", r.time_grain or "-"),
         ("Genel sonuç", r.summary),
     ]
+    if r.interpretation:
+        info.append(("Talebin yorumu", r.interpretation))
     row = 3
     for label, value in info:
         ws.cell(row=row, column=1, value=label).font = BOLD
         cell = ws.cell(row=row, column=2, value=value)
         cell.font, cell.alignment = BODY_FONT, WRAP
         ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+        _grow(ws, row, value, 130)
         if label == "Genel sonuç":
             cell.fill, cell.font = VERDICT_FILL[r.verdict], BOLD
         row += 1
 
     row += 1
+    row = _bullets(ws, row, "Önerilen Kurgu", r.design)
+    row = _bullets(ws, row, "Dikkat Edilmesi Gerekenler", r.attention)
     ws.cell(row=row, column=1, value="Alan bazında durum").font = BOLD
     status_rows: list[list[CellValue]] = []
     for fr in r.fields:

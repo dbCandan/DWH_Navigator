@@ -244,3 +244,8 @@ class BatchResult:
     generated_at: str
     method: list[str]
     elapsed_ms: int = 0
+    # Analyst flow (ADR-029), as in AnalysisResult.
+    interpretation: str = ""
+    design: list[str] = field(default_factory=list)
+    attention: list[str] = field(default_factory=list)
+    analyst: bool = False

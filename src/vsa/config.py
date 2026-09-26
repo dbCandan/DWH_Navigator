@@ -105,6 +105,11 @@ class AnalystSettings:
     enabled: bool = True
     shortlist: int = 14  # candidate tables the model reads column by column
     confusables: int = 6  # look-alike tables it reads for the warnings
+    family_tables: int = 2  # tables added per information family by term search
+    family_extra: int = 6  # at most this many tables added that way
+    # Target-table requests through the analyst too. Off: on golden b001 it scored below
+    # the rule passes (recall@5 0.70 vs 0.90, columns 0.57 vs 0.86; ADR-029).
+    batch: bool = False
     evidence_columns: int = 60  # look-alike columns from the whole dictionary
     description_chars: int = 420  # per column description in the material
     full_table_columns: int = 90  # wider tables: descriptions only for relevant columns

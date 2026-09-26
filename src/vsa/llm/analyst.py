@@ -95,6 +95,10 @@ class Shortlist:
     confusables: list[str]
     search_terms: list[str]
     unknown_ids: int = 0
+    # Information families of the request and their search terms: the pipeline runs a
+    # table-level search per family, so a table the model overlooked in the catalog is
+    # still read when its columns carry the family (e.g. PD / rating for "risk skoru").
+    families: list[tuple[str, list[str]]] = field(default_factory=list)
 
 
 def shortlist(
@@ -130,6 +134,14 @@ def shortlist(
     cands, reasons = keys(reply.get("candidates"), limit)
     conf, _ = keys(reply.get("confusables"), limit)
     terms = [str(t).strip() for t in reply.get("search_terms") or [] if str(t).strip()]
+    families: list[tuple[str, list[str]]] = []
+    raw_families = reply.get("families")
+    for fam in raw_families if isinstance(raw_families, list) else []:
+        if not isinstance(fam, dict):
+            continue
+        words = [str(w).strip() for w in fam.get("terms") or [] if str(w).strip()]
+        if words:
+            families.append((str(fam.get("name", "")).strip() or "-", words[:8]))
     return Shortlist(
         interpretation=str(reply.get("interpretation", "")).strip(),
         candidates=cands,
@@ -137,6 +149,7 @@ def shortlist(
         confusables=[k for k in conf if k not in cands],
         search_terms=terms[:12],
         unknown_ids=unknown,
+        families=families[:6],
     )
 
 
@@ -175,10 +188,14 @@ def table_material(
     relevance: Mapping[int, float],
     desc_chars: int,
     full_limit: int,
+    evidence: str = "",
 ) -> str:
     """Every column with its description; for very wide tables only the relevant ones
-    get a description and the rest are listed by name."""
+    get a description and the rest are listed by name. ``evidence`` is a line under the
+    heading (which request concepts the table carries, why it was added)."""
     head = f"### {tid} · {key} · Veri seti: {_group(columns)} · {len(columns)} kolon"
+    if evidence:
+        head += "\n" + evidence
     if len(columns) <= full_limit:
         return "\n".join([head, *(column_line(c, desc_chars) for c in columns)])
     ranked = sorted(
@@ -329,6 +346,7 @@ class Recommendation:
     caveat: str
     usage: str
     confidence: float
+    derivation: str = ""  # batch: how to compute the field when no column holds it
 
 
 @dataclass(slots=True)
@@ -395,6 +413,118 @@ def _resolve_column(name: str, columns: Mapping[str, DictColumn]) -> DictColumn 
     return next((c for n, c in columns.items() if fold(n) == target), None)
 
 
+class Cleaner:
+    """Checks what the model wrote against the dictionary and counts what it drops:
+    unknown ids and columns, and sentences naming a table or column that does not exist.
+    Catalog ids left in the text ("T177 tablosu") are written as table names."""
+
+    def __init__(
+        self,
+        checker: MentionChecker,
+        ids: Mapping[str, str],
+        columns_of: Mapping[str, Sequence[DictColumn]],
+        catalog_ids: Mapping[str, str] | None = None,
+    ) -> None:
+        self.checker = checker
+        self.ids = ids  # ids the model may choose from (the candidates)
+        self.columns_of = columns_of
+        self.names = catalog_ids or ids
+        self.dropped = 0
+
+    def _table_name(self, m: re.Match[str]) -> str:
+        key = self.names.get(m.group(0))
+        return key.rsplit(".", 1)[-1] if key else m.group(0)
+
+    def text(self, value: object) -> str:
+        raw = _CATALOG_ID.sub(self._table_name, str(value or "").strip())
+        raw = _ECHO.sub(r"\1", raw)  # "T12 (vX)" became "vX (vX)"
+        cleaned, n = self.checker.clean(raw)
+        self.dropped += n
+        return cleaned
+
+    def bullets(self, value: object) -> list[str]:
+        return [t for v in (value if isinstance(value, list) else []) if (t := self.text(v))]
+
+    def notes(self, value: object) -> list[Note]:
+        out: list[Note] = []
+        for n in value if isinstance(value, list) else []:
+            if not isinstance(n, dict):
+                continue
+            body = self.text(n.get("text"))
+            title = self.text(n.get("title"))
+            if body:
+                out.append(Note(str(n.get("scope", "")).strip() or "Not", title or "-", body))
+        return out
+
+    def key(self, raw: object) -> str | None:
+        key = resolve_id(raw, self.ids)
+        if key is None:
+            self.dropped += 1
+            log.warning("Analist aday olmayan id önerdi: %s", raw)
+        return key
+
+    def columns(self, key: str, names: object) -> list[DictColumn]:
+        table = {c.column: c for c in self.columns_of[key]}
+        cols: list[DictColumn] = []
+        for name in names if isinstance(names, list) else []:
+            col = _resolve_column(str(name), table)
+            if col is None:
+                self.dropped += 1
+                log.warning("Doğrulama: sözlükte olmayan alan düşürüldü: %s.%s", key, name)
+            elif col not in cols:
+                cols.append(col)
+        return cols
+
+    def recommendation(
+        self, item: Mapping[str, object], min_confidence: float
+    ) -> Recommendation | None:
+        key = self.key(item.get("id"))
+        if key is None:
+            return None
+        conf = _confidence(item.get("confidence"))
+        if conf < min_confidence:
+            return None
+        cols = self.columns(key, item.get("columns"))
+        if not cols:
+            self.dropped += 1
+            return None
+        return Recommendation(
+            object_key=key,
+            columns=cols,
+            covers=self.text(item.get("covers")),
+            reason=self.text(item.get("reason")),
+            caveat=self.text(item.get("caveat")) or "-",
+            usage=self.text(item.get("usage")),
+            confidence=conf,
+            derivation=self.text(item.get("derivation")),
+        )
+
+
+def _confidence(value: object) -> float:
+    try:
+        return max(0.0, min(1.0, float(value)))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _verdict_summary(said_raw: object, summary: str, found: bool) -> tuple[Verdict, str]:
+    said = VERDICTS.get(str(said_raw or "").strip(), Verdict.PARTIAL)
+    verdict = said
+    if not found:
+        verdict = Verdict.NOT_FOUND
+        if said is not Verdict.NOT_FOUND:  # every suggestion fell to validation/threshold
+            summary = "Talebi karşılayan, sözlükte doğrulanmış bir tablo bulunamadı."
+    elif said is Verdict.NOT_FOUND:
+        verdict = Verdict.PARTIAL
+    return verdict, with_verdict(verdict, summary)
+
+
+def with_verdict(verdict: Verdict, summary: str) -> str:
+    """The summary starting with the verdict that stands, whatever the model wrote."""
+    body = _VERDICT_PREFIX.sub("", summary).strip()
+    return f"{verdict.value}. {body}".strip()
+
+
 def build_answer(
     reply: Mapping[str, object],
     ids: Mapping[str, str],
@@ -404,98 +534,108 @@ def build_answer(
     min_confidence: float,
     catalog_ids: Mapping[str, str] | None = None,
 ) -> AnalystAnswer:
-    """The model's report with everything checked against the dictionary. Catalog ids
-    left in the text ("T177 tablosu") are written as table names."""
-    dropped = 0
-    names = catalog_ids or ids
-
-    def table_name(m: re.Match[str]) -> str:
-        key = names.get(m.group(0))
-        return key.rsplit(".", 1)[-1] if key else m.group(0)
-
-    def text(value: object) -> str:
-        nonlocal dropped
-        raw = _CATALOG_ID.sub(table_name, str(value or "").strip())
-        raw = _ECHO.sub(r"\1", raw)  # "T12 (vX)" became "vX (vX)"
-        cleaned, n = checker.clean(raw)
-        dropped += n
-        return cleaned
-
+    """The model's report with everything checked against the dictionary."""
+    clean = Cleaner(checker, ids, columns_of, catalog_ids)
     recs: list[Recommendation] = []
-    seen: set[str] = set()
     raw_recs = reply.get("recommendations")
     for item in raw_recs if isinstance(raw_recs, list) else []:
         if not isinstance(item, dict):
             continue
-        key = resolve_id(item.get("id"), ids)
-        if key is None or key in seen:
-            dropped += key is None
-            if key is None:
-                log.warning("Analist aday olmayan id önerdi: %s", item.get("id"))
-            continue
-        try:
-            conf = max(0.0, min(1.0, float(item.get("confidence", 0.0))))
-        except (TypeError, ValueError):
-            conf = 0.0
-        if conf < min_confidence:
-            continue
-        table = {c.column: c for c in columns_of[key]}
-        cols: list[DictColumn] = []
-        for name in item.get("columns") or []:
-            col = _resolve_column(str(name), table)
-            if col is None:
-                dropped += 1
-                log.warning("Doğrulama: sözlükte olmayan alan düşürüldü: %s.%s", key, name)
-            elif col not in cols:
-                cols.append(col)
-        if not cols:
-            dropped += 1
-            continue
-        seen.add(key)
-        recs.append(
-            Recommendation(
-                object_key=key,
-                columns=cols,
-                covers=text(item.get("covers")),
-                reason=text(item.get("reason")),
-                caveat=text(item.get("caveat")) or "-",
-                usage=text(item.get("usage")),
-                confidence=conf,
-            )
-        )
+        rec = clean.recommendation(item, min_confidence)
+        if rec is not None and all(r.object_key != rec.object_key for r in recs):
+            recs.append(rec)
     recs.sort(key=lambda r: -r.confidence)
     recs = recs[:top_n]
-
-    def bullets(value: object) -> list[str]:
-        return [t for v in (value if isinstance(value, list) else []) if (t := text(v))]
-
-    notes: list[Note] = []
-    raw_notes = reply.get("notes")
-    for n in raw_notes if isinstance(raw_notes, list) else []:
-        if not isinstance(n, dict):
-            continue
-        body = text(n.get("text"))
-        title = text(n.get("title"))
-        if body:
-            notes.append(Note(str(n.get("scope", "")).strip() or "Not", title or "-", body))
-
-    said = VERDICTS.get(str(reply.get("verdict", "")).strip(), Verdict.PARTIAL)
-    summary = text(reply.get("summary"))
-    verdict = said
-    if not recs:
-        verdict = Verdict.NOT_FOUND
-        if said is not Verdict.NOT_FOUND:  # every suggestion fell to validation/threshold
-            summary = "Talebi karşılayan, sözlükte doğrulanmış bir tablo bulunamadı."
-    elif said is Verdict.NOT_FOUND:
-        verdict = Verdict.PARTIAL
-    body = _VERDICT_PREFIX.sub("", summary).strip()
-    summary = f"{verdict.value}. {body}".strip()
+    verdict, summary = _verdict_summary(
+        reply.get("verdict"), clean.text(reply.get("summary")), bool(recs)
+    )
     return AnalystAnswer(
         verdict=verdict,
         summary=summary,
         recommendations=recs,
-        design=bullets(reply.get("design")),
-        attention=bullets(reply.get("attention")),
-        notes=notes,
-        dropped=dropped,
+        design=clean.bullets(reply.get("design")),
+        attention=clean.bullets(reply.get("attention")),
+        notes=clean.notes(reply.get("notes")),
+        dropped=clean.dropped,
+    )
+
+
+# --------------------------------------------------------------------------- batch
+
+BATCH_STATUSES = ("Hazır", "Kısmen hazır", "Türetilmeli", "Bulunamadı")
+
+
+@dataclass(slots=True)
+class FieldAnswer:
+    status: str  # one of BATCH_STATUSES
+    candidates: list[Recommendation]
+
+
+@dataclass(slots=True)
+class BatchAnswer:
+    summary: str
+    said: str  # the model's verdict word; the final verdict follows the field statuses
+    core: str | None
+    fields: dict[int, FieldAnswer]
+    design: list[str]
+    attention: list[str]
+    notes: list[Note]
+    dropped: int = 0
+
+
+def build_batch_answer(
+    reply: Mapping[str, object],
+    ids: Mapping[str, str],
+    columns_of: Mapping[str, Sequence[DictColumn]],
+    checker: MentionChecker,
+    indexes: Iterable[int],
+    min_confidence: float,
+    catalog_ids: Mapping[str, str] | None = None,
+    per_field: int = 3,
+) -> BatchAnswer:
+    """One chunk of a target-table analysis, checked against the dictionary. Fields the
+    model skipped or answered with nothing valid are "Bulunamadı" (ADR-006)."""
+    clean = Cleaner(checker, ids, columns_of, catalog_ids)
+    wanted = set(indexes)
+    fields: dict[int, FieldAnswer] = {}
+    raw_fields = reply.get("fields")
+    for item in raw_fields if isinstance(raw_fields, list) else []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            index = int(item.get("index", -1))
+        except (TypeError, ValueError):
+            continue
+        if index not in wanted or index in fields:
+            continue
+        cands: list[Recommendation] = []
+        raw_cands = item.get("candidates")
+        for c in raw_cands if isinstance(raw_cands, list) else []:
+            if not isinstance(c, dict):
+                continue
+            rec = clean.recommendation(c, min_confidence)
+            if rec is not None and all(r.object_key != rec.object_key for r in cands):
+                cands.append(rec)
+        cands.sort(key=lambda r: -r.confidence)
+        status = str(item.get("status", "")).strip()
+        if status not in BATCH_STATUSES:
+            status = "Kısmen hazır"
+        if not cands:
+            status = "Bulunamadı"
+        elif status == "Bulunamadı":
+            status = "Kısmen hazır"
+        fields[index] = FieldAnswer(status, cands[:per_field])
+    for index in wanted - fields.keys():
+        log.warning("Analist %d numaralı alanı cevaplamadı", index)
+        fields[index] = FieldAnswer("Bulunamadı", [])
+    core = resolve_id(reply.get("core"), ids)
+    return BatchAnswer(
+        summary=clean.text(reply.get("summary")),
+        said=str(reply.get("verdict", "")).strip(),
+        core=core,
+        fields=fields,
+        design=clean.bullets(reply.get("design")),
+        attention=clean.bullets(reply.get("attention")),
+        notes=clean.notes(reply.get("notes")),
+        dropped=clean.dropped,
     )

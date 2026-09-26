@@ -16,6 +16,7 @@ status  Hazır / Kısmen hazır / Türetilmeli / Bulunamadı, with a derivation 
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -24,6 +25,8 @@ from pathlib import Path
 
 from vsa.expansion.query_expander import Concept, ConceptKind, ExpandedQuery
 from vsa.features import ColumnFeatures
+from vsa.llm.analyst import FieldAnswer, build_batch_answer, with_verdict
+from vsa.llm.analyst_prompts import BATCH_SCHEMA, batch_system, batch_user
 from vsa.models import (
     BatchResult,
     ColumnHit,
@@ -42,6 +45,12 @@ from vsa.scoring.explain import clarification_notes, explain
 from vsa.text.normalize import fold, split_camel, stem, tokenize, tokenize_pairs, tr_lower
 from vsa.validate import validate
 
+log = logging.getLogger(__name__)
+
+# Analyst flow (ADR-029): fields per step-2 call; the whole field list as one request
+# for step 1, cut to this many characters.
+BATCH_CHUNK = 12
+REQUEST_CHARS = 4000
 SERVE_MIN = 0.50  # an object "serves" a field when its field score reaches this
 READY_MIN = 0.80
 CORE_CANDIDATES = 8  # objects forced into every field's candidate set in pass 2
@@ -225,6 +234,33 @@ def wide_siblings(obj: ObjectColumns, lead: ColumnFeatures) -> list[str]:
 # --------------------------------------------------------------------------- analyzer
 
 
+def _llm_coverage(results: Sequence[FieldResult], core: str | None) -> list[TableCoverage]:
+    """ "Tek tablo kapsama" from the analyst's field answers: which fields each suggested
+    table serves, how many of them as the ready first choice. Core table first."""
+    served: dict[str, list[str]] = {}
+    ready: dict[str, int] = {}
+    total: dict[str, float] = {}
+    for r in results:
+        for i, c in enumerate(r.candidates):
+            key = c.match.object_key
+            served.setdefault(key, []).append(r.field.label)
+            total[key] = total.get(key, 0.0) + c.score
+            if i == 0 and r.status is FieldStatus.READY:
+                ready[key] = ready.get(key, 0) + 1
+    keys = sorted(served, key=lambda k: (k != core, -len(served[k]), -total[k], k))
+    return [
+        TableCoverage(
+            object_key=k,
+            object_name=k.rsplit(".", 1)[-1],
+            fields=served[k],
+            ready=ready.get(k, 0),
+            partial=len(served[k]) - ready.get(k, 0),
+            mean_score=total[k] / len(results) if results else 0.0,
+        )
+        for k in keys[:5]
+    ]
+
+
 class BatchAnalyzer:
     def __init__(self, engine: Engine, top_n: int = 3) -> None:
         self.engine = engine
@@ -258,6 +294,145 @@ class BatchAnalyzer:
         return cores
 
     def analyze(self, fields: Sequence[RequestField], name: str = "Talep") -> BatchResult:
+        """Analyst flow when the chat model is on (ADR-029); the rule passes otherwise and
+        whenever the model fails (ADR-008)."""
+        if self.engine.analyst_enabled and self.engine.settings.analyst.batch and fields:
+            result = self._analyze_llm(fields, name)
+            if result is not None:
+                return result
+            log.warning("Analist akışı toplu talebi cevaplayamadı; kural tabanlı sonuca dönülüyor")
+        return self._analyze_rules(fields, name)
+
+    # ------------------------------------------------------------------ analyst (ADR-029)
+
+    def _analyze_llm(self, fields: Sequence[RequestField], name: str) -> BatchResult | None:
+        started = time.perf_counter()
+        e = self.engine
+        a = e.settings.analyst
+        grain, _ = time_grain(fields)
+        request = f"{name}: " + "; ".join(field_query(f) for f in fields)
+        reading = e.analyst_read(request[:REQUEST_CHARS])
+        if reading is None:
+            return None
+        t2 = time.perf_counter()
+
+        answers: dict[int, FieldAnswer] = {f.index: FieldAnswer("Bulunamadı", []) for f in fields}
+        design: list[str] = []
+        attention: list[str] = []
+        llm_notes: list[Note] = []
+        summary = ""
+        core: str | None = None
+        dropped = reading.short.unknown_ids
+        if reading.readable:
+            for start in range(0, len(fields), BATCH_CHUNK):
+                chunk = fields[start : start + BATCH_CHUNK]
+                lines = "\n".join(
+                    f"{f.index} | {f.tr or '-'} | {f.en or '-'} | {f.description or '-'}"
+                    for f in chunk
+                )
+                fixed = f"{reading.catalog.keys[core]} {core}" if core else ""
+                reply = e.llm.chat_json(
+                    batch_system(),
+                    batch_user(
+                        name,
+                        lines,
+                        reading.short.interpretation,
+                        reading.material,
+                        reading.confusables,
+                        fixed,
+                    ),  # fmt: skip
+                    BATCH_SCHEMA,
+                    max_tokens=a.max_tokens,
+                )
+                if reply is None:
+                    return None
+                ans = build_batch_answer(
+                    reply, reading.ids, reading.columns_of, reading.checker,
+                    [f.index for f in chunk], a.min_confidence, reading.catalog.ids,
+                )  # fmt: skip
+                answers.update(ans.fields)
+                core = core or ans.core
+                summary = summary or ans.summary
+                design += [d for d in ans.design if d not in design]
+                attention += [d for d in ans.attention if d not in attention]
+                llm_notes += [n for n in ans.notes if n not in llm_notes]
+                dropped += ans.dropped
+        t3 = time.perf_counter()
+
+        rules = {m.object_key: m for m in reading.ranked}
+        warnings = [*attention, *(n.text for n in llm_notes)]
+        results: list[FieldResult] = []
+        for f in fields:
+            fa = answers[f.index]
+            cands = [
+                FieldCandidate(
+                    match=e.recommended_match(
+                        r, rules.get(r.object_key), reading.relevance, warnings
+                    ),  # fmt: skip
+                    score=r.confidence,
+                    in_core=r.object_key == core,
+                    derivation=r.derivation,
+                )
+                for r in fa.candidates[: self.top_n]
+            ]
+            results.append(FieldResult(f, FieldStatus(fa.status), cands))
+
+        coverage = _llm_coverage(results, core)
+        counts = {s: sum(1 for r in results if r.status is s) for s in FieldStatus}
+        if counts[FieldStatus.NOT_FOUND] == len(results):
+            verdict = Verdict.NOT_FOUND
+            summary = summary if reading.readable else "Talep edilen alanlar sözlükte bulunamadı."
+        elif counts[FieldStatus.READY] == len(results):
+            verdict = Verdict.FOUND
+        else:
+            verdict = Verdict.PARTIAL
+        tally = ", ".join(f"{counts[s]} {tr_lower(s.value)}" for s in FieldStatus if counts[s])
+        summary = with_verdict(verdict, f"{summary} Alan durumu: {tally}.".strip())
+
+        notes = list(llm_notes)
+        notes.append(
+            Note(
+                "Genel",
+                "Doğrulama",
+                "Önerilen tüm tablo ve alanlar veri sözlüğüne karşı doğrulandı"
+                + (f"; sözlükte karşılığı olmayan {dropped} ad/cümle çıkarıldı" if dropped else "")
+                + ". Kullanım öncesinde veri doluluğu, güncellik ve erişim yetkileri kontrol "
+                "edilmelidir.",
+            )
+        )
+        short = reading.short
+        return BatchResult(
+            name=name,
+            verdict=verdict,
+            summary=summary,
+            fields=results,
+            coverage=coverage,
+            notes=notes,
+            time_grain=grain,
+            dictionary_source=Path(e.dictionary.source_path).name,
+            dictionary_version=e.dictionary.version,
+            generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            method=[
+                f"Analist akışı (ADR-029): {e.llm.model}",
+                f"1. adım — {len(reading.catalog.ids)} tablonun kataloğundan "
+                f"{len(short.candidates)} aday seçildi, aile aramasıyla {len(reading.added)} "
+                f"tablo eklendi ({reading.seconds:.0f} sn)",
+                "Okunan adaylar: " + ", ".join(k.rsplit(".", 1)[-1] for k in reading.readable),
+                f"2. adım — {len(fields)} alan {BATCH_CHUNK}'şerli parçalar halinde eşleştirildi "
+                f"({t3 - t2:.0f} sn)",
+                f"Çekirdek tablo: {core.rsplit('.', 1)[-1] if core else '-'}",
+                f"Sözlük doğrulaması: {dropped} ad/cümle düşürüldü",
+            ],
+            elapsed_ms=round((time.perf_counter() - started) * 1000),
+            interpretation=short.interpretation,
+            design=design,
+            attention=attention,
+            analyst=True,
+        )
+
+    # ------------------------------------------------------------------ rules
+
+    def _analyze_rules(self, fields: Sequence[RequestField], name: str = "Talep") -> BatchResult:
         started = time.perf_counter()
         grain, grain_field = time_grain(fields)
 
