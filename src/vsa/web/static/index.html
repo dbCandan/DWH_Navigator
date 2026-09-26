@@ -297,30 +297,22 @@ header.top .wrap { max-width: none; }
 
 /* ---------- hero ---------- */
 
-/* ---------- docked search: after a question the bar folds into a round button ---------- */
-.dock-btn { display: none; }
-#hero.compact { padding: 0; min-height: var(--dock-space, 0px); }
-#hero.compact .dock-btn {
-  display: grid; place-items: center; position: fixed; z-index: 25; top: var(--dock-top, 76px); right: var(--dock-right, 20px);
-  width: 52px; height: 52px; border-radius: 50%; border: 0; cursor: pointer; padding: 0;
-  background: linear-gradient(135deg, #7cf4ff, #8b5cff); color: #050a18; box-shadow: 0 8px 26px rgba(0, 0, 0, .45);
-  transition: transform .2s, opacity .2s;
-  animation: dockIn .35s .22s cubic-bezier(.2,.8,.2,1) both;
+/* ---------- after a question the search bar moves into the top bar, with the question in it ---------- */
+#hero.compact { display: none; }
+header.top .searchbox {
+  flex: 1 1 auto; min-width: 0; max-width: 720px; margin: 0 auto; align-items: center; gap: 8px;
+  padding: 4px 4px 4px 14px; border-radius: 12px; box-shadow: none;
 }
-#hero.compact .dock-btn:hover { transform: scale(1.08); }
-#hero.compact.open .dock-btn { opacity: 0; transform: scale(.5); pointer-events: none; }
-@keyframes dockIn { from { opacity: 0; transform: scale(.3) rotate(-60deg); } }
-#hero.compact .searchbox {
-  position: fixed; z-index: 26; top: var(--dock-top, 76px); right: var(--dock-right, 20px); margin: 0;
-  width: var(--dock-width, min(860px, calc(100% - 40px)));
-  transform-origin: calc(100% - 26px) 26px; transform: scale(.06); opacity: 0; visibility: hidden;
-  transition: transform .3s cubic-bezier(.2,.8,.2,1), opacity .2s, visibility 0s .3s;
+header.top .searchbox textarea {
+  font-size: 14.5px; min-height: 0; height: 30px; max-height: 30px; padding: 5px 0;
+  overflow: hidden; white-space: pre; text-overflow: ellipsis;
 }
-#hero.compact.open .searchbox {
-  transform: none; opacity: 1; visibility: visible;
-  transition: transform .3s cubic-bezier(.2,.8,.2,1), opacity .2s;
+header.top .searchbox .primary { padding: 6px 12px; border-radius: 9px; font-size: 13px; }
+header.top .searchbox .primary kbd { display: none; }
+header.top .searchbox + .status { margin-left: 0; }
+@media (max-width: 760px) {
+  header.top .searchbox + .status, header.top:has(.searchbox) .brand > div { display: none; }
 }
-@media (max-width: 760px) { #hero { --dock-gap: 14px; } }
 .hero h1 {
   font-size: clamp(30px, min(5vw, 7.5vh), 58px); letter-spacing: -1.2px; font-weight: 700; line-height: 1.08;
   margin: 0 0 24px; padding-bottom: .12em;  /* background-clip:text cuts descenders (g, y) outside the box */
@@ -412,7 +404,7 @@ html.star-hover, html.star-hover body { cursor: pointer; }
 html.dossier-open main, html.dossier-open #foot { opacity: .14; filter: blur(2px); transition: opacity .4s, filter .4s; }
 html.dossier-open #cosmos { opacity: 1; }
 html.dossier-open body::before { opacity: 1; }
-html.dossier-open #hud, html.dossier-open #hero.compact .dock-btn { opacity: 0; pointer-events: none; }
+html.dossier-open #hud { opacity: 0; pointer-events: none; }
 main, #foot { transition: opacity .4s, filter .4s; }
 .dossier {
   --hue: 190; --tone: hsl(var(--hue), 95%, 72%); --tone-soft: hsla(var(--hue), 95%, 70%, .14);
@@ -597,9 +589,6 @@ main, #foot { transition: opacity .4s, filter .4s; }
         <textarea id="q" rows="1" placeholder="Örn. Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?" aria-label="Talep"></textarea>
         <button class="primary" id="go">Ara <kbd style="color:inherit;border-color:rgba(255,255,255,.35)">↵</kbd></button>
       </div>
-      <button class="dock-btn" id="dock" type="button" aria-label="Yeni soru sor" aria-controls="q" aria-expanded="false" title="Yeni soru sor (/)">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
-      </button>
     </div>
     <div class="loader" id="loader">
       <div class="stage" id="stage">Sözlük taranıyor…</div>
@@ -671,6 +660,7 @@ async function loadStatus() {
 // ---------------------------------------------------------------- ask
 const q = $("#q");
 function autosize() {
+  if (q.closest("header")) return;  // one line in the top bar (CSS height)
   q.style.height = "auto";
   q.style.height = Math.min(q.scrollHeight, 180) + "px";
   q.style.overflowY = q.scrollHeight > 180 ? "auto" : "hidden";  // no scrollbar while it fits
@@ -701,57 +691,36 @@ function centreHero() {
 }
 addEventListener("resize", centreHero);
 
-// ---------------------------------------------------------------- docked search
-const hero = $("#hero"), dock = $("#dock"), searchbox = $("#hero .searchbox");
-// The button lives in the free margin right of the content when there is one;
-// otherwise it sits at the edge and the results start below it.
-function dockMetrics() {
-  const top = Math.round($("header.top").getBoundingClientRect().bottom) + 12;
-  const gap = parseFloat(getComputedStyle(hero).getPropertyValue("--dock-gap")) || 20;
-  const vw = document.documentElement.clientWidth;
-  const margin = vw - $("main").getBoundingClientRect().right;
-  const inGutter = margin >= 52 + 2 * gap;
-  const right = inGutter ? Math.round(margin - 52 - gap) : gap;
-  const width = Math.min(860, vw - right - gap);
-  hero.style.setProperty("--dock-top", top + "px");
-  hero.style.setProperty("--dock-right", right + "px");
-  hero.style.setProperty("--dock-width", width + "px");
-  hero.style.setProperty("--dock-space", inGutter ? "0px" : "64px");
-  return { top, right, width, vw };
-}
-addEventListener("resize", () => { if (hero.classList.contains("compact")) dockMetrics(); });
-function setSearchOpen(open) {
-  hero.classList.toggle("open", open);
-  dock.setAttribute("aria-expanded", open);
-  if (open) { dockMetrics(); requestAnimationFrame(() => { autosize(); q.focus(); q.select(); }); }
-}
-// First question: the centred bar flies to the corner and shrinks into the button.
+// ---------------------------------------------------------------- search in the top bar
+// After the first question the search bar moves from the centre of the landing screen
+// into the top bar and stays there with the question in it; a new question is typed
+// right there ("/" focuses it).
+const hero = $("#hero"), searchbox = $("#hero .searchbox");
+const inTopBar = () => !!searchbox.closest("header");
 function foldSearch() {
-  if (hero.classList.contains("compact")) { setSearchOpen(false); return; }
+  if (inTopBar()) return;
   const first = searchbox.getBoundingClientRect();
+  $("header.top .wrap").insertBefore(searchbox, $("#status"));
   hero.classList.add("compact");
-  const { top, right, width: w, vw } = dockMetrics();
+  q.setAttribute("wrap", "off");  // one line in the bar
+  q.style.height = ""; q.style.overflowY = "";
   if (matchMedia("(prefers-reduced-motion: reduce)").matches || !searchbox.animate) return;
-  const hgt = searchbox.offsetHeight, left = vw - right - w;
+  const last = searchbox.getBoundingClientRect();
   searchbox.animate([
-    { transformOrigin: "0 0", transform: `translate(${first.left - left}px, ${first.top - top}px) scale(${first.width / w}, ${first.height / hgt})`, opacity: 1, visibility: "visible" },
-    { transformOrigin: "0 0", transform: `translate(${w - 52}px, 0) scale(${52 / w}, ${52 / hgt})`, opacity: 0, visibility: "visible" },
+    { transformOrigin: "0 0", transform: `translate(${first.left - last.left}px, ${first.top - last.top}px) scale(${first.width / last.width}, ${first.height / last.height})` },
+    { transformOrigin: "0 0", transform: "none" },
   ], { duration: 420, easing: "cubic-bezier(.5,0,.2,1)" });
 }
-dock.onclick = () => setSearchOpen(true);
-document.addEventListener("pointerdown", e => {
-  if (hero.classList.contains("open") && !searchbox.contains(e.target) && !dock.contains(e.target)) setSearchOpen(false);
-});
 document.addEventListener("keydown", e => {
-  if (!hero.classList.contains("compact")) return;
-  if (e.key === "Escape" && hero.classList.contains("open")) { setSearchOpen(false); dock.focus(); }
-  else if (e.key === "/" && !hero.classList.contains("open") && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); setSearchOpen(true); }
+  if (!inTopBar()) return;
+  if (e.key === "Escape" && document.activeElement === q) q.blur();
+  else if (e.key === "/" && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); q.focus(); q.select(); }
 });
 
 async function ask() {
   const text = q.value.trim(); if (!text) { q.focus(); return; }
   Dossier.close(); foldSearch(); q.blur(); scrollTo({ top: 0 });
-  dock.title = `Yeni soru sor (/) — son soru: ${text}`;
+  q.title = text;
   $("#ask-out").replaceChildren(); document.documentElement.classList.remove("has-results");
   $("#loader").classList.add("on"); $("#go").disabled = true;
   if (Cosmos.active) {
