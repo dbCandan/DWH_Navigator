@@ -178,7 +178,7 @@ def serve(
     )
     if open_browser:
         webbrowser.open(url)
-    serve_app(engine, host, port, Path(settings.report.out_dir), FEEDBACK_PATH)
+    serve_app(engine, host, port, Path(settings.report.out_dir), FEEDBACK_PATH, settings_path)
 
 
 def _print_result(r: AnalysisResult) -> None:

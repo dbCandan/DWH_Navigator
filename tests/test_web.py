@@ -172,3 +172,51 @@ def test_explorer_not_blocked_by_a_running_question(
     with app.lock:  # a long question in progress
         result = app.objects("doluluk oranı")
     assert result["items"] and result["items"][0]["match"] == "içerik"
+
+
+@pytest.fixture
+def app_with_settings(sample_dictionary_path: Path, tmp_path: Path) -> App:
+    settings_file = tmp_path / "settings.yaml"
+    settings_file.write_text(
+        f"dictionary:\n  path: {sample_dictionary_path.as_posix()}\n"
+        f"index:\n  dir: {(tmp_path / 'idx').as_posix()}\n",
+        encoding="utf-8",
+    )
+    from vsa.config import load_settings
+
+    s = load_settings(settings_file)
+    Engine.from_dictionary_file(s).save()
+    return App(Engine.from_index(s), tmp_path / "out", tmp_path / "fb.jsonl", settings_file)
+
+
+def test_settings_roundtrip(app_with_settings: App) -> None:
+    app = app_with_settings
+    got = app.settings_get()
+    assert {s["id"] for s in got["sections"]} >= {"llm", "dense", "scoring", "search"}
+    assert got["values"]["llm.api_key"] == ""  # never sent to the browser
+    res = app.settings_save({"values": {"llm.temperature": 0.0, "scoring.w_llm": 0.3}})
+    assert res["ok"] and set(res["changed"]) == {"Sıcaklık", "LLM ağırlığı"}
+    assert app.engine.settings.llm.temperature == 0.0  # engine reloaded
+    text = app.settings_path.read_text(encoding="utf-8")
+    assert "temperature: 0.0" in text and "w_llm: 0.3" in text
+
+
+def test_settings_validation(app_with_settings: App) -> None:
+    with pytest.raises(ValueError, match="arasında"):
+        app_with_settings.settings_save({"values": {"llm.temperature": 3}})
+    with pytest.raises(ValueError, match="Bilinmeyen"):
+        app_with_settings.settings_save({"values": {"llm.hack": 1}})
+
+
+def test_settings_reindex_flag_and_rebuild(app_with_settings: App) -> None:
+    app = app_with_settings
+    res = app.settings_save({"values": {"search.field_weights.name": 4.0}})
+    assert res["reindex_needed"] == ["Alan ağırlığı: kolon adı"]
+    out = app.reindex()
+    assert out["ok"] and out["columns"] == 3 and app.reindex_pending == []
+
+
+def test_settings_page_served(base_url: str) -> None:
+    status, body, ctype = get(base_url + "/ayarlar")
+    assert status == 200 and "Kaydet ve uygula" in body.decode("utf-8")
+    assert "https://" not in body.decode("utf-8")

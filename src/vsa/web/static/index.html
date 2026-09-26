@@ -82,7 +82,7 @@ header.top .wrap { display: flex; align-items: center; gap: 14px; height: 60px; 
 .dot.on { background: var(--high); box-shadow: 0 0 0 3px var(--high-bg); }
 .icon-btn {
   border: 1px solid var(--line); background: var(--surface); border-radius: 9px; width: 34px; height: 34px;
-  cursor: pointer; display: grid; place-items: center;
+  cursor: pointer; display: grid; place-items: center; text-decoration: none; color: inherit; flex: none;
 }
 
 /* ---------- hero / search ---------- */
@@ -581,6 +581,7 @@ html[data-skin="evren"].star-hover, html[data-skin="evren"].star-hover body { cu
     </nav>
     <div class="status" id="status"></div>
     <button class="ghost skin-btn" id="skin" title="Arayüz tasarımını değiştir">✦ Evren</button>
+    <a class="icon-btn" id="settings" href="/ayarlar" target="_blank" rel="noopener" title="Ayarlar (yeni sekmede)" aria-label="Ayarlar">⚙</a>
     <button class="icon-btn" id="theme" title="Tema değiştir" aria-label="Tema değiştir">◐</button>
   </div>
 </header>

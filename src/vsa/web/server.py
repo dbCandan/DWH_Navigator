@@ -10,6 +10,12 @@ network. One engine, one lock: the tool serves a team, not the internet.
     GET  /api/object/<key>      all columns of one object
     GET  /api/galaxy            all objects with their dataset group (star map)
     POST /api/feedback          {"query", "object", "vote": "up"|"down", "note"} (M7)
+    GET  /ayarlar               settings screen (static/settings.html)
+    GET  /api/settings          schema + current values + models offered by LM Studio
+    POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
+    POST /api/settings/test     try endpoint / chat model / embedding model from the form
+    POST /api/reindex           rebuild the BM25 index with the saved settings
+    GET  /api/bench             judge benchmark summaries (eval/bench_judge.json)
 """
 
 from __future__ import annotations
@@ -19,6 +25,7 @@ import logging
 import tempfile
 import threading
 import time
+import urllib.request
 import uuid
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -26,13 +33,27 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 
+import yaml
+
 from vsa.batch import BatchAnalyzer
+from vsa.config import DEFAULT_SETTINGS_PATH, load_settings
+from vsa.llm.client import LLMError, OpenAICompatibleClient
 from vsa.loader import load_request_file
 from vsa.models import AnalysisResult, BatchResult, RequestField
 from vsa.pipeline import Engine
 from vsa.report.excel import report_path, write_ask_report, write_batch_report
 from vsa.text.normalize import fold
 from vsa.web import serialize
+from vsa.web.settings_schema import (
+    DENSE,
+    FIELDS,
+    REINDEX,
+    SECTIONS,
+    coerce,
+    defaults,
+    to_yaml_tree,
+    values_of,
+)
 
 log = logging.getLogger(__name__)
 
@@ -45,10 +66,18 @@ MIN_CONTENT_QUERY = 3  # shorter input: name matching only
 
 
 class App:
-    def __init__(self, engine: Engine, out_dir: Path, feedback_path: Path) -> None:
+    def __init__(
+        self,
+        engine: Engine,
+        out_dir: Path,
+        feedback_path: Path,
+        settings_path: Path | None = None,
+    ) -> None:
         self.engine = engine
         self.out_dir = out_dir
         self.feedback_path = feedback_path
+        self.settings_path = settings_path or DEFAULT_SETTINGS_PATH
+        self.reindex_pending: list[str] = []
         self.lock = threading.Lock()
         self.results: dict[str, AnalysisResult | BatchResult] = {}
         self.object_index = self._object_index()
@@ -203,6 +232,208 @@ class App:
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
+    # ------------------------------------------------------------------ settings screen
+
+    def _lmstudio_models(self, endpoint: str) -> list[dict[str, Any]]:
+        """Models offered by the server; LM Studio's REST API adds type and load state."""
+        base = endpoint.rstrip("/").replace("://localhost", "://127.0.0.1")
+        root = base[: -len("/v1")] if base.endswith("/v1") else base
+        for url, rich in ((f"{root}/api/v0/models", True), (f"{base}/models", False)):
+            try:
+                with urllib.request.urlopen(url, timeout=3) as resp:
+                    data = json.loads(resp.read().decode("utf-8")).get("data", [])
+            except (OSError, ValueError):
+                continue
+            out = []
+            for m in data:
+                mid = str(m.get("id", ""))
+                mtype = (
+                    str(m.get("type", "")) if rich else ("embeddings" if "embed" in mid else "llm")
+                )
+                out.append(
+                    {
+                        "id": mid,
+                        "kind": "embedding" if mtype.startswith("embed") else "chat",
+                        "loaded": m.get("state") == "loaded" if rich else None,
+                        "arch": m.get("arch", ""),
+                        "quant": m.get("quantization", ""),
+                        "context": m.get("max_context_length"),
+                    }
+                )
+            return out
+        return []
+
+    def settings_get(self) -> dict[str, Any]:
+        st = self.engine.settings
+        return {
+            "sections": SECTIONS,
+            "values": values_of(st),
+            "defaults": defaults(),
+            "path": str(self.settings_path),
+            "has_api_key": bool(st.llm.api_key),
+            "models": self._lmstudio_models(st.llm.endpoint) if st.llm.endpoint else [],
+            "status": {
+                "hybrid": self.engine.hybrid,
+                "judge": self.engine.judge_enabled,
+                "llm_model": self.engine.llm.model,
+                "dictionary_version": self.engine.dictionary.version,
+                "index_built_at": self.engine.index_meta.get("built_at", ""),
+            },
+            "reindex_pending": self.reindex_pending,
+        }
+
+    def settings_save(self, body: dict[str, Any]) -> dict[str, Any]:
+        started = time.perf_counter()
+        submitted = body.get("values") or {}
+        if not isinstance(submitted, dict):
+            raise ValueError("values bekleniyor")
+        current = values_of(self.engine.settings)
+        new = dict(current)
+        errors = []
+        for key, value in submitted.items():
+            try:
+                new[key] = coerce(key, value)
+            except ValueError as exc:
+                errors.append(str(exc))
+        if errors:
+            raise ValueError("; ".join(errors))
+        if not new.get("llm.api_key"):
+            new["llm.api_key"] = self.engine.settings.llm.api_key  # blank = keep
+        changed = [k for k in FIELDS if k != "llm.api_key" and new[k] != current[k]]
+        if submitted.get("llm.api_key"):
+            changed.append("llm.api_key")
+
+        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
+        header = (
+            "# DWH Navigator ayarları — Ayarlar ekranından kaydedildi "
+            f"({datetime.now().isoformat(timespec='seconds')}).\n"
+            "# Elle de düzenlenebilir; anlamları için: config/settings.example.yaml\n"
+        )
+        self.settings_path.write_text(
+            header + yaml.safe_dump(to_yaml_tree(new), allow_unicode=True, sort_keys=False),
+            encoding="utf-8",
+        )
+        settings = load_settings(self.settings_path)
+        with self.lock:
+            engine = Engine.from_index(settings)
+            self.engine = engine
+            self.object_index = self._object_index()
+        labels = {k: FIELDS[k]["label"] for k in changed}
+        reindex = [labels[k] for k in changed if FIELDS[k]["effect"] == REINDEX]
+        dense = [labels[k] for k in changed if FIELDS[k]["effect"] == DENSE]
+        self.reindex_pending = sorted(set(self.reindex_pending) | set(reindex))
+        return {
+            "ok": True,
+            "changed": [labels[k] for k in changed],
+            "reindex_needed": self.reindex_pending,
+            "dense_needed": dense,
+            "elapsed_ms": round((time.perf_counter() - started) * 1000),
+            "status": self.settings_get()["status"],
+        }
+
+    def settings_test(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Try the (unsaved) model settings from the form: server, chat model, embeddings."""
+        endpoint = str(body.get("endpoint") or self.engine.settings.llm.endpoint)
+        model = str(body.get("model") or "")
+        embed = str(body.get("embedding_model") or "")
+        client = OpenAICompatibleClient(
+            endpoint,
+            model,
+            embed,
+            temperature=float(body.get("temperature", 0.0)),
+            timeout=float(body.get("timeout", 120)),
+            api_key=self.engine.settings.llm.api_key,
+            reasoning_effort=str(body.get("reasoning_effort", "none")),
+        )
+        steps: list[dict[str, Any]] = []
+
+        def step(name: str, fn: Any) -> None:
+            t0 = time.perf_counter()
+            try:
+                ok, detail = fn()
+            except LLMError as exc:
+                ok, detail = False, str(exc)
+            steps.append(
+                {
+                    "name": name,
+                    "ok": ok,
+                    "detail": detail,
+                    "ms": round((time.perf_counter() - t0) * 1000),
+                }
+            )
+
+        def server() -> tuple[bool, str]:
+            ids = client.ping()
+            return True, f"{len(ids)} model sunuluyor"
+
+        def chat() -> tuple[bool, str]:
+            if not model:
+                return False, "Hakem modeli seçilmedi"
+            reply = client.chat_json(
+                "Kısa ve doğru cevap ver. SADECE JSON döndür.",
+                "Türkiye'nin başkenti neresidir?",
+                {
+                    "type": "object",
+                    "properties": {"cevap": {"type": "string"}},
+                    "required": ["cevap"],
+                    "additionalProperties": False,
+                },
+                max_tokens=60,
+            )
+            if reply is None:
+                return False, "Geçerli JSON dönmedi (düşünme modu açık olabilir)"
+            return True, f"JSON geçerli · cevap: {str(reply.get('cevap', ''))[:40]}"
+
+        def embedding() -> tuple[bool, str]:
+            if not embed:
+                return False, "Embedding modeli seçilmedi"
+            vec = client.embed(["kredi kartı limit doluluk oranı"])[0]
+            ok = not self.engine.dense or len(vec) == self.engine.dense.dim
+            note = (
+                ""
+                if ok
+                else f" (indeks {self.engine.dense.dim if self.engine.dense else '?'} boyutlu!)"
+            )
+            return ok, f"{len(vec)} boyutlu vektör{note}"
+
+        step("Sunucu", server)
+        if steps[0]["ok"]:
+            step("Hakem modeli", chat)
+            step("Embedding modeli", embedding)
+        return {"steps": steps}
+
+    def reindex(self) -> dict[str, Any]:
+        """Rebuild the BM25 index from the dictionary with the saved settings (~10 s)."""
+        started = time.perf_counter()
+        settings = load_settings(self.settings_path)
+        with self.lock:
+            fresh = Engine.from_dictionary_file(settings)
+            meta = fresh.save()
+            self.engine = Engine.from_index(settings)
+            self.object_index = self._object_index()
+        self.reindex_pending = []
+        return {
+            "ok": True,
+            "columns": meta["columns"],
+            "objects": meta["objects"],
+            "version": meta["dictionary_version"],
+            "dense": self.engine.hybrid,
+            "elapsed_ms": round((time.perf_counter() - started) * 1000),
+        }
+
+    def bench(self) -> dict[str, Any]:
+        """Judge benchmark summaries (eval/bench_judge.py) for the settings screen."""
+        path = Path("eval/bench_judge.json")
+        if not path.exists():
+            return {"rows": []}
+        data = json.loads(path.read_text(encoding="utf-8"))
+        rows = [
+            {"model": model, "temperature": float(temp), **entry["summary"]}
+            for model, temps in data.items()
+            for temp, entry in temps.items()
+        ]
+        return {"rows": rows}
+
     def galaxy(self) -> list[dict[str, Any]]:
         """Every object with its main dataset group — the star map of the "Evren" skin."""
         out = []
@@ -294,6 +525,13 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                 if url.path in ("/", "/index.html"):
                     html = (STATIC / "index.html").read_bytes()
                     self._send(200, html, "text/html; charset=utf-8")
+                elif url.path in ("/ayarlar", "/settings"):
+                    html = (STATIC / "settings.html").read_bytes()
+                    self._send(200, html, "text/html; charset=utf-8")
+                elif url.path == "/api/settings":
+                    self._json(app.settings_get())
+                elif url.path == "/api/bench":
+                    self._json(app.bench())
                 elif url.path == "/api/status":
                     self._json(app.status())
                 elif url.path == "/api/galaxy":
@@ -346,6 +584,12 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                             fields = load_request_file(path)
                         name = Path(name).stem
                     self._json(app.batch(fields, name))
+                elif url.path == "/api/settings":
+                    self._json(app.settings_save(json.loads(raw or b"{}")))
+                elif url.path == "/api/settings/test":
+                    self._json(app.settings_test(json.loads(raw or b"{}")))
+                elif url.path == "/api/reindex":
+                    self._json(app.reindex())
                 elif url.path == "/api/feedback":
                     self._json(app.feedback(json.loads(raw or b"{}")))
                 else:
@@ -361,8 +605,15 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
-def serve(engine: Engine, host: str, port: int, out_dir: Path, feedback_path: Path) -> None:
-    app = App(engine, out_dir, feedback_path)
+def serve(
+    engine: Engine,
+    host: str,
+    port: int,
+    out_dir: Path,
+    feedback_path: Path,
+    settings_path: Path | None = None,
+) -> None:
+    app = App(engine, out_dir, feedback_path, settings_path)
     httpd = ThreadingHTTPServer((host, port), make_handler(app))
     log.warning("VSA arayüzü: http://%s:%d", host, port)
     try:
