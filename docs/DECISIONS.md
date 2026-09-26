@@ -345,3 +345,10 @@ dışı kalır ve sonuç kural tabanlıdır (ADR-008). Gerekçe (laboratuvar): g
 doğruluğu %85 / nihai %88 ile en doğru model; seed'siz tutarlılığı %81 idi — seed ile yeniden
 ölçüldü (eval/lab.json, `|s42` satırı). Üretimde aynı açık model kurum içi GPU'ya kurulup
 `provider: local` ile çalıştırılabilir.
+
+**Seed ölçümü (2026-09-26).** seed 42 ile 3 tekrarda aynı seçim %81 → %88; hakem doğruluğu
+%85, nihai %87. Modelin ilk tercihi 16/16 vakada her tekrarda aynı; oynama yalnız kuyrukta
+(2 vakada 0,60–0,65 güvenli üçüncü aday bazen ekleniyor), nihai 1. tablo 16'da 1 vakada
+değişti. Neden: paylaşımlı sunucunun toplu işlemesi; seed tam belirlenimcilik sağlamıyor.
+Çoğunluk oyu (hakemi N kez çağırıp ortalama) önerildi; kullanıcı gerek görmedi — mevcut
+haliyle kalır. Kurum içi GPU'da tek kullanıcılı çalışmada sorun beklenmez.
