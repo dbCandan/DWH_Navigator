@@ -220,3 +220,22 @@ def test_settings_page_served(base_url: str) -> None:
     status, body, ctype = get(base_url + "/ayarlar")
     assert status == 200 and "Kaydet ve uygula" in body.decode("utf-8")
     assert "https://" not in body.decode("utf-8")
+
+
+def test_lab_start_validation(app_with_settings: App) -> None:
+    app = app_with_settings
+    with pytest.raises(ValueError, match="En az bir model"):
+        app.lab_start({"models": []})
+    with pytest.raises(ValueError, match="Sıcaklık"):
+        app.lab_start({"models": ["m"], "temps": "0,2"})
+    with pytest.raises(ValueError, match="Tekrar"):
+        app.lab_start({"models": ["m"], "runs": 9})
+    with pytest.raises(ValueError, match="bulunmayan"):
+        app.lab_start({"models": ["yok/boyle-bir-model"]})
+
+
+def test_lab_state_shape(base_url: str) -> None:
+    _, body, _ = get(base_url + "/api/lab")
+    data = json.loads(body)
+    assert set(data) >= {"rows", "errors", "progress", "weights"}
+    assert all("quality" in r and "recommended" in r for r in data["rows"])

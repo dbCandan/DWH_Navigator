@@ -7,10 +7,16 @@ vsa eval                       golden-set metrics
 
 from __future__ import annotations
 
+import json
 import logging
+import os
+import shutil
+import subprocess
 import sys
+import time
 import webbrowser
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -25,6 +31,7 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from vsa import lab
 from vsa.batch import BatchAnalyzer
 from vsa.config import Settings, load_settings
 from vsa.evaluation import (
@@ -40,6 +47,7 @@ from vsa.feedback import export_candidates, load_feedback, summarize
 from vsa.index.dense import build_dense_index
 from vsa.index.store import IndexMissingError
 from vsa.llm.client import LLMError, OpenAICompatibleClient
+from vsa.llm.judge import judge
 from vsa.loader import file_version, load_request_file
 from vsa.models import AnalysisResult, BatchResult, FieldStatus, Level, Verdict
 from vsa.pipeline import Engine
@@ -439,6 +447,224 @@ def feedback(
     console.print(
         f"[green]{n} aday golden madde yazıldı:[/green] {export} (gözden geçirip ekleyin)"
     )
+
+
+LAB_RESULTS, LAB_PROGRESS, LAB_STOP = lab.RESULTS_PATH, lab.PROGRESS_PATH, lab.STOP_PATH
+
+
+class _LabStopped(Exception):
+    pass
+
+
+def _lms_path() -> str:
+    found = shutil.which("lms")
+    return found or str(Path.home() / ".lmstudio" / "bin" / "lms.exe")
+
+
+def _lms(*args: str, timeout: float = 900) -> tuple[bool, str]:
+    try:
+        r = subprocess.run(
+            [_lms_path(), *args], capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, str(exc)
+    return r.returncode == 0, (r.stdout + r.stderr).strip()
+
+
+def _lms_json(*args: str) -> list[dict[str, Any]]:
+    ok, out = _lms(*args, "--json", timeout=60)
+    try:
+        data = json.loads(out) if ok else []
+    except json.JSONDecodeError:
+        return []
+    return data if isinstance(data, list) else []
+
+
+def _loaded_chat_models() -> list[str]:
+    return [str(m.get("identifier", "")) for m in _lms_json("ps") if m.get("type") == "llm"]
+
+
+def _write_json(path: Path, data: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(path)
+
+
+def _print_lab(results: dict[str, Any]) -> None:
+    rows = lab.rank(results)
+    if not rows:
+        console.print("[yellow]Henüz ölçüm yok.[/yellow]")
+        return
+    table = Table(header_style="bold white on #1F3864", title="Model laboratuvarı")
+    for col in ("", "Model", "T", "Düşünme", "Kalite", "Hakem", "Final", "Aynı seçim",
+                "Aynı sıra", "Sapma", "sn/soru"):
+        table.add_column(col, justify="right" if col not in ("Model", "Düşünme") else "left")
+    for r in rows:
+        table.add_row(
+            "★" if r["recommended"] else "", r["model"], f"{r['temperature']:g}",
+            r["reasoning_effort"] or "varsayılan", f"{r['quality']:.3f}",
+            f"{r['judge_accuracy']:.2f}", f"{r['final_accuracy']:.2f}",
+            f"{r['consistent_picks']:.2f}", f"{r['consistent_final_order']:.2f}",
+            f"{r['mean_conf_drift']:.3f}", f"{r['mean_sec']:.1f}",
+        )
+    console.print(table)
+
+
+@app.command("lab")
+def lab_cmd(
+    models: list[str] = typer.Argument(
+        None, help="Model anahtarları (boşsa yüklü tüm sohbet modelleri)"
+    ),
+    temps: str = typer.Option("0,0.1", "--temps", help="Denenecek sıcaklıklar"),
+    runs: int = typer.Option(2, "--runs", help="Her soru kaç kez sorulsun (tutarlılık)"),
+    efforts: str = typer.Option("auto", "--effort", help="auto | none | low | …"),
+    show: bool = typer.Option(False, "--list", help="Ölçmeden sonuç tablosunu göster"),
+    settings_path: Path | None = SettingsOpt,
+) -> None:
+    """Hakem modellerini doğruluk + tutarlılık + hız için ölçer ve en iyisini önerir (ADR-025)."""
+    settings = _setup(settings_path)
+    results: dict[str, Any] = (
+        json.loads(LAB_RESULTS.read_text(encoding="utf-8")) if LAB_RESULTS.exists() else {}
+    )
+    if show:
+        _print_lab(results)
+        return
+    installed = _lms_json("ls")
+    chat = [m["modelKey"] for m in installed if m.get("type") == "llm"]
+    todo = list(models) if models else chat
+    missing = [m for m in todo if m not in chat]
+    if missing:
+        console.print(f"[red]LM Studio'da yok: {', '.join(missing)}[/red]")
+        raise typer.Exit(2)
+    sizes = {m["modelKey"]: m.get("sizeBytes", 0) for m in installed}
+    temperatures = [float(t) for t in temps.split(",") if t.strip()]
+
+    s = load_settings(settings_path)
+    s.llm.enabled = False  # candidates from rules + dense only; the judge is the variable
+    engine = _load_engine(s)
+    golden = load_yaml_list(Path("tests/golden_set.yaml"))
+    negatives = load_yaml_list(Path("tests/negative_set.yaml"))
+    cases = lab.build_cases(engine, golden, negatives, settings.llm.judge_candidates)
+    counted = {c["id"] for c in cases if c["reachable"]}
+    probe_case = next(c for c in cases if c["expected"] and c["reachable"])
+    weights = (s.scoring.w_rule, s.scoring.w_llm)
+    total = len(todo) * len(temperatures) * len(cases) * runs
+    started = time.time()
+    progress: dict[str, Any] = {
+        "running": True, "pid": os.getpid(), "started": started, "done": 0, "total": total,
+        "models": todo, "model": "", "step": "", "log": [],
+        "cases": len(cases), "unreachable": [c["id"] for c in cases if not c["reachable"]],
+    }
+
+    def note(line: str) -> None:
+        console.print(line)
+        progress["log"] = [*progress["log"], line][-40:]
+        progress["elapsed"] = round(time.time() - started)
+        progress["updated"] = time.time()
+        _write_json(LAB_PROGRESS, progress)
+
+    def check_stop() -> None:
+        if LAB_STOP.exists():
+            LAB_STOP.unlink(missing_ok=True)
+            raise _LabStopped
+
+    LAB_STOP.unlink(missing_ok=True)
+
+    note(f"{len(cases)} vaka ({len(counted)} ölçülebilir) × {runs} tekrar × "
+         f"{len(temperatures)} sıcaklık × {len(todo)} model = {total} çağrı")
+    previously = _loaded_chat_models()
+    try:
+        for model in todo:
+            progress["model"] = model
+            for other in _loaded_chat_models():
+                if other != model:
+                    _lms("unload", other)
+            loaded = any(m.get("identifier") == model for m in _lms_json("ps"))
+            t0 = time.time()
+            ok = loaded
+            if not loaded:
+                note(f"▶ {model}: yükleniyor ({sizes.get(model, 0) / 1e9:.1f} GB)…")
+                ok, out = _lms("load", model, "--context-length", "8192", "--gpu", "max", "-y")
+                if not ok:  # does not fit the GPU entirely: let LM Studio split it
+                    note(f"  tam GPU'ya sığmadı, otomatik bölüşüm deneniyor ({out[-120:]})")
+                    ok, out = _lms("load", model, "--context-length", "8192", "-y")
+            load_sec = round(time.time() - t0)
+            if not ok:
+                note(f"  ✗ {model} yüklenemedi: {out[-160:]}")
+                results.setdefault(model, {})["load_error"] = {"error": out[-300:]}
+                progress["done"] += len(temperatures) * len(cases) * runs
+                continue
+            note(f"  yüklendi ({load_sec} sn)")
+
+            def client(temp: float, effort: str, m: str = model) -> OpenAICompatibleClient:
+                return OpenAICompatibleClient(s.llm.endpoint, m, temperature=temp, timeout=900,
+                                              api_key=s.llm.api_key, reasoning_effort=effort)
+
+            if efforts == "auto":
+
+                def probe(effort: str, m: str = model) -> bool:
+                    t = time.time()
+                    r = judge(probe_case["query"], probe_case["cands"], client(0.0, effort, m))
+                    verdict = "geçerli" if r and r.verdicts else "boş/geçersiz"
+                    note(f"  düşünme='{effort or 'varsayılan'}' denemesi: {verdict} "
+                         f"({time.time() - t:.0f} sn)")
+                    return bool(r and r.verdicts)
+
+                effort = lab.pick_effort(probe)
+                if effort is None:
+                    note(f"  ✗ {model} hiçbir düşünme modunda geçerli JSON üretmedi")
+                    results.setdefault(model, {})["load_error"] = {"error": "geçerli JSON yok"}
+                    progress["done"] += len(temperatures) * len(cases) * runs
+                    continue
+                chosen = [effort]
+            else:
+                chosen = [e.strip() for e in efforts.split(",")]
+            for effort in chosen:
+                for temp in temperatures:
+                    progress["step"] = f"T={temp:g}, düşünme={effort or 'varsayılan'}"
+                    c = client(temp, effort)
+                    rows: dict[str, list[dict[str, Any]]] = {}
+                    for case in cases:
+                        for run in range(runs):
+                            check_stop()
+                            t = time.time()
+                            r = judge(case["query"], case["cands"], c)
+                            conf = {k: v.confidence for k, v in r.verdicts.items()} if r else None
+                            res = lab.score_reply(case, conf, r.unknown_ids if r else 0,
+                                                  time.time() - t, *weights)
+                            rows.setdefault(case["id"], []).append(res)
+                            progress["done"] += 1
+                            mark = "·" if case["id"] not in counted else "✗"
+                            mark = "✓" if res["judge_ok"] else mark
+                            note(f"  {mark} T={temp:g} {case['id']} #{run + 1} {res['sec']:.0f} sn "
+                                 f"→ {', '.join(res['picks'][:2]) or '(seçim yok)'}")
+                    summary = lab.summarize(rows, counted)
+                    results.setdefault(model, {}).pop("load_error", None)
+                    results[model][f"T{temp:g}|{effort}"] = {
+                        "temperature": temp, "reasoning_effort": effort, "summary": summary,
+                        "load_sec": load_sec, "size_gb": round(sizes.get(model, 0) / 1e9, 2),
+                        "at": time.strftime("%Y-%m-%d %H:%M"), "cases": rows,
+                    }
+                    _write_json(LAB_RESULTS, results)
+                    note(f"  ■ {model} T={temp:g}: kalite {lab.quality(summary):.3f}, hakem "
+                         f"{summary['judge_accuracy']:.2f}, {summary['mean_sec']:.0f} sn/soru")
+            _lms("unload", model)
+    except _LabStopped:
+        note("Kullanıcı durdurdu; tamamlanan ölçümler kaydedildi.")
+    finally:
+        # Leave LM Studio as we found it: the app's judge model loaded again.
+        for m in previously or [s.llm.model]:
+            if m and not any(x.get("identifier") == m for x in _lms_json("ps")):
+                _lms("load", m, "--context-length", "8192", "--gpu", "max", "-y")
+        progress["running"] = False
+        progress["model"] = ""
+        best = next((r for r in lab.rank(results) if r["recommended"]), None)
+        keys = ("model", "temperature", "reasoning_effort")
+        progress["best"] = best and {k: best[k] for k in keys}
+        note("Bitti." if progress["done"] >= total else "Durduruldu.")
+    _print_lab(results)
 
 
 def main() -> None:  # pragma: no cover

@@ -15,13 +15,18 @@ network. One engine, one lock: the tool serves a team, not the internet.
     POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
     POST /api/settings/test     try endpoint / chat model / embedding model from the form
     POST /api/reindex           rebuild the BM25 index with the saved settings
-    GET  /api/bench             judge benchmark summaries (eval/bench_judge.json)
+    GET  /api/lab               model lab: ranked results + live progress (ADR-025)
+    POST /api/lab/start         {"models": [...], "temps": "0,0.1", "runs": 2} → `vsa lab`
+    POST /api/lab/stop          stop the running lab after its current call
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import os
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -35,6 +40,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import yaml
 
+from vsa import lab
 from vsa.batch import BatchAnalyzer
 from vsa.config import DEFAULT_SETTINGS_PATH, load_settings
 from vsa.llm.client import LLMError, OpenAICompatibleClient
@@ -63,6 +69,8 @@ MAX_REPORTS = 50
 EXPLORER_LIMIT = 60
 EXPLORER_CONTENT_LIMIT = 25  # objects from the content (search pipeline) layer
 MIN_CONTENT_QUERY = 3  # shorter input: name matching only
+LAB_STALE_SEC = 1800  # no progress for this long: the lab process is gone
+LAB_LOG = Path("data/logs/lab.log")
 
 
 class App:
@@ -78,6 +86,7 @@ class App:
         self.feedback_path = feedback_path
         self.settings_path = settings_path or DEFAULT_SETTINGS_PATH
         self.reindex_pending: list[str] = []
+        self._lab_proc: subprocess.Popen[bytes] | None = None
         self.lock = threading.Lock()
         self.results: dict[str, AnalysisResult | BatchResult] = {}
         self.object_index = self._object_index()
@@ -421,18 +430,74 @@ class App:
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
-    def bench(self) -> dict[str, Any]:
-        """Judge benchmark summaries (eval/bench_judge.py) for the settings screen."""
-        path = Path("eval/bench_judge.json")
-        if not path.exists():
-            return {"rows": []}
-        data = json.loads(path.read_text(encoding="utf-8"))
-        rows = [
-            {"model": model, "temperature": float(temp), **entry["summary"]}
-            for model, temps in data.items()
-            for temp, entry in temps.items()
-        ]
-        return {"rows": rows}
+    def lab_state(self) -> dict[str, Any]:
+        """Model lab results (ranked, best first) and the live progress of a running lab."""
+        results: dict[str, Any] = {}
+        if lab.RESULTS_PATH.exists():
+            results = json.loads(lab.RESULTS_PATH.read_text(encoding="utf-8"))
+        errors = {m: c["load_error"]["error"] for m, c in results.items() if "load_error" in c}
+        progress: dict[str, Any] = {}
+        if lab.PROGRESS_PATH.exists():
+            try:
+                progress = json.loads(lab.PROGRESS_PATH.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:  # being rewritten right now
+                progress = {"running": True}
+        if progress.get("running"):
+            proc = self._lab_proc
+            if proc is not None and proc.poll() is not None:
+                progress["running"] = False  # our child died without cleaning up
+            elif time.time() - lab.PROGRESS_PATH.stat().st_mtime > LAB_STALE_SEC:
+                progress["running"] = False
+        progress["stopping"] = lab.STOP_PATH.exists()
+        return {
+            "rows": lab.rank(results),
+            "errors": errors,
+            "progress": progress,
+            "weights": {"judge": lab.W_JUDGE, "final": lab.W_FINAL, "picks": lab.W_PICKS,
+                        "order": lab.W_ORDER, "drift": lab.W_DRIFT, "tie": lab.TIE},
+        }  # fmt: skip
+
+    def lab_start(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Run `vsa lab` as a child process; progress is read back from its state file."""
+        if self.lab_state()["progress"].get("running"):
+            raise ValueError("Bir ölçüm zaten çalışıyor")
+        models = [str(m) for m in body.get("models") or []]
+        if not models:
+            raise ValueError("En az bir model seçin")
+        temps = [float(x) for x in str(body.get("temps", "0")).split(",") if x.strip()]
+        if not temps or any(not 0 <= x <= 1 for x in temps):
+            raise ValueError("Sıcaklıklar 0 ile 1 arasında olmalı")
+        runs = int(body.get("runs", 2))
+        if not 1 <= runs <= 5:
+            raise ValueError("Tekrar sayısı 1 ile 5 arasında olmalı")
+        chat = {m["id"] for m in self._lmstudio_models(self.engine.settings.llm.endpoint)
+                if m["kind"] == "chat"}  # fmt: skip
+        unknown = [m for m in models if m not in chat]
+        if unknown:
+            raise ValueError(f"LM Studio'da bulunmayan model: {', '.join(unknown)}")
+        args = [sys.executable, "-m", "vsa.cli", "lab", *models,
+                "--temps", ",".join(f"{x:g}" for x in temps), "--runs", str(runs),
+                "--settings", str(self.settings_path)]  # fmt: skip
+        LAB_LOG.parent.mkdir(parents=True, exist_ok=True)
+        lab.STOP_PATH.unlink(missing_ok=True)
+        env = {**os.environ, "PYTHONIOENCODING": "utf-8", "COLUMNS": "160"}
+        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        with LAB_LOG.open("w", encoding="utf-8") as logf:
+            self._lab_proc = subprocess.Popen(
+                args, stdout=logf, stderr=subprocess.STDOUT, env=env, creationflags=flags
+            )
+        # Mark as running at once, so a second click cannot start a second lab.
+        lab.PROGRESS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        lab.PROGRESS_PATH.write_text(json.dumps({
+            "running": True, "pid": self._lab_proc.pid, "updated": time.time(),
+            "done": 0, "total": 0, "models": models, "log": ["Başlatılıyor…"],
+        }, ensure_ascii=False), encoding="utf-8")  # fmt: skip
+        return {"ok": True, "pid": self._lab_proc.pid}
+
+    def lab_stop(self) -> dict[str, Any]:
+        lab.STOP_PATH.parent.mkdir(parents=True, exist_ok=True)
+        lab.STOP_PATH.write_text("stop", encoding="utf-8")
+        return {"ok": True}
 
     def galaxy(self) -> list[dict[str, Any]]:
         """Every object with its main dataset group — the star map of the "Evren" skin."""
@@ -530,8 +595,8 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._send(200, html, "text/html; charset=utf-8")
                 elif url.path == "/api/settings":
                     self._json(app.settings_get())
-                elif url.path == "/api/bench":
-                    self._json(app.bench())
+                elif url.path == "/api/lab":
+                    self._json(app.lab_state())
                 elif url.path == "/api/status":
                     self._json(app.status())
                 elif url.path == "/api/galaxy":
@@ -590,6 +655,10 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._json(app.settings_test(json.loads(raw or b"{}")))
                 elif url.path == "/api/reindex":
                     self._json(app.reindex())
+                elif url.path == "/api/lab/start":
+                    self._json(app.lab_start(json.loads(raw or b"{}")))
+                elif url.path == "/api/lab/stop":
+                    self._json(app.lab_stop())
                 elif url.path == "/api/feedback":
                     self._json(app.feedback(json.loads(raw or b"{}")))
                 else:

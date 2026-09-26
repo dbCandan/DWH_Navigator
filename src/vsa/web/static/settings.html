@@ -108,6 +108,29 @@ table.bench td.m { font-family: var(--mono); font-size: 12px; }
 .bar { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; width: 60px; display: inline-block; vertical-align: middle; margin-right: 6px; }
 .bar i { display: block; height: 100%; background: var(--high); }
 .scroll { overflow-x: auto; }
+.best-card { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--high-bg); border: 1px solid color-mix(in srgb, var(--high) 35%, transparent); margin-bottom: 14px; }
+.best-card .star { font-size: 26px; color: var(--high); }
+.best-card b { font-family: var(--mono); font-size: 14px; }
+.best-card .why { font-size: 13px; color: var(--muted); margin-top: 3px; }
+@media (max-width: 600px) { .best-card { grid-template-columns: 1fr; } .best-card .star { display: none; } }
+.pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--surface-2); color: var(--muted); margin-left: 6px; font-family: var(--sans, inherit); }
+.pill.cur { background: var(--primary-bg); color: var(--primary-fg); }
+table.bench td.q { font-weight: 700; }
+.runner { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.runner h3 { margin: 0 0 10px; font-size: 15px; }
+.mlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 14px; margin: 8px 0 12px; }
+.mlist label { display: flex; gap: 8px; align-items: center; font-family: var(--mono); font-size: 12.5px; cursor: pointer; }
+.mlist .sub { color: var(--faint); font-family: inherit; font-size: 11.5px; margin-left: auto; }
+.opts { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 13.5px; margin-bottom: 12px; }
+.opts label { display: inline-flex; gap: 6px; align-items: center; }
+.opts select { padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: inherit; }
+.prog { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; margin: 10px 0 6px; }
+.prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--high)); transition: width .6s; }
+.prog.live i { background-size: 200% 100%; animation: flow 2s linear infinite; background-image: linear-gradient(90deg, var(--accent), var(--high), var(--accent)); }
+@keyframes flow { to { background-position: -200% 0; } }
+.labmeta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.labmeta b { color: var(--text, inherit); }
+pre.log { max-height: 240px; overflow: auto; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.55; margin: 10px 0 0; white-space: pre-wrap; word-break: break-word; }
 .savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line); transform: translateY(100%); transition: transform .25s; }
 .savebar.on { transform: none; }
 .savebar .wrap { display: flex; align-items: center; gap: 10px; min-height: 64px; flex-wrap: wrap; }
@@ -143,10 +166,13 @@ table.bench td.m { font-family: var(--mono); font-size: 12px; }
     <div id="sections"></div>
 
     <section class="card" id="sec-bench">
-      <h2>Ölçüm sonuçları</h2>
-      <p class="intro">Hakem modelinin golden set üzerindeki doğruluğu ve aynı girdiye aynı cevabı verip vermediği
-        (<code>eval/bench_judge.py</code>). Bir satırdaki ayarı forma almak için “Seç”e basın; kaydetmeden uygulanmaz.</p>
+      <h2>Model laboratuvarı</h2>
+      <p class="intro">LM Studio'daki sohbet modellerini hakem olarak sınar: golden set soruları, doğrulanmış talep alanları
+        ve “bulunamadı” olması gereken sorular, her biri birkaç kez. Her model aynı aday listelerini görür; fark yalnız
+        hakemden gelir. Düşünme modu her model için otomatik bulunur. Komut satırı: <code>vsa lab</code> (ADR-025).</p>
+      <div id="labBest"></div>
       <div class="scroll" id="bench"></div>
+      <div id="labRun"></div>
     </section>
 
     <section class="card" id="sec-maint">
@@ -312,7 +338,7 @@ function renderSections() {
     if (sec.id === "scoring") extra.push(h("div", { class: "note", id: "weightsum" }));
     cards.push(h("section", { class: "card", id: "sec-" + sec.id }, h("h2", {}, sec.title), h("p", { class: "intro" }, sec.intro), rows, extra));
   }
-  nav.push(h("a", { href: "#sec-bench" }, "Ölçüm sonuçları"), h("a", { href: "#sec-maint" }, "Bakım"));
+  nav.push(h("a", { href: "#sec-bench" }, "Model laboratuvarı"), h("a", { href: "#sec-maint" }, "Bakım"));
   $("#nav").replaceChildren(...nav);
   $("#sections").replaceChildren(...cards);
   refresh();
@@ -330,26 +356,121 @@ async function testConnection(btn, out) {
   btn.disabled = false; btn.textContent = "Bağlantıyı test et";
 }
 
+// ---- Model laboratuvarı ------------------------------------------------------------
+let LAB = null, labTimer = null, labPicked = null;
+const EFFORT = { none: "kapalı", low: "düşük", medium: "orta", high: "yüksek", "": "varsayılan" };
+const pct = x => h("span", {}, h("span", { class: "bar" }, h("i", { style: `width:${Math.round(x * 100)}%` })), `%${Math.round(x * 100)}`);
+const dur = s => s >= 3600 ? `${Math.floor(s / 3600)} sa ${Math.round(s % 3600 / 60)} dk` : s >= 60 ? `${Math.round(s / 60)} dk` : `${Math.round(s)} sn`;
+const isCurrent = r => saved["llm.model"] === r.model && Number(saved["llm.temperature"]) === r.temperature && saved["llm.reasoning_effort"] === r.reasoning_effort;
+
+async function applyConfig(r, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "Uygulanıyor…"; }
+  try {
+    const res = await post("/api/settings", { values: {
+      "llm.enabled": true, "llm.judge": true, "llm.model": r.model,
+      "llm.temperature": r.temperature, "llm.reasoning_effort": r.reasoning_effort } });
+    toast("Hakem yapılandırması uygulandı", [`${r.model} · sıcaklık ${r.temperature} · düşünme ${EFFORT[r.reasoning_effort]}`,
+      `Değişen: ${res.changed.join(", ") || "— (zaten bu ayardaydı)"}`]);
+    await load(false);
+  } catch (e) { toast("Uygulanamadı", [e.message], true); }
+  renderLab();
+}
+
 async function renderBench() {
-  let rows = [];
-  try { rows = (await api("/api/bench")).rows; } catch { /* no file yet */ }
-  if (!rows.length) { $("#bench").replaceChildren(h("p", { class: "note" }, "Henüz ölçüm yok. Çalıştırmak için: .venv\\Scripts\\python eval\\bench_judge.py MODEL …")); return; }
-  // best = accuracy first, then consistency, then speed
-  const score = r => r.judge_accuracy * 2 + r.final_accuracy + r.consistent_final_order + r.consistent_picks - r.mean_conf_drift;
-  const best = rows.reduce((a, b) => (score(b) > score(a) || (score(b) === score(a) && b.mean_sec < a.mean_sec) ? b : a));
-  const pct = x => h("span", {}, h("span", { class: "bar" }, h("i", { style: `width:${Math.round(x * 100)}%` })), `%${Math.round(x * 100)}`);
-  $("#bench").replaceChildren(h("table", { class: "bench" },
-    h("thead", {}, h("tr", {}, ["Model", "Sıcaklık", "Hakem doğruluğu", "Nihai doğruluk", "Aynı sıralama", "Aynı seçim", "Güven sapması", "Ort. süre", ""].map(t => h("th", {}, t)))),
-    h("tbody", {}, rows.sort((a, b) => score(b) - score(a)).map(r => h("tr", { class: r === best ? "best" : "" },
-      h("td", { class: "m" }, r.model, r === best ? " ★" : ""), h("td", {}, r.temperature.toFixed(2)),
-      h("td", {}, pct(r.judge_accuracy)), h("td", {}, pct(r.final_accuracy)),
-      h("td", {}, pct(r.consistent_final_order)), h("td", {}, pct(r.consistent_picks)),
-      h("td", {}, r.mean_conf_drift.toFixed(3)), h("td", {}, r.mean_sec.toFixed(0) + " sn"),
-      h("td", {}, h("button", { class: "btn", onclick: () => {
-        form["llm.model"] = r.model; form["llm.temperature"] = r.temperature;
-        rerender("llm.model"); rerender("llm.temperature");
-        location.hash = "#sec-llm";
-      } }, "Seç")))))));
+  try { LAB = await api("/api/lab"); } catch (e) { $("#bench").replaceChildren(h("p", { class: "err" }, "Laboratuvar okunamadı: " + e.message)); return; }
+  renderLab();
+  clearTimeout(labTimer);
+  if (LAB.progress.running) labTimer = setTimeout(renderBench, 3000);
+}
+
+function renderLab() {
+  if (!LAB) return;
+  const rows = LAB.rows, W = LAB.weights, best = rows.find(r => r.recommended);
+  $("#labBest").replaceChildren(...[best && h("div", { class: "best-card" },
+    h("div", { class: "star" }, "★"),
+    h("div", {}, h("div", {}, "Önerilen: ", h("b", {}, best.model), ` · sıcaklık ${best.temperature} · düşünme ${EFFORT[best.reasoning_effort]}`,
+        isCurrent(best) ? h("span", { class: "pill cur" }, "şu an kullanılıyor") : null),
+      h("div", { class: "why" }, `Kalite ${best.quality.toFixed(3)} — hakem doğruluğu %${Math.round(best.judge_accuracy * 100)}, nihai %${Math.round(best.final_accuracy * 100)}, `
+        + `aynı seçim %${Math.round(best.consistent_picks * 100)}, soru başına ${best.mean_sec.toFixed(0)} sn. Kalitesi ${W.tie} farkla eşit sayılanlardan en hızlısı seçilir.`)),
+    isCurrent(best) ? h("span") : h("button", { class: "btn primary", onclick: e => applyConfig(best, e.currentTarget) }, "Uygula ve kaydet"))].filter(Boolean));
+  if (!rows.length) {
+    $("#bench").replaceChildren(h("p", { class: "note" }, "Henüz ölçüm yok. Aşağıdan modelleri seçip başlatın."));
+  } else {
+    $("#bench").replaceChildren(h("table", { class: "bench" },
+      h("thead", {}, h("tr", {}, ["Model", "T", "Düşünme", "Kalite", "Hakem doğruluğu", "Nihai doğruluk", "Aynı seçim", "Aynı sıra", "Güven sapması", "Süre/soru", ""].map(t => h("th", {}, t)))),
+      h("tbody", {}, rows.map(r => h("tr", { class: r.recommended ? "best" : "", title: `${r.cases} vaka · ${r.at || ""}${r.size_gb ? " · " + r.size_gb + " GB" : ""}` },
+        h("td", { class: "m" }, r.model, r.recommended ? " ★" : "", isCurrent(r) ? h("span", { class: "pill cur" }, "kullanılıyor") : null),
+        h("td", {}, String(r.temperature)), h("td", {}, EFFORT[r.reasoning_effort] ?? r.reasoning_effort),
+        h("td", { class: "q" }, r.quality ? r.quality.toFixed(3) : "elendi"),
+        h("td", {}, pct(r.judge_accuracy)), h("td", {}, pct(r.final_accuracy)),
+        h("td", {}, pct(r.consistent_picks)), h("td", {}, pct(r.consistent_final_order)),
+        h("td", {}, r.mean_conf_drift.toFixed(3)), h("td", {}, r.mean_sec.toFixed(0) + " sn"),
+        h("td", {}, isCurrent(r) ? null : h("button", { class: "btn", onclick: e => applyConfig(r, e.currentTarget) }, "Uygula")))))),
+      h("p", { class: "note" }, `Kalite = ${W.judge}·hakem + ${W.final}·nihai + ${W.picks}·aynı seçim + ${W.order}·aynı sıra − ${W.drift}·sapma. `
+        + "Geçersiz JSON veya uydurma aday kimliği üreten yapılandırma elenir (ADR-002)."));
+  }
+  const errs = Object.entries(LAB.errors || {});
+  if (errs.length) $("#bench").append(h("div", { class: "warn" }, "Ölçülemeyen modeller: ", errs.map(([m, e]) => `${m} (${e.slice(-90)})`).join("; ")));
+  renderRunner();
+}
+
+function renderRunner() {
+  const P = LAB.progress || {};
+  if (P.running) {
+    const frac = P.total ? P.done / P.total : 0;
+    const eta = P.done && P.elapsed ? P.elapsed / P.done * (P.total - P.done) : null;
+    const logBox = h("pre", { class: "log" }, (P.log || []).join("\n"));
+    $("#labRun").replaceChildren(h("div", { class: "runner" },
+      h("h3", {}, "Ölçüm sürüyor"),
+      h("div", { class: "prog live" }, h("i", { style: `width:${Math.max(2, frac * 100)}%` })),
+      h("div", { class: "labmeta" },
+        h("span", {}, h("b", {}, `${P.done || 0}/${P.total || "?"}`), " çağrı"),
+        P.model ? h("span", {}, "Model: ", h("b", {}, P.model)) : null,
+        P.step ? h("span", {}, P.step) : null,
+        P.elapsed ? h("span", {}, "Geçen: ", h("b", {}, dur(P.elapsed))) : null,
+        eta ? h("span", {}, "Kalan ≈ ", h("b", {}, dur(eta))) : null),
+      logBox,
+      h("div", { style: "margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
+        h("button", { class: "btn", disabled: P.stopping, onclick: async e => { e.currentTarget.disabled = true; await post("/api/lab/stop", {}); renderBench(); } },
+          P.stopping ? "Durduruluyor…" : "Durdur"),
+        h("span", { class: "note" }, "Durdurunca o anki çağrı bitince çıkar; tamamlanan ölçümler kalır, uygulamanın modeli geri yüklenir."))));
+    logBox.scrollTop = logBox.scrollHeight;
+    return;
+  }
+  const chat = (S.models || []).filter(m => m.kind === "chat");
+  if (!chat.length) { $("#labRun").replaceChildren(h("div", { class: "runner" }, h("p", { class: "note" }, "LM Studio'ya ulaşılamadı veya sohbet modeli yok."))); return; }
+  const measured = new Set(LAB.rows.map(r => r.model));
+  if (!labPicked) labPicked = new Set(chat.filter(m => !measured.has(m.id)).map(m => m.id));
+  const secOf = id => { const rs = LAB.rows.filter(r => r.model === id); return rs.length ? Math.min(...rs.map(r => r.mean_sec)) : 45; };
+  const cases = P.cases || 16;
+  const temps = h("select", {}, [["0", "0"], ["0,0.1", "0 ve 0,1"], ["0,0.1,0.3", "0, 0,1 ve 0,3"]].map(([v, t]) => h("option", { value: v }, t)));
+  const runs = h("select", {}, [1, 2, 3].map(n => h("option", { value: n, selected: n === 2 }, String(n))));
+  const est = h("span", { class: "note" });
+  const go = h("button", { class: "btn primary", onclick: async e => {
+    e.currentTarget.disabled = true;
+    try { await post("/api/lab/start", { models: [...labPicked], temps: temps.value, runs: Number(runs.value) }); toast("Ölçüm başladı", ["İlerleme bu sayfada görünür; sayfayı kapatabilirsiniz."]); }
+    catch (err) { toast("Başlatılamadı", [err.message], true); }
+    renderBench();
+  } }, "Ölçümü başlat");
+  const updateEst = () => {
+    const nT = temps.value.split(",").length, nR = Number(runs.value);
+    const sec = [...labPicked].reduce((a, id) => a + secOf(id) * cases * nT * nR + 60, 0);
+    est.textContent = labPicked.size ? `≈ ${dur(sec)} (${labPicked.size} model × ${cases} vaka × ${nT} sıcaklık × ${nR} tekrar)` : "Model seçin";
+    go.disabled = !labPicked.size;
+  };
+  temps.onchange = runs.onchange = updateEst;
+  $("#labRun").replaceChildren(h("div", { class: "runner" },
+    h("h3", {}, "Yeni ölçüm"),
+    h("p", { class: "note" }, "Ölçüm süresince LM Studio'da yalnız ölçülen model yüklü tutulur; soru sorma yavaşlar. Bitince uygulamanın modeli geri yüklenir. "
+      + "Yeni modeli LM Studio'dan indirin; burada kendiliğinden görünür."),
+    h("div", { class: "mlist" }, chat.map(m => {
+      const cb = h("input", { type: "checkbox", checked: labPicked.has(m.id), onchange: e => { e.target.checked ? labPicked.add(m.id) : labPicked.delete(m.id); updateEst(); } });
+      return h("label", {}, cb, m.id, h("span", { class: "sub" }, [m.quant, measured.has(m.id) ? "ölçüldü" : "yeni"].filter(Boolean).join(" · ")));
+    })),
+    h("div", { class: "opts" }, h("label", {}, "Sıcaklık ", temps), h("label", {}, "Tekrar ", runs), est),
+    go,
+    P.log && P.log.length ? h("details", { style: "margin-top:12px" }, h("summary", { class: "note" }, "Son ölçümün kaydı"), h("pre", { class: "log" }, P.log.join("\n"))) : null));
+  updateEst();
 }
 
 function renderMaint() {
@@ -395,7 +516,7 @@ async function load(first = true) {
   catch (e) { $("#lead").replaceChildren(h("div", { class: "err" }, "Ayarlar okunamadı: " + e.message)); return; }
   saved = { ...S.values }; form = { ...S.values };
   renderChips(); renderSections(); renderMaint();
-  if (first) renderBench();
+  if (first) renderBench(); else renderLab();
 }
 
 $("#save").onclick = save;
