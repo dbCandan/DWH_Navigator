@@ -70,12 +70,21 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
       Kabul: golden set recall@5 = 1.00 (3/3). `vsa eval` M2'den önce de çalışıyor.
 - [x] M2 — Değerlendirme: `vsa eval` (ask/batch/negatif grupları, kolon isabeti, tuzaklar),
       `--compare` (§13.4), `--save` → `eval/history.jsonl`. Golden set hâlâ küçük (4 ask).
-- [ ] M3 — Hibrit arama (dense + reranker)
-- [ ] M4 — LLM katmanı
+- [x] M3 — Hibrit arama: BGE-M3 (LM Studio) + BM25, `vsa index --dense` (~45 dk CPU, devam
+      edebilir). Reranker yok (LM Studio cross-encoder sunmuyor). ADR-019.
+- [x] M4 — LLM hakem: qwen/qwen3.5-9b, Vulkan (Intel iGPU), `reasoning_effort: none`,
+      final = 0.75 kural + 0.25 LLM (ADR-021/022). Opsiyonel LLM sorgu genişletme (kapalı).
+      Batch modunda hakem yok (süre).
 - [x] M5 — Batch modu: `vsa batch -i talep.xlsx` (TR/EN/açıklama). Çekirdek tablo, yapısal
       alanlar, türetme ipuçları (ADR-016/017). Ek A.3: recall@3 0.90, durum doğruluğu 0.90.
       QuestionList-2 (günlük) ve A.3 dışı alanlar için doğrulanmış cevap yok.
-- [ ] M6 — Arayüz — **tasarım kararları tamamen Claude'da**; kullanıcı "beni şaşırt" dedi.
-      Seçenek menüsü sunma, iddialı ve özgün bir tasarım yap. Kapalı ağ: runtime'da
-      dış CDN/font yok, her şey gömülü.
-- [ ] M7 — Geri bildirim döngüsü
+- [x] M6 — Arayüz: `vsa serve` / `baslat.bat` → http://127.0.0.1:8765. Stdlib sunucu +
+      `src/vsa/web/static/index.html` (tek dosya, dış kaynak yok). **Tasarım kararları
+      Claude'da** (kullanıcı "beni şaşırt" dedi); seçenek menüsü sunma.
+- [~] M7 — Geri bildirim: 👍/👎 → `data/feedback.jsonl` → `vsa feedback` golden adayları.
+      Eş anlamlı zenginleştirme akışı henüz yok.
+
+## Bu makinenin model ortamı
+LM Studio (http://localhost:1234), runtime `llama.cpp-win-x86_64-vulkan-avx2@2.46.0`.
+Modeller: `qwen/qwen3.5-9b` (hakem), `text-embedding-bge-m3` (vektör). Yerel ayar
+`config/settings.yaml` (repoda yok). Model karşılaştırma: `eval/bench_llm.py`.

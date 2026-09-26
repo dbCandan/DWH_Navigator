@@ -212,7 +212,7 @@ tek ekip içindir. Motor tek kilitle korunur. Geri bildirim `data/feedback.jsonl
 **Tarih.** 2026-09-26
 
 **Ölçüm.** Aynı aday listeleriyle (golden set'in 4 serbest metin maddesi + 3 negatif madde)
-makinedeki üç sohbet modeli hakem olarak denendi (`data/logs/bench_llm.py`):
+makinedeki üç sohbet modeli hakem olarak denendi (`eval/bench_llm.py`):
 
 | Model | Doğru üst seçim (7) | Negatifte boş liste (3) | Geçerli JSON | Ort. süre |
 |---|---|---|---|---|

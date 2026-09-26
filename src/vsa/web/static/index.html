@@ -393,6 +393,8 @@ function h(tag, attrs, ...kids) {
   return e;
 }
 const pct = x => Math.round((x || 0) * 100);
+// replaceChildren() would print null/false as text; drop them first.
+const put = (el, ...kids) => el.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
 async function api(path, opts = {}) {
   const r = await fetch(path, opts);
   const data = await r.json().catch(() => ({ error: "Beklenmeyen yanıt" }));
@@ -595,7 +597,7 @@ function renderAsk(r) {
     r.expansion.length ? h("span", { class: "chip", title: r.expansion.join(", ") }, "+ " + r.expansion.length + " genişletme terimi") : null);
   const clar = r.notes.filter(n => n.scope === "Netleştirme");
   const other = r.notes.filter(n => n.scope !== "Netleştirme");
-  out.replaceChildren(
+  put(out,
     verdictBlock(r, concepts),
     clar.length ? h("div", { class: "panel clarify" }, h("h3", {}, "Netleştirilmesi önerilen"), h("ul", {}, clar.map(n => h("li", {}, n.text)))) : null,
     ...r.objects.map(m => objectCard(m, r.query)),
@@ -673,7 +675,7 @@ function renderBatch(r) {
 
   const clar = r.notes.filter(x => x.scope === "Netleştirme");
   const other = r.notes.filter(x => x.scope !== "Netleştirme");
-  $("#batch-out").replaceChildren(
+  put($("#batch-out"),
     verdictBlock(r, h("div", {}, stack, legend)),
     clar.length ? h("div", { class: "panel clarify" }, h("h3", {}, "Netleştirilmesi önerilen"), h("ul", {}, clar.map(x => h("li", {}, x.text)))) : null,
     cov, table,

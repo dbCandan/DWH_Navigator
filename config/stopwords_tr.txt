@@ -79,3 +79,9 @@ belirtir
 virgül
 ayrılacak
 sadece
+# Talep cümlelerindeki bağlaç işlevli fiiller
+kullanan
+kullanılan
+yapan
+yapılan
+sahip

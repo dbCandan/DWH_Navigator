@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from vsa.batch import (
     column_kind,
+    direction_fit,
     entity_column,
+    field_direction,
     field_entity,
     field_kind,
     field_query,
@@ -110,3 +112,15 @@ def test_wide_siblings() -> None:
     lead = o.features[0]
     assert sorted(wide_siblings(o, lead)) == ["KASIncomingCount", "SWIFTIncomingCount"]
     assert wide_siblings(o, o.features[3]) == []  # not a measure
+
+
+def test_transfer_direction() -> None:
+    out = rf("Farklı Banka Sayısı", "DistinctBankCount", "Gönderilen farklı banka sayısı")
+    both = rf("Farklı Alıcı Sayısı", "DistinctTransactionPersonCount", "Gelen/giden farklı alıcı")
+    assert field_direction(out) == "out"
+    assert field_direction(both) == ""
+    assert field_direction(rf("Gelen Tutar", "IncomingAmount")) == "in"
+    assert direction_fit("out", "vFASTOutgoing") == 1
+    assert direction_fit("out", "vFASTIncoming") == -1
+    assert direction_fit("out", "vCustomerMoneyTransferSummary") == 0
+    assert direction_fit("", "vFASTIncoming") == 0

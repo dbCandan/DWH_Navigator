@@ -52,6 +52,7 @@ WIDE_MIN_COLUMNS = 3  # lead + siblings sharing its measure and a name part
 DOMAIN_BONUS = 0.10  # derivation source in the core table's dataset group
 CORE_WIDE_MIN = 0.45  # core table's own score needed to answer from its column family
 ASSESS_CANDIDATES = 8  # candidates whose measure fit is judged before the final cut
+DIRECTION_BONUS = 0.05  # ± for Outgoing/Incoming tables vs "gönderilen"/"gelen" fields
 MISFIT_PENALTY = 0.15  # same size as the column-level derivation penalty (§9.2)
 
 
@@ -156,6 +157,29 @@ def field_entity(f: RequestField) -> str | None:
         if toks & words:
             return entity
     return None
+
+
+OUT_WORDS = ("gonder", "giden", "outgoing", "sent", "sender")
+IN_WORDS = ("gelen", "incoming", "alinan", "received")
+
+
+def field_direction(f: RequestField) -> str:
+    """Transfer direction a field asks for: "out", "in", or "" (none / both)."""
+    words = fold(f"{f.tr} {f.description} {' '.join(split_camel(f.en))}").replace("/", " ").split()
+    out = any(w.startswith(OUT_WORDS) for w in words)
+    inc = any(w.startswith(IN_WORDS) for w in words)
+    return "out" if out and not inc else "in" if inc and not out else ""
+
+
+def direction_fit(direction: str, object_name: str) -> int:
+    """+1 when the table's name carries the asked direction, -1 for the opposite one."""
+    if not direction:
+        return 0
+    name = fold(object_name)
+    has_out, has_in = "outgoing" in name, "incoming" in name
+    if direction == "out":
+        return 1 if has_out else -1 if has_in else 0
+    return 1 if has_in else -1 if has_out else 0
 
 
 def column_kind(f: ColumnFeatures) -> set[str]:
@@ -298,6 +322,12 @@ class BatchAnalyzer:
         cands.sort(key=lambda c: (-c.score, c.match.object_key))
 
         cands = self._merge(cands, self._distinct_candidates(run, core))
+        # "Gönderilen / gelen": Outgoing vs Incoming tables.
+        direction = field_direction(run.field)
+        if direction:
+            for c in cands:
+                c.score += DIRECTION_BONUS * direction_fit(direction, c.match.object_name)
+            cands.sort(key=lambda c: (-c.score, c.match.object_key))
         structural = self._structural(run, core, grain, grain_field)
         preferred = structural or self._core_wide(run, core)
         if preferred is not None:
