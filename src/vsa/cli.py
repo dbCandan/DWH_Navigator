@@ -44,7 +44,7 @@ from vsa.evaluation import (
     read_history,
 )
 from vsa.feedback import export_candidates, load_feedback, summarize
-from vsa.index.dense import build_dense_index
+from vsa.index.dense import build_dense_index, build_object_index
 from vsa.index.store import IndexMissingError
 from vsa.llm.client import LLMError, OpenAICompatibleClient
 from vsa.llm.judge import judge
@@ -158,6 +158,13 @@ def _build_dense(engine: Engine, settings: Settings) -> None:
             model,
             Path(settings.index.dir),
             progress=lambda done, total: progress.update(task, completed=done),
+        )
+    with console.status("Tablo profilleri vektörleniyor…"):
+        build_object_index(
+            {k: [f.col for f in o.features] for k, o in engine.objects.items()},
+            client,
+            model,
+            Path(settings.index.dir),
         )
     console.print(f"[green]Vektör indeksi hazır[/green] ({model})")
 

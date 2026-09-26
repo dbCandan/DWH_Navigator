@@ -6,6 +6,7 @@ requested concepts together, with the right time axis and granularity:
 
     object_score = 0.50 × best_column + 0.30 × coverage
                  + 0.10 × time        + 0.10 × granularity
+                 (+ topic fit, ADR-028 — weights come from settings)
 
 Components that do not apply to the request are left out and the remaining
 weights renormalized (ADR-011). Keep this rule intact in refactors.
@@ -109,9 +110,11 @@ def aggregate(
     objects: Mapping[str, ObjectColumns],
     weights: ObjectWeights,
     min_candidate_score: float,
+    topic: Mapping[str, float] | None = None,
 ) -> list[ObjectMatch]:
     """Group scored columns by object and rank objects. ``hits`` must hold a scored
-    ColumnHit for every column of every candidate object."""
+    ColumnHit for every column of every candidate object. ``topic`` holds each
+    object's topic fit (ADR-028); without it the component is left out."""
     content = q.content_concepts
     time_concept = q.time_concept
     customer = wants_customer_view(q)
@@ -133,10 +136,15 @@ def aggregate(
             long_values = pending
             covered = [c for c in content if c in covered or c in long_values]
         components: dict[str, float] = {"best_column": best.rule_score}
+        # Without topic fit (batch, ADR-028) the other weights renormalize (ADR-011).
+        with_topic = topic is not None and weights.topic > 0
         active: dict[str, float] = {"best_column": weights.best_column}
         if content:
             components["coverage"] = q.coverage(covered)
             active["coverage"] = weights.coverage
+        if with_topic and topic is not None:
+            components["topic"] = topic.get(key, 0.0)
+            active["topic"] = weights.topic
         time_col: ColumnFeatures | None = None
         if time_concept is not None:
             components["time"], time_col = time_component(obj, time_concept)

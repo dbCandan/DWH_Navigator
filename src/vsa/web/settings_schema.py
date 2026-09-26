@@ -320,6 +320,17 @@ SECTIONS: list[dict[str, Any]] = [
                 "help": "Müşteri bazlı talepte uygulanır.",
             },
             {
+                "key": "scoring.object.topic",
+                "label": "Tablo skoru: konu uyumu",
+                "type": "float",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Tablonun bütün olarak talebin konusuyla uyumu: tablo adı ve profil "
+                "vektörü; geniş tabloları dengeler (ADR-028).",
+            },
+            {
                 "key": "scoring.flag_penalty.model_estimated",
                 "label": "Ceza çarpanı: model tahmini açıklama",
                 "type": "float",

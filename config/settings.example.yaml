@@ -35,10 +35,11 @@ scoring:
   min_answer_score: 0.35
   min_answer_coverage: 0.5      # en iyi obje talebin bilgi içeriğinin yarısını karşılamalı (ADR-013)
   object:
-    best_column: 0.50
-    coverage: 0.30
-    time: 0.10
-    granularity: 0.10
+    best_column: 0.35
+    coverage: 0.21
+    time: 0.07
+    granularity: 0.07
+    topic: 0.30   # tablonun bütün olarak konuyla uyumu (ADR-028)
   flag_penalty:
     model_estimated: 0.85
     naming_mismatch: 0.90

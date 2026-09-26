@@ -352,3 +352,48 @@ doğruluğu %85 / nihai %88 ile en doğru model; seed'siz tutarlılığı %81 id
 değişti. Neden: paylaşımlı sunucunun toplu işlemesi; seed tam belirlenimcilik sağlamıyor.
 Çoğunluk oyu (hakemi N kez çağırıp ortalama) önerildi; kullanıcı gerek görmedi — mevcut
 haliyle kalır. Kurum içi GPU'da tek kullanıcılı çalışmada sorun beklenmez.
+
+## ADR-027 — Arayüz tek ekran, tek görünüm
+
+**Karar (2026-09-26, kullanıcı kararı).** Web arayüzünde yalnız soru sorma ekranı kalır;
+"Hedef tablo" (toplu talep) ve "Keşfet" sekmeleri ile sekme şeridi kaldırıldı. Klasik görünüm
+ve açık/koyu tema düğmesi de kaldırıldı; tek görünüm Evren'dir (ADR-024), ayarlar sayfası da
+onu kullanır.
+
+**Gerekçe.** İş birimi kullanıcısı tek bir şey yapar: talebini yazar, cevabı okur. Ekranlar
+sadeleştirildi: açılışta yalnız başlık ve arama çubuğu; soru sorulunca çubuk sağ üstte bir
+düğmeye toplanır. Sonuç ekranında cevap ve tablo kartları öne çıkar; kavram kapsaması, skor
+bileşenleri, notlar ve yöntem kapalı "Ayrıntılar" bölümlerindedir.
+
+**Sonuç.** Toplu talep yalnız `vsa batch` ile yapılır; `/api/batch` ve `/api/objects` sunucuda
+kalır (galaksi, aramada aday tabloları `/api/objects`'ten çeker). Alt bilgi yalnız sözlük
+dosyasının güncellenme tarihini gösterir (`/api/status` → `updated`).
+
+## ADR-028 — Tablo seviyesinde konu uyumu
+
+**Karar (2026-09-26).** Obje skoruna beşinci bileşen eklendi: **konu uyumu** (`topic`,
+`scoring/topic.py`). İki parçası var:
+- *Seyrek:* her tablo tek bir BM25 dokümanıdır (tablo adı ×4, kolon adları, eş anlamlılar,
+  açıklamalar ×0.3). BM25 uzunluk normalizasyonu geniş tabloları doğal olarak cezalandırır.
+- *Yoğun:* her tablo için bir profil metni (adı, kolon adları, Türkçe eş anlamlılar;
+  `index/dense.py::object_text`) bge-m3 ile vektörlenir (`object_vectors.npy`,
+  `vsa index --dense` kurar, ~45 sn). Sorgu vektörüne en yakın 15 tablo aday havuzuna da
+  eklenir. Model çok dilli olduğu için "günlük kredi kartı işlemleri" ile
+  `vDailyCreditCardTransactionPool` ortak kelime olmadan eşleşir.
+Konu = 0.4 × seyrek + 0.6 × yoğun, her ikisi aynı talebin adayları içinde 0–1'e ölçeklenir.
+
+Ağırlıklar: en iyi kolon 0.35, kapsama 0.21, zaman 0.07, granülerlik 0.07, konu 0.30.
+İlk dördü §8'in 5:3:1:1 oranını korur; konu uyumu olmadığında (batch modu, vektör indeksi
+yok) ADR-011 gereği yeniden normalize olur ve eski davranış birebir döner. Batch modu konu
+uyumunu kullanmaz (alan arar, tablo değil; ADR-016/017 ayarları korunur).
+
+**Gerekçe.** Kapsama "kavram tablonun herhangi bir kolonunda geçiyor mu" diye bakar; 80–200
+kolonlu model girdisi ve rapor tabloları neredeyse her kavramı taşıdığı için kapsama ve en
+iyi kolon tavana çıkıyor, sıralamayı eşitlik bozucular belirliyordu. Türkçe talep ile
+İngilizce tablo/kolon adları arasındaki köprü de yalnız terim sözlüğüne kalıyordu.
+
+**Ölçüm (hakem kapalı).** Golden set değişmedi (ask recall@1 1.00, batch 0.70/0.80/0.90,
+negatif set yanlış cevap 0). Cevabı sözlükte açıkça bulunan 30 gerçekçi iş sorusunda doğru
+tablo 1. sırada %30 → %47, ilk 3'te %53 → %60, ilk 5'te %60 → %73. Kalan kaçırmaların çoğu
+yine geniş model girdisi tabloları (`vRetailCustomerChurn*`, `vCrossSell*`): bunlar için
+tablo türü bilgisi (model girdisi / rapor / ana tablo) sözlüğe eklenirse ayrıca ele alınabilir.

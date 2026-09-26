@@ -52,10 +52,12 @@ class ExpansionSettings:
 
 @dataclass(slots=True)
 class ObjectWeights:
-    best_column: float = 0.50
-    coverage: float = 0.30
-    time: float = 0.10
-    granularity: float = 0.10
+    # 0.35 : 0.21 : 0.07 : 0.07 keeps the §8 ratio 5:3:1:1 when topic fit is off (ADR-028)
+    best_column: float = 0.35
+    coverage: float = 0.21
+    time: float = 0.07
+    granularity: float = 0.07
+    topic: float = 0.30  # object-level topic fit (ADR-028)
 
 
 @dataclass(slots=True)
