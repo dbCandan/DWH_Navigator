@@ -160,3 +160,15 @@ def test_galaxy(base_url: str) -> None:
     stars = json.loads(body)
     assert {s["name"] for s in stars} == {"vCardLimitFullness", "vCreditCardLimit"}
     assert all(s["group"] and s["columns"] > 0 for s in stars)
+
+
+def test_explorer_not_blocked_by_a_running_question(
+    sample_dictionary_path: Path, tmp_path: Path
+) -> None:
+    """The explorer must answer while an (LLM-judged) question holds the engine lock."""
+    s = Settings()
+    s.dictionary.path = str(sample_dictionary_path)
+    app = App(Engine.from_dictionary_file(s), tmp_path / "out", tmp_path / "fb.jsonl")
+    with app.lock:  # a long question in progress
+        result = app.objects("doluluk oranı")
+    assert result["items"] and result["items"][0]["match"] == "içerik"

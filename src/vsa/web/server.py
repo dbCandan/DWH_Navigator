@@ -159,10 +159,10 @@ class App:
 
         concepts: list[str] = []
         if len(needle) >= MIN_CONTENT_QUERY:
-            with self.lock:
-                ranked, eq = self.engine.rank_objects(
-                    text, use_llm=False, limit=EXPLORER_CONTENT_LIMIT
-                )
+            # No engine lock: this path only reads (its caches are plain dict get/set,
+            # safe under the GIL), so the explorer — and the Evren route's candidate
+            # prefetch — stay instant while an LLM-judged question holds the lock.
+            ranked, eq = self.engine.rank_objects(text, use_llm=False, limit=EXPLORER_CONTENT_LIMIT)
             concepts = [c.display() for c in eq.concepts]
             by_key = {r["key"]: r for r in rows}
             for m in ranked:

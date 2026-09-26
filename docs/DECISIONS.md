@@ -285,9 +285,18 @@ seçim tarayıcıda saklanır. Klasik tasarım değişmedi. Evren, aynı DOM ve 
 `html[data-skin="evren"]` kapsamlı stil + bir canvas katmanıdır:
 - Veri ambarı bir galaksi olarak çizilir: 390 tablonun her biri bir yıldız, veri seti
   grubuna göre kümelenmiş (`/api/galaxy`), yavaş dönen, fareyle paralaks.
-- Arama/batch sürerken yıldızlar ışık hızına geçer (warp); sonuç gelince bulunan tablolar
-  sıra, ad ve skor etiketleriyle parlar ve takımyıldızı çizgisiyle bağlanır. Keşfet sonuçları
-  da aynı şekilde yanar; yıldıza tıklamak tabloyu Keşfet'te açar.
+- **Arama bir yolculuktur** (kullanıcı isteği: dönen/akan yıldız değil, ilerleyen bir rota):
+  1. arama kutusundan radar dalgaları — rota planlanıyor;
+  2. LLM'siz Keşfet sorgusuyla (~100 ms) gelen **gerçek** aday tablolar arasından en yakın
+     komşu rotası çizilir; keşif aracı rotada ilerler, her durakta tablo adı ve skoru yanar;
+  3. LLM hakem çalışırken rota ilk 8 finaliste daralır, araç finalistler arasında tur atar
+     ve okunan tablo etiketlenir;
+  4. cevap gelince araç 1. sonuca iner (varış dalgası); sonuçlar takımyıldızı olarak kalır.
+  Sol alttaki seyir defteri gerçek sayıları yazar (`11.136 kolon → 25 aday → 8 finalist →
+  5 sonuç`). Batch'te aday ön sorgusu olmadığı için araç önce en büyük kümeleri dolaşır.
+- Keşfet sorgusu motor kilidini kullanmaz (yalnız okur); böylece LLM'li bir soru sürerken
+  hem aday ön sorgusu hem Keşfet anında cevap verir.
+- Yıldıza tıklamak tabloyu Keşfet'te açar.
 - Cam paneller, dönen ışık halkalı arama kutusu, 3B eğilen kartlar, iki sütunlu sonuçlar.
-- LLM tümleşik GPU'yu paylaştığı için animasyon 30 fps (warp sırasında 20 fps) ile
-  sınırlıdır; `prefers-reduced-motion` açıksa hareket kapanır. Dış kaynak yoktur.
+- LLM tümleşik GPU'yu paylaştığı için animasyon 30 fps (hakem beklenirken 20 fps) ile
+  sınırlıdır; zaman gerçek saate bağlıdır (seyrek karede yolculuk yavaşlamaz); `prefers-reduced-motion` açıksa hareket kapanır. Dış kaynak yoktur.

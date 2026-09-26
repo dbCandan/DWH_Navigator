@@ -447,7 +447,7 @@ html[data-skin="evren"] .example {
 }
 html[data-skin="evren"] .example:hover { color: #fff; transform: translateY(-2px); box-shadow: 0 0 18px rgba(124, 244, 255, .3); border-color: rgba(124, 244, 255, .5); }
 
-/* ---------- loader: text over the warp jump on the canvas ---------- */
+/* ---------- loader: stage text over the route voyage on the canvas ---------- */
 html[data-skin="evren"] .loader svg { display: none; }
 html[data-skin="evren"] .loader { padding: 70px 0 30px; }
 html[data-skin="evren"] .loader .stage {
@@ -729,7 +729,14 @@ async function ask() {
   $("#hero").classList.add("compact");
   $("#ask-out").replaceChildren();
   $("#loader").classList.add("on"); $("#go").disabled = true;
-  Cosmos.warp(true);
+  if (Cosmos.active) {
+    // The voyage runs through the real candidates: the LLM-free explorer query answers
+    // in ~100 ms while the judged answer takes much longer.
+    Cosmos.begin({ judge: !!(STATUS && STATUS.llm), columns: STATUS ? STATUS.columns : 0 });
+    api("/api/objects?q=" + encodeURIComponent(text))
+      .then(c => Cosmos.candidates(c.items.filter(i => i.score != null).map(i => ({ key: i.key, name: i.name, score: i.score }))))
+      .catch(() => {});
+  }
   const llm = STATUS && STATUS.llm;
   startStages($("#stage"), $("#stage-sub"), [
     ["Sözlük taranıyor…", "Türkçe normalizasyon, eş anlamlılar ve terim sözlüğü", 0],
@@ -743,7 +750,7 @@ async function ask() {
     $("#ask-out").replaceChildren(h("div", { class: "error" }, "Analiz başarısız: " + e.message));
   } finally {
     clearInterval(stageTimer); $("#loader").classList.remove("on"); $("#go").disabled = false;
-    Cosmos.warp(false);
+    Cosmos.end();
   }
 }
 
@@ -877,7 +884,7 @@ drop.addEventListener("drop", e => { const f = e.dataTransfer.files[0]; if (f) r
 file.onchange = () => { if (file.files[0]) runBatch(file.files[0]); file.value = ""; };
 
 async function runBatch(f) {
-  $("#batch-out").replaceChildren(); $("#bloader").classList.add("on"); Cosmos.warp(true);
+  $("#batch-out").replaceChildren(); $("#bloader").classList.add("on"); Cosmos.begin({ judge: false });
   $("#bstage").textContent = `${f.name} analiz ediliyor…`;
   try {
     const buf = await f.arrayBuffer();
@@ -885,7 +892,7 @@ async function runBatch(f) {
     renderBatch(r);
   } catch (e) {
     $("#batch-out").replaceChildren(h("div", { class: "error" }, "Analiz başarısız: " + e.message));
-  } finally { $("#bloader").classList.remove("on"); Cosmos.warp(false); }
+  } finally { $("#bloader").classList.remove("on"); Cosmos.end(); }
 }
 
 const STATUSES = ["Hazır", "Kısmen hazır", "Türetilmeli", "Bulunamadı"];
@@ -1016,18 +1023,26 @@ async function showObject(key) {
 
 // ---------------------------------------------------------------- "Evren" skin
 // The warehouse as a galaxy: every table is a star, clustered by dataset group.
-// Searching jumps to warp speed; results light up as a constellation.
+// A search is a voyage: the navigator plots a route through the real candidate
+// tables (fetched LLM-free in ~100 ms), a probe travels it, the route narrows to the
+// judge's finalists while the LLM reads them, and the probe lands on the answer.
 const Cosmos = (() => {
   const cv = $("#cosmos"), ctx = cv.getContext("2d"), tip = $("#star-tip");
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let W = 0, H = 0, dpr = 1, active = false, raf = 0, loaded = false;
   let nodes = [], byKey = new Map(), groups = [], dust = [];
-  let warp = 0, warpTarget = 0, rot = 0, t = 0, last = performance.now();
+  let rot = 0, t = 0, last = performance.now();
   let focusList = [], focusAt = 0, pulseKey = "", pulseAt = 0, hover = null;
   const mouse = { x: 0.5, y: 0.5, sx: 0.5, sy: 0.5 };
 
+  // voyage state
+  let mode = "idle", modeAt = 0, judgeExpected = false, origin = [0, 0];
+  let route = [], routeAt = 0, dist = 0, speed = 0, loop = false, arrived = [], trail = [];
+  let candidates = [], hudSteps = [], reading = null, landedAt = 0;
+
   const hash = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
   const rnd = seed => () => ((seed = Math.imul(seed ^ (seed >>> 15), 2246822507) ^ Math.imul(seed ^ (seed >>> 13), 3266489909)) >>> 0) / 4294967296;
+  const fmt = n => n.toLocaleString("tr-TR");
 
   function build(stars) {
     const byGroup = new Map();
@@ -1038,18 +1053,18 @@ const Cosmos = (() => {
     groups = groups.map(([name, members], gi) => {
       const r = 0.1 + 0.82 * Math.sqrt((gi + 0.5) / G), a = gi * golden;
       const hue = (hash(name) % 360);
-      const g = { name, x: Math.cos(a) * r, y: Math.sin(a) * r, hue, n: members.length };
+      const g = { name, x: Math.cos(a) * r, y: Math.sin(a) * r, hue, n: members.length, members: [] };
       const R = rnd(hash(name));
       members.forEach((m, j) => {
         const rr = 0.018 + 0.022 * Math.sqrt(j) + R() * 0.012, aa = j * golden + R() * 0.8;
         const node = { ...m, g, x: g.x + Math.cos(aa) * rr, y: g.y + Math.sin(aa) * rr,
-          z: 0.35 + R() * 0.65, size: 0.9 + Math.sqrt(m.columns) * 0.32, tw: R() * Math.PI * 2, hue };
-        nodes.push(node); byKey.set(m.key, node);
+          z: 0.35 + R() * 0.65, size: 0.9 + Math.sqrt(m.columns) * 0.32, tw: R() * Math.PI * 2, hue, sx: 0, sy: 0 };
+        nodes.push(node); byKey.set(m.key, node); g.members.push(node);
       });
       return g;
     });
     const R = rnd(7);
-    dust = Array.from({ length: 520 }, () => ({ x: R() * 2 - 1, y: R() * 2 - 1, z: R(), tw: R() * 6.3 }));
+    dust = Array.from({ length: 480 }, () => ({ x: R() * 2 - 1, y: R() * 2 - 1, z: R(), tw: R() * 6.3 }));
     $("#hud-count").textContent = `${nodes.length} tablo · ${groups.length} küme`;
     loaded = true;
   }
@@ -1067,62 +1082,224 @@ const Cosmos = (() => {
     return [W / 2 + x * W * 0.47 + px, H / 2 + y * H * 0.46 + py];
   }
 
+  // Where the voyage starts: under the visible search field.
+  function searchOrigin() {
+    for (const sel of ["#tab-ask:not(.hidden) .searchbox", "#tab-explore:not(.hidden) #oq", "#tab-batch:not(.hidden) .drop"]) {
+      const el = document.querySelector(sel);
+      if (el) { const r = el.getBoundingClientRect(); if (r.width) return [r.left + r.width / 2, Math.min(H - 40, r.bottom + 8)]; }
+    }
+    return [W / 2, 140];
+  }
+  const P = p => (p.n ? [p.n.sx, p.n.sy] : p.xy);
+
+  // --------------------------------------------------------------- route geometry
+  function tour(from, list) {  // nearest-neighbour ordering: a short, readable path
+    const rest = [...list], out = [];
+    let [cx, cy] = from;
+    while (rest.length) {
+      let bi = 0, bd = Infinity;
+      rest.forEach((n, i) => { const d = (n.sx - cx) ** 2 + (n.sy - cy) ** 2; if (d < bd) { bd = d; bi = i; } });
+      const n = rest.splice(bi, 1)[0]; out.push(n); cx = n.sx; cy = n.sy;
+    }
+    return out;
+  }
+  function setRoute(points, pxPerSec, closed = false) {
+    route = points; dist = 0; lastAlong = 0; speed = pxPerSec; loop = closed; routeAt = t; arrived = points.map(() => 0);
+  }
+  function lengths() {
+    const pts = route.map(P); if (loop && pts.length > 1) pts.push(pts[1]);
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    return { pts, cum, total: cum[cum.length - 1] };
+  }
+  function at(pts, cum, d) {
+    let i = 1; while (i < cum.length - 1 && cum[i] < d) i++;
+    const seg = cum[i] - cum[i - 1] || 1, k = Math.max(0, Math.min(1, (d - cum[i - 1]) / seg));
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    return [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k, Math.atan2(y1 - y0, x1 - x0)];
+  }
+  // Distance along the route; a closed loop circles the finalists (from index 1 on)
+  // and never returns to the starting point.
+  function along(cum, total) {
+    if (!loop || dist <= cum[1]) return Math.min(dist, total);
+    return cum[1] + (dist - cum[1]) % Math.max(1, total - cum[1]);
+  }
+  let lastAlong = 0;
+  function shipPos() {
+    if (!route.length) return origin;
+    const { pts, cum, total } = lengths();
+    if (pts.length < 2) return pts[0];
+    const [x, y] = at(pts, cum, along(cum, total)); return [x, y];
+  }
+  function hud(step, replaceLast = false) {
+    if (replaceLast) hudSteps.pop();
+    if (step) hudSteps.push(step);
+    const shown = hudSteps.slice(-4);  // the voyage log: latest steps only
+    $("#hud-focus").textContent = (hudSteps.length > shown.length ? "…  →  " : "") + shown.join("  →  ");
+  }
+
+  // --------------------------------------------------------------- frame loop
   // The chat model shares the (integrated) GPU with the browser: keep the sky light.
-  // 30 fps normally, 20 fps while waiting for the LLM (warp), thinner dust in warp.
   function frame(now) {
     if (active) raf = requestAnimationFrame(frame);
-    const budget = warpTarget > 0 ? 50 : 33;
+    const budget = mode === "judge" || mode === "wait" ? 50 : 33;
     if (now - last < budget) return;
-    const dt = Math.min(80, now - last); last = now; t += dt;
-    warp += (warpTarget - warp) * (warpTarget > warp ? 0.06 : 0.035);
-    if (!reduce) rot += dt * (0.000018 + warp * 0.0006);
+    // Real time, so the voyage keeps pace even when frames are sparse (busy GPU);
+    // capped only to avoid a jump after the tab was in the background.
+    const dt = Math.min(1000, now - last); last = now; t += dt;
+    const cruising = mode === "idle" || mode === "done";
+    if (!reduce && cruising) rot += dt * 0.000018;
     mouse.sx += (mouse.x - mouse.sx) * 0.05; mouse.sy += (mouse.y - mouse.sy) * 0.05;
+    step(dt);
     draw();
   }
 
+  function step(dt) {
+    if (mode === "plan" && t - modeAt > 1600 && !candidates.length) patrol();
+    if (!route.length || !["travel", "judge", "final"].includes(mode)) return;
+    if (t - routeAt < (mode === "final" ? 150 : 500)) return;  // the route is drawn first
+    const { cum, total } = lengths();
+    dist += speed * dt / 1000;
+    const d = along(cum, total);
+    if (d < lastAlong) arrived.fill(0);  // a new lap around the finalists
+    lastAlong = d;
+    for (let k = 1; k < route.length; k++) if (!arrived[k] && d >= cum[k] - 0.5) arrived[k] = t;
+    if (mode === "judge") {
+      const idx = Math.max(1, cum.findIndex(c => c > d) - 1);
+      const n = route[Math.min(idx, route.length - 1)].n;
+      if (n && n !== reading) { reading = n; hud(`okunuyor: ${n.name}`, hudSteps.at(-1)?.startsWith("okunuyor")); }
+    }
+    if (!loop && dist >= total) {
+      if (mode === "travel") judgeExpected ? startJudge() : (mode = "wait", modeAt = t);
+      else if (mode === "final") { mode = "done"; landedAt = t; }
+    }
+  }
+
+  function patrol() {  // no candidate list (batch): sweep the biggest clusters
+    const stops = groups.slice(0, 9).map(g => g.members[0]).filter(Boolean);
+    setRoute([{ xy: origin }, ...tour(origin, stops).map(n => ({ n }))], 260);
+    mode = "travel"; modeAt = t;
+    hud("veri kümeleri taranıyor");
+  }
+
+  function startJudge() {
+    const fin = candidates.slice(0, STATUS && STATUS.judge_candidates || 8).map(c => byKey.get(c.key)).filter(Boolean);
+    if (fin.length < 2) { mode = "wait"; modeAt = t; return; }
+    const here = shipPos();
+    setRoute([{ xy: here }, ...tour(here, fin).map(n => ({ n }))], 170, true);
+    mode = "judge"; modeAt = t; reading = null;
+    hud(`${fin.length} finalist`); hud("LLM hakem okuyor");
+  }
+
+  // --------------------------------------------------------------- drawing
   function draw() {
     ctx.clearRect(0, 0, W, H);
     const cx = W / 2, cy = H / 2;
-    // dust — tiny background stars, stretched into streaks during warp
-    const step = warp > 0.3 ? 2 : 1;
-    for (let di = 0; di < dust.length; di += step) {
-      const d = dust[di];
-      const x = cx + d.x * W * 0.6, y = cy + d.y * H * 0.6;
+    for (const d of dust) {
       const a = 0.25 + 0.35 * Math.sin(t * 0.002 + d.tw);
-      if (warp > 0.02) {
-        const k = warp * (0.08 + d.z * 0.35), dx = (x - cx) * k, dy = (y - cy) * k;
-        ctx.strokeStyle = `rgba(190,220,255,${0.15 + warp * 0.5})`; ctx.lineWidth = 0.6 + d.z;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy); ctx.stroke();
-      } else {
-        ctx.fillStyle = `rgba(200,215,255,${a * (0.3 + d.z * 0.5)})`; ctx.fillRect(x, y, 1, 1);
-      }
+      ctx.fillStyle = `rgba(200,215,255,${a * (0.3 + d.z * 0.5)})`;
+      ctx.fillRect(cx + d.x * W * 0.6, cy + d.y * H * 0.6, 1, 1);
     }
     if (!loaded) return;
-    const dim = focusList.length ? 0.45 : 1;
-    // cluster threads
-    if (warp < 0.3) {
-      ctx.lineWidth = 0.5;
-      for (const n of nodes) {
-        const [x, y] = screen(n), [gx, gy] = screen({ x: n.g.x, y: n.g.y, z: n.z });
-        ctx.strokeStyle = `hsla(${n.hue},80%,70%,${0.05 * dim * (1 - warp * 3)})`;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(gx, gy); ctx.stroke();
-      }
+    const voyage = mode !== "idle";
+    const onRoute = new Set(route.map(p => p.n).filter(Boolean));
+    const dim = voyage && mode !== "done" ? 0.3 : focusList.length ? 0.45 : 1;
+
+    ctx.lineWidth = 0.5;
+    for (const n of nodes) {
+      const [x, y] = screen(n), [gx, gy] = screen({ x: n.g.x, y: n.g.y, z: n.z });
+      ctx.strokeStyle = `hsla(${n.hue},80%,70%,${0.05 * dim})`;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(gx, gy); ctx.stroke();
     }
-    // stars
     for (const n of nodes) {
       const [x, y] = screen(n); n.sx = x; n.sy = y;
-      const tw = 0.65 + 0.35 * Math.sin(t * 0.0022 + n.tw);
-      const r = n.size * (0.6 + n.z * 0.7);
-      if (warp > 0.02) {
-        const k = warp * 0.25 * n.z;
-        ctx.strokeStyle = `hsla(${n.hue},90%,78%,${0.35 + warp * 0.4})`; ctx.lineWidth = r;
-        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (x - cx) * k, y + (y - cy) * k); ctx.stroke();
-      }
-      ctx.fillStyle = `hsla(${n.hue},90%,${72 + n.z * 18}%,${(0.35 + 0.55 * n.z) * tw * dim})`;
+      const tw = 0.65 + 0.35 * Math.sin(t * 0.0022 + n.tw), r = n.size * (0.6 + n.z * 0.7);
+      const a = (0.35 + 0.55 * n.z) * tw * (onRoute.has(n) ? 1 : dim);
+      ctx.fillStyle = `hsla(${n.hue},90%,${72 + n.z * 18}%,${a})`;
       ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
     }
+    if (mode === "plan") drawPlanning();
+    if (route.length > 1 && mode !== "idle") drawRoute();
     drawFocus();
     if (hover) ring(hover.sx, hover.sy, 10, "rgba(255,255,255,.8)", 1.2);
+  }
+
+  function drawPlanning() {  // radar pings from the search field while the route is computed
+    const [ox, oy] = origin, age = (t - modeAt) / 1000;
+    for (let k = 0; k < 3; k++) {
+      const p = (age * 0.7 + k / 3) % 1;
+      ring(ox, oy, 10 + p * Math.max(W, H) * 0.45, `rgba(124,244,255,${0.35 * (1 - p)})`, 1.2);
+    }
+    const sweep = age * 2.4;
+    const g = ctx.createConicGradient ? ctx.createConicGradient(sweep, ox, oy) : null;
+    if (g) {
+      g.addColorStop(0, "rgba(124,244,255,.16)"); g.addColorStop(0.08, "rgba(124,244,255,0)"); g.addColorStop(1, "rgba(124,244,255,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ox, oy, Math.max(W, H), 0, 6.2832); ctx.fill();
+    }
+    drawShip(ox, oy, -Math.PI / 2, 1);
+  }
+
+  function drawRoute() {
+    const { pts, cum, total } = lengths();
+    const reveal = Math.min(1, (t - routeAt) / (mode === "final" ? 300 : 700));
+    const planned = total * reveal;
+    const d = along(cum, total);
+    // planned path ahead (dashed, drawn out progressively)
+    ctx.setLineDash([5, 9]); ctx.lineDashOffset = -t * 0.04;
+    ctx.strokeStyle = mode === "judge" ? "rgba(255,93,214,.45)" : "rgba(124,244,255,.4)"; ctx.lineWidth = 1.2;
+    polyline(pts, cum, loop ? 0 : d, planned);
+    ctx.setLineDash([]);
+    // travelled path (solid, glowing)
+    if (!loop) {
+      ctx.strokeStyle = "rgba(124,244,255,.18)"; ctx.lineWidth = 6; polyline(pts, cum, 0, d);
+      ctx.strokeStyle = "rgba(190,250,255,.9)"; ctx.lineWidth = 1.6; polyline(pts, cum, 0, d);
+    }
+    // waypoints
+    route.forEach((p, k) => {
+      if (k === 0 || !p.n) return;
+      const [x, y] = P(p), c = candidates.find(c => c.key === p.n.key) || focusList.find(f => f.key === p.n.key);
+      const since = arrived[k] ? (t - arrived[k]) / 1000 : -1;
+      if (since >= 0 && since < 1.2) ring(x, y, 6 + since * 34, `rgba(124,244,255,${0.8 * (1 - since / 1.2)})`, 1.5);
+      ring(x, y, since >= 0 ? 6 : 4, since >= 0 ? "rgba(255,255,255,.85)" : "rgba(124,244,255,.5)", 1.2);
+      const show = mode === "judge" ? p.n === reading : since >= 0 && since < 2.2 && mode !== "final";
+      if (show) label(x, y, mode === "judge" ? `okunuyor · ${p.n.name}` : p.n.name,
+        c && c.score != null ? `%${Math.round(c.score * 100)}` : "", 1);
+    });
+    if (mode === "done") {
+      const [x, y] = pts[pts.length - 1], a = (t - landedAt) / 1000;
+      if (a < 1.6) for (let k = 0; k < 3; k++) ring(x, y, 8 + (a + k * 0.18) * 70, `rgba(61,252,180,${Math.max(0, 0.8 - a * 0.5 - k * 0.15)})`, 2);
+      if (a > 4) route = [];
+      return;
+    }
+    const [sx, sy, ang] = at(pts, cum, d);
+    trail.push([sx, sy]); if (trail.length > 26) trail.shift();
+    drawShip(sx, sy, ang, 1);
+  }
+
+  function polyline(pts, cum, from, to) {
+    if (to <= from) return;
+    const [x0, y0] = at(pts, cum, from);
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    for (let i = 1; i < pts.length; i++) {
+      if (cum[i] <= from) continue;
+      if (cum[i] >= to) { const [x, y] = at(pts, cum, to); ctx.lineTo(x, y); break; }
+      ctx.lineTo(pts[i][0], pts[i][1]);
+    }
+    ctx.stroke();
+  }
+
+  function drawShip(x, y, ang, alpha) {
+    for (let i = 1; i < trail.length; i++) {  // comet trail
+      const k = i / trail.length;
+      ctx.strokeStyle = `rgba(124,244,255,${0.5 * k * alpha})`; ctx.lineWidth = 3.5 * k;
+      ctx.beginPath(); ctx.moveTo(trail[i - 1][0], trail[i - 1][1]); ctx.lineTo(trail[i][0], trail[i][1]); ctx.stroke();
+    }
+    glow(x, y, 26, `rgba(124,244,255,${0.45 * alpha})`);
+    glow(x, y, 12, `rgba(255,93,214,${0.35 * alpha})`);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = "#ffffff"; ctx.beginPath();
+    ctx.moveTo(9, 0); ctx.lineTo(-6, 5); ctx.lineTo(-3, 0); ctx.lineTo(-6, -5); ctx.closePath(); ctx.fill();
+    ctx.restore();
   }
 
   function glow(x, y, r, color) {
@@ -1133,43 +1310,38 @@ const Cosmos = (() => {
   function ring(x, y, r, color, w) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.stroke(); }
 
   function drawFocus() {
+    if (!focusList.length || (mode !== "done" && mode !== "idle")) return;
     const age = (t - focusAt) / 1000;
     const pts = focusList.map(f => byKey.get(f.key)).filter(Boolean);
-    if (pts.length > 1) {
-      // constellation path in rank order, drawn in progressively
-      const grow = Math.min(1, age / 1.2);
+    if (pts.length > 1 && mode === "idle") {
       ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 0.03;
-      ctx.strokeStyle = "rgba(124,244,255,.55)"; ctx.lineWidth = 1.3;
+      ctx.strokeStyle = "rgba(124,244,255,.45)"; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.moveTo(pts[0].sx, pts[0].sy);
-      const upto = 1 + Math.floor((pts.length - 1) * grow);
-      for (let i = 1; i < upto; i++) ctx.lineTo(pts[i].sx, pts[i].sy);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].sx, pts[i].sy);
       ctx.stroke(); ctx.setLineDash([]);
     }
     focusList.forEach((f, i) => {
       const n = byKey.get(f.key); if (!n) return;
-      const appear = Math.max(0, Math.min(1, age * 2 - i * 0.18));
+      const appear = Math.max(0, Math.min(1, age * 2 - i * 0.15));
       if (!appear) return;
-      const s = Math.max(0.15, f.score || 0), pulse = 1 + 0.25 * Math.sin(t * 0.004 - i);
-      glow(n.sx, n.sy, (18 + 30 * s) * pulse * appear, `rgba(124,244,255,${0.35 * appear})`);
-      ring(n.sx, n.sy, (8 + 10 * s) * pulse, `rgba(255,255,255,${0.7 * appear})`, 1.4);
-      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(n.sx, n.sy, 2.6 + 2 * s, 0, 6.2832); ctx.fill();
-      if (i < 8) label(n.sx, n.sy, `${i + 1}. ${f.name}`, f.score != null ? `%${Math.round(f.score * 100)}` : "", appear);
+      const s = Math.max(0.15, f.score || 0), pulse = 1 + 0.2 * Math.sin(t * 0.004 - i);
+      glow(n.sx, n.sy, (16 + 26 * s) * pulse * appear, `rgba(124,244,255,${0.32 * appear})`);
+      ring(n.sx, n.sy, (7 + 9 * s) * pulse, `rgba(255,255,255,${0.7 * appear})`, 1.3);
+      ctx.fillStyle = i === 0 ? "#3dfcb4" : "#fff"; ctx.beginPath(); ctx.arc(n.sx, n.sy, 2.6 + 2 * s, 0, 6.2832); ctx.fill();
+      if (i < 6) label(n.sx, n.sy, `${i + 1}. ${f.name}`, f.score != null ? `%${Math.round(f.score * 100)}` : "", appear);
     });
     if (pulseKey && byKey.has(pulseKey)) {
       const n = byKey.get(pulseKey), a = (t - pulseAt) / 1000;
-      for (let k = 0; k < 3; k++) {
-        const p = (a * 0.6 + k / 3) % 1;
-        ring(n.sx, n.sy, 6 + p * 60, `rgba(255,93,214,${0.7 * (1 - p)})`, 1.5);
-      }
+      for (let k = 0; k < 3; k++) { const p = (a * 0.6 + k / 3) % 1; ring(n.sx, n.sy, 6 + p * 60, `rgba(255,93,214,${0.7 * (1 - p)})`, 1.5); }
     }
   }
 
   function label(x, y, text, score, alpha) {
     ctx.font = "600 12px 'Cascadia Code', Consolas, monospace";
-    const w = ctx.measureText(text).width + (score ? 44 : 14), lx = Math.min(W - w - 8, x + 14), ly = y - 22;
+    const w = ctx.measureText(text).width + (score ? 44 : 14), lx = Math.max(8, Math.min(W - w - 8, x + 14)), ly = y - 24;
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = "rgba(8,12,30,.82)"; ctx.strokeStyle = "rgba(124,244,255,.45)"; ctx.lineWidth = 1;
-    const r = 9; ctx.beginPath(); ctx.roundRect(lx, ly, w, 20, r); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "rgba(8,12,30,.85)"; ctx.strokeStyle = "rgba(124,244,255,.45)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(lx, ly, w, 20, 9); ctx.fill(); ctx.stroke();
     ctx.fillStyle = "#eaf6ff"; ctx.fillText(text, lx + 7, ly + 14);
     if (score) { ctx.fillStyle = "#3dfcb4"; ctx.fillText(score, lx + w - 37, ly + 14); }
     ctx.globalAlpha = 1;
@@ -1206,16 +1378,48 @@ const Cosmos = (() => {
   }
 
   return {
+    get active() { return active && loaded; },
+    get state() { return { mode, dist: Math.round(dist), stops: route.length, speed, t: Math.round(t) }; },
     async setActive(on) {
       active = on; cancelAnimationFrame(raf); tip.classList.remove("on");
       if (!on) return;
       resize(); await ensureLoaded(); last = performance.now(); raf = requestAnimationFrame(frame);
     },
-    warp(on) { warpTarget = on && !reduce ? 1 : 0; },
-    focus(list, query) {
-      focusList = list.filter(f => f && f.key); focusAt = t;
-      $("#hud-focus").textContent = focusList.length ? `◎ ${query || ""} — ${focusList.length} yıldız` : "";
+    /** A search starts: plot a route from the search field. */
+    begin({ judge = false, columns = 0 } = {}) {
+      origin = searchOrigin(); mode = "plan"; modeAt = t; judgeExpected = judge;
+      route = []; trail = []; candidates = []; focusList = []; reading = null; hudSteps = [];
+      hud(columns ? `${fmt(columns)} kolon taranıyor` : "rota planlanıyor");
     },
+    /** Real candidate tables (LLM-free pipeline): the route runs through them. */
+    candidates(list) {
+      if (!active || !loaded || (mode !== "plan" && mode !== "travel")) return;
+      candidates = list.filter(c => byKey.has(c.key)).sort((a, b) => (b.score || 0) - (a.score || 0));
+      const stops = candidates.slice(0, 12).map(c => byKey.get(c.key));
+      if (!stops.length) return;
+      setRoute([{ xy: origin }, ...tour(origin, stops).map(n => ({ n }))], 250);
+      mode = "travel"; modeAt = t; trail = [];
+      hud(`${candidates.length} aday`); hud("rota çizildi");
+    },
+    /** Final answer: fly to it, landing on #1; the results stay as a constellation. */
+    focus(list, query) {
+      focusList = list.filter(f => f && f.key && byKey.has(f.key));
+      focusAt = t;
+      if (!active || !loaded || !focusList.length) {
+        if (!focusList.length && mode !== "idle") { mode = "idle"; route = []; hud(""); }
+        return;
+      }
+      const from = mode === "idle" ? searchOrigin() : shipPos();
+      const stops = [...focusList].reverse().map(f => ({ n: byKey.get(f.key) }));
+      trail = []; setRoute([{ xy: from }, ...stops], 900);
+      mode = "final"; modeAt = t;
+      if (hudSteps.at(-1)?.startsWith("okunuyor")) hudSteps.pop();
+      if (hudSteps.at(-1) === "LLM hakem okuyor" || hudSteps.at(-1) === "rota çizildi") hudSteps.pop();
+      if (!hudSteps.length && query) hudSteps.push(`◎ ${query}`);
+      hud(`${focusList.length} sonuç · varış: ${focusList[0].name}`);
+    },
+    /** Search finished without results / failed: stand down. */
+    end() { if (["plan", "travel", "judge", "wait"].includes(mode)) { mode = "idle"; route = []; } },
     pulse(key) { pulseKey = key; pulseAt = t; },
   };
 })();
