@@ -17,6 +17,8 @@ import urllib.request
 from collections.abc import Mapping, Sequence
 from typing import Any, Protocol
 
+from vsa import trace
+
 log = logging.getLogger(__name__)
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
@@ -40,6 +42,12 @@ def retry_delay(header: str | None, body: str, attempt: int) -> float:
         if raw and str(raw).strip().isdigit():
             return min(90.0, float(raw) + 1)
     return float(min(90, 5 * 2**attempt))
+
+
+def _error_text(text: str) -> str:
+    """The message of a JSON error body (OpenAI / Google style), else the text itself."""
+    m = re.search(r'"(?:message|detail)"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+    return (m.group(1) if m else text)[:300]
 
 
 def fold_error(text: str) -> str:
@@ -246,7 +254,11 @@ class OpenAICompatibleClient:
                 if exc.code in RETRY_CODES and attempt < self.retries:
                     wait = retry_delay(exc.headers.get("Retry-After"), detail, attempt)
                     log.warning("HTTP %s, %.0f sn sonra yeniden denenecek", exc.code, wait)
-                    time.sleep(wait)
+                    with trace.span(f"HTTP {exc.code} — bekleme", _error_text(detail),
+                                    trace.EVENT) as s:  # fmt: skip
+                        if s is not None:
+                            s.status = "warn"
+                        time.sleep(wait)
                     continue
                 raise LLMError(f"{path}: HTTP {exc.code}: {detail}") from exc
             except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
@@ -276,7 +288,15 @@ class OpenAICompatibleClient:
         """Schema-constrained JSON (HANDOVER §10.4); one repair attempt, then None (§10.6)."""
         if not self.available:
             return None
+        with trace.span("LLM çağrısı", self._model, trace.LLM) as s:
+            reply = self._chat_json(system, user, schema, max_tokens)
+            if s is not None and reply is None:
+                s.status, s.detail = "error", f"{self._model} — {self.last_error[:300]}"
+            return reply
 
+    def _chat_json(
+        self, system: str, user: str, schema: Mapping[str, Any], max_tokens: int
+    ) -> dict[str, Any] | None:
         def build(messages: list[dict[str, str]]) -> dict[str, Any]:
             if not self.system_role:  # fold the instructions into the first user turn
                 first = {"role": "user", "content": f"{system}\n\n{messages[1]['content']}"}
@@ -308,6 +328,8 @@ class OpenAICompatibleClient:
                 usage = data.get("usage") or {}
                 self.prompt_tokens += int(usage.get("prompt_tokens") or 0)
                 self.completion_tokens += int(usage.get("completion_tokens") or 0)
+                trace.count(requests=1, prompt_tokens=int(usage.get("prompt_tokens") or 0),
+                            completion_tokens=int(usage.get("completion_tokens") or 0))  # fmt: skip
                 content = str(data["choices"][0]["message"].get("content") or "")
             except LLMError as exc:
                 if adaptations < 3 and self._adapt(str(exc)):
@@ -329,6 +351,7 @@ class OpenAICompatibleClient:
             if parsed is not None:
                 return parsed
             log.warning("LLM yanıtı JSON değil (deneme %d)", attempt)
+            trace.event("Yanıt JSON değil — onarım isteniyor", content[:200])
             messages = [
                 *messages,
                 {"role": "assistant", "content": content[:2000]},
@@ -359,16 +382,18 @@ class OpenAICompatibleClient:
         else:
             return False
         log.info("Model bir özelliği desteklemiyor, onsuz yeniden deneniyor: %s", error[:160])
+        trace.event("Model bir özelliği reddetti — onsuz yeniden", _error_text(error))
         return True
 
     def embed(self, texts: Sequence[str]) -> list[list[float]]:
         if not self.embedding_model:
             raise LLMError("Embedding modeli yapılandırılmadı")
-        data = self._post(
-            "/embeddings",
-            {"model": self.embedding_model, "input": list(texts)},
-            max(self.timeout, 600.0),
-        )
+        with trace.span("Embedding", f"{self.embedding_model} · {len(texts)} metin", trace.EMBED):
+            data = self._post(
+                "/embeddings",
+                {"model": self.embedding_model, "input": list(texts)},
+                max(self.timeout, 600.0),
+            )
         rows = sorted(data.get("data", []), key=lambda d: d.get("index", 0))
         vectors = [[float(x) for x in r["embedding"]] for r in rows]
         if len(vectors) != len(texts):

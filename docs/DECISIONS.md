@@ -500,3 +500,33 @@ tanıyor. Kullanıcı kararıyla NVIDIA'da kalındı ve 1. adım ikiye ayrıldı
   tablolar. Başarısız olursa havuzun ilk adaylarıyla devam edilir.
 2. adım, aile araması ve doğrulama değişmedi. `catalog_chunks: 1` eski tek parça akışıdır
 (büyük bağlamlı hızlı sunucu, ör. A100 + vLLM önek önbelleği).
+
+**Ek (2026-09-27): NVIDIA modeli değişti (ADR-026).** `google/gemma-4-31b-it` NVIDIA'da istek
+kabul edip cevap dönmüyor (90–120 sn zaman aşımı); katalogdaki 82 modelin yalnız 6'sı cevap
+veriyor, çoğu 404 (hesaba kapalı) veya 410 (kaldırıldı). Google AI Studio ücretsiz katmanı analist
+akışını taşımıyor (16k giriş tokenı/dk). Canlı modeller 115–146k tokenlık istekle denendi;
+gerçek soruda (`kredi kartı limit doluluk oranı`) `nvidia/nemotron-3-super-120b-a12b` 47 sn,
+`nvidia/nemotron-3-ultra-550b-a55b` 179 sn'de uyarısız analist cevabı verdi, ikisi de
+`vCardLimitFullness`'ı 1. sıraya koydu. Kullanıcı kararıyla (golden set ölçümü yapılmadan)
+`nemotron-3-super` devreye alındı. Google Gemma cevabı `<thought>…</thought>` bloğuyla başlar ve
+içinde taslak JSON olur; `parse_json_reply` bu bloğu da siler.
+
+## ADR-030 — Yönetim ekranı (`/admin`) ve analiz izleri
+
+**Karar (2026-09-27, kullanıcı isteği).** Ayarlar ve analiz izleme tek bir yönetim ekranında,
+`/admin` adresinde toplanır; uygulamada bu adrese bağlantı yoktur, adres elle yazılır. Eski
+`/ayarlar` adresi ve ana ekrandaki ⚙ düğmesi kaldırıldı. Bu bir gizleme, **erişim denetimi
+değil**: adresi bilen herkes açabilir ve `/api/settings` gibi API uçları da korumasızdır.
+
+**İz.** `vsa.trace` (saf modül) bir isteğin adımlarını span olarak toplar: sırada bekleme, kural
+motoru kolları (genişletme, BM25, anlamsal arama, kolon skorlama, toplama), analistin 1a parçaları
+/ 1b uzlaştırması / aile araması / 2. adımı, hakem, kurala dönüş ve her LLM çağrısı (süre, token,
+HTTP 429/503 beklemeleri, reddedilen özellikler). Kayıt açılmadıkça her çağrı işlemsizdir; CLI,
+eval ve Keşfet araması iz tutmaz. Paralel parçalar izi `trace.carry` ile taşır.
+
+**Kayıt.** Sunucu her `/api/ask` için `data/logs/analyses.jsonl` dosyasına bir satır yazar:
+zaman, IP, makine adı (ters DNS; kullanıcı girişi olmadığı için "kullanıcı" = makine), soru,
+akış (analist / yedek / kural / hata), model, sonuç, önerilen tablolar, toplam süre, LLM çağrı ve
+token sayıları ve bütün spanlar. Dosya `data/` altındadır (gitignore), kurum içi soru metni içerir.
+Ekran son 3000 kaydı okur; liste spansız gelir, zaman çizelgesi satıra tıklanınca yüklenir.
+

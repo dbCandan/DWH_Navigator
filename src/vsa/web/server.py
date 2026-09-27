@@ -10,7 +10,10 @@ network. One engine, one lock: the tool serves a team, not the internet.
     GET  /api/object/<key>      all columns of one object
     GET  /api/galaxy            all objects with their dataset group (star map)
     POST /api/feedback          {"query", "object", "vote": "up"|"down", "note"} (M7)
-    GET  /ayarlar               settings screen (static/settings.html)
+    GET  /admin                 admin screen (static/admin.html): analyses + settings;
+                                no link from the app, reached by typing the address
+    GET  /api/admin/analyses    recent analyses: who asked what, flow, steps' durations
+    GET  /api/admin/analysis/<id>  one analysis with its full step timeline (trace spans)
     GET  /api/settings          schema + current values + models offered by LM Studio
     POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
     POST /api/settings/test     try endpoint / chat model / embedding model from the form
@@ -26,6 +29,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -43,7 +47,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import yaml
 
-from vsa import lab
+from vsa import lab, trace
 from vsa.batch import BatchAnalyzer
 from vsa.config import (
     CLOUD_PREFIX,
@@ -83,6 +87,8 @@ EXPLORER_CONTENT_LIMIT = 25  # objects from the content (search pipeline) layer
 MIN_CONTENT_QUERY = 3  # shorter input: name matching only
 LAB_STALE_SEC = 1800  # no progress for this long: the lab process is gone
 LAB_LOG = Path("data/logs/lab.log")
+ANALYSES_LOG = "logs/analyses.jsonl"  # next to the feedback file (data/)
+ADMIN_LIST_LIMIT = 3000  # newest analyses the admin screen loads
 
 
 class App:
@@ -92,10 +98,14 @@ class App:
         out_dir: Path,
         feedback_path: Path,
         settings_path: Path | None = None,
+        analyses_path: Path | None = None,
     ) -> None:
         self.engine = engine
         self.out_dir = out_dir
         self.feedback_path = feedback_path
+        self.analyses_path = analyses_path or feedback_path.parent / ANALYSES_LOG
+        self._log_lock = threading.Lock()
+        self._hosts: dict[str, str] = {}
         self.settings_path = settings_path or DEFAULT_SETTINGS_PATH
         self.reindex_pending: list[str] = []
         self._lab_proc: subprocess.Popen[bytes] | None = None
@@ -162,16 +172,111 @@ class App:
             ],
         }
 
-    def ask(self, body: dict[str, Any]) -> dict[str, Any]:
+    def ask(self, body: dict[str, Any], client: str = "") -> dict[str, Any]:
         query = str(body.get("query", "")).strip()
         if not query:
             raise ValueError("Talep metni boş")
         top = max(1, min(10, int(body.get("top", 5))))
-        with self.lock:
-            result = self.engine.analyze(query, top_n=top)
+        result: AnalysisResult | None = None
+        error = ""
+        with trace.recording() as tr:
+            try:
+                with trace.span("Sırada bekleme", "önceki analizin bitmesi"):
+                    self.lock.acquire()
+                try:
+                    result = self.engine.analyze(query, top_n=top)
+                finally:
+                    self.lock.release()
+            except Exception as exc:
+                error = str(exc)
+                raise
+            finally:
+                self._log_analysis(tr, query, client, result, error)
         data = serialize.analysis(result)
         data["report_id"] = self._remember(result)
         return data
+
+    # ------------------------------------------------------------------ admin: analyses
+
+    def _host(self, ip: str) -> str:
+        """Machine name of a client (reverse DNS, cached); "" when it has none."""
+        if ip not in self._hosts:
+            try:
+                name = socket.gethostname() if ip in ("127.0.0.1", "::1") else (
+                    socket.gethostbyaddr(ip)[0])  # fmt: skip
+            except OSError:
+                name = ""
+            self._hosts[ip] = name
+        return self._hosts[ip]
+
+    def _log_analysis(
+        self, tr: trace.Trace, query: str, ip: str, result: AnalysisResult | None, error: str
+    ) -> None:
+        """One line per question in data/logs/analyses.jsonl: who, what, the path it took."""
+        spans = tr.to_list()
+        if result is None:
+            flow = "hata"
+        else:
+            flow = "analist" if result.analyst else ("yedek" if result.fallback else "kural")
+        entry = {
+            "id": uuid.uuid4().hex[:12],
+            "at": datetime.now().isoformat(timespec="seconds"),
+            "ip": ip,
+            "host": self._host(ip) if ip else "",
+            "query": query[:2000],
+            "flow": flow,
+            "model": self.engine.llm.model if flow in ("analist", "yedek") else (
+                result.llm_model if result else ""),  # fmt: skip
+            "verdict": result.verdict.value if result else "",
+            "summary": result.summary[:500] if result else "",
+            "objects": [m.object_key for m in result.objects][:10] if result else [],
+            "fallback": result.fallback if result else "",
+            "error": error[:500],
+            "ms": round(tr.now() * 1000),
+            **tr.totals(),
+            "dictionary_version": self.engine.dictionary.version,
+            "spans": spans,
+        }
+        try:
+            self.analyses_path.parent.mkdir(parents=True, exist_ok=True)
+            with self._log_lock, self.analyses_path.open("a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except OSError as exc:  # the answer matters more than its log line
+            log.warning("Analiz kaydı yazılamadı: %s", exc)
+
+    def _analysis_lines(self) -> list[dict[str, Any]]:
+        if not self.analyses_path.is_file():
+            return []
+        with self._log_lock:
+            lines = self.analyses_path.read_text(encoding="utf-8").splitlines()
+        out = []
+        for line in lines[-ADMIN_LIST_LIMIT:]:
+            try:
+                out.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue  # a line cut short by a crash
+        return out
+
+    def analyses(self) -> dict[str, Any]:
+        """Recent analyses, newest first, without their timelines; each carries the time
+        spent per step so the screen can add them up."""
+        items = []
+        for e in reversed(self._analysis_lines()):
+            spans = e.pop("spans", [])
+            steps: dict[str, int] = {}
+            for sp in spans:
+                if sp["kind"] == trace.STEP and not sp["name"].startswith("Parça"):
+                    steps[sp["name"]] = steps.get(sp["name"], 0) + int(sp["ms"])
+            e["steps"] = steps
+            e["waits"] = sum(int(sp["ms"]) for sp in spans if sp["kind"] == trace.EVENT)
+            items.append(e)
+        return {"items": items, "path": str(self.analyses_path), "limit": ADMIN_LIST_LIMIT}
+
+    def analysis(self, aid: str) -> dict[str, Any]:
+        for e in self._analysis_lines():
+            if e.get("id") == aid:
+                return e
+        raise KeyError(aid)
 
     def batch(self, fields: list[RequestField], name: str) -> dict[str, Any]:
         if not fields:
@@ -654,9 +759,13 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                 if url.path in ("/", "/index.html"):
                     html = (STATIC / "index.html").read_bytes()
                     self._send(200, html, "text/html; charset=utf-8")
-                elif url.path in ("/ayarlar", "/settings"):
-                    html = (STATIC / "settings.html").read_bytes()
+                elif url.path in ("/admin", "/admin/"):
+                    html = (STATIC / "admin.html").read_bytes()
                     self._send(200, html, "text/html; charset=utf-8")
+                elif url.path == "/api/admin/analyses":
+                    self._json(app.analyses())
+                elif url.path.startswith("/api/admin/analysis/"):
+                    self._json(app.analysis(url.path.rsplit("/", 1)[-1]))
                 elif url.path == "/api/settings":
                     self._json(app.settings_get())
                 elif url.path == "/api/lab":
@@ -695,7 +804,7 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
             try:
                 raw = self._body()
                 if url.path == "/api/ask":
-                    self._json(app.ask(json.loads(raw or b"{}")))
+                    self._json(app.ask(json.loads(raw or b"{}"), self.client_address[0]))
                 elif url.path == "/api/batch":
                     ctype = self.headers.get("Content-Type", "")
                     if ctype.startswith("application/json"):

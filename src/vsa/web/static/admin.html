@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DWH Navigator · Ayarlar</title>
+<title>DWH Navigator · Yönetim</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231F3864'/%3E%3Cpath d='M16 5l4 11-4 11-4-11z' fill='%23F2B84B'/%3E%3C/svg%3E">
 <style>
 :root {
@@ -142,6 +142,83 @@ pre.log { max-height: 240px; overflow: auto; background: var(--surface-2); borde
 .toast { position: fixed; right: 20px; top: 76px; z-index: 30; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--high); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); font-size: 13.5px; opacity: 0; visibility: hidden; transform: translateY(-8px); transition: opacity .25s, transform .25s, visibility .25s; }
 .toast.on { opacity: 1; visibility: visible; transform: none; } .toast.bad { border-left-color: var(--low); }
 .toast b { display: block; margin-bottom: 4px; }
+
+/* ---------- admin: views ---------- */
+.tabs { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.tabs button { border: 0; background: none; border-radius: 9px; padding: 6px 14px; font-weight: 600; font-size: 14px; color: var(--muted); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
+body[data-view="analyses"] #view-settings, body[data-view="analyses"] #savebar,
+body[data-view="settings"] #view-analyses, body[data-view="analyses"] #chips { display: none; }
+
+/* ---------- admin: analyses ---------- */
+:root { --k-step: #1fa0bf; --k-llm: #8c6cf0; --k-embed: #1aa57a; }
+#view-analyses { padding-top: 22px; }
+.a-head { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
+.a-head .grow { flex: 1 1 320px; }
+.filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 14px 0 16px; }
+.filters select, .filters input { border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; background: var(--surface); color: inherit; font: inherit; font-size: 14px; }
+.filters input[type=search] { flex: 1 1 220px; min-width: 0; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; padding: 7px 12px; font-size: 13.5px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--surface-2); color: var(--text); }
+.live { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); cursor: pointer; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 16px; box-shadow: var(--shadow); }
+.tile .lbl { font-size: 12px; color: var(--muted); font-weight: 600; }
+.tile .val { font-family: var(--display); font-size: 26px; font-weight: 700; letter-spacing: -.4px; font-variant-numeric: tabular-nums; line-height: 1.25; }
+.tile .sub { font-size: 12px; color: var(--faint); }
+.two { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 960px) { .two { grid-template-columns: 1fr; } }
+.hbars { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr) auto; gap: 7px 12px; align-items: center; font-size: 13px; margin-top: 10px; }
+.hbars .nm { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hbars .nm.sub { padding-left: 14px; color: var(--muted); }
+.hbars .tr { height: 12px; border-radius: 0 4px 4px 0; background: var(--surface-2); position: relative; }
+.hbars .tr i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; background: var(--k-step); min-width: 2px; }
+.hbars .v { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; }
+table.an { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.an th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 8px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.an td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; font-variant-numeric: tabular-nums; }
+table.an th.r, table.an td.r { text-align: right; }
+table.an tr.row-a { cursor: pointer; }
+table.an tr.row-a:hover td, table.an tr.row-a.open td { background: var(--surface-2); }
+table.an tr.row-u { cursor: pointer; } table.an tr.row-u:hover td { background: var(--surface-2); }
+table.an .when { white-space: nowrap; color: var(--muted); font-family: var(--mono); font-size: 12px; }
+table.an .who b { display: block; font-weight: 600; white-space: nowrap; }
+table.an .who span { color: var(--faint); font-family: var(--mono); font-size: 11.5px; }
+table.an .qq { max-width: 440px; }
+table.an .res { color: var(--muted); font-size: 12.5px; }
+table.an .dur { white-space: nowrap; font-family: var(--mono); font-size: 12.5px; }
+.dbar { display: block; height: 4px; border-radius: 0 3px 3px 0; background: var(--k-step); margin-top: 5px; min-width: 2px; }
+.flow { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
+.flow.analist { background: var(--high-bg); color: var(--high); }
+.flow.yedek { background: var(--mid-bg); color: var(--mid); }
+.flow.kural { background: var(--surface-2); color: var(--muted); }
+.flow.hata { background: var(--low-bg); color: var(--low); }
+.verdict { font-weight: 700; color: var(--text); }
+td.detail-cell { padding: 0 !important; background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
+.trace { padding: 14px 16px 18px; }
+.trace .meta { display: flex; gap: 8px 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
+.trace .meta b { color: var(--text); font-weight: 600; }
+.trace .summary { font-size: 13.5px; margin: 0 0 12px; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+.legend i { display: inline-block; width: 12px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+.wf { display: grid; grid-template-columns: minmax(180px, 34%) minmax(0, 1fr) 76px; gap: 3px 10px; align-items: center; font-size: 12.5px; }
+.wf .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wf .nm small { color: var(--faint); margin-left: 6px; }
+.wf .lane { position: relative; height: 16px; border-radius: 3px; background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), var(--line) calc(25% - 1px) 25%); }
+.wf .seg-bar { position: absolute; top: 3px; bottom: 3px; border-radius: 0 3px 3px 0; min-width: 2px; }
+.wf .seg-bar.step { background: var(--k-step); } .wf .seg-bar.llm { background: var(--k-llm); } .wf .seg-bar.embed { background: var(--k-embed); }
+.wf .seg-bar.event { background: repeating-linear-gradient(45deg, var(--mid) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--mid); }
+.wf .seg-bar.error { box-shadow: 0 0 0 2px var(--low); }
+.wf .ms { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-align: right; white-space: nowrap; }
+.wf .st { font-weight: 700; margin-right: 4px; } .wf .st.error { color: var(--low); } .wf .st.warn { color: var(--mid); }
+.wf .why { grid-column: 1 / -1; color: var(--faint); font-size: 11.5px; margin: -2px 0 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.axis { display: grid; grid-template-columns: minmax(180px, 34%) minmax(0, 1fr) 76px; gap: 10px; font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-bottom: 4px; }
+.axis div:nth-child(2) { display: flex; justify-content: space-between; }
+.empty { color: var(--muted); padding: 30px 0; text-align: center; }
+.more { display: flex; justify-content: center; padding: 12px 0 0; }
+@media (max-width: 700px) { table.an .hide-s { display: none; } .wf, .axis { grid-template-columns: minmax(110px, 40%) minmax(0, 1fr) 60px; } }
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; } nav.side { position: static; display: flex; flex-wrap: wrap; }
   .row { grid-template-columns: 1fr; gap: 8px; } .ctl { justify-content: stretch; }
@@ -155,14 +232,42 @@ pre.log { max-height: 240px; overflow: auto; background: var(--surface-2); borde
   <div class="wrap">
     <div class="brand">
       <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#1F3864"/><circle cx="16" cy="16" r="10.5" fill="none" stroke="#F2B84B" stroke-opacity=".45"/><path d="M16 5l4 11-4 11-4-11z" fill="#F2B84B"/></svg>
-      <div><b>DWH Navigator</b> <span>· Ayarlar</span></div>
+      <div><b>DWH Navigator</b> <span>· Yönetim</span></div>
     </div>
     <div class="chips" id="chips"></div>
+    <div class="tabs" role="tablist" aria-label="Görünüm">
+      <button role="tab" data-view="analyses" aria-selected="true">Analizler</button>
+      <button role="tab" data-view="settings" aria-selected="false">Ayarlar</button>
+    </div>
     <a class="back" href="/">← Uygulamaya dön</a>
   </div>
 </header>
 
-<div class="wrap layout">
+<div class="wrap" id="view-analyses">
+  <div class="a-head">
+    <div class="grow">
+      <h1>Analizler</h1>
+      <p class="lead">Sorulan her soru: kim sordu, hangi yoldan gitti, her adım ne kadar sürdü.
+        Bir satıra tıklayınca o analizin adım adım zaman çizelgesi açılır.</p>
+    </div>
+    <label class="live"><input type="checkbox" id="a-live" checked> 15 sn'de bir yenile</label>
+    <button class="btn" id="a-refresh">Yenile</button>
+  </div>
+  <div class="filters">
+    <div class="seg" id="a-period" role="group" aria-label="Dönem">
+      <button data-days="1">Bugün</button><button data-days="7" aria-pressed="true">7 gün</button><button data-days="30">30 gün</button><button data-days="0">Tümü</button>
+    </div>
+    <select id="a-user" aria-label="Kullanıcı"><option value="">Tüm kullanıcılar</option></select>
+    <select id="a-flow" aria-label="Akış">
+      <option value="">Tüm akışlar</option><option value="analist">Analist</option><option value="yedek">Yedek (kurala dönen)</option>
+      <option value="kural">Kural</option><option value="hata">Hata</option>
+    </select>
+    <input type="search" id="a-text" placeholder="Soru, tablo veya model ara…" aria-label="Ara">
+  </div>
+  <div id="a-body"><p class="empty">Yükleniyor…</p></div>
+</div>
+
+<div class="wrap layout" id="view-settings">
   <nav class="side" id="nav" aria-label="Bölümler"></nav>
   <main>
     <h1>Ayarlar</h1>
@@ -582,6 +687,228 @@ const io = new IntersectionObserver(entries => {
 }, { rootMargin: "-40% 0px -55% 0px" });
 new MutationObserver(() => document.querySelectorAll("main .card").forEach(c => io.observe(c))).observe($("main"), { childList: true, subtree: true });
 load();
+
+// ------------------------------------------------------------------ views
+function setView(v) {
+  document.body.dataset.view = v;
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.view === v)));
+  try { sessionStorage.setItem("admin-view", v); } catch (e) { /* storage blocked */ }
+  if (v === "analyses") A.load();
+}
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => setView(b.dataset.view));
+
+// ------------------------------------------------------------------ analyses
+const A = {
+  items: [], days: 7, user: "", flow: "", text: "", open: null, shown: 100, timer: null,
+  cache: {},  // id -> full analysis (with its timeline)
+
+  async load() {
+    try { const r = await api("/api/admin/analyses"); this.items = r.items; this.path = r.path; }
+    catch (e) { $("#a-body").replaceChildren(h("div", { class: "err" }, "Analizler okunamadı: " + e.message)); return; }
+    this.fillUsers(); this.render();
+  },
+  fillUsers() {
+    const sel = $("#a-user"), cur = sel.value, users = new Map();
+    for (const e of this.items) if (!users.has(this.who(e))) users.set(this.who(e), e);
+    sel.replaceChildren(h("option", { value: "" }, "Tüm kullanıcılar"),
+      ...[...users.keys()].sort().map(u => h("option", { value: u }, u)));
+    sel.value = users.has(cur) ? cur : "";
+  },
+  who: e => e.host || e.ip || "bilinmiyor",
+  filtered() {
+    const since = this.days ? Date.now() - this.days * 86400000 : 0;
+    const needle = this.text.toLocaleLowerCase("tr");
+    return this.items.filter(e =>
+      (!since || new Date(e.at).getTime() >= (this.days === 1 ? new Date().setHours(0, 0, 0, 0) : since)) &&
+      (!this.user || this.who(e) === this.user) && (!this.flow || e.flow === this.flow) &&
+      (!needle || [e.query, e.model, e.summary, ...(e.objects || [])].join(" ").toLocaleLowerCase("tr").includes(needle)));
+  },
+  render() {
+    const rows = this.filtered(), body = $("#a-body");
+    if (!this.items.length) {
+      body.replaceChildren(h("div", { class: "card" }, h("p", { class: "empty" },
+        "Henüz kayıtlı analiz yok. Uygulamada bir soru sorulduğunda burada görünür."),
+        h("p", { class: "note", style: "text-align:center" }, "Kayıt dosyası: " + (this.path || ""))));
+      return;
+    }
+    body.replaceChildren(this.tiles(rows), h("div", { class: "two" }, this.stepCard(rows), this.userCard(rows)), this.listCard(rows));
+  },
+
+  tiles(rows) {
+    const ms = rows.map(e => e.ms).sort((a, b) => a - b);
+    const llm = rows.filter(e => e.flow !== "kural");
+    const ok = llm.filter(e => e.flow === "analist").length;
+    const tin = rows.reduce((s, e) => s + (e.prompt_tokens || 0), 0), tout = rows.reduce((s, e) => s + (e.completion_tokens || 0), 0);
+    const tile = (lbl, val, sub) => h("div", { class: "tile" }, h("div", { class: "lbl" }, lbl), h("div", { class: "val" }, val), h("div", { class: "sub" }, sub));
+    return h("div", { class: "tiles" },
+      tile("Analiz", num(rows.length), rows.length ? "son: " + when(rows[0].at) : "seçili dönemde yok"),
+      tile("Kullanıcı", num(new Set(rows.map(e => this.who(e))).size), "farklı makine"),
+      tile("Medyan süre", ms.length ? msText(quantile(ms, .5)) : "–", ms.length ? "en hızlı " + msText(ms[0]) : ""),
+      tile("p90 süre", ms.length ? msText(quantile(ms, .9)) : "–", ms.length ? "en yavaş " + msText(ms[ms.length - 1]) : ""),
+      tile("Analist başarısı", llm.length ? "%" + Math.round(100 * ok / llm.length) : "–",
+        llm.length ? `${ok}/${llm.length} cevabı model yazdı` : "model kapalıyken yok"),
+      tile("LLM token", tin + tout ? kilo(tin + tout) : "–", tin + tout ? `giriş ${kilo(tin)} · çıkış ${kilo(tout)}` : ""));
+  },
+
+  stepCard(rows) {
+    // Average time per step over the analyses that went through that step.
+    const sum = {}, cnt = {}, order = [];
+    for (const e of rows) for (const [k, v] of Object.entries(e.steps || {})) {
+      if (!(k in sum)) { sum[k] = 0; cnt[k] = 0; order.push(k); }
+      sum[k] += v; cnt[k] += 1;
+    }
+    const sub = new Set(["Sorgu genişletme", "BM25 arama", "Anlamsal arama", "Kolon skorlama", "Tablo toplama ve konu uyumu", "1a — katalog parçaları (paralel)", "1b — uzlaştırma"]);
+    const keys = order.filter(k => k !== "Sırada bekleme" || sum[k] / cnt[k] >= 1000);
+    const max = Math.max(1, ...keys.map(k => sum[k] / cnt[k]));
+    const grid = h("div", { class: "hbars" });
+    for (const k of keys) {
+      const avg = sum[k] / cnt[k];
+      grid.append(h("div", { class: "nm" + (sub.has(k) ? " sub" : ""), title: k }, k),
+        h("div", { class: "tr", title: `${k}: ortalama ${msText(avg)} · ${cnt[k]} analiz` }, h("i", { style: `width:${(100 * avg / max).toFixed(1)}%` })),
+        h("div", { class: "v" }, msText(avg)));
+    }
+    return h("section", { class: "card" }, h("h2", {}, "Adım başına ortalama süre"),
+      h("p", { class: "intro" }, "Seçili analizlerde her adımın ortalaması (o adımdan geçenler üzerinden). Girintili satırlar bir üst adımın parçasıdır."),
+      keys.length ? grid : h("p", { class: "empty" }, "Veri yok"));
+  },
+
+  userCard(rows) {
+    const by = new Map();
+    for (const e of rows) { const u = this.who(e); if (!by.has(u)) by.set(u, []); by.get(u).push(e); }
+    const list = [...by.entries()].sort((a, b) => b[1].length - a[1].length);
+    const tbody = h("tbody", {}, list.map(([u, es]) => {
+      const ms = es.map(e => e.ms).sort((a, b) => a - b);
+      return h("tr", { class: "row-u", title: "Bu kullanıcıya süz", onclick: () => { $("#a-user").value = u; this.user = u; this.render(); } },
+        h("td", { class: "who" }, h("b", {}, u), h("span", {}, es[0].ip || "")),
+        h("td", { class: "r" }, num(es.length)), h("td", { class: "r dur" }, msText(quantile(ms, .5))),
+        h("td", { class: "qq hide-s" }, h("div", {}, clip(es[0].query, 70)), h("div", { class: "res" }, when(es[0].at))));
+    }));
+    return h("section", { class: "card" }, h("h2", {}, "Kullanıcılar"),
+      h("p", { class: "intro" }, "Kullanıcı, soruyu gönderen makinenin adıdır (bulunamazsa IP). Satıra tıklayınca liste o kullanıcıya süzülür."),
+      list.length ? h("div", { class: "scroll" }, h("table", { class: "an" },
+        h("thead", {}, h("tr", {}, h("th", {}, "Kullanıcı"), h("th", { class: "r" }, "Analiz"), h("th", { class: "r" }, "Medyan"), h("th", { class: "hide-s" }, "Son soru"))), tbody))
+        : h("p", { class: "empty" }, "Veri yok"));
+  },
+
+  listCard(rows) {
+    const max = Math.max(1, ...rows.map(e => e.ms));
+    const tbody = h("tbody");
+    for (const e of rows.slice(0, this.shown)) {
+      const tr = h("tr", { class: "row-a" + (this.open === e.id ? " open" : ""), tabindex: "0", "aria-expanded": String(this.open === e.id) },
+        h("td", { class: "when" }, when(e.at)),
+        h("td", { class: "who hide-s" }, h("b", {}, this.who(e)), h("span", {}, e.ip)),
+        h("td", { class: "qq" }, e.query),
+        h("td", {}, flowChip(e.flow), e.model ? h("div", { class: "res" }, e.model.split("/").pop()) : null),
+        h("td", { class: "res hide-s" }, e.verdict ? h("span", { class: "verdict" }, e.verdict) : "–",
+          e.objects && e.objects.length ? h("div", {}, e.objects[0].split(".").pop() + (e.objects.length > 1 ? ` +${e.objects.length - 1}` : "")) : null),
+        h("td", { class: "r dur" }, msText(e.ms), h("i", { class: "dbar", style: `width:${(100 * e.ms / max).toFixed(1)}%;margin-left:auto` })),
+        h("td", { class: "r res hide-s" }, e.llm_calls ? `${e.llm_calls} çağrı` : "–", e.llm_calls ? h("div", {}, kilo(e.prompt_tokens + e.completion_tokens) + " token") : null));
+      const toggle = () => { this.open = this.open === e.id ? null : e.id; this.render(); };
+      tr.onclick = toggle; tr.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } };
+      tbody.append(tr);
+      if (this.open === e.id) {
+        const cell = h("td", { class: "detail-cell", colspan: "7" }, h("div", { class: "trace" }, h("p", { class: "note" }, "Zaman çizelgesi yükleniyor…")));
+        tbody.append(h("tr", {}, cell));
+        this.detail(e.id).then(full => cell.replaceChildren(this.timeline(full))).catch(err => cell.replaceChildren(h("div", { class: "trace" }, h("div", { class: "err" }, err.message))));
+      }
+    }
+    const card = h("section", { class: "card" }, h("h2", {}, `Analizler (${num(rows.length)})`),
+      rows.length ? h("div", { class: "scroll" }, h("table", { class: "an" },
+        h("thead", {}, h("tr", {}, h("th", {}, "Zaman"), h("th", { class: "hide-s" }, "Kullanıcı"), h("th", {}, "Soru"), h("th", {}, "Akış"),
+          h("th", { class: "hide-s" }, "Sonuç"), h("th", { class: "r" }, "Süre"), h("th", { class: "r hide-s" }, "LLM"))), tbody))
+        : h("p", { class: "empty" }, "Bu süzgeçle eşleşen analiz yok."));
+    if (rows.length > this.shown) card.append(h("div", { class: "more" }, h("button", { class: "btn", onclick: () => { this.shown += 100; this.render(); } }, `Daha fazla göster (${num(rows.length - this.shown)} kaldı)`)));
+    return card;
+  },
+
+  async detail(id) {
+    if (!this.cache[id]) this.cache[id] = await api("/api/admin/analysis/" + encodeURIComponent(id));
+    return this.cache[id];
+  },
+
+  timeline(e) {
+    const spans = e.spans || [], total = Math.max(1, e.ms, ...spans.map(s => s.start_ms + s.ms));
+    const kids = {};
+    for (const s of spans) (kids[s.parent ?? "root"] ||= []).push(s);
+    const ordered = [];
+    const walk = (pid, depth) => { for (const s of (kids[pid] || []).sort((a, b) => a.start_ms - b.start_ms || a.id - b.id)) { ordered.push([s, depth]); walk(s.id, depth + 1); } };
+    walk("root", 0);
+    const KIND = { step: "adım", llm: "LLM çağrısı", embed: "embedding", event: "bekleme / olay" };
+    const wf = h("div", { class: "wf", role: "table", "aria-label": "Adım zaman çizelgesi" });
+    for (const [s, depth] of ordered) {
+      const left = 100 * s.start_ms / total, width = Math.max(0.3, 100 * s.ms / total);
+      const tokens = s.data && (s.data.prompt_tokens || s.data.completion_tokens) ? ` · ${kilo(s.data.prompt_tokens || 0)} → ${kilo(s.data.completion_tokens || 0)} token` : "";
+      const reqs = s.data && s.data.requests > 1 ? ` · ${s.data.requests} istek` : "";
+      const tip = `${s.name} (${KIND[s.kind] || s.kind})\nbaşlangıç +${msText(s.start_ms)} · süre ${msText(s.ms)}${tokens}${reqs}` + (s.detail ? "\n" + s.detail : "");
+      const mark = s.status === "error" ? h("span", { class: "st error", title: "hata" }, "✕") : s.status === "warn" ? h("span", { class: "st warn", title: "uyarı" }, "!") : null;
+      wf.append(
+        h("div", { class: "nm", style: `padding-left:${depth * 14}px`, title: tip }, mark, s.name, h("small", {}, s.kind === "llm" ? (s.detail || "").split(" — ")[0].split("/").pop() : "")),
+        h("div", { class: "lane", title: tip }, h("i", { class: `seg-bar ${s.kind}${s.status === "error" ? " error" : ""}`, style: `left:${left.toFixed(2)}%;width:${Math.min(width, 100 - left).toFixed(2)}%` })),
+        h("div", { class: "ms" }, s.kind === "event" && !s.ms ? "·" : msText(s.ms)));
+      if (s.detail && (s.status !== "ok" || s.kind === "step") && s.kind !== "llm" || (s.kind === "llm" && s.status === "error"))
+        wf.append(h("div", { class: "why", style: `padding-left:${depth * 14 + (mark ? 14 : 0)}px`, title: s.detail }, s.detail + tokens));
+      else if (tokens) wf.append(h("div", { class: "why", style: `padding-left:${depth * 14}px` }, tokens.slice(3)));
+    }
+    const legend = h("div", { class: "legend" },
+      ...[["step", "Adım", "var(--k-step)"], ["llm", "LLM çağrısı", "var(--k-llm)"], ["embed", "Embedding", "var(--k-embed)"]].map(([, t, c]) => h("span", {}, h("i", { style: `background:${c}` }), t)),
+      h("span", {}, h("i", { style: "background:repeating-linear-gradient(45deg,var(--mid) 0 2px,transparent 2px 4px);box-shadow:inset 0 0 0 1px var(--mid)" }), "Bekleme / yeniden deneme"),
+      h("span", {}, h("b", { style: "color:var(--low)" }, "✕ "), "hata"));
+    const axis = h("div", { class: "axis" }, h("div", {}), h("div", {}, ...[0, .25, .5, .75, 1].map(f => h("span", {}, msText(total * f)))), h("div", {}));
+    return h("div", { class: "trace" },
+      h("div", { class: "meta" },
+        h("span", {}, "Zaman ", h("b", {}, e.at.replace("T", " "))),
+        h("span", {}, "Kullanıcı ", h("b", {}, this.who(e)), e.ip && e.host ? ` (${e.ip})` : ""),
+        h("span", {}, "Akış ", flowChip(e.flow)),
+        e.model ? h("span", {}, "Model ", h("b", {}, e.model)) : null,
+        h("span", {}, "Toplam ", h("b", {}, msText(e.ms))),
+        e.llm_calls ? h("span", {}, "LLM ", h("b", {}, `${e.llm_calls} çağrı · ${kilo(e.prompt_tokens)} → ${kilo(e.completion_tokens)} token`)) : null),
+      h("p", { class: "summary" }, h("b", {}, "Soru: "), e.query),
+      e.summary ? h("p", { class: "summary" }, h("b", {}, "Cevap: "), e.summary) : null,
+      e.objects && e.objects.length ? h("p", { class: "note" }, "Önerilen tablolar: " + e.objects.map(k => k.split(".").pop()).join(", ")) : null,
+      e.fallback ? h("div", { class: "warn" }, "Analist cevap veremedi, kural motoru cevapladı: " + e.fallback) : null,
+      e.error ? h("div", { class: "err" }, "Hata: " + e.error) : null,
+      legend, axis, wf);
+  },
+};
+
+function quantile(sorted, p) { if (!sorted.length) return 0; const i = (sorted.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); }
+function num(n) { return Number(n).toLocaleString("tr-TR"); }
+function kilo(n) { n = n || 0; return n >= 1e6 ? (n / 1e6).toLocaleString("tr-TR", { maximumFractionDigits: 1 }) + " M" : n >= 1e3 ? (n / 1e3).toLocaleString("tr-TR", { maximumFractionDigits: 1 }) + " k" : String(n); }
+function msText(ms) {
+  ms = Math.round(ms || 0);
+  if (ms < 1000) return ms + " ms";
+  if (ms < 60000) return (ms / 1000).toLocaleString("tr-TR", { maximumFractionDigits: ms < 10000 ? 1 : 0 }) + " sn";
+  const m = Math.floor(ms / 60000), sec = Math.round((ms % 60000) / 1000);
+  return `${m} dk ${String(sec).padStart(2, "0")} sn`;
+}
+function when(iso) {
+  const d = new Date(iso), today = new Date().toDateString() === d.toDateString();
+  const t = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  return today ? "bugün " + t : d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" }) + " " + t;
+}
+function clip(t, n) { return t.length > n ? t.slice(0, n - 1) + "…" : t; }
+function flowChip(f) {
+  const t = { analist: ["●", "Analist"], yedek: ["↺", "Yedek"], kural: ["◇", "Kural"], hata: ["✕", "Hata"] }[f] || ["", f];
+  return h("span", { class: "flow " + f }, t[0], t[1]);
+}
+
+$("#a-period").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  A.days = Number(b.dataset.days); A.shown = 100;
+  $("#a-period").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+  A.render();
+};
+$("#a-user").onchange = e => { A.user = e.target.value; A.shown = 100; A.render(); };
+$("#a-flow").onchange = e => { A.flow = e.target.value; A.shown = 100; A.render(); };
+$("#a-text").oninput = e => { A.text = e.target.value.trim(); A.shown = 100; A.render(); };
+$("#a-refresh").onclick = () => A.load();
+A.timer = setInterval(() => {
+  // Live refresh only while the list is in view and no timeline is open (it would jump).
+  if ($("#a-live").checked && document.body.dataset.view === "analyses" && !document.hidden && !A.open) A.load();
+}, 15000);
+let startView = "analyses";
+try { startView = sessionStorage.getItem("admin-view") || "analyses"; } catch (e) { /* storage blocked */ }
+setView(startView === "settings" ? "settings" : "analyses");
 </script>
 </body>
 </html>

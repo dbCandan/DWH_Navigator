@@ -25,6 +25,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
+from vsa import trace
 from vsa.llm.analyst_prompts import (
     ANALYST_SCHEMA,
     CHUNK_SCHEMA,
@@ -220,13 +221,15 @@ def read_chunks(
     """Step 1a: every part of the catalog read at the same time, for recall. None only when
     every part failed; a failed part is counted and the others carry on."""
 
-    def one(chunk: str) -> dict[str, object] | None:
-        return client.chat_json(
-            chunk_system(chunk, per_chunk), chunk_user(query), CHUNK_SCHEMA, max_tokens=1500
-        )
+    def one(i: int, chunk: str) -> dict[str, object] | None:
+        with trace.span(f"Parça {i}/{len(chunks)}"):
+            return client.chat_json(
+                chunk_system(chunk, per_chunk), chunk_user(query), CHUNK_SCHEMA, max_tokens=1500
+            )
 
     with ThreadPoolExecutor(max_workers=max(1, len(chunks))) as pool:
-        replies = list(pool.map(one, chunks))
+        tasks = [pool.submit(trace.carry(one), i, c) for i, c in enumerate(chunks, 1)]
+        replies = [t.result() for t in tasks]
     if all(r is None for r in replies):
         return None
     read = ChunkRead([], {}, [], parts=len(chunks), failed=sum(r is None for r in replies))

@@ -218,10 +218,32 @@ def test_settings_reindex_flag_and_rebuild(app_with_settings: App) -> None:
     assert out["ok"] and out["columns"] == 3 and app.reindex_pending == []
 
 
-def test_settings_page_served(base_url: str) -> None:
-    status, body, ctype = get(base_url + "/ayarlar")
-    assert status == 200 and "Kaydet ve uygula" in body.decode("utf-8")
-    assert "https://" not in body.decode("utf-8")
+def test_admin_page_served_and_not_linked(base_url: str) -> None:
+    status, body, ctype = get(base_url + "/admin")
+    html = body.decode("utf-8")
+    assert status == 200 and "Kaydet ve uygula" in html and "Analizler" in html
+    assert "https://" not in html
+    # Reached only by typing the address: the app does not link it, the old one is gone.
+    assert "/admin" not in get(base_url + "/")[1].decode("utf-8")
+    assert get(base_url + "/ayarlar")[0] == 404
+
+
+def test_ask_is_logged_for_admin(base_url: str, tmp_path: Path) -> None:
+    status, data = post(base_url + "/api/ask", {"query": "kart limit doluluk oranı"})
+    assert status == 200
+    lines = (tmp_path / "logs" / "analyses.jsonl").read_text(encoding="utf-8").splitlines()
+    entry = json.loads(lines[-1])
+    assert entry["query"] == "kart limit doluluk oranı" and entry["ip"] == "127.0.0.1"
+    assert entry["flow"] == "kural" and entry["verdict"] and entry["ms"] >= 0
+    names = [s["name"] for s in entry["spans"]]
+    assert {"Sırada bekleme", "Kural akışı", "BM25 arama", "Kolon skorlama"} <= set(names)
+
+    status, body, _ = get(base_url + "/api/admin/analyses")
+    listed = json.loads(body)["items"][0]
+    assert "spans" not in listed and "BM25 arama" in listed["steps"]
+    status, body, _ = get(f"{base_url}/api/admin/analysis/{listed['id']}")
+    assert status == 200 and json.loads(body)["spans"]
+    assert get(base_url + "/api/admin/analysis/nope")[0] == 404
 
 
 def test_lab_start_validation(app_with_settings: App, tmp_path: Path) -> None:

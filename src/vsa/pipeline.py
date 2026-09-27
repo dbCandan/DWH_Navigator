@@ -18,6 +18,7 @@ from typing import Any
 import numpy as np
 import yaml
 
+from vsa import trace
 from vsa.config import Settings
 from vsa.expansion.query_expander import (
     Concept,
@@ -280,16 +281,23 @@ class Engine:
         overrides how many objects are returned. ``topic_fit=False`` leaves out the
         table-level topic component (ADR-028); batch mode scores fields, not tables."""
         s = self.settings
+        lap = trace.Laps()
+        lap("Sorgu genişletme")
         q = self.expander.expand(query)
         self._weigh_concepts(q)
         if use_llm:
             self._llm_expand(q)
+        lap.note(f"{len(q.concepts)} kavram, {len(q.sparse_terms)} arama terimi")
+        lap("BM25 arama")
         scored = self.bm25.search(q.sparse_terms, top_k=len(self.features))
         bm25_map = dict(scored)
         max_bm25 = scored[0][1] if scored else 0.0
 
         pool = {doc for doc, _ in scored[: s.search.candidate_object_columns]}
         pool |= set(q.synonym_hits)
+        lap.note(f"{len(pool)} aday kolon")
+        if s.dense.enabled and self.hybrid:
+            lap("Anlamsal arama")
 
         # M3: the dense arm uses the original wording (ADR-004) and widens the pool with
         # semantically close columns that share no words with the request.
@@ -300,6 +308,7 @@ class Engine:
             pool |= {i for i, _ in dense_top}
             dense_hi, dense_lo = dense_top[0][1], dense_top[-1][1]
 
+        lap("Kolon skorlama")
         forced = {k for k in include if k in self.objects}
         candidate_objects = {self.features[i].col.object_key for i in pool} | forced
         object_sim: dict[str, float] | None = None
@@ -328,6 +337,8 @@ class Engine:
                     dense=dense_sim.get(f.col.id) if dense_sim else None,
                     dense_weight=s.dense.weight if dense_sim else 0.0,
                 )
+        lap.note(f"{len(candidate_objects)} tablonun {len(hits)} kolonu")
+        lap("Tablo toplama ve konu uyumu")
         topic = (
             topic_scores(
                 self.topic_keys,
@@ -356,6 +367,8 @@ class Engine:
             for i, m in enumerate(ranked)
             if m.object_key in forced or (i < limit and m.score >= s.scoring.min_candidate_score)
         ]
+        lap.note(f"{len(kept)} tablo eşik üstünde")
+        lap.done()
         return kept, q
 
     def rank(
@@ -377,7 +390,8 @@ class Engine:
             return None
         s = self.settings
         top = ranked[: s.llm.judge_candidates]
-        result = judge(query, top, self.llm)
+        with trace.span("LLM hakem", f"ilk {len(top)} aday"):
+            result = judge(query, top, self.llm)
         if result is None:
             return None  # LLM failure -> rule result stands (ADR-008)
         for m in ranked:
@@ -432,17 +446,24 @@ class Engine:
         """Analyst flow when the chat model is on (ADR-029); rule pipeline otherwise and
         whenever the model fails (ADR-008)."""
         if self.analyst_enabled:
-            result = self._analyze_llm(query, top_n)
+            with trace.span("Analist akışı", self.llm.model) as s:
+                result = self._analyze_llm(query, top_n)
+                if s is not None and result is None:
+                    s.status = "error"
             if result is not None:
                 return result
             log.warning("Analist akışı sonuç veremedi; kural tabanlı sonuca dönülüyor")
             return self._rules_after_failure(query, top_n)
-        return self._analyze_rules(query, top_n)
+        with trace.span("Kural akışı"):
+            return self._analyze_rules(query, top_n)
 
     def _rules_after_failure(self, query: str, top_n: int) -> AnalysisResult:
         """Rule answer that says the analyst could not run, and why (ADR-008)."""
-        result = self._analyze_rules(query, top_n)
-        result.fallback = fallback_reason(str(getattr(self.llm, "last_error", "")))
+        reason = fallback_reason(str(getattr(self.llm, "last_error", "")))
+        trace.event("Kural motoruna dönüldü", reason)
+        with trace.span("Kural akışı (yedek)"):
+            result = self._analyze_rules(query, top_n)
+        result.fallback = reason
         return result
 
     # ------------------------------------------------------------------ analyst (ADR-029)
@@ -489,20 +510,29 @@ class Engine:
         evidence. None when the model fails (the caller falls back to rules)."""
         a = self.settings.analyst
         catalog, checker = self._analyst_parts()
-        ranked, q = self.rank_objects(query, use_llm=False, limit=ANALYST_RULE_POOL)
-        relevance = self._column_relevance(q)
+        with trace.span("Kural motoru ipuçları"):
+            ranked, q = self.rank_objects(query, use_llm=False, limit=ANALYST_RULE_POOL)
+            relevance = self._column_relevance(q)
         started = time.perf_counter()
         steps: list[str] = []
-        if a.catalog_chunks > 1:
-            short = self._split_shortlist(query, catalog, ranked, relevance, steps)
-        else:
-            hints = self._hints(ranked, relevance, catalog)
-            short = shortlist(query, catalog, hints, self.llm, a.shortlist)
+        with trace.span("1. adım — aday seçimi", f"{len(catalog.ids)} tablonun kataloğu") as sp:
+            if a.catalog_chunks > 1:
+                short = self._split_shortlist(query, catalog, ranked, relevance, steps)
+            else:
+                hints = self._hints(ranked, relevance, catalog)
+                short = shortlist(query, catalog, hints, self.llm, a.shortlist)
+            if sp is not None and short is None:
+                sp.status, sp.detail = "error", "yanıt yok"
+            elif sp is not None and short is not None:
+                sp.detail = f"{len(short.candidates)} aday, {len(short.confusables)} benzer tablo"
         if short is None:
             return None
         seconds = time.perf_counter() - started
         columns_of = {k: [f.col for f in o.features] for k, o in self.objects.items()}
-        added = self._family_tables(short) if short.candidates else {}
+        with trace.span("Aile araması") as sp:
+            added = self._family_tables(short) if short.candidates else {}
+            if sp is not None:
+                sp.detail = f"{len(added)} tablo eklendi"
         readable = [*short.candidates, *added]
         material = confusables = ""
         if readable:
@@ -549,7 +579,14 @@ class Engine:
         a = self.settings.analyst
         t0 = time.perf_counter()
         chunks = chunk_catalog(catalog, a.catalog_chunks)
-        read = read_chunks(query, chunks, self.llm, a.chunk_candidates, catalog.ids)
+        with trace.span("1a — katalog parçaları (paralel)", f"{len(chunks)} parça") as sp:
+            read = read_chunks(query, chunks, self.llm, a.chunk_candidates, catalog.ids)
+            if sp is not None and read is None:
+                sp.status, sp.detail = "error", "hiçbir parça yanıt vermedi"
+            elif sp is not None and read is not None:
+                sp.status = "warn" if read.failed else "ok"
+                sp.detail = (f"{len(read.candidates)} aday; "
+                             f"{read.failed}/{read.parts} parça yanıtsız")
         if read is None:
             return None
         t1 = time.perf_counter()
@@ -569,8 +606,11 @@ class Engine:
                 f"{catalog.keys[key]} | {key} | {catalog.groups[key]} | {len(cols)} kolon | "
                 f"ilgili kolonlar: {names} | neden aday: {pool[key] or '-'}"
             )
-        short = reconcile(query, "\n".join(lines), self.llm, a.shortlist,
-                          {catalog.keys[k]: k for k in keys}, catalog.ids)  # fmt: skip
+        with trace.span("1b — uzlaştırma", f"{len(keys)} adaylık havuz") as sp:
+            short = reconcile(query, "\n".join(lines), self.llm, a.shortlist,
+                              {catalog.keys[k]: k for k in keys}, catalog.ids)  # fmt: skip
+            if sp is not None and short is None:
+                sp.status, sp.detail = "warn", "yanıt yok — havuzun ilk adayları kullanıldı"
         t2 = time.perf_counter()
         failed = f", {read.failed} parça yanıt vermedi" if read.failed else ""
         steps.append(
@@ -603,8 +643,13 @@ class Engine:
         t2 = time.perf_counter()
         answer: AnalystAnswer
         if readable:
-            reply = analyse(query, short.interpretation, reading.material, reading.confusables,
-                            self.llm, top_n, a.max_tokens)  # fmt: skip
+            n_columns = sum(len(columns_of[k]) for k in readable)
+            with trace.span("2. adım — kolon okuma ve rapor",
+                            f"{len(readable)} tablo, {n_columns} kolon") as sp:  # fmt: skip
+                reply = analyse(query, short.interpretation, reading.material,
+                                reading.confusables, self.llm, top_n, a.max_tokens)  # fmt: skip
+                if sp is not None and reply is None:
+                    sp.status = "error"
             if reply is None:
                 return None
             answer = build_answer(
