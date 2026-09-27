@@ -163,6 +163,10 @@ class SplitClient:
     def model(self) -> str:
         return self.chat.model
 
+    @property
+    def last_error(self) -> str:
+        return str(getattr(self.chat, "last_error", ""))
+
     def chat_json(
         self,
         system: str,
@@ -212,6 +216,7 @@ class OpenAICompatibleClient:
         self.seconds = 0.0
         self.prompt_tokens = 0  # as reported by the server ("usage"), for hosted quotas
         self.completion_tokens = 0
+        self.last_error = ""  # why the last chat call failed, for the user (ADR-029 fallback)
 
     @property
     def available(self) -> bool:
@@ -306,10 +311,12 @@ class OpenAICompatibleClient:
                     adaptations += 1
                     continue  # same attempt, without the feature the model refused
                 self.failures += 1
+                self.last_error = str(exc)
                 log.warning("LLM çağrısı başarısız: %s", exc)
                 return None
             except (KeyError, IndexError) as exc:
                 self.failures += 1
+                self.last_error = f"beklenmeyen yanıt ({exc})"
                 log.warning("LLM çağrısı başarısız: %s", exc)
                 return None
             finally:
@@ -328,6 +335,7 @@ class OpenAICompatibleClient:
                 },
             ]
         self.failures += 1
+        self.last_error = "model geçerli JSON üretmedi"
         return None
 
     def _adapt(self, error: str) -> bool:

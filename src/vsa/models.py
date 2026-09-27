@@ -169,6 +169,7 @@ class AnalysisResult:
     design: list[str] = field(default_factory=list)
     attention: list[str] = field(default_factory=list)
     analyst: bool = False  # True when the analyst flow wrote this answer
+    fallback: str = ""  # why the analyst flow could not answer (rule answer shown instead)
     dictionary_objects: int = 0  # tables in the dictionary, for the report header
 
 

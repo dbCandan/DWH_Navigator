@@ -361,10 +361,13 @@ ve açık/koyu tema düğmesi de kaldırıldı; tek görünüm Evren'dir (ADR-02
 onu kullanır.
 
 **Gerekçe.** İş birimi kullanıcısı tek bir şey yapar: talebini yazar, cevabı okur. Ekranlar
-sadeleştirildi: açılışta yalnız başlık ve arama çubuğu; soru sorulunca çubuk cevabın hemen
-üstüne, cevapla aynı genişliğe yerleşir ve soru içinde kalır; kaydırırken üst çubuğun altında
-sabit durur (2026-09-27, kullanıcı geri bildirimi: önceki "sağ üstte düğme" ve "üst çubuğun
-içinde" denemeleri beğenilmedi). Sonuç ekranında cevap ve tablo kartları öne çıkar; kavram kapsaması, skor
+sadeleştirildi: açılışta yalnız başlık ve arama çubuğu; soru sorulunca çubuk yukarı kayıp
+sayfanın başlığı olur: üst satırın ortasına, cevapla aynı genişlik ve hizaya oturur, soru içinde
+kalır. Üst satırda ayrı bir panel yoktur; logo solda, durum ve ayar sağda doğrudan galaksinin
+üzerindedir, kaydırınca arkada yumuşak bir perde belirir. Analiz sürerken çubuğun kenarında bir
+ışık dolaşır, logodaki pusula iğnesi arar ve cevapta yerine oturur; aşama bilgisi altta tek satır
+(2026-09-27, kullanıcı geri bildirimi: "sağ üstte düğme", "panelin içinde" ve "cevabın üstünde
+ayrı kutu" denemeleri bütünlüklü bulunmadı). Sonuç ekranında cevap ve tablo kartları öne çıkar; kavram kapsaması, skor
 bileşenleri, notlar ve yöntem kapalı "Ayrıntılar" bölümlerindedir.
 
 **Sonuç.** Toplu talep yalnız `vsa batch` ile yapılır; `/api/batch` ve `/api/objects` sunucuda

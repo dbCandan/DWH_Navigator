@@ -430,7 +430,14 @@ class Engine:
             if result is not None:
                 return result
             log.warning("Analist akışı sonuç veremedi; kural tabanlı sonuca dönülüyor")
+            return self._rules_after_failure(query, top_n)
         return self._analyze_rules(query, top_n)
+
+    def _rules_after_failure(self, query: str, top_n: int) -> AnalysisResult:
+        """Rule answer that says the analyst could not run, and why (ADR-008)."""
+        result = self._analyze_rules(query, top_n)
+        result.fallback = fallback_reason(str(getattr(self.llm, "last_error", "")))
+        return result
 
     # ------------------------------------------------------------------ analyst (ADR-029)
 
@@ -792,6 +799,21 @@ def _dense_for(settings: Settings, n_columns: int) -> DenseIndex | None:
     if index is None:
         log.warning("Vektör indeksi bulunamadı; `vsa index --dense` ile kurun. Yalnız BM25.")
     return index
+
+
+def fallback_reason(error: str) -> str:
+    """Plain Turkish reason for an analyst failure, from the model server's error text."""
+    text = fold(error)
+    if "context" in text and ("exceed" in text or "size" in text or "length" in text):
+        return (
+            "Modelin bağlam penceresi tablo kataloğu için küçük. Yerel modeli daha geniş "
+            "bağlamla yükleyin (LM Studio'da Context Length) veya ayarlardan bulut modelini seçin."
+        )
+    if "timed out" in text or "timeout" in text or "504" in text:
+        return "Model zamanında yanıt vermedi (zaman aşımı)."
+    if "connection" in text or "ulasilamadi" in text or "refused" in text:
+        return "Model sunucusuna ulaşılamadı."
+    return f"Model hatası: {error[:160]}" if error else "Model yanıt vermedi."
 
 
 def ranked_keys(engine: Engine, queries: Sequence[str]) -> list[list[str]]:

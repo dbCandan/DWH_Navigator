@@ -82,6 +82,7 @@ def analysis(r: AnalysisResult) -> dict[str, Any]:
         "llm_model": r.llm_model,
         "dropped": r.dropped_by_validation,
         "analyst": r.analyst,
+        "fallback": r.fallback,
         "interpretation": r.interpretation,
         "design": r.design,
         "attention": r.attention,

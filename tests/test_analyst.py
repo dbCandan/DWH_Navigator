@@ -249,12 +249,20 @@ class TestEngine:
         assert r.analyst and r.verdict is Verdict.NOT_FOUND and r.objects == []
 
     def test_model_failure_falls_back_to_rules(self) -> None:
-        r = engine(ScriptedClient(None)).analyze("kredi kartı")
+        client = ScriptedClient(None)
+        client.last_error = "HTTP 400: request (65019 tokens) exceeds the available context size"  # type: ignore[attr-defined]
+        r = engine(client).analyze("kredi kartı")
         assert not r.analyst  # ADR-008: rule pipeline answered
+        assert "bağlam penceresi" in r.fallback  # ...and the user is told why
 
     def test_second_step_failure_falls_back(self) -> None:
         r = engine(ScriptedClient(SHORTLIST, None)).analyze("kredi kartı")
         assert not r.analyst
+
+    def test_no_fallback_note_when_analyst_is_off(self) -> None:
+        e = engine(ScriptedClient())
+        e.settings.analyst.enabled = False
+        assert e.analyze("kredi kartı").fallback == ""
 
     def test_switched_off(self) -> None:
         client = ScriptedClient(SHORTLIST, analyst_reply())
