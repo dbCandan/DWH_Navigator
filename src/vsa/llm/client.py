@@ -20,7 +20,8 @@ from typing import Any, Protocol
 log = logging.getLogger(__name__)
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
-_THINK = re.compile(r"<think>.*?</think>", re.DOTALL)
+# Qwen emits <think>, Gemma via Google AI Studio <thought> — often with a draft JSON inside.
+_THINK = re.compile(r"<(think|thought)>.*?</\1>", re.DOTALL)
 
 
 RETRY_CODES = (429, 500, 502, 503, 504)

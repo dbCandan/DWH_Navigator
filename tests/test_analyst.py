@@ -184,6 +184,16 @@ class TestBuildAnswer:
         a = self.build(analyst_reply(recommendations=[{**recs[0], "confidence": 0.4}]))
         assert a.recommendations == []
 
+    def test_typo_remarks_are_dropped(self) -> None:
+        recs = analyst_reply()["recommendations"]
+        caveat = "CustomerId ek kart sahibidir. Kolon adında 'Dept' yazım hatası var."
+        a = self.build(analyst_reply(
+            recommendations=[{**recs[0], "caveat": caveat}],
+            attention=["Dept/Debt yazım hatasına dikkat.", "Ek kart ayrımı yapılmalı."],
+        ))  # fmt: skip
+        assert a.recommendations[0].caveat == "CustomerId ek kart sahibidir."
+        assert a.attention == ["Ek kart ayrımı yapılmalı."]
+
     def test_summary_prefix_follows_verdict(self) -> None:
         a = self.build(analyst_reply(verdict="KISMEN VAR", summary="VAR — birleştirme gerekir."))
         assert a.summary == "KISMEN VAR. birleştirme gerekir."

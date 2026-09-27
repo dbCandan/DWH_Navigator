@@ -601,11 +601,25 @@ class Cleaner:
             columns=cols,
             covers=self.text(item.get("covers")),
             reason=self.text(item.get("reason")),
-            caveat=self.text(item.get("caveat")) or "-",
+            caveat=without_typo_remarks(self.text(item.get("caveat"))) or "-",
             usage=self.text(item.get("usage")),
             confidence=conf,
             derivation=self.text(item.get("derivation")),
         )
+
+
+_TYPO = ("yazim hata", "yazim yanlis", "typo")
+
+
+def _is_typo_remark(text: str) -> bool:
+    """A remark about misspelt column names (Dept/Debt): true but it changes no answer;
+    models add them to warnings despite the prompt, so they are dropped here."""
+    folded = fold(text)
+    return any(t in folded for t in _TYPO)
+
+
+def without_typo_remarks(text: str) -> str:
+    return " ".join(s for s in _SENTENCE.split(text) if not _is_typo_remark(s)).strip()
 
 
 def _confidence(value: object) -> float:
@@ -662,7 +676,7 @@ def build_answer(
         summary=summary,
         recommendations=recs,
         design=clean.bullets(reply.get("design")),
-        attention=clean.bullets(reply.get("attention")),
+        attention=[a for a in clean.bullets(reply.get("attention")) if not _is_typo_remark(a)],
         notes=clean.notes(reply.get("notes")),
         dropped=clean.dropped,
     )
@@ -743,7 +757,7 @@ def build_batch_answer(
         core=core,
         fields=fields,
         design=clean.bullets(reply.get("design")),
-        attention=clean.bullets(reply.get("attention")),
+        attention=[a for a in clean.bullets(reply.get("attention")) if not _is_typo_remark(a)],
         notes=clean.notes(reply.get("notes")),
         dropped=clean.dropped,
     )

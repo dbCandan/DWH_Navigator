@@ -69,6 +69,10 @@ class TestParse:
         text = '<think>hmm</think>\n```json\n{"matches": []}\n```'
         assert parse_json_reply(text) == {"matches": []}
 
+    def test_thought_block_with_draft_json(self) -> None:
+        text = '<thought>taslak: `{"secim": 2, "gerekce": "ya`</thought>{"secim": 1}'
+        assert parse_json_reply(text) == {"secim": 1}
+
     def test_prose_around(self) -> None:
         assert parse_json_reply('Tabii: {"x": [1]} umarım yardımcı olur') == {"x": [1]}
 
