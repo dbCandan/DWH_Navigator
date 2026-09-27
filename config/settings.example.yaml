@@ -66,6 +66,10 @@ analyst:
   full_table_columns: 90       # daha geniş tablolarda yalnız ilgili kolonların açıklaması
   min_confidence: 0.5          # bu güvenin altındaki öneri gösterilmez (ADR-006)
   max_tokens: 8000             # 2. adımın cevap bütçesi
+  catalog_chunks: 5            # 1. adım: katalog 5 parçada paralel okunur, adaylar sonra kıyaslanır (1 = tek parça)
+  chunk_candidates: 8          # parça başına en fazla aday
+  pool_size: 40                # kıyaslanan aday havuzu
+  pool_columns: 12             # havuzda tablo başına gösterilen en ilgili kolon sayısı
 
 # Bulut modelleri — YALNIZ Model laboratuvarı ölçümü için (ADR-026). Uygulamanın hakemi
 # yerelde kalır. Açıkken ölçüm, test soruları ve aday tablo/kolon açıklamalarını dışarı gönderir.

@@ -484,3 +484,19 @@ A100 üzerinde daha büyük/yerel modelle karşılaştırma (`vsa lab`).
 fark model değişkenliğinden ayrılamıyor. Sonraki adımlar `docs/METODOLOJI_KARSILASTIRMASI.md`
 §4: deterministik skor (modelden yapılandırılmış bulgu), yapılandırılmış talep ayrıştırma,
 otomatik kalite kontrol, tekrar ölçümüyle tutarlılık.
+
+**Ek (2026-09-27): 1. adım parçalı + uzlaştırma.** Tek parça katalog (~65k token) NVIDIA'nın
+ücretsiz katmanında yavaş ve zaman zaman 504; laptopta yerel model ~20 dk/soru (okuma ~75, yazma
+~4 token/sn); Google AI Studio ücretsiz katmanı gemma-4-31b için dakikada 16k giriş tokenı
+tanıyor. Kullanıcı kararıyla NVIDIA'da kalındı ve 1. adım ikiye ayrıldı:
+- *1a — parçalar (paralel):* katalog `analyst.catalog_chunks` (5) parçaya bölünür; bir veri seti
+  grubunun tabloları aynı parçada kalır (grup parçadan büyükse bölünür), parçalar ~11.7k token.
+  Her parça "emin değilsen dahil et" kuralıyla en fazla 8 aday önerir (kaçırmamak için).
+- *Havuz:* parçaların adayları + kural motorunun kavramları birlikte taşıyan 8 tablosu + ilk 5
+  tablosu, en fazla 40 tablo. Her tablo için adı, grubu, talebe en ilgili 12 kolon adı ve neden
+  aday olduğu.
+- *1b — uzlaştırma:* model havuzu yan yana görür (parçalar birbirini görmediği için puanları
+  kıyaslanamaz) ve 1. adımın bütün çıktısını üretir: final 14 aday, yorum, bilgi aileleri, benzer
+  tablolar. Başarısız olursa havuzun ilk adaylarıyla devam edilir.
+2. adım, aile araması ve doğrulama değişmedi. `catalog_chunks: 1` eski tek parça akışıdır
+(büyük bağlamlı hızlı sunucu, ör. A100 + vLLM önek önbelleği).

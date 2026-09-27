@@ -166,6 +166,17 @@ SECTIONS: list[dict[str, Any]] = [
                 "help": "Çok = kaçırma riski az ama istem uzun ve cevap yavaş.",
             },
             {
+                "key": "analyst.catalog_chunks",
+                "label": "Katalog kaç parçada okunsun",
+                "type": "int",
+                "min": 1,
+                "max": 10,
+                "step": 1,
+                "effect": NOW,
+                "help": "1. adımda tablo kataloğu bu kadar parçaya bölünüp aynı anda okunur, adaylar "
+                "sonra yan yana kıyaslanır. 1: katalog tek istekte (büyük bağlamlı, hızlı sunucular için).",
+            },
+            {
                 "key": "analyst.confusables",
                 "label": "Uyarı için okunan benzer tablo",
                 "type": "int",

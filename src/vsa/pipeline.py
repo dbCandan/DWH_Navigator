@@ -45,8 +45,11 @@ from vsa.llm.analyst import (
     analyse,
     build_answer,
     build_catalog,
+    chunk_catalog,
     column_caveats,
     confusable_material,
+    read_chunks,
+    reconcile,
     shortlist,
     table_material,
     term_matcher,
@@ -93,6 +96,8 @@ OBJECT_POOL = 15
 # Rule results shown to the analyst model as hints (ADR-029).
 ANALYST_HINT_TABLES = 15
 ANALYST_RULE_POOL = 60  # rule-ranked tables the "together" hint picks from
+POOL_RULE_TOGETHER = 8  # rule tables carrying most request concepts, added to the pool
+POOL_RULE_TOP = 5  # and the rule ranking's first ones
 ANALYST_HINT_COLUMNS = 25
 
 
@@ -132,6 +137,7 @@ class AnalystReading:
     confusables: str
     columns_of: dict[str, list[DictColumn]]
     seconds: float  # step 1
+    steps: list[str] = field(default_factory=list)  # how step 1 went, for the method notes
 
     @property
     def ids(self) -> dict[str, str]:
@@ -486,8 +492,12 @@ class Engine:
         ranked, q = self.rank_objects(query, use_llm=False, limit=ANALYST_RULE_POOL)
         relevance = self._column_relevance(q)
         started = time.perf_counter()
-        hints = self._hints(ranked, relevance, catalog)
-        short = shortlist(query, catalog, hints, self.llm, a.shortlist)
+        steps: list[str] = []
+        if a.catalog_chunks > 1:
+            short = self._split_shortlist(query, catalog, ranked, relevance, steps)
+        else:
+            hints = self._hints(ranked, relevance, catalog)
+            short = shortlist(query, catalog, hints, self.llm, a.shortlist)
         if short is None:
             return None
         seconds = time.perf_counter() - started
@@ -522,8 +532,64 @@ class Engine:
             )  # fmt: skip
         return AnalystReading(
             catalog, checker, ranked, q, relevance, short, added, readable, material,
-            confusables, columns_of, seconds,
+            confusables, columns_of, seconds, steps,
         )  # fmt: skip
+
+    def _split_shortlist(
+        self,
+        query: str,
+        catalog: Catalog,
+        ranked: Sequence[ObjectMatch],
+        relevance: Mapping[int, float],
+        steps: list[str],
+    ) -> Shortlist | None:
+        """Step 1 in parts (ADR-029): the catalog's parts read in parallel for recall (1a),
+        their candidates pooled with the search engine's, then compared side by side (1b).
+        If the comparison fails, the pool's first candidates go on (the parts' picks first)."""
+        a = self.settings.analyst
+        t0 = time.perf_counter()
+        chunks = chunk_catalog(catalog, a.catalog_chunks)
+        read = read_chunks(query, chunks, self.llm, a.chunk_candidates, catalog.ids)
+        if read is None:
+            return None
+        t1 = time.perf_counter()
+        pool: dict[str, str] = dict(read.reasons)
+        together = sorted(ranked, key=lambda m: (-len(m.covered), -m.score))
+        for m in [*together[:POOL_RULE_TOGETHER], *ranked[:POOL_RULE_TOP]]:
+            concepts = ", ".join(m.covered) or "-"
+            pool.setdefault(m.object_key, f"arama motoru önerdi (kavramlar: {concepts})")
+        keys = list(pool)[: a.pool_size]
+        hits = term_matcher(read.search_terms)
+        lines = []
+        for key in keys:
+            cols = self.objects[key].features
+            best = sorted(cols, key=lambda f: -(relevance.get(f.col.id, 0.0) + 0.5 * hits(f.col)))
+            names = ", ".join(f.col.column for f in best[: a.pool_columns])
+            lines.append(
+                f"{catalog.keys[key]} | {key} | {catalog.groups[key]} | {len(cols)} kolon | "
+                f"ilgili kolonlar: {names} | neden aday: {pool[key] or '-'}"
+            )
+        short = reconcile(query, "\n".join(lines), self.llm, a.shortlist,
+                          {catalog.keys[k]: k for k in keys}, catalog.ids)  # fmt: skip
+        t2 = time.perf_counter()
+        failed = f", {read.failed} parça yanıt vermedi" if read.failed else ""
+        steps.append(
+            f"1a — katalog {read.parts} parçada paralel okundu: {len(read.candidates)} aday"
+            f"{failed} ({t1 - t0:.0f} sn)"
+        )
+        if short is None:
+            steps.append("1b — uzlaştırma yanıt vermedi; havuzun ilk adayları kullanıldı")
+            return Shortlist(
+                "", keys[: a.shortlist], {k: pool[k] for k in keys}, [], read.search_terms,
+                read.unknown_ids,
+            )  # fmt: skip
+        steps.append(
+            f"1b — {len(keys)} adaylık havuz yan yana kıyaslandı, {len(short.candidates)} "
+            f"final aday seçildi ({t2 - t1:.0f} sn)"
+        )
+        short.unknown_ids += read.unknown_ids
+        short.search_terms = short.search_terms or read.search_terms
+        return short
 
     def _analyze_llm(self, query: str, top_n: int) -> AnalysisResult | None:
         started = time.perf_counter()
@@ -577,6 +643,7 @@ class Engine:
             f"Analist akışı (ADR-029): {self.llm.model}",
             f"1. adım — {len(catalog.ids)} tablonun kataloğundan {len(short.candidates)} aday "
             f"ve {len(short.confusables)} benzer tablo seçildi ({reading.seconds:.0f} sn)",
+            *reading.steps,
             "Okunan adaylar: " + (", ".join(k.rsplit(".", 1)[-1] for k in short.candidates) or "-"),
             "Benzer (uyarı) tablolar: "
             + (", ".join(k.rsplit(".", 1)[-1] for k in short.confusables) or "-"),

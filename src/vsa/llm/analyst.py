@@ -22,13 +22,18 @@ import logging
 import re
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from vsa.llm.analyst_prompts import (
     ANALYST_SCHEMA,
+    CHUNK_SCHEMA,
     SHORTLIST_SCHEMA,
     analyst_system,
     analyst_user,
+    chunk_system,
+    chunk_user,
+    reconcile_system,
     shortlist_system,
     shortlist_user,
 )
@@ -65,6 +70,8 @@ class Catalog:
     text: str  # one line per table; identical for every request (prefix caching)
     ids: dict[str, str]  # "T12" -> object key
     keys: dict[str, str]  # object key -> "T12"
+    lines: dict[str, str] = field(default_factory=dict)  # object key -> its catalog line
+    groups: dict[str, str] = field(default_factory=dict)  # object key -> dataset group
 
 
 def _group(columns: Sequence[DictColumn]) -> str:
@@ -73,15 +80,44 @@ def _group(columns: Sequence[DictColumn]) -> str:
 
 
 def build_catalog(objects: Mapping[str, Sequence[DictColumn]]) -> Catalog:
-    lines: list[str] = []
+    lines: dict[str, str] = {}
+    groups: dict[str, str] = {}
     ids: dict[str, str] = {}
     for i, key in enumerate(sorted(objects), 1):
         cols = objects[key]
         tid = f"T{i}"
         ids[tid] = key
+        groups[key] = _group(cols)
         names = ", ".join(c.column for c in cols)
-        lines.append(f"{tid} | {key} | {_group(cols)} | {len(cols)} kolon | {names}")
-    return Catalog("\n".join(lines), ids, {k: t for t, k in ids.items()})
+        lines[key] = f"{tid} | {key} | {groups[key]} | {len(cols)} kolon | {names}"
+    return Catalog("\n".join(lines.values()), ids, {k: t for t, k in ids.items()}, lines, groups)
+
+
+def chunk_catalog(catalog: Catalog, n: int) -> list[str]:
+    """The catalog cut into ``n`` parts of similar size. Tables of one dataset group stay
+    together (card tables with card tables), so each part can still compare relatives; a
+    group larger than a part is split. Empty parts are dropped."""
+    n = max(1, n)
+    by_group: dict[str, list[str]] = defaultdict(list)
+    for key in catalog.lines:
+        by_group[catalog.groups[key]].append(key)
+    size = {g: sum(len(catalog.lines[k]) for k in keys) for g, keys in by_group.items()}
+    target = sum(size.values()) / n
+    bins: list[list[str]] = [[] for _ in range(n)]
+    load = [0] * n
+    for group in sorted(by_group, key=lambda g: -size[g]):
+        pieces = [by_group[group]]
+        if size[group] > target * 1.2:  # too big for one part: spread it
+            keys = by_group[group]
+            parts = min(n, int(size[group] // target) + 1)
+            pieces = [keys[i::parts] for i in range(parts)]
+        for piece in pieces:
+            i = load.index(min(load))
+            bins[i] += piece
+            load[i] += sum(len(catalog.lines[k]) for k in piece)
+    order = {k: i for i, k in enumerate(catalog.lines)}
+    ordered = [sorted(b, key=order.__getitem__) for b in bins if b]
+    return ["\n".join(catalog.lines[k] for k in keys) for keys in ordered]
 
 
 # --------------------------------------------------------------------------- step 1
@@ -101,56 +137,128 @@ class Shortlist:
     families: list[tuple[str, list[str]]] = field(default_factory=list)
 
 
+def _picks(
+    items: object, ids: Mapping[str, str], cap: int
+) -> tuple[list[str], dict[str, str], int]:
+    """Object keys the model picked (in order, at most ``cap``), their reasons, and how
+    many ids were not among ``ids``."""
+    out: list[str] = []
+    why: dict[str, str] = {}
+    unknown = 0
+    for item in items if isinstance(items, list) else []:
+        if not isinstance(item, dict):
+            continue
+        key = resolve_id(item.get("id"), ids)
+        if key is None:
+            unknown += 1
+            log.warning("Analist listede olmayan id döndürdü: %s", item.get("id"))
+            continue
+        if key not in out and len(out) < cap:
+            out.append(key)
+            why[key] = str(item.get("why", "")).strip()
+    return out, why, unknown
+
+
+def _terms(value: object, cap: int) -> list[str]:
+    return [str(t).strip() for t in (value if isinstance(value, list) else []) if str(t).strip()][
+        :cap
+    ]
+
+
+def parse_shortlist(
+    reply: Mapping[str, object],
+    candidate_ids: Mapping[str, str],
+    confusable_ids: Mapping[str, str],
+    limit: int,
+) -> Shortlist:
+    cands, reasons, unknown = _picks(reply.get("candidates"), candidate_ids, limit)
+    conf, _, unknown_conf = _picks(reply.get("confusables"), confusable_ids, limit)
+    families: list[tuple[str, list[str]]] = []
+    raw_families = reply.get("families")
+    for fam in raw_families if isinstance(raw_families, list) else []:
+        if isinstance(fam, dict) and (words := _terms(fam.get("terms"), 8)):
+            families.append((str(fam.get("name", "")).strip() or "-", words))
+    return Shortlist(
+        interpretation=str(reply.get("interpretation", "")).strip(),
+        candidates=cands,
+        reasons=reasons,
+        confusables=[k for k in conf if k not in cands],
+        search_terms=_terms(reply.get("search_terms"), 12),
+        unknown_ids=unknown + unknown_conf,
+        families=families[:6],
+    )
+
+
 def shortlist(
     query: str, catalog: Catalog, hints: str, client: LLMClient, limit: int
 ) -> Shortlist | None:
+    """Step 1 in one call: the whole catalog."""
     reply = client.chat_json(
         shortlist_system(catalog.text, limit),
         shortlist_user(query, hints),
         SHORTLIST_SCHEMA,
         max_tokens=2500,
     )
-    if reply is None:
+    return None if reply is None else parse_shortlist(reply, catalog.ids, catalog.ids, limit)
+
+
+@dataclass(slots=True)
+class ChunkRead:
+    """Step 1a: what the parallel readers of the catalog parts proposed."""
+
+    candidates: list[str]  # object keys, part by part
+    reasons: dict[str, str]
+    search_terms: list[str]
+    parts: int
+    failed: int
+    unknown_ids: int = 0
+
+
+def read_chunks(
+    query: str, chunks: Sequence[str], client: LLMClient, per_chunk: int, ids: Mapping[str, str]
+) -> ChunkRead | None:
+    """Step 1a: every part of the catalog read at the same time, for recall. None only when
+    every part failed; a failed part is counted and the others carry on."""
+
+    def one(chunk: str) -> dict[str, object] | None:
+        return client.chat_json(
+            chunk_system(chunk, per_chunk), chunk_user(query), CHUNK_SCHEMA, max_tokens=1500
+        )
+
+    with ThreadPoolExecutor(max_workers=max(1, len(chunks))) as pool:
+        replies = list(pool.map(one, chunks))
+    if all(r is None for r in replies):
         return None
-    unknown = 0
-
-    def keys(items: object, cap: int) -> tuple[list[str], dict[str, str]]:
-        nonlocal unknown
-        out: list[str] = []
-        why: dict[str, str] = {}
-        for item in items if isinstance(items, list) else []:
-            if not isinstance(item, dict):
-                continue
-            key = resolve_id(item.get("id"), catalog.ids)
-            if key is None:
-                unknown += 1
-                log.warning("Analist katalogda olmayan id döndürdü: %s", item.get("id"))
-                continue
-            if key not in out and len(out) < cap:
-                out.append(key)
-                why[key] = str(item.get("why", "")).strip()
-        return out, why
-
-    cands, reasons = keys(reply.get("candidates"), limit)
-    conf, _ = keys(reply.get("confusables"), limit)
-    terms = [str(t).strip() for t in reply.get("search_terms") or [] if str(t).strip()]
-    families: list[tuple[str, list[str]]] = []
-    raw_families = reply.get("families")
-    for fam in raw_families if isinstance(raw_families, list) else []:
-        if not isinstance(fam, dict):
+    read = ChunkRead([], {}, [], parts=len(chunks), failed=sum(r is None for r in replies))
+    for reply in replies:
+        if reply is None:
             continue
-        words = [str(w).strip() for w in fam.get("terms") or [] if str(w).strip()]
-        if words:
-            families.append((str(fam.get("name", "")).strip() or "-", words[:8]))
-    return Shortlist(
-        interpretation=str(reply.get("interpretation", "")).strip(),
-        candidates=cands,
-        reasons=reasons,
-        confusables=[k for k in conf if k not in cands],
-        search_terms=terms[:12],
-        unknown_ids=unknown,
-        families=families[:6],
-    )
+        keys, why, unknown = _picks(reply.get("candidates"), ids, per_chunk)
+        read.unknown_ids += unknown
+        for key in keys:
+            if key not in read.reasons:
+                read.candidates.append(key)
+                read.reasons[key] = why[key]
+        read.search_terms += [t for t in _terms(reply.get("search_terms"), 8)
+                              if t not in read.search_terms]  # fmt: skip
+    return read
+
+
+def reconcile(
+    query: str,
+    pool: str,
+    client: LLMClient,
+    limit: int,
+    pool_ids: Mapping[str, str],
+    catalog_ids: Mapping[str, str],
+) -> Shortlist | None:
+    """Step 1b: the pooled candidates compared side by side; the final candidates, the
+    reading of the request, its information families and look-alike tables."""
+    reply = client.chat_json(
+        reconcile_system(pool, limit), shortlist_user(query, "-"), SHORTLIST_SCHEMA,
+        max_tokens=2500,
+    )  # fmt: skip
+    return None if reply is None else parse_shortlist(reply, pool_ids, catalog_ids, limit)
 
 
 # --------------------------------------------------------------------------- material

@@ -115,6 +115,12 @@ class AnalystSettings:
     full_table_columns: int = 90  # wider tables: descriptions only for relevant columns
     min_confidence: float = 0.5  # recommendations below this are not shown (ADR-006)
     max_tokens: int = 8000  # answer budget of the second step
+    # Step 1 split (ADR-029): the catalog read in N parallel parts for recall, then the
+    # pooled candidates compared side by side. 1 = the whole catalog in one call.
+    catalog_chunks: int = 5
+    chunk_candidates: int = 8  # candidates each part may propose
+    pool_size: int = 40  # pooled candidates the reconcile step compares
+    pool_columns: int = 12  # most relevant column names shown per pooled table
 
 
 @dataclass(slots=True)
