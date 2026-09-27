@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from vsa.config import CloudSettings, cloud_api_key, load_settings
+from vsa.config import GOOGLE_AI_ENDPOINT, CloudSettings, cloud_api_key, load_settings
 from vsa.llm.client import LLMError, OpenAICompatibleClient, retry_delay
 from vsa.web.settings_schema import is_chat_model, values_of
 
@@ -78,11 +78,23 @@ def test_client_gives_up_on_other_errors(monkeypatch: pytest.MonkeyPatch) -> Non
 
 
 def test_cloud_key_from_settings_or_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("vsa.config.os.name", "posix")  # no registry lookup in tests
     monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
     assert cloud_api_key(CloudSettings()) == ""
     monkeypatch.setenv("NVIDIA_API_KEY", "nvapi-env")
     assert cloud_api_key(CloudSettings()) == "nvapi-env"
     assert cloud_api_key(CloudSettings(api_key="nvapi-file")) == "nvapi-file"
+
+
+def test_google_key_comes_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Google AI Studio: the saved (NVIDIA) key is not sent to Google; GEMINI_API_KEY is."""
+    monkeypatch.setattr("vsa.config.os.name", "posix")
+    google = CloudSettings(api_key="nvapi-file", endpoint=GOOGLE_AI_ENDPOINT)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+    assert cloud_api_key(google) == ""
+    monkeypatch.setenv("GEMINI_API_KEY", "g-env")
+    assert cloud_api_key(google) == "g-env"
 
 
 def test_cloud_secret_never_leaves_and_blank_keeps(tmp_path: Path) -> None:

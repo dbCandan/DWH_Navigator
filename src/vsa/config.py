@@ -143,8 +143,31 @@ class CloudSettings:
 CLOUD_PREFIX = "cloud:"  # lab model ids: "cloud:meta/llama-3.3-70b-instruct"
 
 
+GOOGLE_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+
 def cloud_api_key(cloud: CloudSettings) -> str:
-    return cloud.api_key or os.environ.get("NVIDIA_API_KEY", "")
+    """Key for the hosted endpoint. Google AI Studio reads GEMINI_API_KEY first, so the
+    saved NVIDIA key can stay in the file for switching back; NVIDIA falls back to
+    NVIDIA_API_KEY when no key is saved."""
+    if "generativelanguage.googleapis.com" in cloud.endpoint:
+        return user_env("GEMINI_API_KEY") or user_env("GOOGLE_API_KEY")
+    return cloud.api_key or user_env("NVIDIA_API_KEY")
+
+
+def user_env(name: str) -> str:
+    """An environment variable, or on Windows the user's saved one (``setx`` only reaches
+    programs started afterwards, not a console that was already open)."""
+    value = os.environ.get(name, "")
+    if value or os.name != "nt":
+        return value
+    try:
+        import winreg
+
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as key:
+            return str(winreg.QueryValueEx(key, name)[0])
+    except OSError:
+        return ""
 
 
 @dataclass(slots=True)
