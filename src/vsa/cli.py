@@ -33,7 +33,7 @@ from rich.table import Table
 
 from vsa import lab
 from vsa.batch import BatchAnalyzer
-from vsa.config import CLOUD_PREFIX, Settings, cloud_api_key, load_settings
+from vsa.config import CLOUD_PREFIX, Settings, active_cloud, cloud_api_key, load_settings
 from vsa.evaluation import (
     KS,
     EvalReport,
@@ -541,6 +541,7 @@ def lab_cmd(
     todo_in = list(models or [])
     remote = [m for m in todo_in if m.startswith(CLOUD_PREFIX)]
     cloud_key = cloud_api_key(settings.cloud)
+    settings.cloud = active_cloud(settings.cloud)  # the lab measures on the provider in use
     if remote and not (settings.cloud.enabled and cloud_key):
         console.print("[red]Bulut modelleri için ayarlarda 'Bulut modelleri' açık olmalı ve "
                       "API anahtarı girilmeli (veya NVIDIA_API_KEY).[/red]")

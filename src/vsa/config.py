@@ -138,6 +138,11 @@ class CloudSettings:
     endpoint: str = "https://integrate.api.nvidia.com/v1"  # any OpenAI-compatible API
     api_key: str = ""  # else the NVIDIA_API_KEY environment variable
     rpm: int = 30  # requests per minute (NVIDIA's free tier allows ~40)
+    model: str = ""  # the judge's id at this provider; empty = llm.model
+    # Other providers side by side, e.g. {"google": {endpoint, api_key, model, rpm}};
+    # ``active`` picks one, empty = the fields above. Switching back and forth is one line.
+    active: str = ""
+    profiles: dict[str, dict[str, Any]] = field(default_factory=dict)
 
 
 CLOUD_PREFIX = "cloud:"  # lab model ids: "cloud:meta/llama-3.3-70b-instruct"
@@ -146,13 +151,29 @@ CLOUD_PREFIX = "cloud:"  # lab model ids: "cloud:meta/llama-3.3-70b-instruct"
 GOOGLE_AI_ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/openai"
 
 
+def active_cloud(cloud: CloudSettings) -> CloudSettings:
+    """The provider in use: the profile named by ``active``, else the top-level fields."""
+    p = cloud.profiles.get(cloud.active) if cloud.active else None
+    if not p:
+        return cloud
+    return CloudSettings(
+        enabled=cloud.enabled,
+        endpoint=str(p.get("endpoint") or cloud.endpoint),
+        api_key=str(p.get("api_key") or ""),
+        rpm=int(p.get("rpm") or cloud.rpm),
+        model=str(p.get("model") or ""),
+    )
+
+
 def cloud_api_key(cloud: CloudSettings) -> str:
-    """Key for the hosted endpoint. Google AI Studio reads GEMINI_API_KEY first, so the
-    saved NVIDIA key can stay in the file for switching back; NVIDIA falls back to
-    NVIDIA_API_KEY when no key is saved."""
-    if "generativelanguage.googleapis.com" in cloud.endpoint:
+    """Key for the provider in use: the saved one, else an environment variable
+    (GEMINI_API_KEY for Google AI Studio, NVIDIA_API_KEY otherwise)."""
+    c = active_cloud(cloud)
+    if c.api_key:
+        return c.api_key
+    if "generativelanguage.googleapis.com" in c.endpoint:
         return user_env("GEMINI_API_KEY") or user_env("GOOGLE_API_KEY")
-    return cloud.api_key or user_env("NVIDIA_API_KEY")
+    return user_env("NVIDIA_API_KEY")
 
 
 def user_env(name: str) -> str:

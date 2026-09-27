@@ -236,6 +236,14 @@ SECTIONS: list[dict[str, Any]] = [
                 "effect": NOW,
                 "help": "Ücretsiz katman dakikada ~40 istek tanır; sınır aşılırsa istemci bekleyip yeniden dener.",
             },
+            {
+                "key": "cloud.active",
+                "label": "Etkin bulut profili",
+                "type": "str",
+                "effect": NOW,
+                "help": "settings.yaml'daki cloud.profiles içinden bir ad (ör. google). Boş: yukarıdaki "
+                "adres ve anahtar (NVIDIA). Profil kendi adresini, anahtarını ve model adını taşır.",
+            },
         ],
     },
     {

@@ -7,7 +7,13 @@ from typing import Any
 
 import pytest
 
-from vsa.config import GOOGLE_AI_ENDPOINT, CloudSettings, cloud_api_key, load_settings
+from vsa.config import (
+    GOOGLE_AI_ENDPOINT,
+    CloudSettings,
+    active_cloud,
+    cloud_api_key,
+    load_settings,
+)
 from vsa.llm.client import LLMError, OpenAICompatibleClient, retry_delay
 from vsa.web.settings_schema import is_chat_model, values_of
 
@@ -86,15 +92,24 @@ def test_cloud_key_from_settings_or_env(monkeypatch: pytest.MonkeyPatch) -> None
     assert cloud_api_key(CloudSettings(api_key="nvapi-file")) == "nvapi-file"
 
 
-def test_google_key_comes_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Google AI Studio: the saved (NVIDIA) key is not sent to Google; GEMINI_API_KEY is."""
+def test_cloud_profiles(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Two providers side by side; ``active`` picks one and the other stays untouched."""
     monkeypatch.setattr("vsa.config.os.name", "posix")
-    google = CloudSettings(api_key="nvapi-file", endpoint=GOOGLE_AI_ENDPOINT)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    assert cloud_api_key(google) == ""
+    google = {"endpoint": GOOGLE_AI_ENDPOINT, "api_key": "", "model": "gemma-4-31b-it", "rpm": 15}
+    c = CloudSettings(api_key="nvapi-file", model="", profiles={"google": google})
+    assert active_cloud(c) is c and cloud_api_key(c) == "nvapi-file"  # NVIDIA by default
+    c.active = "google"
+    a = active_cloud(c)
+    assert (a.endpoint, a.model, a.rpm) == (GOOGLE_AI_ENDPOINT, "gemma-4-31b-it", 15)
+    assert cloud_api_key(c) == ""  # the NVIDIA key is never sent to Google
     monkeypatch.setenv("GEMINI_API_KEY", "g-env")
-    assert cloud_api_key(google) == "g-env"
+    assert cloud_api_key(c) == "g-env"
+    google["api_key"] = "g-file"
+    assert cloud_api_key(c) == "g-file"
+    c.active = "yok"
+    assert active_cloud(c) is c  # unknown profile: the top-level provider
 
 
 def test_cloud_secret_never_leaves_and_blank_keeps(tmp_path: Path) -> None:

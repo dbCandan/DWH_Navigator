@@ -74,6 +74,15 @@ cloud:
   endpoint: https://integrate.api.nvidia.com/v1   # NVIDIA API kataloğu (build.nvidia.com)
   api_key: ""        # nvapi-… ; boşsa NVIDIA_API_KEY ortam değişkeni
   rpm: 30            # dakikadaki istek sınırı (ücretsiz katman ~40)
+  # Birden çok sağlayıcı yan yana: 'active' bir profil adı seçer; boş = yukarıdaki alanlar.
+  # Profil kendi adresini, anahtarını (boşsa GEMINI_API_KEY / NVIDIA_API_KEY) ve model adını taşır.
+  active: ''
+  profiles:
+    google:
+      endpoint: https://generativelanguage.googleapis.com/v1beta/openai
+      api_key: ''
+      model: gemma-4-31b-it
+      rpm: 15
 
 report:
   out_dir: out

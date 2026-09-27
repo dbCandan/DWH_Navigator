@@ -45,7 +45,13 @@ import yaml
 
 from vsa import lab
 from vsa.batch import BatchAnalyzer
-from vsa.config import CLOUD_PREFIX, DEFAULT_SETTINGS_PATH, cloud_api_key, load_settings
+from vsa.config import (
+    CLOUD_PREFIX,
+    DEFAULT_SETTINGS_PATH,
+    active_cloud,
+    cloud_api_key,
+    load_settings,
+)
 from vsa.llm.client import LLMError, OpenAICompatibleClient
 from vsa.loader import load_request_file
 from vsa.models import AnalysisResult, BatchResult, RequestField
@@ -289,8 +295,8 @@ class App:
 
     def cloud_models(self, refresh: bool = False) -> dict[str, Any]:
         """Chat models of the hosted catalog (lab only, ADR-026); cached for 10 minutes."""
-        cloud = self.engine.settings.cloud
-        key = cloud_api_key(cloud)
+        key = cloud_api_key(self.engine.settings.cloud)
+        cloud = active_cloud(self.engine.settings.cloud)
         if not cloud.enabled:
             return {"ok": False, "reason": "Bulut ölçümü kapalı (Ayarlar → Bulut modelleri).",
                     "models": []}  # fmt: skip

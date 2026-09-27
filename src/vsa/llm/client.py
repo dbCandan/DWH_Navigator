@@ -115,13 +115,15 @@ def client_from_settings(llm: Any, embeddings: bool = False, cloud: Any = None) 
     provider = str(getattr(llm, "provider", "local"))
     use_cloud = enabled and provider == "cloud" and cloud is not None
     if use_cloud:
-        from vsa.config import cloud_api_key  # local import: config does not need the client
+        from vsa.config import active_cloud, cloud_api_key  # config does not need the client
 
         key = cloud_api_key(cloud)
+        cloud = active_cloud(cloud)  # the provider picked by cloud.active
+        model = cloud.model or llm.model
         chat: LLMClient = NullClient()
-        if key and cloud.endpoint and llm.model:
+        if key and cloud.endpoint and model:
             chat = OpenAICompatibleClient(
-                endpoint=cloud.endpoint, model=llm.model, temperature=llm.temperature,
+                endpoint=cloud.endpoint, model=model, temperature=llm.temperature,
                 timeout=llm.timeout, api_key=key, reasoning_effort=llm.reasoning_effort,
                 retries=3, seed=seed,
             )  # fmt: skip
