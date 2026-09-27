@@ -361,8 +361,10 @@ ve açık/koyu tema düğmesi de kaldırıldı; tek görünüm Evren'dir (ADR-02
 onu kullanır.
 
 **Gerekçe.** İş birimi kullanıcısı tek bir şey yapar: talebini yazar, cevabı okur. Ekranlar
-sadeleştirildi: açılışta yalnız başlık ve arama çubuğu; soru sorulunca çubuk sağ üstte bir
-düğmeye toplanır. Sonuç ekranında cevap ve tablo kartları öne çıkar; kavram kapsaması, skor
+sadeleştirildi: açılışta yalnız başlık ve arama çubuğu; soru sorulunca çubuk cevabın hemen
+üstüne, cevapla aynı genişliğe yerleşir ve soru içinde kalır; kaydırırken üst çubuğun altında
+sabit durur (2026-09-27, kullanıcı geri bildirimi: önceki "sağ üstte düğme" ve "üst çubuğun
+içinde" denemeleri beğenilmedi). Sonuç ekranında cevap ve tablo kartları öne çıkar; kavram kapsaması, skor
 bileşenleri, notlar ve yöntem kapalı "Ayrıntılar" bölümlerindedir.
 
 **Sonuç.** Toplu talep yalnız `vsa batch` ile yapılır; `/api/batch` ve `/api/objects` sunucuda
