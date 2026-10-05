@@ -9,11 +9,9 @@ from enum import StrEnum
 class FlagKind(StrEnum):
     """Quality flags attached to a dictionary column (HANDOVER §3.3, §3.4)."""
 
-    MODEL_ESTIMATED = "model_estimated"  # [MODEL TAHMİNİ — DOĞRULANMALI] -> score ×0.85
+    MODEL_ESTIMATED = "model_estimated"  # [MODEL TAHMİNİ — DOĞRULANMALI] -> note only
     CORRECTED = "corrected"  # [ORİJİNAL AÇIKLAMA HATALIYDI — DÜZELTİLDİ ...] -> note only
     NEEDS_VERIFICATION = "needs_verification"  # other leading [...] notes -> note only
-    NAMING_MISMATCH = "naming_mismatch"  # Sheet2 "İsimlendirme/İçerik Uyumsuzluğu" -> ×0.90
-    QUALITY_NOTE = "quality_note"  # any other Sheet2 finding -> note only
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +35,8 @@ class DictColumn:
     flags: tuple[Flag, ...] = ()
     dataset_group: str | None = None
     has_pii: bool = False  # description mentions KVKK / kişisel veri (§18.5)
+    role: str = ""  # Anahtar | Kod | Ad | Zaman | Ölçü | Bayrak | Metin
+    summary: str = ""  # ≤70-char compressed meaning, what the LLM reads instead of description
 
     @property
     def object_key(self) -> str:
@@ -64,6 +64,19 @@ class TermGroup:
         return (self.term, *self.equivalents)
 
 
+@dataclass(frozen=True, slots=True)
+class ObjectProfile:
+    """One row of the dictionary's object sheet: what a table holds, for the LLM catalog."""
+
+    key: str  # DB.Schema.Object
+    description: str = ""
+    grain: str = ""  # what one row is
+    key_columns: tuple[str, ...] = ()
+    time_columns: tuple[str, ...] = ()
+    domain: str = ""
+    group: str = ""
+
+
 @dataclass(slots=True)
 class Dictionary:
     """A loaded data dictionary plus provenance."""
@@ -72,6 +85,7 @@ class Dictionary:
     source_path: str
     version: str  # "<sha256[:12]>-<row count>" (HANDOVER §3.6)
     warnings: list[str] = field(default_factory=list)
+    objects: dict[str, ObjectProfile] = field(default_factory=dict)
 
     def by_key(self) -> dict[str, DictColumn]:
         return {c.key: c for c in self.columns}
@@ -129,12 +143,9 @@ class ObjectMatch:
     usage: str = ""
     long_format_values: list[str] = field(default_factory=list)  # met via dimension column
     dimension_column: str = ""
-    # LLM judge (M4): rule score before combination and the judge's verdict, if any.
+    # Analyst flow (ADR-029): the rule engine's score next to the analyst's confidence.
     rule_score: float | None = None
     llm_confidence: float | None = None
-    llm_reason: str = ""
-    llm_caveat: str = ""
-    llm_usage: str = ""
     covers: str = ""  # analyst flow (ADR-029): "Kapsadığı Bilgi" in a few words
 
 
@@ -161,8 +172,8 @@ class AnalysisResult:
     method: list[str]
     dropped_by_validation: int = 0
     elapsed_ms: int = 0
-    llm_model: str = ""  # set when the LLM judge ran
-    llm_unknown_ids: int = 0  # judge answers outside the candidate list (hallucination)
+    llm_model: str = ""  # the analyst's chat model; "" for a rule answer
+    llm_unknown_ids: int = 0  # candidate ids the model made up (hallucination indicator)
     # Analyst flow (ADR-029): how the request was read, how to combine the suggested
     # tables ("Önerilen Kurgu") and the traps to watch ("Dikkat Edilmesi Gerekenler").
     interpretation: str = ""
@@ -170,83 +181,38 @@ class AnalysisResult:
     attention: list[str] = field(default_factory=list)
     analyst: bool = False  # True when the analyst flow wrote this answer
     fallback: str = ""  # why the analyst flow could not answer (rule answer shown instead)
+    confidence_factor: float = 1.0  # rule answers: scores shown = rule score × this (ADR-034)
     dictionary_objects: int = 0  # tables in the dictionary, for the report header
+    # ADR-035: an earlier answer given again — when it was written, to which question,
+    # and how the questions matched ("aynı soru" / "aynı anlam"). Empty for a fresh answer.
+    reused_at: str = ""
+    reused_query: str = ""
+    reused_match: str = ""
 
 
-# --------------------------------------------------------------------------- batch (M5)
-
-
-class FieldStatus(StrEnum):
-    READY = "Hazır"
-    PARTIAL = "Kısmen hazır"
-    DERIVE = "Türetilmeli"
-    NOT_FOUND = "Bulunamadı"
-
-
-@dataclass(frozen=True, slots=True)
-class RequestField:
-    """One row of a target-table request: TR title / EN title / description."""
-
-    index: int
-    tr: str
-    en: str
-    description: str = ""
-
-    @property
-    def label(self) -> str:
-        return self.en or self.tr
+# --------------------------------------------------------------------------- list search
 
 
 @dataclass(slots=True)
-class FieldCandidate:
-    match: ObjectMatch
-    score: float  # field-level score incl. core-table context bonus
-    in_core: bool = False
-    derivation: str = ""  # e.g. "COUNT(DISTINCT ReceiverBankName)"
-    notes: list[str] = field(default_factory=list)
-    wide_family: bool = False  # core table answers by summing per-channel columns
-    fits_measure: bool = True  # False: e.g. an amount column offered for a distinct count
+class ListItem:
+    """One term of a list search (ADR-033): its answer, or why it has none."""
+
+    index: int  # 1-based, as in the file
+    term: str
+    result: AnalysisResult | None = None
+    error: str = ""
+    elapsed_ms: int = 0
 
 
 @dataclass(slots=True)
-class FieldResult:
-    field: RequestField
-    status: FieldStatus
-    candidates: list[FieldCandidate]
+class ListResult:
+    """A term list answered term by term through the one question flow."""
 
-    @property
-    def best(self) -> FieldCandidate | None:
-        return self.candidates[0] if self.candidates else None
-
-
-@dataclass(slots=True)
-class TableCoverage:
-    """How many requested fields a single object can serve (§4.1)."""
-
-    object_key: str
-    object_name: str
-    fields: list[str]  # labels of fields this object serves
-    ready: int
-    partial: int
-    mean_score: float
-
-
-@dataclass(slots=True)
-class BatchResult:
-    name: str
-    verdict: Verdict
-    summary: str
-    fields: list[FieldResult]
-    coverage: list[TableCoverage]
-    notes: list[Note]
-    time_grain: str  # "aylık" / "günlük" / ""
+    name: str  # the uploaded file's name, for the report
+    items: list[ListItem]
     dictionary_source: str
     dictionary_version: str
     generated_at: str
-    method: list[str]
-    elapsed_ms: int = 0
-    # Analyst flow (ADR-029), as in AnalysisResult.
-    interpretation: str = ""
-    design: list[str] = field(default_factory=list)
-    attention: list[str] = field(default_factory=list)
-    analyst: bool = False
+    cancelled: bool = False
+    header: str = ""  # the list's first row, never searched
+    notes: list[str] = field(default_factory=list)  # what the file check left out, and why

@@ -1,21 +1,20 @@
-"""Hosted models for the model lab (ADR-026): retries, feature adaptation, settings."""
+"""OpenAI-compatible client: retries, feature adaptation, seed, health."""
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 import pytest
 
-from vsa.config import (
-    GOOGLE_AI_ENDPOINT,
-    CloudSettings,
-    active_cloud,
-    cloud_api_key,
-    load_settings,
+from vsa.config import LLMSettings
+from vsa.llm.client import (
+    NO_MODEL,
+    LLMError,
+    NullClient,
+    OpenAICompatibleClient,
+    client_from_settings,
+    retry_delay,
 )
-from vsa.llm.client import LLMError, OpenAICompatibleClient, retry_delay
-from vsa.web.settings_schema import is_chat_model, values_of
 
 SCHEMA = {"type": "object", "properties": {"ok": {"type": "boolean"}}}
 
@@ -28,7 +27,7 @@ def test_retry_delay_sources() -> None:
 
 
 class FakeServer:
-    """Stands in for ``_post``: refuses features like Gemma on a hosted API does."""
+    """Stands in for ``_post``: refuses features the way some model servers do."""
 
     def __init__(self, refuse: set[str]) -> None:
         self.refuse = refuse
@@ -83,50 +82,6 @@ def test_client_gives_up_on_other_errors(monkeypatch: pytest.MonkeyPatch) -> Non
     assert c.chat_json("s", "u", SCHEMA) is None and c.failures == 1
 
 
-def test_cloud_key_from_settings_or_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("vsa.config.os.name", "posix")  # no registry lookup in tests
-    monkeypatch.delenv("NVIDIA_API_KEY", raising=False)
-    assert cloud_api_key(CloudSettings()) == ""
-    monkeypatch.setenv("NVIDIA_API_KEY", "nvapi-env")
-    assert cloud_api_key(CloudSettings()) == "nvapi-env"
-    assert cloud_api_key(CloudSettings(api_key="nvapi-file")) == "nvapi-file"
-
-
-def test_cloud_profiles(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Two providers side by side; ``active`` picks one and the other stays untouched."""
-    monkeypatch.setattr("vsa.config.os.name", "posix")
-    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
-    monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-    google = {"endpoint": GOOGLE_AI_ENDPOINT, "api_key": "", "model": "gemma-4-31b-it", "rpm": 15}
-    c = CloudSettings(api_key="nvapi-file", model="", profiles={"google": google})
-    assert active_cloud(c) is c and cloud_api_key(c) == "nvapi-file"  # NVIDIA by default
-    c.active = "google"
-    a = active_cloud(c)
-    assert (a.endpoint, a.model, a.rpm) == (GOOGLE_AI_ENDPOINT, "gemma-4-31b-it", 15)
-    assert cloud_api_key(c) == ""  # the NVIDIA key is never sent to Google
-    monkeypatch.setenv("GEMINI_API_KEY", "g-env")
-    assert cloud_api_key(c) == "g-env"
-    google["api_key"] = "g-file"
-    assert cloud_api_key(c) == "g-file"
-    c.active = "yok"
-    assert active_cloud(c) is c  # unknown profile: the top-level provider
-
-
-def test_cloud_secret_never_leaves_and_blank_keeps(tmp_path: Path) -> None:
-    f = tmp_path / "s.yaml"
-    f.write_text("cloud:\n  enabled: true\n  api_key: nvapi-secret\n", encoding="utf-8")
-    values = values_of(load_settings(f))
-    assert values["cloud.api_key"] == "" and values["cloud.enabled"] is True
-
-
-def test_chat_model_filter() -> None:
-    assert is_chat_model("meta/llama-3.3-70b-instruct")
-    assert is_chat_model("google/gemma-3-27b-it")
-    assert not is_chat_model("nvidia/nv-embedqa-e5-v5")
-    assert not is_chat_model("nvidia/llama-3.1-nemoguard-8b-content-safety")
-    assert not is_chat_model("qwen/qwen2.5-vl-72b-instruct")
-
-
 def test_seed_is_sent_and_dropped_if_refused(monkeypatch: pytest.MonkeyPatch) -> None:
     bodies: list[dict[str, Any]] = []
 
@@ -143,19 +98,35 @@ def test_seed_is_sent_and_dropped_if_refused(monkeypatch: pytest.MonkeyPatch) ->
     assert OpenAICompatibleClient("https://example.test/v1", "m", seed=-1).seed is None
 
 
-def test_cloud_provider_splits_chat_and_embeddings() -> None:
-    from vsa.config import LLMSettings
-    from vsa.llm.client import SplitClient, client_from_settings
+def test_health_is_cached_and_says_why(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
 
-    llm = LLMSettings(enabled=True, endpoint="http://127.0.0.1:1234/v1",
-                      model="google/gemma-4-31b-it", embedding_model="bge", provider="cloud",
-                      seed=7)  # fmt: skip
-    cloud = CloudSettings(enabled=True, api_key="nvapi-x")
-    c = client_from_settings(llm, embeddings=True, cloud=cloud)
-    assert isinstance(c, SplitClient) and c.available and c.model == "google/gemma-4-31b-it"
-    assert isinstance(c.chat, OpenAICompatibleClient) and c.chat.endpoint == cloud.endpoint
-    assert c.chat.seed == 7 and c.chat.api_key == "nvapi-x"
-    assert isinstance(c.embedder, OpenAICompatibleClient)
-    assert c.embedder.endpoint == "http://127.0.0.1:1234/v1" and c.embedder.embedding_model == "bge"
-    no_key = client_from_settings(llm, embeddings=True, cloud=CloudSettings(enabled=True))
-    assert not no_key.available  # cloud chosen without a key: judge off, rules still work
+    def down(url: str, timeout: float) -> dict[str, Any]:
+        calls.append(url)
+        raise LLMError("Model sunucusuna ulaşılamadı (http://spark:8000/v1): bağlantı reddedildi")
+
+    monkeypatch.setattr("vsa.llm.client._HEALTH", {})
+    c = OpenAICompatibleClient("http://spark:8000/v1", "m")
+    monkeypatch.setattr(c, "_get", down)
+    assert "reddedildi" in c.health()
+    assert "reddedildi" in c.health() and len(calls) == 1  # reused, not asked again
+    assert OpenAICompatibleClient("http://spark:8000/v1", "").health()  # no chat model
+    assert NullClient().health() == NO_MODEL
+
+
+def test_unreachable_server_fails_fast() -> None:
+    """Connecting gives up quickly even with a long answer timeout (ADR-034)."""
+    import time
+
+    c = OpenAICompatibleClient("http://127.0.0.1:9/v1", "m", timeout=900)
+    t0 = time.perf_counter()
+    reason = c.health()
+    assert reason and "reddedildi" in reason
+    assert time.perf_counter() - t0 < 15
+
+
+def test_client_from_settings_carries_the_connection() -> None:
+    llm = LLMSettings(enabled=True, endpoint="http://127.0.0.1:1234/v1", model="chat", seed=7)
+    c = client_from_settings(llm)
+    assert isinstance(c, OpenAICompatibleClient) and c.available and c.model == "chat"
+    assert c.seed == 7

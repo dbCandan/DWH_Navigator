@@ -1,17 +1,16 @@
 """Evaluation (HANDOVER §13, M2).
 
-Three item groups:
+Two item groups:
 
 * **ask**   — free-text requests (the analyst answer when the model is on, ADR-029).
   Hit at k when ANY ``expected_objects`` is in the top k
   (several answers can be right, Ek A.1); ``primary_object`` tracks the manual first
   choice. Also column recall and trap checks (Ek A.2).
-* **batch** — fields of a target-table request (Ek A.3), run through the batch
-  analyzer as one request (core-table analysis over all fields). Fields without
-  ``expected_objects`` take part in the analysis but not in the metrics; ``status``
-  is checked against the field status label (§9.4).
 * **negative** — requests with no answer in the dictionary; anything but
   BULUNAMADI is a false answer (ADR-006).
+
+Golden items of the removed target-table mode (``mode: batch``, ADR-033) stay in the
+file — items are never deleted — but are skipped.
 
 Items with ``scope.exclude_object_prefix`` run against a dictionary without those
 objects. The app itself has no filter (ADR-001); this simulates a separate file.
@@ -19,10 +18,9 @@ objects. The app itself has no filter (ADR-001); this simulates a separate file.
 
 from __future__ import annotations
 
-import copy
 import json
 import subprocess
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
@@ -30,13 +28,8 @@ from typing import Any
 
 import yaml
 
-from vsa.batch import BatchAnalyzer
-from vsa.batch import field_query as batch_field_query
-from vsa.expansion.query_expander import QueryExpander
-from vsa.index.dense import DenseIndex, ObjectDenseIndex
-from vsa.models import Dictionary, ObjectMatch, RequestField, Verdict
+from vsa.models import Dictionary, ObjectMatch, Verdict
 from vsa.pipeline import Engine
-from vsa.text.normalize import split_camel
 
 KS = (1, 3, 5)
 COLUMN_WINDOW = 5  # expected columns are looked for in the top-N objects' listed fields
@@ -46,7 +39,7 @@ TRAP_WINDOW = 3
 @dataclass(slots=True)
 class ItemResult:
     id: str
-    group: str  # "ask" | "batch"
+    group: str  # "ask"
     query: str
     rank: int | None  # 1-based rank of the first expected object; None = not ranked
     primary_rank: int | None
@@ -54,7 +47,6 @@ class ItemResult:
     columns_found: int = 0
     columns_total: int = 0
     trap_violations: list[str] = field(default_factory=list)
-    status_ok: bool | None = None  # batch: field status label as expected?
 
 
 @dataclass(slots=True)
@@ -95,10 +87,6 @@ class EvalReport:
         total = sum(i.columns_total for i in items)
         return sum(i.columns_found for i in items) / total if total else 0.0
 
-    def status_accuracy(self, group: str = "batch") -> float:
-        checked = [i for i in self.group(group) if i.status_ok is not None]
-        return sum(1 for i in checked if i.status_ok) / len(checked) if checked else 0.0
-
     @property
     def trap_violations(self) -> int:
         return sum(len(i.trap_violations) for i in self.items)
@@ -111,16 +99,12 @@ class EvalReport:
 
     def as_dict(self) -> dict[str, float]:
         out: dict[str, float] = {}
-        for g in ("ask", "batch"):
-            if not self.group(g):
-                continue
+        if self.group("ask"):
             for k in KS:
-                out[f"{g}.recall@{k}"] = round(self.recall(k, g), 4)
-            out[f"{g}.mrr"] = round(self.mrr(g), 4)
-            out[f"{g}.column_recall"] = round(self.column_recall(g), 4)
-            if g == "batch":
-                out["batch.status_accuracy"] = round(self.status_accuracy(), 4)
-            out[f"{g}.n"] = len(self.group(g))
+                out[f"ask.recall@{k}"] = round(self.recall(k), 4)
+            out["ask.mrr"] = round(self.mrr(), 4)
+            out["ask.column_recall"] = round(self.column_recall(), 4)
+            out["ask.n"] = len(self.group("ask"))
         out["trap_violations"] = self.trap_violations
         if self.negatives:
             out["negative.false_answer_rate"] = round(self.false_answer_rate, 4)
@@ -142,11 +126,6 @@ def load_yaml_list(path: Path) -> list[dict[str, Any]]:
 load_golden = load_yaml_list
 
 
-def field_query(context: str, name: str) -> str:
-    """Batch field as a request: "Distinct Bank Count — Müşteri bazında … özeti"."""
-    return f"{' '.join(split_camel(name))} — {context}"
-
-
 def restricted_engine(engine: Engine, exclude_object_prefix: str) -> Engine:
     """Engine over a dictionary without objects starting with the prefix (ADR-001)."""
     kept = [
@@ -157,31 +136,7 @@ def restricted_engine(engine: Engine, exclude_object_prefix: str) -> Engine:
         source_path=engine.dictionary.source_path,
         version=f"{engine.dictionary.version}-excl-{exclude_object_prefix}",
     )
-    dense = None
-    if engine.dense is not None:
-        dense = DenseIndex(engine.dense.vectors[[c.id for c in kept]], engine.dense.model)
-    restricted = Engine(dictionary, engine.settings, engine.resources, llm=engine.llm, dense=dense)
-    if engine.object_dense is not None:
-        od = engine.object_dense
-        rows = [i for i, k in enumerate(od.keys) if k in restricted.objects]
-        restricted.object_dense = ObjectDenseIndex(
-            [od.keys[i] for i in rows], od.vectors[rows], od.model
-        )
-    return restricted
-
-
-def with_expansion(engine: Engine, terms: bool, synonyms: bool) -> Engine:
-    """Cheap variant of an engine with other expansion switches (index reused)."""
-    variant = copy.copy(engine)
-    variant.expander = QueryExpander(
-        engine.resources.term_groups,
-        engine.features,
-        engine.resources.stopwords,
-        expansion_weight=engine.settings.expansion.weight,
-        enabled=terms,
-        use_synonyms=synonyms,
-    )
-    return variant
+    return Engine(dictionary, engine.settings, engine.resources, llm=engine.llm)
 
 
 # --------------------------------------------------------------------------- scoring
@@ -251,37 +206,19 @@ def evaluate(
         return scoped[prefix]
 
     for item in golden:
-        mode = item.get("mode", "ask")
+        if item.get("mode", "ask") != "ask":
+            continue  # the target-table mode is gone (ADR-033); its items stay in the file
         eng = engine_for(item)
-        if mode == "ask":
-            q = str(item["query"])
-            # With the model on, score the answer people see: the analyst's recommendations
-            # (ADR-029). Otherwise the rule ranking (+ judge) as before.
-            ranked = eng.analyze(q).objects if eng.analyst_enabled else eng.rank(q)[0]
-            report.items.append(_score_item(str(item["id"]), "ask", q, ranked, item))
-        elif mode == "batch":
-            specs = list(item["fields"])
-            fields = [
-                RequestField(i, str(f.get("tr", "")), str(f["name"]), str(f.get("description", "")))
-                for i, f in enumerate(specs, 1)
-            ]
-            result = BatchAnalyzer(eng, top_n=5).analyze(fields, str(item["id"]))
-            for spec, fr in zip(specs, result.fields, strict=True):
-                if not spec.get("expected_objects"):
-                    continue
-                res = _score_item(
-                    f"{item['id']}.{spec['name']}",
-                    "batch",
-                    batch_field_query(fr.field),
-                    [c.match for c in fr.candidates],
-                    spec,
-                )
-                if "status" in spec:
-                    res.status_ok = fr.status.value == spec["status"]
-                report.items.append(res)
+        q = str(item["query"])
+        # The answer people see: the analyst's recommendations (ADR-029). Without a model
+        # there is no answer (ADR-038); the rule ranking is measured instead — the hints
+        # the analyst would get.
+        ranked = eng.analyze(q).objects if eng.analyst_enabled else eng.rank_objects(q)[0]
+        report.items.append(_score_item(str(item["id"]), "ask", q, ranked, item))
 
     for neg in negatives:
-        answer = engine.analyze(str(neg["query"]))
+        query = str(neg["query"])
+        answer = engine.analyze(query) if engine.analyst_enabled else engine.rule_answer(query)
         pool = answer.objects or answer.near_misses
         report.negatives.append(
             NegativeResult(
@@ -293,32 +230,6 @@ def evaluate(
             )
         )
     return report
-
-
-# --------------------------------------------------------------------------- comparison
-
-
-EXPANSION_CONFIGS: tuple[tuple[str, bool, bool], ...] = (
-    ("Genişletmesiz BM25", False, False),
-    ("+ kurumsal terim sözlüğü", True, False),
-    ("+ sözlük içi eş anlamlılar", True, True),
-    ("Yalnız sözlük eş anlamlıları", False, True),
-)
-
-
-def compare_configs(
-    engine: Engine,
-    golden: Sequence[dict[str, Any]],
-    negatives: Sequence[dict[str, Any]] = (),
-    progress: Callable[[str], None] | None = None,
-) -> list[tuple[str, EvalReport]]:
-    """HANDOVER §13.4 — the expansion configurations that exist so far (M3/M4 add more)."""
-    out = []
-    for name, terms, synonyms in EXPANSION_CONFIGS:
-        if progress:
-            progress(name)
-        out.append((name, evaluate(with_expansion(engine, terms, synonyms), golden, negatives)))
-    return out
 
 
 # --------------------------------------------------------------------------- history

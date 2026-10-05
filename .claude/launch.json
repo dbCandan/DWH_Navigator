@@ -4,8 +4,22 @@
     {
       "name": "vsa-analyst-test",
       "runtimeExecutable": ".venv/Scripts/vsa.exe",
-      "runtimeArgs": ["serve", "--port", "8766"],
+      "runtimeArgs": [
+        "serve",
+        "--port",
+        "8766"
+      ],
       "port": 8766
+    },
+    {
+      "name": "vsa-admin-check",
+      "runtimeExecutable": ".venv/Scripts/vsa.exe",
+      "runtimeArgs": [
+        "serve",
+        "--port",
+        "8767"
+      ],
+      "port": 8767
     }
   ]
 }

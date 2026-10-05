@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vsa.evaluation import EvalReport, ItemResult, NegativeResult, field_query
+from vsa.evaluation import EvalReport, ItemResult, NegativeResult
 from vsa.expansion.query_expander import Concept, ConceptKind, QueryExpander
 from vsa.features import build_features
 from vsa.models import DictColumn, Verdict
@@ -73,12 +73,6 @@ def test_report_metrics() -> None:
     assert r.trap_violations == 1
     assert r.false_answer_rate == 0.5
     assert r.as_dict()["ask.n"] == 3
-
-
-def test_field_query() -> None:
-    assert (
-        field_query("Para transferi", "DistinctBankCount") == "Distinct Bank Count — Para transferi"
-    )
 
 
 def test_concept_is_hashable_for_weights() -> None:

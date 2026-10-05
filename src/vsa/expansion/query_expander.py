@@ -7,8 +7,8 @@ Two expansion sources in M1 (the LLM source arrives in M4):
 (b) the dictionary's own synonym sections — inverted into phrase -> column ids; a
     phrase found in the query puts those columns straight into the candidate pool.
 
-Per ADR-004 expansion only feeds the sparse (BM25) arm; ``dense_text`` stays the
-user's original wording.
+Per ADR-004 expansion only feeds the BM25 query; ``text`` keeps the user's original
+wording.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from enum import StrEnum
 
 from vsa.features import ColumnFeatures
 from vsa.models import TermGroup
-from vsa.text.normalize import fold, tokenize, tokenize_pairs
+from vsa.text.normalize import fold, load_stopwords, tokenize, tokenize_pairs
 
 # A single-word synonym shared by more columns than this is too generic to count
 # as the "most reliable signal" (§7.2b); it still participates in BM25.
@@ -40,6 +40,9 @@ class ConceptKind(StrEnum):
     BREAKDOWN = "kırılım"
     MEASURE = "ölçü"
 
+
+
+QUERY_ONLY_STOPWORDS = load_stopwords(["değil", "hariç", "dışında"])
 
 @dataclass(frozen=True, slots=True)
 class Concept:
@@ -94,7 +97,6 @@ class ExpandedQuery:
     tokens: list[str]  # stemmed content tokens of the original query, in order
     raw_words: frozenset[str]  # folded original words, for exact column-name match
     sparse_terms: dict[str, float]  # BM25 query: token -> weight
-    dense_text: str  # untouched original text (ADR-004)
     concepts: list[Concept]
     term_groups: list[TermGroup]  # matched term-dictionary groups
     expansion_terms: list[str]  # display strings of added equivalents
@@ -180,9 +182,13 @@ class QueryExpander:
         return tuple(tokenize(text, keep_compound=False))
 
     def expand(self, text: str) -> ExpandedQuery:
-        pairs = tokenize_pairs(text, stopwords=self.stopwords, keep_compound=False)
+        # "değil" stays in the stopword-free description tokens (it marks "X bazlı değil"
+        # scope notes there) but is never a request concept: in "tüm limitler değil" it
+        # would point the analyst at exactly the unwanted column.
+        stop = self.stopwords | QUERY_ONLY_STOPWORDS
+        pairs = tokenize_pairs(text, stopwords=stop, keep_compound=False)
         tokens = [t for t, _ in pairs]
-        bm25_tokens = tokenize(text, stopwords=self.stopwords, keep_compound=True)
+        bm25_tokens = tokenize(text, stopwords=stop, keep_compound=True)
         raw_words = frozenset(fold(w).replace("_", "") for w in _WORD.findall(text))
 
         # Term dictionary off -> neither expansion nor multi-word term concepts.
@@ -210,7 +216,6 @@ class QueryExpander:
             tokens=tokens,
             raw_words=raw_words,
             sparse_terms=sparse,
-            dense_text=text,
             concepts=concepts,
             term_groups=[self.groups[i] for i in matched_groups],
             expansion_terms=list(dict.fromkeys(expansion_terms)),

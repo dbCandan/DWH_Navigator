@@ -136,7 +136,7 @@ def aggregate(
             long_values = pending
             covered = [c for c in content if c in covered or c in long_values]
         components: dict[str, float] = {"best_column": best.rule_score}
-        # Without topic fit (batch, ADR-028) the other weights renormalize (ADR-011).
+        # Without topic fit (no vector index, ADR-028) the other weights renormalize (ADR-011).
         with_topic = topic is not None and weights.topic > 0
         active: dict[str, float] = {"best_column": weights.best_column}
         if content:

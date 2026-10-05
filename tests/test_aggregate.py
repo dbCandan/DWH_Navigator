@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vsa.config import FlagPenalty, ObjectWeights
+from vsa.config import ObjectWeights
 from vsa.expansion.query_expander import QueryExpander
 from vsa.features import build_features
 from vsa.models import ColumnHit, DictColumn, Level, ObjectMatch
@@ -35,7 +35,7 @@ def run(tables: dict[str, list[tuple[str, str]]], query: str) -> list[ObjectMatc
     feats = [f for o in objects.values() for f in o.features]
     q = QueryExpander(GROUPS, feats, STOP).expand(query)
     hits: dict[int, ColumnHit] = {
-        f.col.id: score_column(f, 1.0, 1.0, q, FlagPenalty()) for f in feats
+        f.col.id: score_column(f, 1.0, 1.0, q) for f in feats
     }
     return aggregate(hits, q, objects, ObjectWeights(), 0.25)
 

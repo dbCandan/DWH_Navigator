@@ -35,7 +35,7 @@ html[data-skin="evren"] { color-scheme: dark;
               radial-gradient(900px 600px at -10% 110%, rgba(255,93,214,.13), transparent 60%), #03040b;
   background-attachment: fixed; }
 html[data-skin="evren"] body { background: transparent; }
-html[data-skin="evren"] .card, html[data-skin="evren"] .top, html[data-skin="evren"] nav.side, html[data-skin="evren"] .savebar { backdrop-filter: blur(16px) saturate(140%); }
+html[data-skin="evren"] .card, html[data-skin="evren"] .top, html[data-skin="evren"] .role, html[data-skin="evren"] .ptile, html[data-skin="evren"] .savebar { backdrop-filter: blur(16px) saturate(140%); }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
@@ -54,11 +54,6 @@ a { color: inherit; }
 .back { text-decoration: none; font-weight: 600; font-size: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 12px; background: var(--surface); white-space: nowrap; }
 .back:hover { border-color: var(--accent); }
 
-.layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 22px; margin-top: 22px; }
-nav.side { position: sticky; top: 84px; align-self: start; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px; box-shadow: var(--shadow); }
-nav.side a { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-radius: 9px; text-decoration: none; color: var(--muted); font-weight: 600; font-size: 14px; }
-nav.side a:hover, nav.side a.cur { background: var(--surface-2); color: var(--text); }
-nav.side .cnt { font-size: 11px; font-weight: 700; background: var(--accent); color: var(--primary-fg); border-radius: 999px; padding: 0 7px; }
 h1 { font-family: var(--display); font-size: 28px; margin: 4px 0 2px; letter-spacing: -.4px; }
 .lead { color: var(--muted); margin: 0 0 12px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; margin-bottom: 18px; scroll-margin-top: 80px; }
@@ -73,7 +68,6 @@ h1 { font-family: var(--display); font-size: 28px; margin: 4px 0 2px; letter-spa
 .eff { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
 .eff.now { background: var(--high-bg); color: var(--high); }
 .eff.reindex { background: var(--mid-bg); color: var(--mid); }
-.eff.dense { background: var(--low-bg); color: var(--low); }
 .ctl { display: flex; align-items: center; gap: 10px; justify-content: flex-end; min-width: 0; }
 .ctl input[type=text], .ctl input[type=password], .ctl select, .ctl input[type=number] {
   width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface-2); outline: 0; min-width: 0; }
@@ -96,45 +90,7 @@ h1 { font-family: var(--display); font-size: 28px; margin: 4px 0 2px; letter-spa
 .btn:hover { border-color: var(--accent); }
 .btn.primary { background: var(--primary-bg); color: var(--primary-fg); border: 0; }
 .btn:disabled { opacity: .5; cursor: default; }
-.tests { list-style: none; padding: 0; margin: 10px 0 0; }
-.tests li { display: flex; gap: 10px; align-items: baseline; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 13.5px; }
-.tests .ok { color: var(--high); font-weight: 700; } .tests .no { color: var(--low); font-weight: 700; }
-.tests .ms { margin-left: auto; font-family: var(--mono); color: var(--faint); font-size: 12px; }
-table.bench { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.bench th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 8px 6px; border-bottom: 1px solid var(--line); }
-table.bench td { padding: 8px 6px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
-table.bench tr.best td { background: var(--high-bg); }
-table.bench td.m { font-family: var(--mono); font-size: 12px; }
-.bar { height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; width: 60px; display: inline-block; vertical-align: middle; margin-right: 6px; }
-.bar i { display: block; height: 100%; background: var(--high); }
 .scroll { overflow-x: auto; }
-.best-card { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 12px; background: var(--high-bg); border: 1px solid color-mix(in srgb, var(--high) 35%, transparent); margin-bottom: 14px; }
-.best-card .star { font-size: 26px; color: var(--high); }
-.best-card b { font-family: var(--mono); font-size: 14px; }
-.best-card .why { font-size: 13px; color: var(--muted); margin-top: 3px; }
-@media (max-width: 600px) { .best-card { grid-template-columns: 1fr; } .best-card .star { display: none; } }
-.pill { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--surface-2); color: var(--muted); margin-left: 6px; font-family: var(--sans, inherit); }
-.pill.cur { background: var(--primary-bg); color: var(--primary-fg); }
-table.bench td.q { font-weight: 700; }
-.runner { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
-.runner h3 { margin: 0 0 10px; font-size: 15px; }
-.mlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 14px; margin: 8px 0 12px; }
-.mlist label { display: flex; gap: 8px; align-items: center; font-family: var(--mono); font-size: 12.5px; cursor: pointer; }
-.mlist .sub { color: var(--faint); font-family: inherit; font-size: 11.5px; margin-left: auto; }
-.opts { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; font-size: 13.5px; margin-bottom: 12px; }
-.opts label { display: inline-flex; gap: 6px; align-items: center; }
-.opts select { padding: 4px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: inherit; }
-.prog { height: 10px; border-radius: 5px; background: var(--surface-2); overflow: hidden; margin: 10px 0 6px; }
-.prog i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--high)); transition: width .6s; }
-.prog.live i { background-size: 200% 100%; animation: flow 2s linear infinite; background-image: linear-gradient(90deg, var(--accent), var(--high), var(--accent)); }
-@keyframes flow { to { background-position: -200% 0; } }
-.labmeta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
-.labmeta b { color: var(--text, inherit); }
-h4.grp { margin: 14px 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); display: flex; gap: 10px; align-items: center; }
-.btn.mini { padding: 3px 9px; font-size: 12px; font-weight: 600; text-transform: none; letter-spacing: 0; }
-input.msearch { flex: 1 1 260px; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: inherit; font: inherit; }
-.mlist { max-height: 340px; overflow: auto; }
-pre.log { max-height: 240px; overflow: auto; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; font-size: 12px; line-height: 1.55; margin: 10px 0 0; white-space: pre-wrap; word-break: break-word; }
 .savebar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(10px); border-top: 1px solid var(--line); transform: translateY(100%); transition: transform .25s; }
 .savebar.on { transform: none; }
 .savebar .wrap { display: flex; align-items: center; gap: 10px; min-height: 64px; flex-wrap: wrap; }
@@ -151,7 +107,7 @@ body[data-view="analyses"] #view-settings, body[data-view="analyses"] #savebar,
 body[data-view="settings"] #view-analyses, body[data-view="analyses"] #chips { display: none; }
 
 /* ---------- admin: analyses ---------- */
-:root { --k-step: #1fa0bf; --k-llm: #8c6cf0; --k-embed: #1aa57a; }
+:root { --k-step: #1fa0bf; --k-llm: #8c6cf0; }
 #view-analyses { padding-top: 22px; }
 .a-head { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
 .a-head .grow { flex: 1 1 320px; }
@@ -172,7 +128,6 @@ body[data-view="settings"] #view-analyses, body[data-view="analyses"] #chips { d
 @media (max-width: 960px) { .two { grid-template-columns: 1fr; } }
 .hbars { display: grid; grid-template-columns: minmax(120px, max-content) minmax(0, 1fr) auto; gap: 7px 12px; align-items: center; font-size: 13px; margin-top: 10px; }
 .hbars .nm { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.hbars .nm.sub { padding-left: 14px; color: var(--muted); }
 .hbars .tr { height: 12px; border-radius: 0 4px 4px 0; background: var(--surface-2); position: relative; }
 .hbars .tr i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; background: var(--k-step); min-width: 2px; }
 .hbars .v { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; white-space: nowrap; }
@@ -182,33 +137,26 @@ table.an td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-a
 table.an th.r, table.an td.r { text-align: right; }
 table.an tr.row-a { cursor: pointer; }
 table.an tr.row-a:hover td, table.an tr.row-a.open td { background: var(--surface-2); }
-table.an tr.row-u { cursor: pointer; } table.an tr.row-u:hover td { background: var(--surface-2); }
 table.an .when { white-space: nowrap; color: var(--muted); font-family: var(--mono); font-size: 12px; }
-table.an .who b { display: block; font-weight: 600; white-space: nowrap; }
-table.an .who span { color: var(--faint); font-family: var(--mono); font-size: 11.5px; }
-table.an .qq { max-width: 440px; }
+table.an .qq { max-width: 620px; }
 table.an .res { color: var(--muted); font-size: 12.5px; }
 table.an .dur { white-space: nowrap; font-family: var(--mono); font-size: 12.5px; }
-.dbar { display: block; height: 4px; border-radius: 0 3px 3px 0; background: var(--k-step); margin-top: 5px; min-width: 2px; }
 .flow { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 9px; white-space: nowrap; }
 .flow.analist { background: var(--high-bg); color: var(--high); }
 .flow.yedek { background: var(--mid-bg); color: var(--mid); }
 .flow.kural { background: var(--surface-2); color: var(--muted); }
 .flow.hata { background: var(--low-bg); color: var(--low); }
-.verdict { font-weight: 700; color: var(--text); }
+.flow.önbellek { background: var(--surface-2); color: var(--accent); box-shadow: inset 0 0 0 1px var(--line); }
+.flow.durduruldu { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line); }
 td.detail-cell { padding: 0 !important; background: color-mix(in srgb, var(--surface-2) 60%, transparent); }
 .trace { padding: 14px 16px 18px; }
-.trace .meta { display: flex; gap: 8px 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin-bottom: 10px; }
-.trace .meta b { color: var(--text); font-weight: 600; }
-.trace .summary { font-size: 13.5px; margin: 0 0 12px; }
 .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 8px; }
 .legend i { display: inline-block; width: 12px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
 .wf { display: grid; grid-template-columns: minmax(180px, 34%) minmax(0, 1fr) 76px; gap: 3px 10px; align-items: center; font-size: 12.5px; }
 .wf .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wf .nm small { color: var(--faint); margin-left: 6px; }
 .wf .lane { position: relative; height: 16px; border-radius: 3px; background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), var(--line) calc(25% - 1px) 25%); }
 .wf .seg-bar { position: absolute; top: 3px; bottom: 3px; border-radius: 0 3px 3px 0; min-width: 2px; }
-.wf .seg-bar.step { background: var(--k-step); } .wf .seg-bar.llm { background: var(--k-llm); } .wf .seg-bar.embed { background: var(--k-embed); }
+.wf .seg-bar.step { background: var(--k-step); } .wf .seg-bar.llm { background: var(--k-llm); }
 .wf .seg-bar.event { background: repeating-linear-gradient(45deg, var(--mid) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--mid); }
 .wf .seg-bar.error { box-shadow: 0 0 0 2px var(--low); }
 .wf .ms { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-align: right; white-space: nowrap; }
@@ -219,8 +167,176 @@ td.detail-cell { padding: 0 !important; background: color-mix(in srgb, var(--sur
 .empty { color: var(--muted); padding: 30px 0; text-align: center; }
 .more { display: flex; justify-content: center; padding: 12px 0 0; }
 @media (max-width: 700px) { table.an .hide-s { display: none; } .wf, .axis { grid-template-columns: minmax(110px, 40%) minmax(0, 1fr) 60px; } }
+/* the analyses view fits the window: summary on top, the question list scrolls */
+body[data-view="analyses"] { height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0; }
+body[data-view="analyses"] .top { flex: none; }
+body[data-view="analyses"] #view-analyses { flex: 1; min-height: 0; width: 100%; display: flex; flex-direction: column; padding-bottom: 16px; }
+body[data-view="analyses"] #a-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.a-list { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-bottom: 0; }
+.a-list-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.a-list-h h2 { margin-right: auto; }
+.a-scroll { flex: 1; min-height: 0; overflow: auto; margin: 8px -20px -18px; padding: 0 20px 12px; }
+.a-scroll table.an thead th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
+html[data-skin="evren"] .a-scroll table.an thead th { background: #0e1228; }
+.btn.danger { color: var(--low); }
+.btn.danger:hover { border-color: var(--low); }
+@media (max-width: 700px), (max-height: 560px) {  /* small screens: the page scrolls as before */
+  body[data-view="analyses"] { height: auto; overflow: visible; display: block; }
+  .a-scroll { overflow: visible; }
+}
+body[data-view="analyses"] #view-analyses { padding-top: 14px; }
+body[data-view="analyses"] h1 { font-size: 24px; }
+body[data-view="analyses"] .filters { margin: 10px 0 10px; }
+body[data-view="analyses"] .tiles { margin-bottom: 12px; gap: 10px; }
+body[data-view="analyses"] .tile { padding: 8px 14px; }
+body[data-view="analyses"] .tile .val { font-size: 21px; }
+body[data-view="analyses"] .a-sum { margin: 2px 0 8px; font-size: 15px; }
+body[data-view="analyses"] #a-body > div > .warn { margin: 0 0 10px; padding: 7px 12px; }
+.a-list .intro { margin: 2px 0 0; }
+/* plain reading of the analyses (who answered, what came back) */
+.a-sum { font-size: 16px; margin: 4px 0 12px; }
+.tile.warn-t .val { color: var(--mid); }
+.warn a { color: inherit; font-weight: 700; }
+table.an .q { font-weight: 600; overflow-wrap: anywhere; }
+table.an .a { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; color: var(--muted); font-size: 12.5px; }
+table.an .by .res { margin-top: 4px; font-size: 12px; }
+.orig { margin-left: 8px; font-size: 11.5px; font-weight: 500; color: var(--faint); white-space: nowrap; }
+.vb { font-size: 10.5px; font-weight: 800; letter-spacing: .5px; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.vb.VAR { background: var(--high-bg); color: var(--high); } .vb.KISMEN { background: var(--mid-bg); color: var(--mid); }
+.vb.BULUNAMADI { background: var(--low-bg); color: var(--low); } .vb.none { background: var(--surface-2); color: var(--muted); }
+dl.story { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 18px; margin: 0 0 12px; font-size: 14px; }
+dl.story dt { color: var(--muted); font-size: 12.5px; padding-top: 2px; }
+dl.story dd { margin: 0; overflow-wrap: anywhere; }
+.tbls { display: flex; gap: 6px; flex-wrap: wrap; }
+.tbl { font-family: var(--mono); font-size: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; padding: 1px 7px; }
+.where { margin: 14px 0 6px; }
+.where-h { display: flex; gap: 10px; align-items: baseline; margin-bottom: 6px; font-size: 13.5px; }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--surface-2); }
+.ph { display: inline-block; }
+.stack .ph { height: 100%; }
+.ph.wait { background: repeating-linear-gradient(45deg, var(--mid) 0 3px, transparent 3px 6px); }
+.ph.check { background: #6f78a3; } .ph.rules { background: var(--k-step); } .ph.pick { background: var(--k-llm); } .ph.write { background: #ff5dd6; }
+ul.phases { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+ul.phases li { display: grid; grid-template-columns: 12px minmax(0, max-content) auto 1fr; gap: 8px; align-items: center; }
+ul.phases li .ph { width: 12px; height: 12px; border-radius: 3px; }
+ul.phases li span { font-family: var(--mono); font-size: 12px; color: var(--text); }
+ul.phases li small { color: var(--faint); }
+details.tech { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 8px; }
+details.tech > summary { cursor: pointer; font-size: 13px; color: var(--muted); font-weight: 600; }
+details.tech .tl { margin-top: 10px; }
+.perf h3 { margin: 0 0 8px; font-size: 14px; }
+ul.users { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+ul.users li { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line); }
+ul.users li a { color: inherit; } ul.users li span { color: var(--muted); }
+@media (max-width: 700px) { dl.story { grid-template-columns: 1fr; gap: 2px; } dl.story dt { padding-top: 8px; } ul.phases li { grid-template-columns: 12px 1fr auto; } ul.phases li small { display: none; } }
+/* ---------- admin: settings (pages, plain rows, LLM integrations) ---------- */
+#view-settings { padding-top: 22px; }
+.ptiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0 20px; }
+.ptile { position: relative; text-align: left; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: center;
+  border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); padding: 14px 16px; cursor: pointer; box-shadow: var(--shadow); transition: border-color .15s, transform .15s; }
+.ptile:hover { border-color: var(--accent); }
+.ptile[aria-selected="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), var(--shadow); }
+.ptile svg { grid-row: span 2; width: 34px; height: 34px; padding: 7px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); }
+.ptile b { font-family: var(--display); font-size: 16px; }
+.ptile small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptile .cnt { position: absolute; top: 10px; right: 12px; font-size: 11px; font-weight: 700; background: var(--accent); color: var(--primary-fg); border-radius: 999px; padding: 0 7px; }
+.page { display: none; } .page.on { display: block; }
+.page > .intro-line { color: var(--muted); margin: -6px 0 14px; }
+.card .sec-intro { color: var(--muted); font-size: 13.5px; margin: 4px 0 6px; max-width: 72ch; }
+.row .lab { font-weight: 600; }
+.row .help { max-width: 60ch; }
+.readout { font-family: var(--mono); font-weight: 700; min-width: 52px; text-align: right; font-variant-numeric: tabular-nums; }
+.eff { font-weight: 600; }
+details.adv { margin-top: 6px; border-top: 1px dashed var(--line); }
+details.adv > summary, details.adv-card > summary { cursor: pointer; list-style: none; font-weight: 600; font-size: 13.5px; color: var(--muted); padding: 12px 0 4px; display: flex; align-items: center; gap: 8px; }
+details.adv > summary::-webkit-details-marker, details.adv-card > summary::-webkit-details-marker { display: none; }
+details.adv > summary::before, details.adv-card > summary::before { content: "›"; display: inline-block; transition: transform .15s; font-size: 18px; line-height: 1; }
+details[open].adv > summary::before, details[open].adv-card > summary::before { transform: rotate(90deg); }
+details.adv-card > summary { padding: 0; color: var(--text); font-family: var(--display); font-size: 17px; }
+.expert-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 26px 0 10px; }
+.expert-head h3 { margin: 0; font-family: var(--display); font-size: 15px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; font-size: 13.5px; margin: 8px 0 12px; }
+.kv dt { color: var(--muted); } .kv dd { margin: 0; font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); border-radius: 6px; padding: 1px 6px; }
+
+/* LLM page */
+.roles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 18px; }
+.role { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; background: var(--surface); box-shadow: var(--shadow); }
+.role .what { font-size: 13px; color: var(--muted); font-weight: 700; }
+.role .who { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 14.5px; font-weight: 700; margin: 6px 0 2px; overflow-wrap: anywhere; }
+.role .via { color: var(--muted); font-size: 13px; }
+.role.off .who { font-family: var(--sans); color: var(--muted); font-weight: 600; }
+.bar-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 12px; }
+.bar-head h2 { margin: 0 auto 0 0; font-family: var(--display); font-size: 19px; }
+.integs { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+.integ { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.integ.off { opacity: .78; }
+.integ:has(table.mt), .integ:has(.steps) { grid-column: 1 / -1; }  /* room for the model table */
+.integ .ih { display: flex; align-items: start; gap: 12px; }
+.integ .ih .nm { flex: 1; min-width: 0; }
+.integ .ih b { font-family: var(--display); font-size: 17px; display: block; }
+.integ .url { font-family: var(--mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 9px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.tag.on { background: var(--high-bg); color: var(--high); border-color: transparent; }
+.tag.warn { background: var(--mid-bg); color: var(--mid); border-color: transparent; }
+.tag.bad { background: var(--low-bg); color: var(--low); border-color: transparent; }
+.mrole { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; font-size: 13px; }
+.mrole span:nth-child(odd) { color: var(--muted); } .mrole span:nth-child(even) { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: auto; padding-top: 4px; }
+.btn.sm { padding: 5px 11px; font-size: 13px; }
+.btn.ghost { background: none; }
+.btn.danger:hover { border-color: var(--low); color: var(--low); }
+.steps { list-style: none; padding: 0; margin: 4px 0 0; font-size: 13px; }
+.steps li { display: grid; grid-template-columns: 18px max-content minmax(0, 1fr) auto; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px dashed var(--line); }
+.steps .ok { color: var(--high); font-weight: 800; } .steps .no { color: var(--low); font-weight: 800; }
+.steps .d { color: var(--muted); overflow-wrap: anywhere; } .steps .ms { font-family: var(--mono); color: var(--faint); font-size: 12px; }
+table.mt { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.mt th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); padding: 7px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.mt td { padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.mt td.m { font-family: var(--mono); font-size: 12.5px; overflow-wrap: anywhere; }
+table.mt td.r, table.mt th.r { text-align: right; font-variant-numeric: tabular-nums; }
+input.msearch { flex: 0 1 260px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--surface-2); color: inherit; font: inherit; font-size: 13.5px; }
+.empty-state { text-align: center; padding: 30px 16px; color: var(--muted); }
+.empty-state b { display: block; color: var(--text); font-family: var(--display); font-size: 18px; margin-bottom: 4px; }
+
+dialog.ed { width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 40px); border: 1px solid var(--line); border-radius: var(--radius); padding: 0; background: var(--paper); color: var(--text); box-shadow: 0 30px 90px rgba(0,0,0,.55); }
+html[data-skin="evren"] dialog.ed { background: #0b1022; }
+dialog.ed.wide { width: min(900px, calc(100vw - 32px)); }
+dialog.ed::backdrop { background: rgba(3,4,11,.6); backdrop-filter: blur(3px); }
+.ed form { display: flex; flex-direction: column; max-height: calc(100vh - 42px); }
+.ed header, .ed footer { padding: 16px 20px; display: flex; align-items: center; gap: 10px; }
+.ed header { border-bottom: 1px solid var(--line); } .ed header h2 { margin: 0 auto 0 0; font-family: var(--display); font-size: 19px; }
+.ed footer { border-top: 1px solid var(--line); flex-wrap: wrap; }
+.ed footer .grow { margin-right: auto; display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--muted); }
+.ed .body { padding: 6px 20px 16px; overflow: auto; }
+.ed h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 16px 0 8px; display: flex; gap: 8px; align-items: center; }
+.ed h3 i { font-style: normal; width: 20px; height: 20px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 11px; }
+.fld { display: grid; gap: 4px; margin-bottom: 12px; }
+.fld > span { font-weight: 600; font-size: 14px; }
+.fld small { color: var(--muted); font-size: 12.5px; }
+.fld input, .fld select { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; background: var(--surface-2); outline: 0; font: inherit; color: inherit; }
+.fld input:focus, .fld select:focus { border-color: var(--accent); }
+.fld input.mono { font-family: var(--mono); font-size: 13.5px; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
+.inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.idx-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 10px; }
+.idx { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--surface-2); display: flex; flex-direction: column; gap: 4px; }
+.idx-h { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+.idx-h b { font-family: var(--display); font-size: 16px; }
+.idx-h .what { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.badge { flex: none; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+.badge.ok { background: var(--high-bg); color: var(--high); } .badge.warn { background: var(--mid-bg); color: var(--mid); }
+.badge.off { background: var(--surface); color: var(--muted); border: 1px solid var(--line); } .badge.run { background: var(--accent-soft); color: var(--accent); }
+.idx .kv { margin: 8px 0 4px; }
+.when-note { font-size: 12.5px; color: var(--muted); margin: 4px 0 8px; }
+.when-note b { color: var(--text); font-weight: 600; }
+.idx .inline { margin-top: auto; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); cursor: pointer; }
+.fetch-out { font-size: 13px; color: var(--muted); }
+.fetch-out.ok { color: var(--high); } .fetch-out.no { color: var(--low); }
+@media (max-width: 860px) { .ptiles, .roles, .grid2 { grid-template-columns: 1fr; } .integs { grid-template-columns: 1fr; } }
 @media (max-width: 860px) {
-  .layout { grid-template-columns: 1fr; } nav.side { position: static; display: flex; flex-wrap: wrap; }
   .row { grid-template-columns: 1fr; gap: 8px; } .ctl { justify-content: stretch; }
   .chips { display: none; }
 }
@@ -247,51 +363,36 @@ td.detail-cell { padding: 0 !important; background: color-mix(in srgb, var(--sur
   <div class="a-head">
     <div class="grow">
       <h1>Analizler</h1>
-      <p class="lead">Sorulan her soru: kim sordu, hangi yoldan gitti, her adım ne kadar sürdü.
-        Bir satıra tıklayınca o analizin adım adım zaman çizelgesi açılır.</p>
+      <p class="lead">Uygulamada sorulan sorular, verilen cevaplar ve cevabı kimin yazdığı.</p>
     </div>
-    <label class="live"><input type="checkbox" id="a-live" checked> 15 sn'de bir yenile</label>
+    <label class="live"><input type="checkbox" id="a-live" checked> Otomatik yenile</label>
     <button class="btn" id="a-refresh">Yenile</button>
   </div>
   <div class="filters">
     <div class="seg" id="a-period" role="group" aria-label="Dönem">
       <button data-days="1">Bugün</button><button data-days="7" aria-pressed="true">7 gün</button><button data-days="30">30 gün</button><button data-days="0">Tümü</button>
     </div>
-    <select id="a-user" aria-label="Kullanıcı"><option value="">Tüm kullanıcılar</option></select>
-    <select id="a-flow" aria-label="Akış">
-      <option value="">Tüm akışlar</option><option value="analist">Analist</option><option value="yedek">Yedek (kurala dönen)</option>
-      <option value="kural">Kural</option><option value="hata">Hata</option>
+    <select id="a-flow" aria-label="Cevabı yazan">
+      <option value="">Cevabı yazan: hepsi</option><option value="analist">Analist (dil modeli)</option><option value="önbellek">Önceki cevap (yeniden kullanıldı)</option>
+      <option value="yedek">Kural motoru — model çalışamadı</option><option value="kural">Kural motoru — model yoktu</option>
+      <option value="durduruldu">Durdurulanlar</option><option value="hata">Hatalar</option>
     </select>
-    <input type="search" id="a-text" placeholder="Soru, tablo veya model ara…" aria-label="Ara">
+    <select id="a-user" aria-label="Soran"><option value="">Herkes</option></select>
+    <input type="search" id="a-text" placeholder="Soru veya tablo ara…" aria-label="Ara">
   </div>
   <div id="a-body"><p class="empty">Yükleniyor…</p></div>
 </div>
 
-<div class="wrap layout" id="view-settings">
-  <nav class="side" id="nav" aria-label="Bölümler"></nav>
-  <main>
-    <h1>Ayarlar</h1>
-    <p class="lead" id="lead">Yükleniyor…</p>
-    <div id="sections"></div>
-
-    <section class="card" id="sec-bench">
-      <h2>Model laboratuvarı</h2>
-      <p class="intro">LM Studio'daki sohbet modellerini hakem olarak sınar: golden set soruları, doğrulanmış talep alanları
-        ve “bulunamadı” olması gereken sorular, her biri birkaç kez. Her model aynı aday listelerini görür; fark yalnız
-        hakemden gelir. Düşünme modu her model için otomatik bulunur. Komut satırı: <code>vsa lab</code> (ADR-025).</p>
-      <div id="labBest"></div>
-      <div class="scroll" id="bench"></div>
-      <div id="labRun"></div>
-    </section>
-
-    <section class="card" id="sec-maint">
-      <h2>Bakım</h2>
-      <p class="intro">İndeks işlemleri. BM25 indeksi birkaç saniyede yeniden kurulur; vektör indeksi CPU'da ~45 dakika
-        sürdüğü için komut satırından çalıştırılır.</p>
-      <div id="maint"></div>
-    </section>
-  </main>
+<div class="wrap" id="view-settings">
+  <h1>Ayarlar</h1>
+  <p class="lead">Bir alan seçin. Yapay zekâ sayfasındaki değişiklikler anında uygulanır; diğer sayfalarda “Kaydet ve uygula” ile.</p>
+  <div class="ptiles" id="ptiles" role="tablist" aria-label="Ayar sayfaları"></div>
+  <div class="page" id="page-llm"></div>
+  <div class="page" id="page-search"></div>
+  <div class="page" id="page-data"></div>
 </div>
+<dialog class="ed" id="editor" aria-label="LLM entegrasyonu"></dialog>
+<dialog class="ed wide" id="perf" aria-label="Performans ayrıntıları"></dialog>
 
 <div class="savebar" id="savebar">
   <div class="wrap">
@@ -327,14 +428,23 @@ async function api(path, opts = {}) {
 }
 const post = (path, body) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-let S = null;           // server payload
+let S = null;           // /api/settings payload
+let L = null;           // /api/llm payload
 let saved = {};         // values as saved on the server
 let form = {};          // values in the form
 const FIELD = {};       // key -> field schema
 const ROW = {};         // key -> row element
-const EFFECT = { "anında": ["now", "Anında"], "indeks": ["reindex", "İndeks gerekir"], "vektör": ["dense", "Vektör indeksi gerekir"] };
-const fmt = (v, step) => (typeof v === "number" ? (step && step < 1 ? v.toFixed(2) : String(v)) : v);
+let PAGE = "llm";
+const EFFECT_NOTE = { "indeks": "Kaydedince indeks yeniden kurulmalı" };
+const ICON = {
+  llm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></svg>',
+  data: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg>',
+};
 const eq = (a, b) => (typeof a === "number" && typeof b === "number" ? Math.abs(a - b) < 1e-9 : a === b);
+const show = (f, v) => f.format === "pct" ? `%${Math.round(v * 100)}` : (typeof v === "number" ? (f.step && f.step < 1 ? Number(v).toFixed(f.step < 0.1 ? 2 : 1) : String(v)) : (v || "boş"));
+const svg = name => { const t = document.createElement("template"); t.innerHTML = ICON[name]; return t.content.firstChild; };
+const short = m => (m || "").split("/").pop();
 
 function toast(title, lines, bad = false) {
   const t = $("#toast");
@@ -343,22 +453,35 @@ function toast(title, lines, bad = false) {
   clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove("on"), 7000);
 }
 
-function modelOptions(kind, current) {
-  const cloudChat = kind === "chat" && form["llm.provider"] === "cloud";
-  const list = cloudChat ? ((CLOUD && CLOUD.models) || []).map(m => ({ id: m.name, kind: "chat" }))
-    : (S.models || []).filter(m => m.kind === kind);
-  const opts = list.map(m => {
-    const bits = [m.loaded ? "● yüklü" : m.loaded === false ? "○" : "", m.arch, m.quant].filter(Boolean).join(" · ");
-    return h("option", { value: m.id, selected: m.id === current }, bits ? `${m.id}   ${bits}` : m.id);
-  });
-  if (current && !list.some(m => m.id === current)) opts.unshift(h("option", { value: current, selected: true }, `${current}   (sunucuda bulunamadı)`));
-  if (!list.length) opts.push(h("option", { value: "", disabled: true }, cloudChat ? "Bulut listesi yok — Bulut modelleri bölümünü açın" : "Sunucuya ulaşılamadı — adresi kontrol edin"));
-  return opts;
+// ---------------------------------------------------------------- pages
+function pageStatus(id) {
+  if (id === "llm") {
+    if (!L) return "Yükleniyor…";
+    const c = L.roles.chat;
+    return c ? "Sohbet: " + short(c.model) : "Bağlı model yok";
+  }
+  if (id === "search") return `${saved["analyst.shortlist"]} aday tablo · ${saved["analyst.detail_columns"] < 0 ? "tüm" : saved["analyst.detail_columns"]} tam açıklama`;
+  return `${S.status.dictionary_version} · ${(S.status.index_built_at || "").slice(0, 10) || "indeks yok"}`;
+}
+function renderTiles() {
+  $("#ptiles").replaceChildren(...S.pages.map(p => {
+    const n = p.id === "llm" ? 0 : Object.keys(FIELD).filter(k => FIELD[k].page === p.id && changedKey(k)).length;
+    return h("button", { class: "ptile", role: "tab", "aria-selected": String(p.id === PAGE), onclick: () => openPage(p.id) },
+      svg(p.id), h("b", {}, p.title), h("small", {}, pageStatus(p.id)), n ? h("span", { class: "cnt" }, String(n)) : null);
+  }));
+}
+function openPage(id) {
+  PAGE = id;
+  try { sessionStorage.setItem("admin-page", id); } catch (e) { /* storage blocked */ }
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("on", p.id === "page-" + id));
+  renderTiles();
+  if (id === "llm") loadLLM();
 }
 
+// ---------------------------------------------------------------- plain settings
 function control(f) {
   const key = f.key, v = form[key];
-  const set = val => { form[key] = val; refresh(key); if (key === "llm.provider") rerender("llm.model"); };
+  const set = val => { form[key] = val; refresh(key); };
   if (f.type === "bool") {
     const inp = h("input", { type: "checkbox", "aria-label": f.label });
     inp.checked = !!v; inp.onchange = () => set(inp.checked);
@@ -366,326 +489,408 @@ function control(f) {
   }
   if (f.type === "int" || f.type === "float") {
     const step = f.step || (f.type === "int" ? 1 : 0.05);
-    const range = h("input", { type: "range", min: f.min, max: f.max, step, value: v, "aria-label": f.label });
-    const num = h("input", { type: "number", min: f.min, max: f.max, step, value: fmt(v, step), "aria-label": f.label });
     const parse = x => (f.type === "int" ? parseInt(x, 10) : parseFloat(x));
-    range.oninput = () => { num.value = fmt(parse(range.value), step); set(parse(range.value)); };
+    const range = h("input", { type: "range", min: f.min, max: f.max, step, value: v, "aria-label": f.label });
+    if (f.format === "pct") {
+      const out = h("span", { class: "readout" }, show(f, v));
+      range.oninput = () => { const x = parse(range.value); out.textContent = show(f, x); set(x); };
+      return [range, out];
+    }
+    const num = h("input", { type: "number", min: f.min, max: f.max, step, value: show(f, v), "aria-label": f.label });
+    range.oninput = () => { num.value = show(f, parse(range.value)); set(parse(range.value)); };
     num.oninput = () => { const x = parse(num.value); if (!Number.isNaN(x)) { range.value = x; set(x); } };
     return [range, num];
   }
-  if (f.type === "select") {
-    const sel = h("select", { "aria-label": f.label }, f.options.map(([val, text]) => h("option", { value: val, selected: val === v }, text)));
-    sel.onchange = () => set(sel.value);
-    return [sel];
-  }
-  if (f.type === "model") {
-    const sel = h("select", { "aria-label": f.label }, modelOptions(f.kind, v));
-    sel.onchange = () => set(sel.value);
-    return [sel];
-  }
-  const inp = h("input", { type: f.type === "secret" ? "password" : "text", value: v ?? "", "aria-label": f.label,
-    placeholder: f.type === "secret" ? ((S.has_secret || {})[f.key] ? "•••••• (kayıtlı, değiştirmek için yazın)" : "yok") : "" });
+  const inp = h("input", { type: "text", value: v ?? "", "aria-label": f.label });
   inp.oninput = () => set(inp.value);
   return [inp];
 }
-
 function renderRow(f) {
-  const [cls, text] = EFFECT[f.effect] || ["now", f.effect];
-  const reset = h("button", { class: "reset", title: `Varsayılana dön (${fmt(S.defaults[f.key])})`, "aria-label": "Varsayılana dön",
+  const reset = h("button", { class: "reset", title: `Varsayılana dön: ${show(f, S.defaults[f.key])}`, "aria-label": "Varsayılana dön",
     onclick: () => { form[f.key] = S.defaults[f.key]; rerender(f.key); } }, "↺");
+  const note = EFFECT_NOTE[f.effect];
   const row = h("div", { class: "row", id: "row-" + f.key },
-    h("div", {}, h("div", { class: "lab" }, f.label, h("span", { class: "eff " + cls }, text)),
-      f.help ? h("div", { class: "help" }, f.help) : null, h("div", { class: "key" }, f.key)),
+    h("div", {}, h("div", { class: "lab", title: f.key }, f.label, note ? h("span", { class: "eff reindex" }, note) : null),
+      f.help ? h("div", { class: "help" }, f.help) : null),
     h("div", { class: "ctl" }, control(f), reset));
   ROW[f.key] = row;
   return row;
 }
 function rerender(key) { const old = ROW[key]; const fresh = renderRow(FIELD[key]); old.replaceWith(fresh); refresh(key); }
-
+const changedKey = k => ROW[k] && !eq(form[k], saved[k]);
 function refresh(key) {
-  const keys = key ? [key] : Object.keys(FIELD);
-  for (const k of keys) {
+  for (const k of key ? [key] : Object.keys(FIELD)) {
     const row = ROW[k]; if (!row) continue;
-    const secret = FIELD[k].type === "secret";
-    row.classList.toggle("changed", !eq(form[k], saved[k]) && !(secret && !form[k]));
-    row.classList.toggle("nondefault", !secret && !eq(form[k], S.defaults[k]));
+    row.classList.toggle("changed", changedKey(k));
+    row.classList.toggle("nondefault", !eq(form[k], S.defaults[k]));
   }
-  const changed = Object.keys(FIELD).filter(k => ROW[k] && ROW[k].classList.contains("changed"));
-  $("#savebar").classList.toggle("on", changed.length > 0);
-  $("#savemsg").textContent = `${changed.length} değişiklik kaydedilmedi`;
-  for (const sec of S.sections) {
-    const n = sec.fields.filter(f => changed.includes(f.key)).length;
-    const a = $(`#nav a[href="#sec-${sec.id}"] .cnt`); if (a) { a.textContent = n; a.style.display = n ? "" : "none"; }
-  }
-  const sum = $("#weightsum");
-  if (sum) {
-    const t = (form["scoring.w_rule"] || 0) + (form["scoring.w_llm"] || 0);
-    sum.textContent = `Ağırlık toplamı ${t.toFixed(2)} — nihai skor bu toplamla normalize edilir; LLM payı %${t ? Math.round(100 * (form["scoring.w_llm"] || 0) / t) : 0}.`;
-  }
+  const n = Object.keys(FIELD).filter(changedKey).length;
+  $("#savebar").classList.toggle("on", n > 0);
+  $("#savemsg").textContent = `${n} değişiklik kaydedilmedi`;
+  renderTiles();
 }
 
-function renderChips() {
-  const st = S.status;
-  $("#chips").replaceChildren(
-    h("span", { class: "pill" }, h("i", { class: "dot" + (st.hybrid ? " on" : "") }), "Anlamsal arama"),
-    h("span", { class: "pill", title: st.llm_model }, h("i", { class: "dot" + (st.judge ? " on" : "") }), st.judge ? `Hakem · ${st.llm_model.split("/").pop()}${st.llm_provider === "cloud" ? " (bulut)" : ""}` : "Hakem kapalı"),
-    h("span", { class: "pill", title: "Sözlük sürümü" }, st.dictionary_version));
-}
-
-function renderSections() {
-  $("#lead").textContent = `Değişiklikler ${S.path} dosyasına yazılır ve kaydedince uygulama yeniden başlatılmadan yeni ayarlarla çalışır.`;
-  const nav = [], cards = [];
-  for (const sec of S.sections) {
-    nav.push(h("a", { href: "#sec-" + sec.id }, sec.title, h("span", { class: "cnt", style: "display:none" }, "0")));
-    const rows = sec.fields.map(f => { FIELD[f.key] = f; return renderRow(f); });
-    const extra = [];
-    if (sec.id === "llm") {
-      const out = h("ul", { class: "tests" });
-      extra.push(h("div", { style: "margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
-        h("button", { class: "btn", onclick: e => testConnection(e.currentTarget, out) }, "Bağlantıyı test et"),
-        h("span", { class: "note" }, "Formdaki (kaydedilmemiş) değerlerle dener.")), out);
-    }
-    if (sec.id === "scoring") extra.push(h("div", { class: "note", id: "weightsum" }));
-    cards.push(h("section", { class: "card", id: "sec-" + sec.id }, h("h2", {}, sec.title), h("p", { class: "intro" }, sec.intro), rows, extra));
+function sectionCard(sec) {
+  const rows = f => { FIELD[f.key] = { ...f, page: sec.page }; return renderRow(FIELD[f.key]); };
+  if (sec.advanced) {
+    return h("details", { class: "card adv-card", id: "sec-" + sec.id },
+      h("summary", {}, sec.title, h("span", { class: "tag" }, `${sec.fields.length} ayar`)),
+      sec.intro ? h("p", { class: "sec-intro" }, sec.intro) : null, sec.fields.map(rows));
   }
-  nav.push(h("a", { href: "#sec-bench" }, "Model laboratuvarı"), h("a", { href: "#sec-maint" }, "Bakım"));
-  $("#nav").replaceChildren(...nav);
-  $("#sections").replaceChildren(...cards);
+  const basic = sec.fields.filter(f => !f.advanced), adv = sec.fields.filter(f => f.advanced);
+  return h("section", { class: "card", id: "sec-" + sec.id },
+    h("h2", {}, sec.title), sec.intro ? h("p", { class: "sec-intro" }, sec.intro) : null,
+    basic.map(rows),
+    adv.length ? h("details", { class: "adv" }, h("summary", {}, `Uzman ayarları (${adv.length})`), adv.map(rows)) : null,
+    sec.id === "cache" ? answersFoot() : null);
+}
+// Kept analyst answers (ADR-035): how many, how many fit today's dictionary/model/settings.
+function answersFoot() {
+  const a = S.status.answers || { total: 0, usable: 0 }, out = h("div", { class: "note" });
+  const btn = h("button", { class: "btn sm danger", disabled: !a.total, onclick: async () => {
+    if (!confirm(`Kayıtlı ${num(a.total)} cevap silinsin mi?\n\nSonraki sorular baştan analiz edilir. Silinen cevaplar geri gelmez.`)) return;
+    btn.disabled = true;
+    try { const r = await post("/api/admin/answers/clear", {}); toast("Önceki cevaplar silindi", [`${num(r.removed)} cevap silindi.`]); load(); }
+    catch (e) { out.textContent = "Hata: " + e.message; btn.disabled = false; }
+  } }, "Önceki cevapları sil…");
+  return h("div", {},
+    h("dl", { class: "kv" },
+      h("dt", {}, "Kayıtlı cevap"), h("dd", {}, a.total ? `${num(a.total)} · bugünkü sözlük, model ve ayarlarla geçerli: ${num(a.usable)}` : "henüz yok"),
+      a.newest ? h("dt", {}, "En yeni") : null, a.newest ? h("dd", {}, when(a.newest)) : null),
+    h("p", { class: "when-note" }, h("b", {}, "Ne zaman silinir? "), "Gerekmez; sözlük ya da model değişince eski cevaplar zaten kullanılmaz. Bir cevabın yanlış olduğu anlaşıldıysa uygulamada “Yeniden analiz et” yeterli; o soru için yeni cevap eskisinin yerine geçer."),
+    h("div", { class: "inline" }, btn), out);
+}
+function renderFieldPages() {
+  for (const p of S.pages.filter(p => p.id !== "llm")) {
+    const secs = S.sections.filter(s => s.page === p.id);
+    const plain = secs.filter(s => !s.advanced), expert = secs.filter(s => s.advanced);
+    $("#page-" + p.id).replaceChildren(...[
+      h("p", { class: "intro-line" }, p.intro),
+      ...plain.map(sectionCard),
+      p.id === "data" ? indexCard() : null,
+      expert.length ? h("div", { class: "expert-head" }, h("h3", {}, "Uzman ayarları"),
+        h("span", { class: "note" }, "Çoğu durumda değiştirmek gerekmez. Değiştirmeden önce ve sonra ", h("code", {}, "vsa eval --save"), " ile ölçün.")) : null,
+      ...expert.map(sectionCard)].filter(Boolean));
+  }
   refresh();
 }
 
-async function testConnection(btn, out) {
-  btn.disabled = true; btn.textContent = "Deneniyor…";
-  out.replaceChildren(h("li", {}, "Sunucu, hakem modeli ve embedding modeli deneniyor (model yüklü değilse ilk yükleme sürebilir)…"));
-  try {
-    const r = await post("/api/settings/test", {
-      endpoint: form["llm.endpoint"], model: form["llm.model"], embedding_model: form["llm.embedding_model"],
-      temperature: form["llm.temperature"], reasoning_effort: form["llm.reasoning_effort"], timeout: form["llm.timeout"] });
-    out.replaceChildren(...r.steps.map(s => h("li", {}, h("span", { class: s.ok ? "ok" : "no" }, s.ok ? "✓" : "✗"), h("b", {}, s.name), h("span", {}, s.detail), h("span", { class: "ms" }, (s.ms / 1000).toFixed(1) + " sn"))));
-  } catch (e) { out.replaceChildren(h("li", {}, h("span", { class: "no" }, "✗"), e.message)); }
-  btn.disabled = false; btn.textContent = "Bağlantıyı test et";
+// The search index: what it is for, whether it is up to date, when to rebuild.
+function indexCard() {
+  return h("section", { class: "card", id: "sec-index" },
+    h("h2", {}, "Arama indeksi"),
+    h("p", { class: "sec-intro" }, "Uygulama sözlükte bir kelime indeksiyle arar. İndeks sözlükten üretilir; sözlük ya da ilgili bir ayar değişince yeniden kurulması gerekir."),
+    h("div", { class: "idx-grid" }, wordPanel()));
 }
-
-// ---- Model laboratuvarı ------------------------------------------------------------
-let LAB = null, labTimer = null, labPicked = null, CLOUD = null, cloudFilter = "";
-const isCloud = id => id.startsWith("cloud:");
-const fmtTok = n => n >= 1e6 ? (n / 1e6).toFixed(2).replace(".", ",") + " M" : n >= 1e3 ? Math.round(n / 1e3) + " B" : String(n);
-const shortId = id => id.replace(/^cloud:/, "");
-const EFFORT = { none: "kapalı", low: "düşük", medium: "orta", high: "yüksek", "": "varsayılan" };
-const pct = x => h("span", {}, h("span", { class: "bar" }, h("i", { style: `width:${Math.round(x * 100)}%` })), `%${Math.round(x * 100)}`);
-const dur = s => s >= 3600 ? `${Math.floor(s / 3600)} sa ${Math.round(s % 3600 / 60)} dk` : s >= 60 ? `${Math.round(s / 60)} dk` : `${Math.round(s)} sn`;
-const providerOf = r => isCloud(r.model) ? "cloud" : "local";
-const isCurrent = r => saved["llm.provider"] === providerOf(r) && saved["llm.model"] === shortId(r.model)
-  && Number(saved["llm.temperature"]) === r.temperature && saved["llm.reasoning_effort"] === r.reasoning_effort;
-
-async function applyConfig(r, btn) {
-  if (btn) { btn.disabled = true; btn.textContent = "Uygulanıyor…"; }
-  try {
-    if (isCloud(r.model) && !confirm("Bulut hakemi seçiliyor: uygulamadaki HER soruda aday tabloların adları, kolon adları ve açıklamaları "
-      + "NVIDIA'ya gönderilecek (müşteri verisi gönderilmez). Devam edilsin mi?")) { renderLab(); return; }
-    const res = await post("/api/settings", { values: {
-      "llm.enabled": true, "llm.judge": true, "llm.provider": providerOf(r), "llm.model": shortId(r.model),
-      "llm.temperature": r.temperature, "llm.reasoning_effort": r.reasoning_effort } });
-    toast("Hakem yapılandırması uygulandı", [`${shortId(r.model)} (${isCloud(r.model) ? "bulut" : "yerel"}) · sıcaklık ${r.temperature} · düşünme ${EFFORT[r.reasoning_effort]}`,
-      `Değişen: ${res.changed.join(", ") || "— (zaten bu ayardaydı)"}`]);
-    await load(false);
-  } catch (e) { toast("Uygulanamadı", [e.message], true); }
-  renderLab();
+function idxHead(title, what, [label, cls]) {
+  return h("div", { class: "idx-h" },
+    h("div", {}, h("b", {}, title), h("div", { class: "what" }, what)),
+    h("span", { class: "badge " + cls }, label));
 }
-
-async function loadCloud(refresh = false) {
-  try { CLOUD = await api("/api/cloud-models" + (refresh ? "?refresh=1" : "")); }
-  catch (e) { CLOUD = { ok: false, reason: e.message, models: [] }; }
-}
-
-async function renderBench() {
-  if (!CLOUD) await loadCloud();
-  try { LAB = await api("/api/lab"); } catch (e) { $("#bench").replaceChildren(h("p", { class: "err" }, "Laboratuvar okunamadı: " + e.message)); return; }
-  renderLab();
-  clearTimeout(labTimer);
-  if (LAB.progress.running) labTimer = setTimeout(renderBench, 3000);
-}
-
-function renderLab() {
-  if (!LAB) return;
-  const rows = LAB.rows, W = LAB.weights;
-  const best = rows.find(r => r.recommended);
-  $("#labBest").replaceChildren(...[best && h("div", { class: "best-card" },
-    h("div", { class: "star" }, "★"),
-    h("div", {}, h("div", {}, "Önerilen: ", h("b", {}, shortId(best.model)), h("span", { class: "pill" }, isCloud(best.model) ? "bulut" : "yerel"), ` · sıcaklık ${best.temperature} · düşünme ${EFFORT[best.reasoning_effort]}`,
-        isCurrent(best) ? h("span", { class: "pill cur" }, "şu an kullanılıyor") : null),
-      h("div", { class: "why" }, `Kalite ${best.quality.toFixed(3)} — hakem doğruluğu %${Math.round(best.judge_accuracy * 100)}, nihai %${Math.round(best.final_accuracy * 100)}, `
-        + `aynı seçim %${Math.round(best.consistent_picks * 100)}, soru başına ${best.mean_sec.toFixed(0)} sn. Kalitesi ${W.tie} farkla eşit sayılanlardan en hızlısı seçilir.`)),
-    isCurrent(best) ? h("span") : h("button", { class: "btn primary", onclick: e => applyConfig(best, e.currentTarget) }, "Uygula ve kaydet"))].filter(Boolean));
-  if (!rows.length) {
-    $("#bench").replaceChildren(h("p", { class: "note" }, "Henüz ölçüm yok. Aşağıdan modelleri seçip başlatın."));
-  } else {
-    $("#bench").replaceChildren(h("table", { class: "bench" },
-      h("thead", {}, h("tr", {}, ["Model", "T", "Düşünme", "Kalite", "Hakem doğruluğu", "Nihai doğruluk", "Aynı seçim", "Aynı sıra", "Güven sapması", "Süre/soru", ""].map(t => h("th", {}, t)))),
-      h("tbody", {}, rows.map(r => h("tr", { class: r.recommended ? "best" : "", title: `${r.cases} vaka · ${r.at || ""}${r.size_gb ? " · " + r.size_gb + " GB" : ""}` },
-        h("td", { class: "m" }, shortId(r.model), r.recommended ? " ★" : "", h("span", { class: "pill" }, isCloud(r.model) ? "bulut" : "yerel"),
-          isCurrent(r) ? h("span", { class: "pill cur" }, "kullanılıyor") : null),
-        h("td", {}, String(r.temperature), r.seed != null ? h("span", { class: "pill", title: "Sabit tohum" }, "seed " + r.seed) : null),
-        h("td", {}, EFFORT[r.reasoning_effort] ?? r.reasoning_effort),
-        h("td", { class: "q" }, r.quality ? r.quality.toFixed(3) : "elendi"),
-        h("td", {}, pct(r.judge_accuracy)), h("td", {}, pct(r.final_accuracy)),
-        h("td", {}, pct(r.consistent_picks)), h("td", {}, pct(r.consistent_final_order)),
-        h("td", {}, r.mean_conf_drift.toFixed(3)), h("td", {}, r.mean_sec.toFixed(0) + " sn"),
-        h("td", {}, isCurrent(r) ? null : h("button", { class: "btn", onclick: e => applyConfig(r, e.currentTarget) }, "Uygula")))))),
-      h("p", { class: "note" }, `Kalite = ${W.judge}·hakem + ${W.final}·nihai + ${W.picks}·aynı seçim + ${W.order}·aynı sıra − ${W.drift}·sapma. `
-        + "Geçersiz JSON veya uydurma aday kimliği üreten yapılandırma elenir (ADR-002)."));
-  }
-  const cloudRows = rows.filter(r => isCloud(r.model) && r.usage && r.usage.requests);
-  if (cloudRows.length) {
-    const sum = k => cloudRows.reduce((a, r) => a + (r.usage[k] || 0), 0);
-    $("#bench").append(h("p", { class: "note" }, "Bulut kullanımı (kaydedilen ölçümler): ",
-      h("b", {}, `${sum("requests")} istek`), `, ${fmtTok(sum("prompt_tokens"))} giriş + ${fmtTok(sum("completion_tokens"))} çıkış token. `
-      + "NVIDIA'nın ücretsiz katmanı istek hızını sınırlar (dakikada ~40); sayaç bu makineden gönderilenleri gösterir."));
-  }
-  const errs = Object.entries(LAB.errors || {});
-  if (errs.length) $("#bench").append(h("div", { class: "warn" }, "Ölçülemeyen modeller: ", errs.map(([m, e]) => `${m} (${e.slice(-90)})`).join("; ")));
-  renderRunner();
-}
-
-function renderRunner() {
-  const P = LAB.progress || {};
-  if (P.running) {
-    const frac = P.total ? P.done / P.total : 0;
-    const eta = P.done && P.elapsed ? P.elapsed / P.done * (P.total - P.done) : null;
-    const logBox = h("pre", { class: "log" }, (P.log || []).join("\n"));
-    $("#labRun").replaceChildren(h("div", { class: "runner" },
-      h("h3", {}, "Ölçüm sürüyor"),
-      h("div", { class: "prog live" }, h("i", { style: `width:${Math.max(2, frac * 100)}%` })),
-      h("div", { class: "labmeta" },
-        h("span", {}, h("b", {}, `${P.done || 0}/${P.total || "?"}`), " çağrı"),
-        P.model ? h("span", {}, "Model: ", h("b", {}, P.model)) : null,
-        P.step ? h("span", {}, P.step) : null,
-        P.elapsed ? h("span", {}, "Geçen: ", h("b", {}, dur(P.elapsed))) : null,
-        eta ? h("span", {}, "Kalan ≈ ", h("b", {}, dur(eta))) : null,
-        P.cloud_usage && P.cloud_usage.requests ? h("span", {}, "NVIDIA'ya: ", h("b", {}, `${P.cloud_usage.requests} istek`),
-          ` · ${fmtTok(P.cloud_usage.prompt_tokens + P.cloud_usage.completion_tokens)} token`) : null),
-      logBox,
-      h("div", { style: "margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
-        h("button", { class: "btn", disabled: P.stopping, onclick: async e => { e.currentTarget.disabled = true; await post("/api/lab/stop", {}); renderBench(); } },
-          P.stopping ? "Durduruluyor…" : "Durdur"),
-        h("span", { class: "note" }, "Durdurunca o anki çağrı bitince çıkar; tamamlanan ölçümler kalır, uygulamanın modeli geri yüklenir."))));
-    logBox.scrollTop = logBox.scrollHeight;
-    return;
-  }
-  const chat = (S.models || []).filter(m => m.kind === "chat");
-  if (!chat.length) { $("#labRun").replaceChildren(h("div", { class: "runner" }, h("p", { class: "note" }, "LM Studio'ya ulaşılamadı veya sohbet modeli yok."))); return; }
-  const measured = new Set(LAB.rows.map(r => r.model));
-  if (!labPicked) labPicked = new Set();
-  const rpm = Number(saved["cloud.rpm"]) || 30;
-  const secOf = id => { const rs = LAB.rows.filter(r => r.model === id); return rs.length ? Math.min(...rs.map(r => r.mean_sec)) : isCloud(id) ? Math.max(60 / rpm, 6) : 45; };
-  const cases = P.cases || 16;
-  const temps = h("select", {}, [["0", "0"], ["0,0.1", "0 ve 0,1"], ["0,0.1,0.3", "0, 0,1 ve 0,3"]].map(([v, t]) => h("option", { value: v }, t)));
-  const runs = h("select", {}, [1, 2, 3].map(n => h("option", { value: n, selected: n === 2 }, String(n))));
-  const est = h("span", { class: "note" });
-  function pickBox(id, label, subs) {
-    const cb = h("input", { type: "checkbox", checked: labPicked.has(id), onchange: e => { e.target.checked ? labPicked.add(id) : labPicked.delete(id); updateEst(); } });
-    return h("label", {}, cb, label, h("span", { class: "sub" }, subs.filter(Boolean).join(" · ")));
-  }
-  function cloudBlock() {
-    const head = h("h4", { class: "grp" }, "Bulut (NVIDIA API kataloğu) ",
-      h("button", { class: "btn mini", onclick: async () => { await loadCloud(true); renderRunner(); } }, "Listeyi yenile"));
-    if (!CLOUD || !CLOUD.ok) return [head, h("p", { class: "note" }, (CLOUD && CLOUD.reason) || "Liste alınamadı.", " ", h("a", { href: "#sec-cloud" }, "Ayarlara git"))];
-    const list = h("div", { class: "mlist" });
-    const fill = () => {
-      const q = cloudFilter.trim().toLocaleLowerCase("tr");
-      const shown = CLOUD.models.filter(m => !q || m.name.toLocaleLowerCase("tr").includes(q));
-      list.replaceChildren(...shown.map(m => pickBox(m.id, m.name, [measured.has(m.id) ? "ölçüldü" : ""])));
-      count.textContent = `${shown.length} / ${CLOUD.models.length} sohbet modeli`;
-    };
-    const count = h("span", { class: "note" });
-    const search = h("input", { type: "search", class: "msearch", placeholder: "Ara: gemma, llama, qwen, mistral, gpt-oss…", value: cloudFilter,
-      oninput: e => { cloudFilter = e.target.value; fill(); } });
-    fill();
-    return [head, h("div", { class: "opts" }, search, count), list,
-      h("p", { class: "warn" }, "Bulut modeli seçilirse ölçüm sırasında test soruları ile aday tabloların adları, kolon adları ve açıklamaları NVIDIA'ya gönderilir. "
-        + "Müşteri verisi gönderilmez. Bir bulut satırını “Uygula” ile hakem yaparsanız uygulamanın her sorusu da gönderilir.")];
-  }
-  const go = h("button", { class: "btn primary", onclick: async e => {
-    e.currentTarget.disabled = true;
-    try { await post("/api/lab/start", { models: [...labPicked], temps: temps.value, runs: Number(runs.value) }); toast("Ölçüm başladı", ["İlerleme bu sayfada görünür; sayfayı kapatabilirsiniz."]); }
-    catch (err) { toast("Başlatılamadı", [err.message], true); }
-    renderBench();
-  } }, "Ölçümü başlat");
-  const updateEst = () => {
-    const nT = temps.value.split(",").length, nR = Number(runs.value);
-    const sec = [...labPicked].reduce((a, id) => a + secOf(id) * cases * nT * nR + 60, 0);
-    est.textContent = labPicked.size ? `≈ ${dur(sec)} (${labPicked.size} model × ${cases} vaka × ${nT} sıcaklık × ${nR} tekrar)` : "Model seçin";
-    go.disabled = !labPicked.size;
-  };
-  temps.onchange = runs.onchange = updateEst;
-  $("#labRun").replaceChildren(h("div", { class: "runner" },
-    h("h3", {}, "Yeni ölçüm"),
-    h("p", { class: "note" }, "Ölçüm süresince LM Studio'da yalnız ölçülen model yüklü tutulur; soru sorma yavaşlar. Bitince uygulamanın modeli geri yüklenir. "
-      + "Yeni modeli LM Studio'dan indirin; burada kendiliğinden görünür."),
-    h("h4", { class: "grp" }, "Yerel (LM Studio)"),
-    h("div", { class: "mlist" }, chat.map(m => pickBox(m.id, m.id, [m.quant, measured.has(m.id) ? "ölçüldü" : "yeni"]))),
-    cloudBlock(),
-    h("div", { class: "opts" }, h("label", {}, "Sıcaklık ", temps), h("label", {}, "Tekrar ", runs), est),
-    go,
-    P.log && P.log.length ? h("details", { style: "margin-top:12px" }, h("summary", { class: "note" }, "Son ölçümün kaydı"), h("pre", { class: "log" }, P.log.join("\n"))) : null));
-  updateEst();
-}
-
-function renderMaint() {
-  const pending = S.reindex_pending || [];
+function wordPanel() {
+  const st = S.status, pending = S.reindex_pending || [];
+  const [ver, rows] = (st.dictionary_version || "").split("-");
   const out = h("div", { class: "note" });
-  $("#maint").replaceChildren(
-    pending.length ? h("div", { class: "warn" }, "İndeks yeniden kurulmalı: ", pending.join(", ")) : null,
-    h("div", { style: "display:flex; gap:10px; align-items:center; flex-wrap:wrap" },
-      h("button", { class: "btn", onclick: e => reindex(e.currentTarget, out) }, "BM25 indeksini yeniden kur"),
-      h("span", { class: "note" }, S.status.index_built_at ? `Son kurulum: ${S.status.index_built_at.replace("T", " ")}` : "")),
-    out,
-    h("p", { class: "note" }, "Vektör indeksi (embedding modeli veya sözlük değiştiğinde): ",
-      h("code", {}, ".venv\\Scripts\\vsa index --dense"), " — kaldığı yerden devam eder."));
+  return h("div", { class: "idx" },
+    idxHead("Kelime indeksi", "Sorudaki kelimeleri kolon adları, eş anlamlılar ve açıklamalarla eşleştirir. Her soru kullanır.",
+      pending.length ? ["Yeniden kurulmalı", "warn"] : ["Güncel", "ok"]),
+    pending.length ? h("div", { class: "warn" }, "Değişen ayarlar henüz indekste değil: ", pending.join(", "), ".") : null,
+    h("dl", { class: "kv" },
+      h("dt", {}, "Sözlük"), h("dd", {}, rows ? `${Number(rows).toLocaleString("tr-TR")} kolon · sürüm ${ver.slice(0, 8)}` : "—"),
+      h("dt", {}, "Son kurulum"), h("dd", {}, st.index_built_at ? when(st.index_built_at) : "—")),
+    h("p", { class: "when-note" }, h("b", {}, "Ne zaman yeniden kurulur? "), "Sözlük dosyası, terim sözlüğü, durak kelimeler ya da kelime araması ağırlıkları değişince."),
+    h("div", { class: "inline" }, h("button", { class: "btn" + (pending.length ? " primary" : ""), onclick: e => reindex(e.currentTarget, out) }, "Kelime indeksini yeniden kur"),
+      h("span", { class: "note", style: "margin:0" }, "birkaç saniye")),
+    out);
 }
 
 async function reindex(btn, out) {
   btn.disabled = true; btn.textContent = "Kuruluyor…"; out.textContent = "";
   try {
     const r = await post("/api/reindex", {});
-    out.textContent = `Hazır: ${r.columns.toLocaleString("tr-TR")} kolon · ${r.objects} tablo · sürüm ${r.version} · ${(r.elapsed_ms / 1000).toFixed(1)} sn` + (r.dense ? "" : " · vektör indeksi sözlükle uyumsuz, yalnız BM25");
-    await load(false);
-  } catch (e) { out.textContent = "Hata: " + e.message; }
-  btn.disabled = false; btn.textContent = "BM25 indeksini yeniden kur";
+    toast("İndeks kuruldu", [`${r.columns.toLocaleString("tr-TR")} kolon · ${r.objects} tablo · ${(r.elapsed_ms / 1000).toFixed(1)} sn`]);
+    await load();
+  } catch (e) { out.textContent = "Hata: " + e.message; btn.disabled = false; btn.textContent = "İndeksi yeniden kur"; }
 }
 
 async function save() {
   const btn = $("#save"); btn.disabled = true; btn.textContent = "Kaydediliyor…";
   const changed = {};
-  for (const k of Object.keys(FIELD)) if (ROW[k].classList.contains("changed")) changed[k] = form[k];
+  for (const k of Object.keys(FIELD)) if (changedKey(k)) changed[k] = form[k];
   try {
     const r = await post("/api/settings", { values: changed });
-    const lines = [`Değişen: ${r.changed.join(", ") || "—"}`, `Uygulandı (${(r.elapsed_ms / 1000).toFixed(1)} sn).`];
-    if (r.reindex_needed.length) lines.push("⚠ BM25 indeksi yeniden kurulmalı (Bakım bölümü).");
-    if (r.dense_needed.length) lines.push("⚠ Vektör indeksi yeniden kurulmalı: vsa index --dense");
-    toast("Ayarlar kaydedildi", lines);
-    await load(false);
+    const lines = [`Değişen: ${r.changed.join(", ") || "—"}`];
+    if (r.reindex_needed.length) lines.push("Kelime indeksi yeniden kurulmalı: Veri ve bakım → Arama indeksi.");
+    toast("Kaydedildi ve uygulandı", lines);
+    await load();
   } catch (e) { toast("Kaydedilemedi", [e.message], true); }
   btn.disabled = false; btn.textContent = "Kaydet ve uygula";
 }
 
-async function load(first = true) {
+function renderChips() {
+  const st = S.status;
+  $("#chips").replaceChildren(
+    h("span", { class: "pill", title: st.llm_model }, h("i", { class: "dot" + (st.llm ? " on" : "") }), st.llm ? `Model · ${short(st.llm_model)}` : "Model yok"),
+    h("span", { class: "pill", title: "Sözlük sürümü" }, st.dictionary_version));
+}
+
+async function load() {
   try { S = await api("/api/settings"); }
-  catch (e) { $("#lead").replaceChildren(h("div", { class: "err" }, "Ayarlar okunamadı: " + e.message)); return; }
+  catch (e) { $("#ptiles").replaceChildren(h("div", { class: "err" }, "Ayarlar okunamadı: " + e.message)); return; }
   saved = { ...S.values }; form = { ...S.values };
-  if (!CLOUD || !first) await loadCloud();
-  renderChips(); renderSections(); renderMaint();
-  if (first) renderBench(); else renderLab();
+  renderChips(); renderFieldPages(); openPage(PAGE);
+  if (PAGE !== "llm") loadLLM();  // the tile shows the chat model on every page
+}
+
+// ---------------------------------------------------------------- LLM integrations
+async function loadLLM() {
+  try { L = await api("/api/llm"); } catch (e) { $("#page-llm").replaceChildren(h("div", { class: "err" }, "Entegrasyonlar okunamadı: " + e.message)); return; }
+  renderLLM(); renderTiles();
+}
+
+function roleCard() {
+  const r = L.roles.chat;
+  const warn = [];
+  const down = r && L.engine.chat_down;
+  if (down) warn.push(h("div", { class: "err" }, `Sunucuya ulaşılamıyor: ${L.engine.chat_down}. Sorular şu an kural motoruyla, düşürülmüş güvenle cevaplanıyor.`));
+  if (!r) warn.push(h("div", { class: "warn" }, "Sohbet modeli yokken cevapları kural motoru yazar; analist kadar isabetli değildir ve güven skorları düşürülür (Arama ve cevap → Model olmadan verilen cevapta güven çarpanı)."));
+  return h("div", { class: "role" + (r && !down ? "" : " off") },
+    h("div", { class: "what" }, "Sohbet modeli"),
+    h("div", { class: "who" }, h("i", { class: "dot" + (r && !down ? " on" : "") }), r ? r.model : "Bağlı değil"),
+    h("div", { class: "via" }, r ? `${r.name} üzerinden · talebi okuyup cevabı yazar` : "Cevabı kural motoru yazar."),
+    warn);
+}
+
+function integCard(it) {
+  const test = h("div"), models = h("div");
+  const sw = h("input", { type: "checkbox", "aria-label": "Aktif" });
+  sw.checked = it.enabled;
+  sw.onchange = () => activate(it, sw.checked, sw);
+  const lt = it.last_test || {};
+  const tags = [
+    h("span", { class: "tag" + (it.enabled ? " on" : "") }, it.enabled ? "Aktif" : "Pasif"),
+    it.internal ? null : h("span", { class: "tag warn", title: "Bu adres kurum ağı dışında olabilir: sorular ve tablo açıklamaları bu adrese gönderilir." }, "Kurum dışı adres"),
+    h("span", { class: "tag" }, it.has_key ? "Anahtar kayıtlı" : "Anahtarsız"),
+    lt.at ? h("span", { class: "tag " + (lt.ok ? "on" : "bad"), title: lt.summary }, (lt.ok ? "✓ Test " : "✗ Test ") + when(lt.at)) : h("span", { class: "tag" }, "Test edilmedi"),
+  ];
+  return h("section", { class: "card integ" + (it.enabled ? "" : " off") },
+    h("div", { class: "ih" }, h("div", { class: "nm" }, h("b", {}, it.name), h("div", { class: "url" }, it.endpoint)),
+      h("label", { class: "switch", title: it.enabled ? "Pasif yap" : "Aktif et" }, sw, h("span"))),
+    h("div", { class: "tags" }, tags),
+    it.chat_model ? h("div", { class: "mrole" }, h("span", {}, "Sohbet"), h("span", {}, it.chat_model))
+      : h("p", { class: "note" }, "Model seçilmedi — Düzenle'den bir sohbet modeli seçin."),
+    h("div", { class: "acts" },
+      h("button", { class: "btn sm", onclick: e => runTest({ id: it.id, record: true }, test, e.currentTarget, true) }, "Test et"),
+      h("button", { class: "btn sm", onclick: e => showModels(it, models, e.currentTarget) }, "Modeller"),
+      h("button", { class: "btn sm", onclick: () => openEditor(it) }, "Düzenle"),
+      h("button", { class: "btn sm ghost danger", onclick: () => remove(it) }, "Sil")),
+    test, models);
+}
+
+function renderLLM() {
+  const items = L.items;
+  const body = items.length ? h("div", { class: "integs" }, items.map(integCard)) :
+    h("div", { class: "card empty-state" }, h("b", {}, "Henüz entegrasyon yok"),
+      "OpenAI uyumlu bir model sunucusunun adresini ekleyin (vLLM, Ollama, LM Studio, llama.cpp…).",
+      h("div", { style: "margin-top:12px" }, h("button", { class: "btn primary", onclick: () => openEditor(null) }, "+ Entegrasyon ekle")));
+  $("#page-llm").replaceChildren(...[
+    h("p", { class: "intro-line" }, "Cevabı sohbet modeli yazar. Bu rolü en fazla bir aktif entegrasyon üstlenir; değişiklikler anında uygulanır."),
+    h("div", { class: "roles" }, roleCard()),
+    h("div", { class: "bar-head" }, h("h2", {}, "Entegrasyonlar"),
+      h("button", { class: "btn", onclick: e => showInventory(e.currentTarget) }, "Envanter"),
+      h("button", { class: "btn primary", onclick: () => openEditor(null) }, "+ Yeni entegrasyon")),
+    L.saved ? null : items.length ? h("p", { class: "note" }, "Bu bağlantı ayar dosyasından okundu; ilk değişiklikte ", h("code", {}, L.path), " dosyasına yazılır.") : null,
+    body,
+    h("div", { id: "inventory" })].filter(Boolean));
+}
+
+async function withConflict(path, body) {
+  let r = await post(path, body);
+  if (r.ok === false && r.conflict) {
+    const who = r.conflict.map(c => `“${c.name}” (${c.roles.join(", ")})`).join(", ");
+    if (!confirm(`${who} şu an bu rolde aktif. Pasif yapılıp yerine bu entegrasyon kullanılsın mı?`)) return null;
+    r = await post(path, { ...body, replace: true });
+  }
+  return r;
+}
+
+async function activate(it, on, sw) {
+  sw.disabled = true;
+  try {
+    const r = await withConflict("/api/llm/activate", { id: it.id, enabled: on });
+    if (r) { L = r.state; toast(on ? "Aktif edildi" : "Pasif yapıldı", [`${it.name} — uygulama yeni bağlantıyla çalışıyor.`]); await load(); }
+  } catch (e) { toast("Değiştirilemedi", [e.message], true); }
+  renderLLM(); renderTiles();
+}
+
+async function remove(it) {
+  if (!confirm(`“${it.name}” entegrasyonu silinsin mi?${it.enabled ? " Aktif olduğu için kullandığı roller boşta kalır." : ""}`)) return;
+  try { const r = await post("/api/llm/delete", { id: it.id }); L = r.state; toast("Silindi", [it.name]); await load(); }
+  catch (e) { toast("Silinemedi", [e.message], true); }
+}
+
+function stepsList(steps) {
+  return h("ul", { class: "steps" }, steps.map(s => h("li", {}, h("span", { class: s.ok ? "ok" : "no" }, s.ok ? "✓" : "✗"),
+    h("b", {}, s.name), h("span", { class: "d" }, s.detail), h("span", { class: "ms" }, msText(s.ms)))));
+}
+async function runTest(body, out, btn, reloadAfter = false) {
+  const label = btn.textContent; btn.disabled = true; btn.textContent = "Deneniyor…";
+  out.replaceChildren(h("p", { class: "note" }, "Sunucuya bağlanılıyor; model ilk kez yükleniyorsa bir dakika sürebilir…"));
+  try {
+    const r = await post("/api/llm/test", body);
+    out.replaceChildren(stepsList(r.steps));
+    if (reloadAfter) {  // the card is redrawn with the new test tag; the steps go to a toast
+      toast(r.ok ? "Test başarılı" : "Test başarısız", r.steps.map(s => `${s.ok ? "✓" : "✗"} ${s.name}: ${s.detail}`), !r.ok);
+      await loadLLM(); return;
+    }
+  } catch (e) { out.replaceChildren(h("div", { class: "err" }, e.message)); }
+  btn.disabled = false; btn.textContent = label;
+}
+
+function modelTable(rows, pick) {
+  if (!rows.length) return h("p", { class: "note" }, "Sunucu hiç model bildirmedi.");
+  return h("div", { class: "scroll" }, h("table", { class: "mt" },
+    h("thead", {}, h("tr", {}, ["Model", "Bağlam", "Durum", ""].map((t, i) => h("th", { class: i === 1 ? "r" : "" }, t)))),
+    h("tbody", {}, rows.map(m => h("tr", {},
+      h("td", { class: "m" }, m.id),
+      h("td", { class: "r" }, m.context ? m.context.toLocaleString("tr-TR") : "–"),
+      h("td", {}, m.in_use && m.in_use.length ? h("span", { class: "tag on" }, "Kullanımda") : m.loaded === true ? h("span", { class: "tag" }, "Yüklü") : m.loaded === false ? h("span", { class: "tag" }, "Yüklü değil") : ""),
+      h("td", {}, pick ? pick(m) : null))))));
+}
+async function showModels(it, out, btn) {
+  if (out.firstChild) { out.replaceChildren(); return; }
+  btn.disabled = true;
+  try {
+    const r = await post("/api/llm/models", { id: it.id });
+    out.replaceChildren(r.ok ? modelTable(r.models, m => it.chat_model === m.id ? null
+      : h("button", { class: "btn sm", onclick: () => quickPick(it, m.id) }, "Sohbet modeli yap"))
+      : h("div", { class: "err" }, r.error));
+  } catch (e) { out.replaceChildren(h("div", { class: "err" }, e.message)); }
+  btn.disabled = false;
+}
+async function quickPick(it, model) {
+  try {
+    const r = await withConflict("/api/llm/save", { ...it, chat_model: model });
+    if (r) { L = r.state; toast("Model seçildi", [`${it.name}: ${model}`]); await load(); }
+  } catch (e) { toast("Kaydedilemedi", [e.message], true); }
+}
+
+async function showInventory(btn) {
+  const box = $("#inventory");
+  btn.disabled = true; box.replaceChildren(h("p", { class: "note" }, "Sunucular soruluyor…"));
+  try {
+    const r = await api("/api/llm/inventory");
+    const rows = r.servers.flatMap(sv => sv.models.map(m => ({ ...m, server: sv })));
+    const filter = h("input", { type: "search", placeholder: "Model ara…", class: "msearch" });
+    const table = h("div");
+    const draw = () => {
+      const q = filter.value.toLocaleLowerCase("tr");
+      const shown = rows.filter(m => !q || m.id.toLocaleLowerCase("tr").includes(q));
+      table.replaceChildren(h("div", { class: "scroll" }, h("table", { class: "mt" },
+        h("thead", {}, h("tr", {}, ["Model", "Entegrasyon", "Bağlam", "Durum"].map((t, i) => h("th", { class: i === 2 ? "r" : "" }, t)))),
+        h("tbody", {}, shown.map(m => h("tr", {},
+          h("td", { class: "m" }, m.id), h("td", {}, m.server.name, m.server.enabled ? "" : h("span", { class: "tag", style: "margin-left:6px" }, "pasif")),
+          h("td", { class: "r" }, m.context ? m.context.toLocaleString("tr-TR") : "–"),
+          h("td", {}, m.in_use.length ? h("span", { class: "tag on" }, "Sohbet") : "")))))));
+    };
+    filter.oninput = draw; draw();
+    const failed = r.servers.filter(sv => !sv.ok);
+    box.replaceChildren(h("section", { class: "card", style: "margin-top:18px" },
+      h("div", { class: "bar-head" }, h("h2", {}, `Model envanteri (${rows.length})`), filter,
+        h("button", { class: "btn sm ghost", onclick: () => box.replaceChildren() }, "Kapat")),
+      h("p", { class: "sec-intro" }, "Bütün entegrasyonların sunucularında şu an sunulan modeller."),
+      failed.map(sv => h("div", { class: "warn" }, `${sv.name}: ${sv.error}`)), table));
+  } catch (e) { box.replaceChildren(h("div", { class: "err" }, e.message)); }
+  btn.disabled = false;
+}
+
+// ---- editor (new / edit)
+const ED = { it: null, models: [] };
+function fld(label, input, help) { return h("label", { class: "fld" }, h("span", {}, label), input, help ? h("small", {}, help) : null); }
+function openEditor(it) {
+  ED.it = it; ED.models = [];
+  const d = $("#editor");
+  const v = it || { name: "", endpoint: "", chat_model: "", temperature: 0, timeout: 900, reasoning_effort: "none", seed: 42, has_key: false };
+  const name = h("input", { value: v.name, required: true, placeholder: "ör. DGX Spark 1", autocomplete: "off" });
+  const url = h("input", { class: "mono", value: v.endpoint, required: true, placeholder: "http://10.0.0.5:8000/v1", autocomplete: "off", spellcheck: "false" });
+  const key = h("input", { class: "mono", type: "password", autocomplete: "new-password", placeholder: v.has_key ? "•••••• kayıtlı — değiştirmek için yazın" : "Gerekmiyorsa boş bırakın" });
+  const clearKey = h("input", { type: "checkbox" });
+  const chat = h("input", { class: "mono", value: v.chat_model, list: "dl-chat", placeholder: "Kullanılmayacaksa boş", autocomplete: "off", spellcheck: "false" });
+  const dlc = h("datalist", { id: "dl-chat" });
+  const temp = h("input", { type: "number", min: 0, max: 2, step: 0.1, value: v.temperature });
+  const tout = h("input", { type: "number", min: 5, max: 3600, step: 5, value: v.timeout });
+  const seed = h("input", { type: "number", min: -1, step: 1, value: v.seed });
+  const effort = h("select", {}, [["none", "Kapalı (önerilen)"], ["low", "Düşük"], ["medium", "Orta"], ["high", "Yüksek"], ["", "Gönderme (model varsayılanı)"]]
+    .map(([val, t]) => h("option", { value: val, selected: val === v.reasoning_effort }, t)));
+  const fetchOut = h("span", { class: "fetch-out" }, v.endpoint ? "" : "Adresi girip modelleri getirin.");
+  const testOut = h("div");
+  const activateBox = h("input", { type: "checkbox" });
+  activateBox.checked = !it;
+  const values = () => ({ id: it ? it.id : "", name: name.value, endpoint: url.value, api_key: key.value, clear_key: clearKey.checked,
+    chat_model: chat.value.trim(), temperature: Number(temp.value), timeout: Number(tout.value),
+    seed: Number(seed.value), reasoning_effort: effort.value });
+  async function fetchModels(btn) {
+    btn.disabled = true; fetchOut.className = "fetch-out"; fetchOut.textContent = "Bağlanılıyor…";
+    try {
+      const r = await post("/api/llm/models", values());
+      if (!r.ok) { fetchOut.className = "fetch-out no"; fetchOut.textContent = r.error; }
+      else {
+        ED.models = r.models;
+        const opt = m => h("option", { value: m.id }, m.context ? `bağlam ${m.context.toLocaleString("tr-TR")}` : "");
+        dlc.replaceChildren(...r.models.map(opt));
+        fetchOut.className = "fetch-out ok";
+        fetchOut.textContent = `✓ Bağlandı: ${r.models.length} model. Aşağıdaki kutuya tıklayıp seçin.`;
+        if (!chat.value && r.models.length === 1) chat.value = r.models[0].id;
+      }
+    } catch (e) { fetchOut.className = "fetch-out no"; fetchOut.textContent = e.message; }
+    btn.disabled = false;
+  }
+  async function submit(ev) {
+    ev.preventDefault();
+    const btn = $("#ed-save"); btn.disabled = true;
+    try {
+      const r = await withConflict("/api/llm/save", { ...values(), activate: activateBox.checked });
+      if (r) { L = r.state; d.close(); toast(it ? "Entegrasyon güncellendi" : "Entegrasyon eklendi", [name.value + (activateBox.checked ? " — aktif" : " — pasif")]); await load(); }
+    } catch (e) { toast("Kaydedilemedi", [e.message], true); }
+    btn.disabled = false;
+  }
+  d.replaceChildren(h("form", { method: "dialog", onsubmit: submit },
+    h("header", {}, h("h2", {}, it ? `${it.name} — düzenle` : "Yeni LLM entegrasyonu"),
+      h("button", { type: "button", class: "btn sm ghost", onclick: () => d.close() }, "✕")),
+    h("div", { class: "body" },
+      h("h3", {}, h("i", {}, "1"), "Bağlantı"),
+      fld("Ad", name, "Listede görünecek ad."),
+      fld("API adresi", url, "OpenAI uyumlu sunucunun /v1 ile biten adresi. vLLM: http://sunucu:8000/v1 · Ollama: http://sunucu:11434/v1"),
+      fld("API anahtarı", key, it && it.has_key ? null : "Sunucu anahtar istemiyorsa boş kalabilir."),
+      it && it.has_key ? h("label", { class: "check" }, clearKey, "Kayıtlı anahtarı sil") : null,
+      h("div", { class: "inline", style: "margin-top:4px" }, h("button", { type: "button", class: "btn sm", onclick: e => fetchModels(e.currentTarget) }, "Bağlan ve modelleri getir"), fetchOut),
+      h("h3", {}, h("i", {}, "2"), "Model"),
+      fld("Sohbet modeli", chat, "Talebi okuyup cevabı yazar."),
+      dlc,
+      h("details", { class: "adv" }, h("summary", {}, "Gelişmiş"),
+        h("div", { class: "grid2", style: "margin-top:10px" },
+          fld("Sıcaklık", temp, "0 = her seferinde aynı cevap (önerilen)."),
+          fld("Zaman aşımı (sn)", tout, "Uzun raporlar için 900 önerilir."),
+          fld("Düşünme modu", effort, "Düşünen modellerde (gpt-oss, Qwen3) gizli düşünmeyi sınırlar."),
+          fld("Seed", seed, "Tekrarlanabilir cevap için sabit; -1 = gönderme."))),
+      h("h3", {}, h("i", {}, "3"), "Test"),
+      h("div", { class: "inline" }, h("button", { type: "button", class: "btn sm", onclick: e => runTest(values(), testOut, e.currentTarget) }, "Bu ayarlarla test et"),
+        h("span", { class: "note", style: "margin:0" }, "Kaydetmeden dener: sunucu ve sohbet modeli.")),
+      testOut),
+    h("footer", {},
+      h("label", { class: "grow check" }, activateBox, it && it.enabled ? "Aktif kalsın" : "Kaydedince aktif et"),
+      h("button", { type: "button", class: "btn", onclick: () => d.close() }, "Vazgeç"),
+      h("button", { type: "submit", class: "btn primary", id: "ed-save" }, it ? "Kaydet" : "Ekle"))));
+  if (it) activateBox.checked = it.enabled;
+  d.showModal();
+  (it ? chat : name).focus();
+  if (it) fetchModels(d.querySelector(".inline .btn"));
 }
 
 $("#save").onclick = save;
-$("#revert").onclick = () => { form = { ...saved }; renderSections(); };
+$("#revert").onclick = () => { form = { ...saved }; renderFieldPages(); };
 addEventListener("beforeunload", e => { if ($("#savebar").classList.contains("on")) { e.preventDefault(); e.returnValue = ""; } });
-// highlight the section in view
-const io = new IntersectionObserver(entries => {
-  for (const en of entries) if (en.isIntersecting) document.querySelectorAll("#nav a").forEach(a => a.classList.toggle("cur", a.getAttribute("href") === "#" + en.target.id));
-}, { rootMargin: "-40% 0px -55% 0px" });
-new MutationObserver(() => document.querySelectorAll("main .card").forEach(c => io.observe(c))).observe($("main"), { childList: true, subtree: true });
+try { PAGE = sessionStorage.getItem("admin-page") || "llm"; } catch (e) { /* storage blocked */ }
 load();
 
 // ------------------------------------------------------------------ views
@@ -708,122 +913,145 @@ const A = {
     this.fillUsers(); this.render();
   },
   fillUsers() {
-    const sel = $("#a-user"), cur = sel.value, users = new Map();
-    for (const e of this.items) if (!users.has(this.who(e))) users.set(this.who(e), e);
-    sel.replaceChildren(h("option", { value: "" }, "Tüm kullanıcılar"),
-      ...[...users.keys()].sort().map(u => h("option", { value: u }, u)));
+    const sel = $("#a-user"), cur = sel.value, users = new Set(this.items.map(e => this.who(e)));
+    sel.replaceChildren(h("option", { value: "" }, "Herkes"), ...[...users].sort().map(u => h("option", { value: u }, u)));
     sel.value = users.has(cur) ? cur : "";
   },
   who: e => e.host || e.ip || "bilinmiyor",
   filtered() {
-    const since = this.days ? Date.now() - this.days * 86400000 : 0;
+    const since = this.days === 1 ? new Date().setHours(0, 0, 0, 0) : this.days ? Date.now() - this.days * 86400000 : 0;
     const needle = this.text.toLocaleLowerCase("tr");
     return this.items.filter(e =>
-      (!since || new Date(e.at).getTime() >= (this.days === 1 ? new Date().setHours(0, 0, 0, 0) : since)) &&
+      (!since || new Date(e.at).getTime() >= since) &&
       (!this.user || this.who(e) === this.user) && (!this.flow || e.flow === this.flow) &&
-      (!needle || [e.query, e.model, e.summary, ...(e.objects || [])].join(" ").toLocaleLowerCase("tr").includes(needle)));
+      (!needle || [e.query, e.model, e.summary, e.origin, ...(e.objects || [])].join(" ").toLocaleLowerCase("tr").includes(needle)));
   },
+  period() { return { 1: "Bugün", 7: "Son 7 günde", 30: "Son 30 günde", 0: "Bugüne kadar" }[this.days]; },
+
   render() {
     const rows = this.filtered(), body = $("#a-body");
     if (!this.items.length) {
       body.replaceChildren(h("div", { class: "card" }, h("p", { class: "empty" },
-        "Henüz kayıtlı analiz yok. Uygulamada bir soru sorulduğunda burada görünür."),
-        h("p", { class: "note", style: "text-align:center" }, "Kayıt dosyası: " + (this.path || ""))));
+        "Henüz kayıtlı analiz yok. Uygulamada bir soru sorulduğunda burada görünür.")));
       return;
     }
-    body.replaceChildren(this.tiles(rows), h("div", { class: "two" }, this.stepCard(rows), this.userCard(rows)), this.listCard(rows));
+    const keep = body.querySelector(".a-scroll");
+    const top = keep ? keep.scrollTop : 0;  // a live refresh must not jump the list
+    body.replaceChildren(this.overview(rows), this.listCard(rows));
+    const scroll = body.querySelector(".a-scroll");
+    if (scroll) scroll.scrollTop = top;
   },
 
-  tiles(rows) {
+  // ---- the period at a glance: one sentence, four numbers
+  overview(rows) {
+    const answered = rows.filter(e => e.verdict);
+    const found = answered.filter(e => e.verdict !== "BULUNAMADI").length;
+    const byAnalyst = rows.filter(e => e.flow === "analist" || e.flow === "önbellek").length;
+    const reused = rows.filter(e => e.flow === "önbellek").length;
+    const byRules = rows.filter(e => e.flow === "kural" || e.flow === "yedek").length;
+    const failed = rows.filter(e => e.flow === "yedek" || e.flow === "hata").length;
     const ms = rows.map(e => e.ms).sort((a, b) => a - b);
-    const llm = rows.filter(e => e.flow !== "kural");
-    const ok = llm.filter(e => e.flow === "analist").length;
-    const tin = rows.reduce((s, e) => s + (e.prompt_tokens || 0), 0), tout = rows.reduce((s, e) => s + (e.completion_tokens || 0), 0);
-    const tile = (lbl, val, sub) => h("div", { class: "tile" }, h("div", { class: "lbl" }, lbl), h("div", { class: "val" }, val), h("div", { class: "sub" }, sub));
-    return h("div", { class: "tiles" },
-      tile("Analiz", num(rows.length), rows.length ? "son: " + when(rows[0].at) : "seçili dönemde yok"),
-      tile("Kullanıcı", num(new Set(rows.map(e => this.who(e))).size), "farklı makine"),
-      tile("Medyan süre", ms.length ? msText(quantile(ms, .5)) : "–", ms.length ? "en hızlı " + msText(ms[0]) : ""),
-      tile("p90 süre", ms.length ? msText(quantile(ms, .9)) : "–", ms.length ? "en yavaş " + msText(ms[ms.length - 1]) : ""),
-      tile("Analist başarısı", llm.length ? "%" + Math.round(100 * ok / llm.length) : "–",
-        llm.length ? `${ok}/${llm.length} cevabı model yazdı` : "model kapalıyken yok"),
-      tile("LLM token", tin + tout ? kilo(tin + tout) : "–", tin + tout ? `giriş ${kilo(tin)} · çıkış ${kilo(tout)}` : ""));
+    const pct = (a, b) => b ? "%" + Math.round(100 * a / b) : "–";
+    const tile = (lbl, val, sub, cls = "") => h("div", { class: "tile " + cls }, h("div", { class: "lbl" }, lbl), h("div", { class: "val" }, val), h("div", { class: "sub" }, sub));
+    const sentence = rows.length
+      ? `${this.period()} ${num(rows.length)} soru soruldu; ${num(byAnalyst)} tanesini analist, ${num(byRules)} tanesini kural motoru cevapladı` +
+        (reused ? ` (analist cevaplarının ${num(reused)} tanesi önceki bir cevabın yeniden kullanımı)` : "") +
+        (answered.length - found ? `. ${num(answered.length - found)} soruda sözlükte karşılık bulunamadı.` : ".")
+      : `${this.period()} soru sorulmamış.`;
+    return h("div", {},
+      h("p", { class: "a-sum" }, sentence),
+      failed ? h("div", { class: "warn" }, `${num(failed)} soruda model çalışamadı (bağlantı yok ya da hata); bu sorular kural motoruyla, düşük güvenle cevaplandı. `,
+        h("a", { href: "#", onclick: ev => { ev.preventDefault(); setView("settings"); openPage("llm"); } }, "Model bağlantısını kontrol et")) : null,
+      h("div", { class: "tiles" },
+        tile("Soru", num(rows.length), rows.length ? "son: " + when(rows[0].at) : "–"),
+        tile("Karşılık bulunan", pct(found, answered.length), answered.length ? `${num(found)}/${num(answered.length)} soruda tablo önerildi` : "–"),
+        tile("Analist cevapladı", pct(byAnalyst, byAnalyst + byRules), byRules ? `${num(byRules)} soru kural motoruyla` : "hepsi dil modeliyle", byRules ? "warn-t" : ""),
+        tile("Tipik süre", ms.length ? msText(quantile(ms, .5)) : "–", ms.length ? "en uzun " + msText(ms[ms.length - 1]) : "–")));
   },
 
-  stepCard(rows) {
-    // Average time per step over the analyses that went through that step.
-    const sum = {}, cnt = {}, order = [];
-    for (const e of rows) for (const [k, v] of Object.entries(e.steps || {})) {
-      if (!(k in sum)) { sum[k] = 0; cnt[k] = 0; order.push(k); }
-      sum[k] += v; cnt[k] += 1;
-    }
-    const sub = new Set(["Sorgu genişletme", "BM25 arama", "Anlamsal arama", "Kolon skorlama", "Tablo toplama ve konu uyumu", "1a — katalog parçaları (paralel)", "1b — uzlaştırma"]);
-    const keys = order.filter(k => k !== "Sırada bekleme" || sum[k] / cnt[k] >= 1000);
-    const max = Math.max(1, ...keys.map(k => sum[k] / cnt[k]));
-    const grid = h("div", { class: "hbars" });
-    for (const k of keys) {
-      const avg = sum[k] / cnt[k];
-      grid.append(h("div", { class: "nm" + (sub.has(k) ? " sub" : ""), title: k }, k),
-        h("div", { class: "tr", title: `${k}: ortalama ${msText(avg)} · ${cnt[k]} analiz` }, h("i", { style: `width:${(100 * avg / max).toFixed(1)}%` })),
-        h("div", { class: "v" }, msText(avg)));
-    }
-    return h("section", { class: "card" }, h("h2", {}, "Adım başına ortalama süre"),
-      h("p", { class: "intro" }, "Seçili analizlerde her adımın ortalaması (o adımdan geçenler üzerinden). Girintili satırlar bir üst adımın parçasıdır."),
-      keys.length ? grid : h("p", { class: "empty" }, "Veri yok"));
-  },
-
-  userCard(rows) {
-    const by = new Map();
-    for (const e of rows) { const u = this.who(e); if (!by.has(u)) by.set(u, []); by.get(u).push(e); }
-    const list = [...by.entries()].sort((a, b) => b[1].length - a[1].length);
-    const tbody = h("tbody", {}, list.map(([u, es]) => {
-      const ms = es.map(e => e.ms).sort((a, b) => a - b);
-      return h("tr", { class: "row-u", title: "Bu kullanıcıya süz", onclick: () => { $("#a-user").value = u; this.user = u; this.render(); } },
-        h("td", { class: "who" }, h("b", {}, u), h("span", {}, es[0].ip || "")),
-        h("td", { class: "r" }, num(es.length)), h("td", { class: "r dur" }, msText(quantile(ms, .5))),
-        h("td", { class: "qq hide-s" }, h("div", {}, clip(es[0].query, 70)), h("div", { class: "res" }, when(es[0].at))));
-    }));
-    return h("section", { class: "card" }, h("h2", {}, "Kullanıcılar"),
-      h("p", { class: "intro" }, "Kullanıcı, soruyu gönderen makinenin adıdır (bulunamazsa IP). Satıra tıklayınca liste o kullanıcıya süzülür."),
-      list.length ? h("div", { class: "scroll" }, h("table", { class: "an" },
-        h("thead", {}, h("tr", {}, h("th", {}, "Kullanıcı"), h("th", { class: "r" }, "Analiz"), h("th", { class: "r" }, "Medyan"), h("th", { class: "hide-s" }, "Son soru"))), tbody))
-        : h("p", { class: "empty" }, "Veri yok"));
-  },
-
+  // ---- the list: what was asked, what came back, who answered, how long
   listCard(rows) {
-    const max = Math.max(1, ...rows.map(e => e.ms));
     const tbody = h("tbody");
     for (const e of rows.slice(0, this.shown)) {
+      const top = (e.objects || [])[0];
       const tr = h("tr", { class: "row-a" + (this.open === e.id ? " open" : ""), tabindex: "0", "aria-expanded": String(this.open === e.id) },
         h("td", { class: "when" }, when(e.at)),
-        h("td", { class: "who hide-s" }, h("b", {}, this.who(e)), h("span", {}, e.ip)),
-        h("td", { class: "qq" }, e.query),
-        h("td", {}, flowChip(e.flow), e.model ? h("div", { class: "res" }, e.model.split("/").pop()) : null),
-        h("td", { class: "res hide-s" }, e.verdict ? h("span", { class: "verdict" }, e.verdict) : "–",
-          e.objects && e.objects.length ? h("div", {}, e.objects[0].split(".").pop() + (e.objects.length > 1 ? ` +${e.objects.length - 1}` : "")) : null),
-        h("td", { class: "r dur" }, msText(e.ms), h("i", { class: "dbar", style: `width:${(100 * e.ms / max).toFixed(1)}%;margin-left:auto` })),
-        h("td", { class: "r res hide-s" }, e.llm_calls ? `${e.llm_calls} çağrı` : "–", e.llm_calls ? h("div", {}, kilo(e.prompt_tokens + e.completion_tokens) + " token") : null));
+        h("td", { class: "qq" },
+          h("div", { class: "q" }, e.query, e.origin ? h("span", { class: "orig", title: "Excel'den toplu aramanın bir terimi" }, "📄 " + e.origin) : null),
+          h("div", { class: "a" }, verdictBadge(e.verdict, e.flow),
+            top ? h("span", {}, top.split(".").pop() + (e.objects.length > 1 ? `  +${e.objects.length - 1} tablo` : "")) : null)),
+        h("td", { class: "by" }, flowChip(e.flow), h("div", { class: "res" }, this.who(e))),
+        h("td", { class: "r dur" }, msText(e.ms)));
       const toggle = () => { this.open = this.open === e.id ? null : e.id; this.render(); };
       tr.onclick = toggle; tr.onkeydown = ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggle(); } };
       tbody.append(tr);
       if (this.open === e.id) {
-        const cell = h("td", { class: "detail-cell", colspan: "7" }, h("div", { class: "trace" }, h("p", { class: "note" }, "Zaman çizelgesi yükleniyor…")));
+        const cell = h("td", { class: "detail-cell", colspan: "4" }, h("div", { class: "trace" }, h("p", { class: "note" }, "Yükleniyor…")));
         tbody.append(h("tr", {}, cell));
-        this.detail(e.id).then(full => cell.replaceChildren(this.timeline(full))).catch(err => cell.replaceChildren(h("div", { class: "trace" }, h("div", { class: "err" }, err.message))));
+        this.detail(e.id).then(full => cell.replaceChildren(this.detailView(full))).catch(err => cell.replaceChildren(h("div", { class: "trace" }, h("div", { class: "err" }, err.message))));
       }
     }
-    const card = h("section", { class: "card" }, h("h2", {}, `Analizler (${num(rows.length)})`),
-      rows.length ? h("div", { class: "scroll" }, h("table", { class: "an" },
-        h("thead", {}, h("tr", {}, h("th", {}, "Zaman"), h("th", { class: "hide-s" }, "Kullanıcı"), h("th", {}, "Soru"), h("th", {}, "Akış"),
-          h("th", { class: "hide-s" }, "Sonuç"), h("th", { class: "r" }, "Süre"), h("th", { class: "r hide-s" }, "LLM"))), tbody))
-        : h("p", { class: "empty" }, "Bu süzgeçle eşleşen analiz yok."));
-    if (rows.length > this.shown) card.append(h("div", { class: "more" }, h("button", { class: "btn", onclick: () => { this.shown += 100; this.render(); } }, `Daha fazla göster (${num(rows.length - this.shown)} kaldı)`)));
-    return card;
+    const scroll = h("div", { class: "a-scroll" },
+      rows.length ? h("table", { class: "an" },
+        h("thead", {}, h("tr", {}, h("th", {}, "Ne zaman"), h("th", {}, "Soru ve cevap"), h("th", {}, "Cevabı yazan"), h("th", { class: "r" }, "Süre"))), tbody)
+        : h("p", { class: "empty" }, "Bu süzgeçle eşleşen soru yok."),
+      rows.length > this.shown ? h("div", { class: "more" }, h("button", { class: "btn", onclick: () => { this.shown += 100; this.render(); } }, `Daha fazla göster (${num(rows.length - this.shown)} kaldı)`)) : null);
+    return h("section", { class: "card a-list" },
+      h("div", { class: "a-list-h" },
+        h("h2", {}, `Sorular (${num(rows.length)})`),
+        h("button", { class: "btn sm", disabled: !rows.length, onclick: () => this.showPerf(rows) }, "Performans"),
+        h("button", { class: "btn sm danger", disabled: !rows.length, onclick: e => this.clear(rows, e.currentTarget) }, "Temizle…")),
+      h("p", { class: "intro" }, "Yeniden eskiye. Ayrıntısı için bir satıra tıklayın."),
+      scroll);
+  },
+
+  filtering() { return this.days !== 0 || this.user || this.flow || this.text; },
+  async clear(rows, btn) {
+    const all = !this.filtering();
+    const what = all ? `Kayıtlı ${num(rows.length)} analizin tamamı` : `Süzgeçteki ${num(rows.length)} analiz (${this.period().toLocaleLowerCase("tr")}${this.flow || this.user || this.text ? ", süzgeçli" : ""})`;
+    if (!confirm(`${what} silinsin mi?\n\nSilinen analizler kalıcı olarak silinir, yedek tutulmaz.`)) return;
+    btn.disabled = true;
+    try {
+      const r = await post("/api/admin/analyses/clear", all ? { all: true } : { ids: rows.map(e => e.id) });
+      this.open = null; this.cache = {};
+      toast("Analizler temizlendi", [`${num(r.removed)} analiz silindi; ${num(r.kept)} analiz kaldı.`]);
+      await this.load();
+    } catch (e) { toast("Temizlenemedi", [e.message], true); btn.disabled = false; }
   },
 
   async detail(id) {
     if (!this.cache[id]) this.cache[id] = await api("/api/admin/analysis/" + encodeURIComponent(id));
     return this.cache[id];
+  },
+
+  // ---- one analysis: the plain story first, the step-by-step timeline on request
+  detailView(e) {
+    const kv = (k, ...v) => [h("dt", {}, k), h("dd", {}, ...v)];
+    const objs = (e.objects || []).map(k => h("span", { class: "tbl", title: k }, k.split(".").pop()));
+    const by = e.flow === "analist" ? `Dil modeli (${e.model})`
+      : e.flow === "önbellek" && e.reused ? `Önceki cevap: ${e.reused.match === "aynı soru" ? "aynı soru" : `aynı anlama gelen “${e.reused.query}”`} · ${e.reused.at} · ${e.model}`
+      : e.flow === "yedek" ? "Kural motoru — model çalışamadı"
+      : e.flow === "kural" ? "Kural motoru — model bağlı değildi" : e.flow === "durduruldu" ? "Kullanıcı durdurdu" : "Tamamlanamadı";
+    const phases = phasesOf(e.spans || []);
+    const total = Math.max(1, e.ms);
+    return h("div", { class: "trace" },
+      h("dl", { class: "story" },
+        kv("Soru", e.query),
+        e.summary ? kv("Cevap", verdictBadge(e.verdict, e.flow), " ", e.summary.replace(/^(KISMEN VAR|VAR|BULUNAMADI)\s*[.—–-]\s*/, "")) : null,
+        objs.length ? kv("Önerilen tablolar", h("span", { class: "tbls" }, objs)) : null,
+        kv("Cevabı yazan", flowChip(e.flow), " ", by),
+        kv("Soran", this.who(e), e.ip && e.host ? h("span", { class: "res" }, `  (${e.ip})`) : null, h("span", { class: "res" }, "  · " + e.at.replace("T", " ")),
+          e.origin ? h("span", { class: "res" }, "  · toplu arama: " + e.origin) : null)),
+      e.fallback ? h("div", { class: "warn" }, "Model neden çalışamadı: " + e.fallback) : null,
+      e.error ? h("div", { class: "err" }, "Hata: " + e.error) : null,
+      phases.length ? h("div", { class: "where" },
+        h("div", { class: "where-h" }, h("b", {}, "Süre nereye gitti"), h("span", { class: "res" }, "Toplam " + msText(e.ms))),
+        h("div", { class: "stack" }, phases.map(p => h("i", { class: "ph " + p.cls, title: `${p.name}: ${msText(p.ms)}`, style: `width:${Math.max(0.6, 100 * p.ms / total).toFixed(2)}%` }))),
+        h("ul", { class: "phases" }, phases.map(p => h("li", {}, h("i", { class: "ph " + p.cls }), p.name, h("span", {}, msText(p.ms)),
+          p.note ? h("small", {}, p.note) : null)))) : null,
+      h("details", { class: "tech" }, h("summary", {}, "Teknik ayrıntılar: adım adım zaman çizelgesi" +
+        (e.llm_calls ? ` · ${e.llm_calls} model çağrısı, ${kilo((e.prompt_tokens || 0) + (e.completion_tokens || 0))} token` : "")),
+        this.timeline(e)));
   },
 
   timeline(e) {
@@ -833,43 +1061,87 @@ const A = {
     const ordered = [];
     const walk = (pid, depth) => { for (const s of (kids[pid] || []).sort((a, b) => a.start_ms - b.start_ms || a.id - b.id)) { ordered.push([s, depth]); walk(s.id, depth + 1); } };
     walk("root", 0);
-    const KIND = { step: "adım", llm: "LLM çağrısı", embed: "embedding", event: "bekleme / olay" };
+    const KIND = { step: "adım", llm: "model çağrısı", event: "bekleme / olay" };
     const wf = h("div", { class: "wf", role: "table", "aria-label": "Adım zaman çizelgesi" });
     for (const [s, depth] of ordered) {
       const left = 100 * s.start_ms / total, width = Math.max(0.3, 100 * s.ms / total);
       const tokens = s.data && (s.data.prompt_tokens || s.data.completion_tokens) ? ` · ${kilo(s.data.prompt_tokens || 0)} → ${kilo(s.data.completion_tokens || 0)} token` : "";
-      const reqs = s.data && s.data.requests > 1 ? ` · ${s.data.requests} istek` : "";
-      const tip = `${s.name} (${KIND[s.kind] || s.kind})\nbaşlangıç +${msText(s.start_ms)} · süre ${msText(s.ms)}${tokens}${reqs}` + (s.detail ? "\n" + s.detail : "");
+      const tip = `${s.name} (${KIND[s.kind] || s.kind})\nbaşlangıç +${msText(s.start_ms)} · süre ${msText(s.ms)}${tokens}` + (s.detail ? "\n" + s.detail : "");
       const mark = s.status === "error" ? h("span", { class: "st error", title: "hata" }, "✕") : s.status === "warn" ? h("span", { class: "st warn", title: "uyarı" }, "!") : null;
       wf.append(
-        h("div", { class: "nm", style: `padding-left:${depth * 14}px`, title: tip }, mark, s.name, h("small", {}, s.kind === "llm" ? (s.detail || "").split(" — ")[0].split("/").pop() : "")),
+        h("div", { class: "nm", style: `padding-left:${depth * 14}px`, title: tip }, mark, s.name),
         h("div", { class: "lane", title: tip }, h("i", { class: `seg-bar ${s.kind}${s.status === "error" ? " error" : ""}`, style: `left:${left.toFixed(2)}%;width:${Math.min(width, 100 - left).toFixed(2)}%` })),
         h("div", { class: "ms" }, s.kind === "event" && !s.ms ? "·" : msText(s.ms)));
-      if (s.detail && (s.status !== "ok" || s.kind === "step") && s.kind !== "llm" || (s.kind === "llm" && s.status === "error"))
-        wf.append(h("div", { class: "why", style: `padding-left:${depth * 14 + (mark ? 14 : 0)}px`, title: s.detail }, s.detail + tokens));
-      else if (tokens) wf.append(h("div", { class: "why", style: `padding-left:${depth * 14}px` }, tokens.slice(3)));
+      if (s.detail && s.status !== "ok" && s.kind !== "llm" || (s.kind === "llm" && s.status === "error"))
+        wf.append(h("div", { class: "why", style: `padding-left:${depth * 14 + (mark ? 14 : 0)}px`, title: s.detail }, s.detail));
     }
     const legend = h("div", { class: "legend" },
-      ...[["step", "Adım", "var(--k-step)"], ["llm", "LLM çağrısı", "var(--k-llm)"], ["embed", "Embedding", "var(--k-embed)"]].map(([, t, c]) => h("span", {}, h("i", { style: `background:${c}` }), t)),
-      h("span", {}, h("i", { style: "background:repeating-linear-gradient(45deg,var(--mid) 0 2px,transparent 2px 4px);box-shadow:inset 0 0 0 1px var(--mid)" }), "Bekleme / yeniden deneme"),
+      ...[["Adım", "var(--k-step)"], ["Model çağrısı", "var(--k-llm)"]].map(([t, c]) => h("span", {}, h("i", { style: `background:${c}` }), t)),
+      h("span", {}, h("i", { style: "background:repeating-linear-gradient(45deg,var(--mid) 0 2px,transparent 2px 4px);box-shadow:inset 0 0 0 1px var(--mid)" }), "Bekleme"),
       h("span", {}, h("b", { style: "color:var(--low)" }, "✕ "), "hata"));
     const axis = h("div", { class: "axis" }, h("div", {}), h("div", {}, ...[0, .25, .5, .75, 1].map(f => h("span", {}, msText(total * f)))), h("div", {}));
-    return h("div", { class: "trace" },
-      h("div", { class: "meta" },
-        h("span", {}, "Zaman ", h("b", {}, e.at.replace("T", " "))),
-        h("span", {}, "Kullanıcı ", h("b", {}, this.who(e)), e.ip && e.host ? ` (${e.ip})` : ""),
-        h("span", {}, "Akış ", flowChip(e.flow)),
-        e.model ? h("span", {}, "Model ", h("b", {}, e.model)) : null,
-        h("span", {}, "Toplam ", h("b", {}, msText(e.ms))),
-        e.llm_calls ? h("span", {}, "LLM ", h("b", {}, `${e.llm_calls} çağrı · ${kilo(e.prompt_tokens)} → ${kilo(e.completion_tokens)} token`)) : null),
-      h("p", { class: "summary" }, h("b", {}, "Soru: "), e.query),
-      e.summary ? h("p", { class: "summary" }, h("b", {}, "Cevap: "), e.summary) : null,
-      e.objects && e.objects.length ? h("p", { class: "note" }, "Önerilen tablolar: " + e.objects.map(k => k.split(".").pop()).join(", ")) : null,
-      e.fallback ? h("div", { class: "warn" }, "Analist cevap veremedi, kural motoru cevapladı: " + e.fallback) : null,
-      e.error ? h("div", { class: "err" }, "Hata: " + e.error) : null,
-      legend, axis, wf);
+    return h("div", { class: "tl" }, legend, axis, wf);
+  },
+
+  // ---- for whoever tunes the system: averages, tokens, users (folded)
+  showPerf(rows) {
+    const d = $("#perf");
+    d.replaceChildren(h("form", { method: "dialog" },
+      h("header", {}, h("h2", {}, "Performans ayrıntıları"), h("span", { class: "res" }, `${this.period()} · ${num(rows.length)} soru`),
+        h("button", { class: "btn sm ghost", onclick: () => d.close() }, "✕")),
+      h("div", { class: "body" }, this.perfBody(rows))));
+    d.showModal();
+  },
+
+  perfBody(rows) {
+    const sums = {}, counts = {};
+    for (const e of rows) for (const p of phasesFromSteps(e.steps || {})) { sums[p.name] = (sums[p.name] || 0) + p.ms; counts[p.name] = (counts[p.name] || 0) + 1; }
+    const names = PHASES.map(p => p.name).filter(n => counts[n]);
+    const max = Math.max(1, ...names.map(n => sums[n] / counts[n]));
+    const ms = rows.map(e => e.ms).sort((a, b) => a - b);
+    const tin = rows.reduce((s, e) => s + (e.prompt_tokens || 0), 0), tout = rows.reduce((s, e) => s + (e.completion_tokens || 0), 0);
+    const calls = rows.reduce((s, e) => s + (e.llm_calls || 0), 0);
+    const users = new Map();
+    for (const e of rows) users.set(this.who(e), (users.get(this.who(e)) || 0) + 1);
+    return h("div", { class: "perf" },
+      h("div", { class: "two", style: "margin-top:12px" },
+        h("div", {},
+          h("h3", {}, "Aşama başına ortalama süre"),
+          h("div", { class: "hbars" }, names.flatMap(n => {
+            const avg = sums[n] / counts[n];
+            return [h("div", { class: "nm" }, n), h("div", { class: "tr", title: `${counts[n]} soru` }, h("i", { style: `width:${(100 * avg / max).toFixed(1)}%` })), h("div", { class: "v" }, msText(avg))];
+          })),
+          h("p", { class: "note" }, `Süre dağılımı: yarısı ${msText(quantile(ms, .5))} altında, %90'ı ${msText(quantile(ms, .9))} altında; en uzun ${msText(ms[ms.length - 1])}.`)),
+        h("div", {},
+          h("h3", {}, "Model kullanımı"),
+          h("p", { class: "note" }, calls ? `${num(calls)} model çağrısı · ${kilo(tin)} giriş + ${kilo(tout)} çıkış token` : "Bu dönemde model çağrısı yok."),
+          h("h3", { style: "margin-top:14px" }, "Kullanıcılar"),
+          h("ul", { class: "users" }, [...users.entries()].sort((a, b) => b[1] - a[1]).map(([u, n]) =>
+            h("li", {}, h("a", { href: "#", onclick: ev => { ev.preventDefault(); $("#perf").close(); $("#a-user").value = u; this.user = u; this.render(); } }, u), h("span", {}, `${num(n)} soru`)))))));
   },
 };
+
+// The steps of the trace, in the words of the person reading the screen.
+const PHASES = [
+  { name: "Sırada bekleme", cls: "wait", steps: ["Sırada bekleme"], note: "başka bir soru bitene kadar" },
+  { name: "Önceki cevap araması", cls: "check", steps: ["Önceki cevap araması"], note: "aynı ya da aynı anlama gelen soru" },
+  { name: "Model sunucusu kontrolü", cls: "check", steps: ["Model sunucusu kontrolü"] },
+  { name: "Arama (kural motoru)", cls: "rules", steps: ["Kural motoru ipuçları", "Kural akışı", "Kural akışı (yedek)"], note: "sözlükte kelime araması" },
+  { name: "Analist: tablo seçimi", cls: "pick", steps: ["1. adım — aday seçimi", "Aile araması"], note: "model katalogdan aday tabloları seçer" },
+  { name: "Analist: kolonları okuma ve rapor", cls: "write", steps: ["2. adım — kolon okuma ve rapor"], note: "model adayların kolonlarını okur, cevabı yazar" },
+];
+function phasesFromSteps(steps) {
+  return PHASES.map(p => ({ ...p, ms: p.steps.reduce((s, k) => s + (steps[k] || 0), 0) })).filter(p => p.ms > 0);
+}
+function phasesOf(spans) {
+  const steps = {};
+  for (const s of spans) if (s.kind === "step") steps[s.name] = (steps[s.name] || 0) + s.ms;
+  return phasesFromSteps(steps).filter(p => p.cls !== "wait" || p.ms >= 1000);
+}
+function verdictBadge(v, flow) {
+  if (!v) return h("span", { class: "vb none" }, flow === "durduruldu" ? "durduruldu" : "cevap yok");
+  return h("span", { class: "vb " + v.split(" ")[0] }, v);
+}
 
 function quantile(sorted, p) { if (!sorted.length) return 0; const i = (sorted.length - 1) * p, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); }
 function num(n) { return Number(n).toLocaleString("tr-TR"); }
@@ -888,7 +1160,7 @@ function when(iso) {
 }
 function clip(t, n) { return t.length > n ? t.slice(0, n - 1) + "…" : t; }
 function flowChip(f) {
-  const t = { analist: ["●", "Analist"], yedek: ["↺", "Yedek"], kural: ["◇", "Kural"], hata: ["✕", "Hata"] }[f] || ["", f];
+  const t = { analist: ["●", "Analist"], "önbellek": ["↻", "Önceki cevap"], yedek: ["↺", "Kural (yedek)"], kural: ["◇", "Kural motoru"], hata: ["✕", "Hata"], durduruldu: ["■", "Durduruldu"] }[f] || ["", f];
   return h("span", { class: "flow " + f }, t[0], t[1]);
 }
 

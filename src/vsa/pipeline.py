@@ -9,16 +9,16 @@ import logging
 import math
 import time
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import yaml
 
-from vsa import trace
+from vsa import cancel, trace
+from vsa.answer_cache import fingerprint, meaning_key, text_key
 from vsa.config import Settings
 from vsa.expansion.query_expander import (
     Concept,
@@ -28,13 +28,6 @@ from vsa.expansion.query_expander import (
 )
 from vsa.features import ColumnFeatures, build_features
 from vsa.index.bm25 import BM25Index, weighted_fields
-from vsa.index.dense import (
-    DenseIndex,
-    ObjectDenseIndex,
-    load_dense_index,
-    load_object_index,
-    normalize,
-)
 from vsa.index.store import load_index, save_index
 from vsa.llm.analyst import (
     STRUCTURAL,
@@ -55,9 +48,7 @@ from vsa.llm.analyst import (
     table_material,
     term_matcher,
 )
-from vsa.llm.client import LLMClient, LLMError, NullClient, client_from_settings
-from vsa.llm.judge import JudgeResult, judge
-from vsa.llm.prompts import EXPAND_SCHEMA, EXPAND_SYSTEM, expand_user
+from vsa.llm.client import LLMClient, NullClient, client_from_settings
 from vsa.loader import load_dictionary, load_stopword_file, load_term_dictionary
 from vsa.models import (
     AnalysisResult,
@@ -70,10 +61,9 @@ from vsa.models import (
     Verdict,
 )
 from vsa.scoring.aggregate import ObjectColumns, aggregate
-from vsa.scoring.combine import combine, level_for
+from vsa.scoring.combine import level_for
 from vsa.scoring.explain import (
     Clarification,
-    apply_llm_texts,
     clarification_notes,
     compile_clarifications,
     explain,
@@ -91,15 +81,13 @@ log = logging.getLogger(__name__)
 
 CLARIFICATIONS_PATH = Path("config/clarifications.yaml")
 NEAR_MISS_COUNT = 3
-# Tables most similar to the request by their profile vector join the candidate pool
-# even when none of their columns did (ADR-028).
-OBJECT_POOL = 15
 # Rule results shown to the analyst model as hints (ADR-029).
 ANALYST_HINT_TABLES = 15
 ANALYST_RULE_POOL = 60  # rule-ranked tables the "together" hint picks from
 POOL_RULE_TOGETHER = 8  # rule tables carrying most request concepts, added to the pool
 POOL_RULE_TOP = 5  # and the rule ranking's first ones
 ANALYST_HINT_COLUMNS = 25
+FAMILY_MIN_SHARE = 0.6  # a family table must score this share of the family's best table
 
 
 @dataclass(slots=True)
@@ -124,7 +112,7 @@ class Resources:
 
 @dataclass(slots=True)
 class AnalystReading:
-    """What the analyst model reads in step 2 (ADR-029), shared by ``ask`` and batch."""
+    """What the analyst model reads in step 2 (ADR-029)."""
 
     catalog: Catalog
     checker: MentionChecker
@@ -154,18 +142,12 @@ class Engine:
         resources: Resources,
         bm25: BM25Index | None = None,
         llm: LLMClient | None = None,
-        dense: DenseIndex | None = None,
     ) -> None:
         self.dictionary = dictionary
         self.settings = settings
         self.resources = resources
         self.llm: LLMClient = llm or NullClient()
-        self.dense = dense
-        self.object_dense: ObjectDenseIndex | None = None
-        self._qvec_cache: dict[str, np.ndarray] = {}
-        self._expand_cache: dict[str, list[str]] = {}
-        self._dense_error = ""
-        self.features = [build_features(c, resources.stopwords) for c in dictionary.columns]
+        self.features = _features_for(dictionary, resources.stopwords)
         if [f.col.id for f in self.features] != list(range(len(self.features))):
             raise ValueError("Kolon id'leri 0..N-1 sıralı olmalı")
 
@@ -178,8 +160,13 @@ class Engine:
         }
         self.column_keys = frozenset(c.key for c in dictionary.columns)
         self.topic_keys, self.topic_index = build_topic_index(
-            {k: o.features for k, o in self.objects.items()}
-        )
+            {k: o.features for k, o in self.objects.items()},
+            {
+                k: tokenize(f"{p.description} {p.grain}", stopwords=resources.stopwords,
+                            keep_compound=False)
+                for k, p in dictionary.objects.items()
+            },
+        )  # fmt: skip
         self._df_cache: dict[Concept, int] = {}
 
         s = settings.search
@@ -203,18 +190,13 @@ class Engine:
     @classmethod
     def from_dictionary_file(cls, settings: Settings) -> Engine:
         d = settings.dictionary
-        dictionary = load_dictionary(Path(d.path), d.sheet, d.quality_sheet)
-        engine = cls(
+        dictionary = load_dictionary(Path(d.path), d.sheet)
+        return cls(
             dictionary,
             settings,
             Resources.from_settings(settings),
-            llm=client_from_settings(
-                settings.llm, embeddings=settings.dense.enabled, cloud=settings.cloud
-            ),
-            dense=_dense_for(settings, len(dictionary.columns)),
+            llm=client_from_settings(settings.llm),
         )
-        engine.object_dense = _object_dense_for(settings, engine.objects)
-        return engine
 
     @classmethod
     def from_index(cls, settings: Settings) -> Engine:
@@ -224,32 +206,23 @@ class Engine:
             settings,
             Resources.from_settings(settings),
             bm25=bm25,
-            llm=client_from_settings(
-                settings.llm, embeddings=settings.dense.enabled, cloud=settings.cloud
-            ),
-            dense=_dense_for(settings, len(dictionary.columns)),
+            llm=client_from_settings(settings.llm),
         )
-        engine.object_dense = _object_dense_for(settings, engine.objects)
         engine.index_meta = meta
         return engine
 
-    @property
-    def hybrid(self) -> bool:
-        """Dense arm active: index loaded and the embedding model reachable so far."""
-        return self.dense is not None and not self._dense_error
+    def cache_keys(self, query: str) -> tuple[str, str]:
+        """(text key, meaning key) of a question for reusing earlier answers (ADR-035)."""
+        return text_key(query), meaning_key(self.expander.expand(query))
 
-    def _query_vector(self, text: str) -> np.ndarray | None:
-        if not self.hybrid:
-            return None
-        if text not in self._qvec_cache:
-            try:
-                vec = np.asarray(self.llm.embed([text])[0], dtype=np.float32)
-            except LLMError as exc:
-                self._dense_error = str(exc)
-                log.warning("Vektör araması devre dışı, yalnız BM25 ile devam: %s", exc)
-                return None
-            self._qvec_cache[text] = normalize(vec)
-        return self._qvec_cache[text]
+    def cache_fingerprint(self, top_n: int) -> str:
+        """What this engine's answers depend on besides the question (ADR-035)."""
+        return fingerprint(
+            self.settings,
+            self.dictionary.version,
+            self.resources.term_groups,
+            top_n,
+        )
 
     index_meta: dict[str, Any] = {}
 
@@ -266,27 +239,15 @@ class Engine:
     # ------------------------------------------------------------------ analysis
 
     def rank_objects(
-        self,
-        query: str,
-        include: Iterable[str] = (),
-        *,
-        use_llm: bool = True,
-        limit: int | None = None,
-        topic_fit: bool = True,
+        self, query: str, *, limit: int | None = None
     ) -> tuple[list[ObjectMatch], ExpandedQuery]:
-        """Ranked objects for a query (no answer threshold). Objects in ``include`` are
-        always scored and kept, even when search alone would not reach them — batch
-        mode uses this to judge every field against the core table. ``use_llm=False``
-        skips the chat model (LLM query expansion); embeddings still run. ``limit``
-        overrides how many objects are returned. ``topic_fit=False`` leaves out the
-        table-level topic component (ADR-028); batch mode scores fields, not tables."""
+        """The rule engine's ranked objects for a query (no answer threshold): the
+        analyst's hints and the fallback answer. ``limit`` overrides how many are kept."""
         s = self.settings
         lap = trace.Laps()
         lap("Sorgu genişletme")
         q = self.expander.expand(query)
         self._weigh_concepts(q)
-        if use_llm:
-            self._llm_expand(q)
         lap.note(f"{len(q.concepts)} kavram, {len(q.sparse_terms)} arama terimi")
         lap("BM25 arama")
         scored = self.bm25.search(q.sparse_terms, top_k=len(self.features))
@@ -296,35 +257,8 @@ class Engine:
         pool = {doc for doc, _ in scored[: s.search.candidate_object_columns]}
         pool |= set(q.synonym_hits)
         lap.note(f"{len(pool)} aday kolon")
-        if s.dense.enabled and self.hybrid:
-            lap("Anlamsal arama")
-
-        # M3: the dense arm uses the original wording (ADR-004) and widens the pool with
-        # semantically close columns that share no words with the request.
-        qvec = self._query_vector(q.dense_text) if s.dense.enabled else None
-        dense_lo = dense_hi = 0.0
-        if qvec is not None and self.dense is not None:
-            dense_top = self.dense.search(qvec, s.dense.top_k)
-            pool |= {i for i, _ in dense_top}
-            dense_hi, dense_lo = dense_top[0][1], dense_top[-1][1]
-
         lap("Kolon skorlama")
-        forced = {k for k in include if k in self.objects}
-        candidate_objects = {self.features[i].col.object_key for i in pool} | forced
-        object_sim: dict[str, float] | None = None
-        if qvec is not None and self.object_dense is not None:
-            object_sim = self.object_dense.similarity(qvec)
-            if topic_fit:
-                best = sorted(object_sim, key=lambda k: -object_sim[k])[:OBJECT_POOL]
-                candidate_objects |= set(best)
-
-        dense_sim: dict[int, float] = {}
-        if qvec is not None and self.dense is not None and dense_hi > dense_lo:
-            ids = [f.col.id for k in candidate_objects for f in self.objects[k].features]
-            span = dense_hi - dense_lo
-            raw = self.dense.similarity(qvec, ids)
-            dense_sim = {i: max(0.0, min(1.0, (v - dense_lo) / span)) for i, v in raw.items()}
-
+        candidate_objects = {self.features[i].col.object_key for i in pool}
         hits: dict[int, ColumnHit] = {}
         for key in candidate_objects:
             for f in self.objects[key].features:
@@ -333,9 +267,6 @@ class Engine:
                     bm25_map.get(f.col.id, 0.0),
                     max_bm25,
                     q,
-                    s.scoring.flag_penalty,
-                    dense=dense_sim.get(f.col.id) if dense_sim else None,
-                    dense_weight=s.dense.weight if dense_sim else 0.0,
                 )
         lap.note(f"{len(candidate_objects)} tablonun {len(hits)} kolonu")
         lap("Tablo toplama ve konu uyumu")
@@ -345,11 +276,8 @@ class Engine:
                 self.topic_index,
                 q.sparse_terms,
                 sorted(candidate_objects),
-                {k: self.objects[k].features for k in candidate_objects},
-                dense_sim or None,
-                object_sim,
             )
-            if topic_fit and s.scoring.object.topic > 0
+            if s.scoring.object.topic > 0
             else None
         )
         ranked = aggregate(
@@ -365,64 +293,11 @@ class Engine:
         kept = [
             m
             for i, m in enumerate(ranked)
-            if m.object_key in forced or (i < limit and m.score >= s.scoring.min_candidate_score)
+            if i < limit and m.score >= s.scoring.min_candidate_score
         ]
         lap.note(f"{len(kept)} tablo eşik üstünde")
         lap.done()
         return kept, q
-
-    def rank(
-        self, query: str, include: Iterable[str] = ()
-    ) -> tuple[list[ObjectMatch], ExpandedQuery, JudgeResult | None]:
-        """``rank_objects`` plus the LLM judge on the top candidates when enabled."""
-        ranked, q = self.rank_objects(query, include)
-        verdict = self._judge(query, ranked)
-        return ranked, q, verdict
-
-    @property
-    def judge_enabled(self) -> bool:
-        return self.llm.available and self.settings.llm.judge
-
-    def _judge(self, query: str, ranked: list[ObjectMatch]) -> JudgeResult | None:
-        """Re-score with the judge (ADR-003): final = w_rule × rule + w_llm × llm, where
-        objects the judge did not pick or did not see get llm = 0."""
-        if not self.judge_enabled or not ranked:
-            return None
-        s = self.settings
-        top = ranked[: s.llm.judge_candidates]
-        with trace.span("LLM hakem", f"ilk {len(top)} aday"):
-            result = judge(query, top, self.llm)
-        if result is None:
-            return None  # LLM failure -> rule result stands (ADR-008)
-        for m in ranked:
-            v = result.verdicts.get(m.object_key)
-            m.rule_score = m.score
-            m.llm_confidence = v.confidence if v else 0.0
-            m.score = combine(m.score, m.llm_confidence, s.scoring.w_rule, s.scoring.w_llm)
-            m.level = level_for(m.score)
-            if v:
-                m.llm_reason, m.llm_caveat, m.llm_usage = v.reason, v.caveat, v.usage
-        ranked.sort(key=lambda m: (-m.score, m.object_key))
-        return result
-
-    def _llm_expand(self, q: ExpandedQuery) -> None:
-        """§7.2c: model-generated terms only widen the BM25 pool (weight 0.6); they never
-        become concepts or signals, so a misread concept cannot steer the score."""
-        s = self.settings
-        if not (s.llm.expand_query and self.llm.available):
-            return
-        if q.text not in self._expand_cache:
-            reply = self.llm.chat_json(
-                EXPAND_SYSTEM, expand_user(q.text), EXPAND_SCHEMA, max_tokens=400
-            )
-            terms: list[str] = []
-            if reply:
-                for key in ("synonyms_tr", "terms_en", "column_name_guesses"):
-                    terms += [str(t) for t in reply.get(key, []) or [] if str(t).strip()][:8]
-            self._expand_cache[q.text] = terms
-        for term in self._expand_cache[q.text]:
-            for tok in tokenize(term, stopwords=self.resources.stopwords):
-                q.sparse_terms.setdefault(tok, s.expansion.weight)
 
     def _concept_df(self, concept: Concept) -> int:
         if concept not in self._df_cache:
@@ -440,31 +315,57 @@ class Engine:
 
     @property
     def analyst_enabled(self) -> bool:
-        return self.llm.available and self.settings.analyst.enabled
+        """A chat model is connected: the analyst writes the answer (ADR-029)."""
+        return self.llm.available
 
     def analyze(self, query: str, top_n: int = 5) -> AnalysisResult:
-        """Analyst flow when the chat model is on (ADR-029); rule pipeline otherwise and
-        whenever the model fails (ADR-008)."""
-        if self.analyst_enabled:
-            with trace.span("Analist akışı", self.llm.model) as s:
-                result = self._analyze_llm(query, top_n)
-                if s is not None and result is None:
-                    s.status = "error"
-            if result is not None:
-                return result
-            log.warning("Analist akışı sonuç veremedi; kural tabanlı sonuca dönülüyor")
-            return self._rules_after_failure(query, top_n)
-        with trace.span("Kural akışı"):
-            return self._analyze_rules(query, top_n)
+        """The one question flow: the analyst writes every answer (ADR-029, ADR-038). With
+        no model, a dead server or a failed analysis the result says why and lists nothing;
+        there is no rule answer to fall back to."""
+        if not self.analyst_enabled:
+            return self._unavailable(
+                query, "Sohbet modeli bağlı değil; Yönetim → Ayarlar → Yapay zekâ ekranından "
+                "bir model bağlayın.",
+            )  # fmt: skip
+        with trace.span("Model sunucusu kontrolü", self.llm.model) as s:
+            down = self.llm.health()
+            if s is not None and down:
+                s.status, s.detail = "error", down
+        if down:  # do not wait on a dead server: say so at once
+            reason = down if "ulaşılamadı" in down else f"Model sunucusu yanıt vermedi: {down}"
+            return self._unavailable(query, reason)
+        with trace.span("Analist akışı", self.llm.model) as s:
+            result = self._analyze_llm(query, top_n)
+            if s is not None and result is None:
+                s.status = "error"
+        if result is not None:
+            return result
+        cancel.check()  # a stopped analysis ends here
+        log.warning("Analist akışı sonuç veremedi")
+        return self._unavailable(
+            query, fallback_reason(str(getattr(self.llm, "last_error", "")))
+        )
 
-    def _rules_after_failure(self, query: str, top_n: int) -> AnalysisResult:
-        """Rule answer that says the analyst could not run, and why (ADR-008)."""
-        reason = fallback_reason(str(getattr(self.llm, "last_error", "")))
-        trace.event("Kural motoruna dönüldü", reason)
-        with trace.span("Kural akışı (yedek)"):
-            result = self._analyze_rules(query, top_n)
-        result.fallback = reason
-        return result
+    def _unavailable(self, query: str, reason: str) -> AnalysisResult:
+        """The answer when the analyst could not run: no tables, and the reason."""
+        trace.event("Analiz yapılamadı", reason)
+        return AnalysisResult(
+            query=query,
+            verdict=Verdict.NOT_FOUND,
+            summary=f"Analiz yapılamadı: {reason}",
+            objects=[],
+            near_misses=[],
+            notes=[],
+            concepts=[],
+            expansion_terms=[],
+            dictionary_source=Path(self.dictionary.source_path).name,
+            dictionary_version=self.dictionary.version,
+            dictionary_objects=len(self.objects),
+            generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            method=["Analiz yapılamadı — cevabı yalnız analist (sohbet modeli) yazar (ADR-038)"],
+            llm_model=self.llm.model if self.analyst_enabled else "",
+            fallback=reason,
+        )
 
     # ------------------------------------------------------------------ analyst (ADR-029)
 
@@ -474,7 +375,9 @@ class Engine:
     def _analyst_parts(self) -> tuple[Catalog, MentionChecker]:
         if self._catalog is None or self._checker is None:
             self._catalog = build_catalog(
-                {k: [f.col for f in o.features] for k, o in self.objects.items()}
+                {k: [f.col for f in o.features] for k, o in self.objects.items()},
+                self.dictionary.objects,
+                with_columns=self.settings.analyst.catalog_columns,
             )
             self._checker = MentionChecker.build(self.dictionary.columns)
         return self._catalog, self._checker
@@ -511,7 +414,7 @@ class Engine:
         a = self.settings.analyst
         catalog, checker = self._analyst_parts()
         with trace.span("Kural motoru ipuçları"):
-            ranked, q = self.rank_objects(query, use_llm=False, limit=ANALYST_RULE_POOL)
+            ranked, q = self.rank_objects(query, limit=ANALYST_RULE_POOL)
             relevance = self._column_relevance(q)
         started = time.perf_counter()
         steps: list[str] = []
@@ -531,6 +434,12 @@ class Engine:
         columns_of = {k: [f.col for f in o.features] for k, o in self.objects.items()}
         with trace.span("Aile araması") as sp:
             added = self._family_tables(short) if short.candidates else {}
+            by_search = (
+                self._searched_tables(q, {*short.candidates, *short.confusables, *added})
+                if short.candidates  # "bulunamadı" from step 1 stays one call
+                else {}
+            )
+            added |= by_search
             if sp is not None:
                 sp.detail = f"{len(added)} tablo eklendi"
         readable = [*short.candidates, *added]
@@ -552,7 +461,10 @@ class Engine:
                     a.description_chars,
                     a.full_table_columns,
                     self._concept_evidence(k, q, rel)
-                    + (f"\nAile aramasıyla eklendi: {added[k]}" if k in added else ""),
+                    + ("\nTablo aramasıyla eklendi (1. adımda seçilmedi)" if k in by_search
+                       else f"\nAile aramasıyla eklendi: {added[k]}" if k in added else ""),
+                    detail_columns=None if a.detail_columns < 0 else a.detail_columns,
+                    profile=self.dictionary.objects.get(k),
                 )  # fmt: skip
                 for k in readable
             )
@@ -696,9 +608,7 @@ class Engine:
             + (", ".join(f"{k.rsplit('.', 1)[-1]} ({f})" for k, f in added.items()) or "-"),
             f"2. adım — adayların {sum(len(columns_of[k]) for k in readable)} kolonu "
             f"sözlük açıklamalarıyla okundu, rapor yazıldı ({t3 - t2:.0f} sn)",
-            "Arama motoru (BM25"
-            + (" + anlamsal arama" if self.hybrid else "")
-            + ") sonuçları modele ipucu ve benzer alan kanıtı olarak verildi",
+            "Arama motoru (BM25) sonuçları modele ipucu ve benzer alan kanıtı olarak verildi",
             "Güven skoru: analist değerlendirmesi; kural skoru Ayrıntılar'da gösterilir",
             f"Sözlük doğrulaması: {dropped} ad/cümle düşürüldü",
         ]
@@ -740,7 +650,11 @@ class Engine:
             if not query:
                 continue
             found = 0
-            for doc, _ in self.topic_index.search(query, top_k=a.family_tables * 4):
+            results = self.topic_index.search(query, top_k=a.family_tables * 4)
+            top = results[0][1] if results else 0.0
+            for doc, score in results:
+                if score < FAMILY_MIN_SHARE * top:
+                    break  # weak lexical matches only add noise (a safe-box table for card limits)
                 key = self.topic_keys[doc]
                 if key in taken or key in added:
                     continue
@@ -750,6 +664,22 @@ class Engine:
                     break
             if len(added) >= a.family_extra:
                 break
+        return added
+
+    def _searched_tables(self, q: ExpandedQuery, taken: set[str]) -> dict[str, str]:
+        """The table-level word search's best tables (profiles included) that step 1 did
+        not pick, read in step 2 as a safety net — the oracles' "search once more" habit,
+        done cheaply. Returns object key -> "arama"."""
+        n = self.settings.analyst.search_tables
+        if n <= 0:
+            return {}
+        added: dict[str, str] = {}
+        for doc, _ in self.topic_index.search(q.sparse_terms, top_k=n + len(taken)):
+            key = self.topic_keys[doc]
+            if key not in taken:
+                added[key] = "arama"
+                if len(added) >= n:
+                    break
         return added
 
     def _concept_evidence(self, key: str, q: ExpandedQuery, relevance: Mapping[int, float]) -> str:
@@ -805,19 +735,26 @@ class Engine:
 
     # ------------------------------------------------------------------ rules
 
-    def _analyze_rules(self, query: str, top_n: int = 5) -> AnalysisResult:
+    def rule_answer(self, query: str, top_n: int = 5) -> AnalysisResult:
+        """The rule engine's own answer. Never shown to users (ADR-038); kept to measure
+        the hints the analyst gets (`vsa eval` without a model, regression tests)."""
         started = time.perf_counter()
         s = self.settings
-        ranked, q, judged = self.rank(query)
+        ranked, q = self.rank_objects(query)
         ranked, dropped = validate(ranked, self.column_keys)
 
         top = ranked[:top_n]
         near = ranked[top_n : top_n + NEAR_MISS_COUNT]
-        if (
-            not top
-            or top[0].score < s.scoring.min_answer_score
-            or top[0].components.get("coverage", 1.0) < s.scoring.min_answer_coverage
-        ):
+        found = bool(top) and top[0].score >= s.scoring.min_answer_score and (
+            top[0].components.get("coverage", 1.0) >= s.scoring.min_answer_coverage)  # fmt: skip
+        # Without the analyst the ranking is word and meaning matching only (ADR-034): the
+        # confidence shown is the rule score times a factor; "bulunamadı" stays on the raw score.
+        factor = s.scoring.rule_only_factor
+        for m in ranked:
+            m.rule_score = m.score
+            m.score = round(m.score * factor, 4)
+            m.level = level_for(m.score)
+        if not found:
             verdict = Verdict.NOT_FOUND
             near, top = top[:NEAR_MISS_COUNT], []
         elif top[0].level.value == "Yüksek" and not top[0].missing:
@@ -826,8 +763,6 @@ class Engine:
             verdict = Verdict.PARTIAL
         for m in (*top, *near):
             explain(m, q)
-            if m.llm_reason:
-                apply_llm_texts(m)
 
         notes: list[Note] = []
         if q.unknown_concepts:
@@ -865,16 +800,11 @@ class Engine:
         method = [
             "Arama: alan ağırlıklı BM25 (kolon adı ×3, eş anlamlılar ×2, açıklama ×1, obje ×1)",
             "Sorgu genişletme: kurumsal terim sözlüğü + sözlük içi eş anlamlılar",
-            "Skorlama: kural tabanlı; obje seviyesinde en iyi kolon + kapsama + zaman "
-            "+ granülerlik",
-            "LLM: kullanılmadı"
-            if judged is None
-            else f"LLM hakem: {self.llm.model} (ilk {s.llm.judge_candidates} aday; "
-            f"final = {s.scoring.w_rule:g} × kural + {s.scoring.w_llm:g} × LLM)",
+            "Skorlama: kural tabanlı; tablo seviyesinde en iyi kolon + kapsama + zaman "
+            "+ granülerlik + konu uyumu",
+            "Model: kullanılmadı — cevabı kural motoru üretti",
+            f"Güven skorları: kural skoru × {factor:g} (analist olmadan daha az isabetli; ADR-034)",
         ]
-        if self.hybrid:
-            method.insert(1, f"Anlamsal arama: {self.dense.model if self.dense else ''} "
-                          f"(ağırlık {s.dense.weight:g}, ilk {s.dense.top_k} kolon)")  # fmt: skip
         return AnalysisResult(
             query=query,
             verdict=verdict,
@@ -891,26 +821,24 @@ class Engine:
             method=method,
             dropped_by_validation=dropped,
             elapsed_ms=round((time.perf_counter() - started) * 1000),
-            llm_model=self.llm.model if judged is not None else "",
-            llm_unknown_ids=judged.unknown_ids if judged is not None else 0,
+            confidence_factor=factor,
         )
 
 
-def _object_dense_for(
-    settings: Settings, objects: Mapping[str, ObjectColumns]
-) -> ObjectDenseIndex | None:
-    if not settings.dense.enabled:
-        return None
-    return load_object_index(Path(settings.index.dir), objects)
+# Tokenizing 11k column texts is ~95% of building an engine (~3 s). Every settings change
+# rebuilds the engine with the same dictionary, so the features are kept per content.
+_FEATURES: dict[int, list[ColumnFeatures]] = {}
+_FEATURES_KEPT = 2  # the app's dictionary, and a restricted one during `vsa eval`
 
 
-def _dense_for(settings: Settings, n_columns: int) -> DenseIndex | None:
-    if not settings.dense.enabled:
-        return None
-    index = load_dense_index(Path(settings.index.dir), n_columns)
-    if index is None:
-        log.warning("Vektör indeksi bulunamadı; `vsa index --dense` ile kurun. Yalnız BM25.")
-    return index
+def _features_for(dictionary: Dictionary, stopwords: frozenset[str]) -> list[ColumnFeatures]:
+    key = hash((stopwords, tuple((c.id, c.key, c.description, c.synonyms, c.flags)
+                                 for c in dictionary.columns)))  # fmt: skip
+    if key not in _FEATURES:
+        while len(_FEATURES) >= _FEATURES_KEPT:
+            _FEATURES.pop(next(iter(_FEATURES)))
+        _FEATURES[key] = [build_features(c, stopwords) for c in dictionary.columns]
+    return _FEATURES[key]
 
 
 def fallback_reason(error: str) -> str:
@@ -918,8 +846,9 @@ def fallback_reason(error: str) -> str:
     text = fold(error)
     if "context" in text and ("exceed" in text or "size" in text or "length" in text):
         return (
-            "Modelin bağlam penceresi tablo kataloğu için küçük. Yerel modeli daha geniş "
-            "bağlamla yükleyin (LM Studio'da Context Length) veya ayarlardan bulut modelini seçin."
+            "Modelin bağlam penceresi tablo kataloğu için küçük (~70k token gerekir). Model "
+            "sunucusunda daha geniş bağlam açın (vLLM: --max-model-len) veya Yönetim → Ayarlar → "
+            "Yapay zekâ'dan daha geniş bağlamlı bir sohbet modeli seçin."
         )
     if "timed out" in text or "timeout" in text or "504" in text:
         return "Model zamanında yanıt vermedi (zaman aşımı)."

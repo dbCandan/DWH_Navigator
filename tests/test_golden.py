@@ -49,7 +49,7 @@ def test_m1_acceptance(engine: Engine) -> None:
 
 
 def test_ask_report(engine: Engine, tmp_path: Path) -> None:
-    result = engine.analyze("Kredi kartı limit doluluk oranı", top_n=3)
+    result = engine.rule_answer("Kredi kartı limit doluluk oranı", top_n=3)
     assert result.verdict is not Verdict.NOT_FOUND
     assert 0 < len(result.objects) <= 3
     assert result.dropped_by_validation == 0
@@ -58,13 +58,16 @@ def test_ask_report(engine: Engine, tmp_path: Path) -> None:
 
     path = write_ask_report(result, report_path(tmp_path, "ask", result.query))
     wb = load_workbook(path)
-    assert wb.sheetnames == ["Özet", "Öneriler", "Alan Detayları", "Notlar ve Öneriler"]
+    assert wb.sheetnames == ["Özet", "Öneriler"]
     ws = wb["Öneriler"]
     assert ws["A3"].value == "Sıra"
     assert ws["A3"].font.name == "Arial"
     assert ws["I4"].number_format == "0.00"
     assert ws.freeze_panes == "A4"
     assert str(wb["Özet"]["A2"].value).startswith("Kaynak sözlük:")
+    assert str(wb["Özet"]["A3"].value).startswith("Cevabı üreten: Kural motoru")  # ADR-034
+    said = {row[0].value: row[1].value for row in wb["Özet"].iter_rows(min_row=5, max_row=7)}
+    assert said["Talep"] == result.query and said["Sonuç"] == result.summary
 
 
 def test_irrelevant_query_does_not_crash(engine: Engine) -> None:
@@ -77,38 +80,26 @@ def test_slug() -> None:
     assert slugify("Kredi kartı limit doluluk oranı?") == "kredi_karti_limit_doluluk_orani"
 
 
-def test_m5_batch_acceptance(engine: Engine) -> None:
-    """M5 regression guard on the Ek A.3 target-table request (values as of 2026-09-26)."""
-    report = evaluate(engine, load_golden(ROOT / "tests" / "golden_set.yaml"))
-    assert report.recall(3, "batch") >= 0.9
-    assert report.status_accuracy() >= 0.9
+def test_list_report(engine: Engine, tmp_path: Path) -> None:
+    """A term list, each term through the question flow, one combined report (ADR-033)."""
+    from vsa.models import ListItem, ListResult
+    from vsa.report.excel import write_list_report
 
-
-def test_batch_report(engine: Engine, tmp_path: Path) -> None:
-    from vsa.batch import BatchAnalyzer
-    from vsa.models import FieldStatus, RequestField
-    from vsa.report.excel import write_batch_report
-
-    fields = [
-        RequestField(1, "CustomerId", "CustomerId", "Müşteri numarası"),
-        RequestField(2, "Period", "Period", "Ay, yıl örn: 202604"),
-        RequestField(
-            3, "Farklı Banka Sayısı", "DistinctBankCount", "Gönderilen farklı banka sayısı"
-        ),
-        RequestField(4, "Uzay Gemisi Yakıtı", "SpaceshipFuel", "Roket yakıt seviyesi"),
-    ]
-    result = BatchAnalyzer(engine).analyze(fields, "test")
-    by_name = {r.field.en: r for r in result.fields}
-    assert by_name["Period"].status is FieldStatus.READY
-    assert by_name["DistinctBankCount"].status is FieldStatus.DERIVE
-    best = by_name["DistinctBankCount"].best
-    assert best is not None and best.derivation.startswith("COUNT(DISTINCT")
-    keys = engine.column_keys
-    assert all(
-        h.col.key in keys for r in result.fields for c in r.candidates for h in c.match.columns
-    )
-
-    path = write_batch_report(result, tmp_path / "b.xlsx")
-    wb = load_workbook(path)
-    assert wb.sheetnames == ["Özet", "Alan Eşleştirme", "Alan Detayları", "Notlar ve Öneriler"]
-    assert wb["Alan Eşleştirme"]["E1"].value == "Durum"
+    terms = ["kredi kartı limit doluluk oranı", "uzay gemisi yakıt seviyesi"]
+    items = [ListItem(i, t, engine.rule_answer(t)) for i, t in enumerate(terms, 1)]
+    items.append(ListItem(3, "durdurulan terim"))
+    result = ListResult("liste.xlsx", items, "sozluk.xlsx", "v1", "2026-10-01 10:00",
+                        cancelled=True)  # fmt: skip
+    wb = load_workbook(write_list_report(result, tmp_path / "l.xlsx"))
+    assert wb.sheetnames == ["Özet", "Öneriler"]
+    summary = [[c.value for c in row] for row in wb["Özet"].iter_rows()]
+    states = {r[1]: r[2] for r in summary if r and r[0] in (1, 2, 3)}
+    assert states["uzay gemisi yakıt seviyesi"] == "BULUNAMADI"
+    assert states["durdurulan terim"] == "DURDURULDU"
+    assert states["kredi kartı limit doluluk oranı"] in ("VAR", "KISMEN VAR")
+    first = next(r for r in summary if r and r[0] == 1)
+    link = wb["Özet"].cell(row=summary.index(first) + 1, column=2).hyperlink
+    assert link is not None and "Öneriler" in str(link.location or link.target)
+    rows = [[c.value for c in row] for row in wb["Öneriler"].iter_rows(min_row=2)]
+    assert {r[0] for r in rows} == {1, 2, 3}  # every term has at least one row
+    assert all(r[1] for r in rows)  # and carries its term

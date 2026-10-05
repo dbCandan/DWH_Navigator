@@ -3,42 +3,51 @@ network. One engine, one lock: the tool serves a team, not the internet.
 
     GET  /                      single-page UI (static/index.html, no external assets)
     GET  /api/status            dictionary / search / LLM status
-    POST /api/ask               {"query": "...", "top": 5}
-    POST /api/batch             raw .xlsx body (X-Filename header) or {"fields": [...]}
-    GET  /api/report/<id>       Excel report of an earlier ask/batch result
+    POST /api/ask               {"query": "...", "top": 5, "ask_id": "...", "fresh": false};
+                                an earlier analyst answer to the same question (or one meaning
+                                the same) is given again unless "fresh" (ADR-035)
+    POST /api/ask/cancel        {"ask_id": "..."} stop that analysis and its LLM calls
+    POST /api/list              raw .xlsx body (X-Filename): a term list, one per row of the
+                                first column, each answered by the question flow (ADR-033)
+    GET  /api/list              the latest list (to reattach after a page reload)
+    GET  /api/list/<id>         progress: every term's state and short answer
+    GET  /api/list/<id>/item/<n>  one term's full answer (as /api/ask returns it)
+    POST /api/list/<id>/cancel  stop the list (the running term's LLM calls too)
+    GET  /api/list/<id>/report  one Excel report for the whole list (also while running)
+    GET  /api/report/<id>       Excel report of an earlier question
     GET  /api/objects?q=...     dictionary explorer: objects matching a name
     GET  /api/object/<key>      all columns of one object
     GET  /api/galaxy            all objects with their dataset group (star map)
-    POST /api/feedback          {"query", "object", "vote": "up"|"down", "note"} (M7)
+    POST /api/feedback          {"query", "object" | "scope": "answer", "vote": "up"|"down",
+                                "note", "voter"}: kept; later answers weigh them (ADR-036)
     GET  /admin                 admin screen (static/admin.html): analyses + settings;
                                 no link from the app, reached by typing the address
     GET  /api/admin/analyses    recent analyses: who asked what, flow, steps' durations
+    POST /api/admin/analyses/clear  {"ids": [...]} or {"all": true}: delete records
+                                for good (no backup)
+    POST /api/admin/answers/clear  forget every kept answer (ADR-035)
     GET  /api/admin/analysis/<id>  one analysis with its full step timeline (trace spans)
-    GET  /api/settings          schema + current values + models offered by LM Studio
+    GET  /api/settings          pages, sections and current values (search, scoring, files)
     POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
-    POST /api/settings/test     try endpoint / chat model / embedding model from the form
     POST /api/reindex           rebuild the BM25 index with the saved settings
-    GET  /api/cloud-models      chat models of the hosted catalog (lab only, ADR-026)
-    GET  /api/lab               model lab: ranked results + live progress (ADR-025)
-    POST /api/lab/start         {"models": [...], "temps": "0,0.1", "runs": 2} → `vsa lab`
-    POST /api/lab/stop          stop the running lab after its current call
+    GET  /api/llm               LLM integrations, which one holds the chat role
+    GET  /api/llm/inventory     every integration's models, servers asked in parallel
+    POST /api/llm/save          {id?, name, endpoint, api_key?, chat_model, …}
+    POST /api/llm/activate      {id, enabled, replace?} — one active chat model
+    POST /api/llm/delete        {id}
+    POST /api/llm/models        {id? | endpoint, api_key} model list of one server (form)
+    POST /api/llm/test          {id? + form values, record?} server / chat steps
 """
 
 from __future__ import annotations
 
 import json
 import logging
-import os
 import socket
-import subprocess
-import sys
 import tempfile
 import threading
 import time
-import urllib.error
-import urllib.request
 import uuid
-from dataclasses import asdict
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -47,32 +56,24 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import yaml
 
-from vsa import lab, trace
-from vsa.batch import BatchAnalyzer
-from vsa.config import (
-    CLOUD_PREFIX,
-    DEFAULT_SETTINGS_PATH,
-    active_cloud,
-    cloud_api_key,
-    load_settings,
-)
-from vsa.llm.client import LLMError, OpenAICompatibleClient
-from vsa.loader import load_request_file
-from vsa.models import AnalysisResult, BatchResult, RequestField
+from vsa import answer_cache, cancel, trace
+from vsa import feedback as fb
+from vsa.config import DEFAULT_SETTINGS_PATH, load_settings
+from vsa.loader import load_term_list
+from vsa.models import AnalysisResult, ListItem, ListResult
 from vsa.pipeline import Engine
-from vsa.report.excel import report_path, write_ask_report, write_batch_report
+from vsa.report.excel import report_path, write_ask_report, write_list_report
 from vsa.text.normalize import fold
 from vsa.web import serialize
+from vsa.web.answer_store import AnswerStore
+from vsa.web.llm_admin import LLMAdmin
 from vsa.web.settings_schema import (
-    DENSE,
     FIELDS,
+    PAGES,
     REINDEX,
-    SECRET_KEYS,
     SECTIONS,
     coerce,
     defaults,
-    get_path,
-    is_chat_model,
     to_yaml_tree,
     values_of,
 )
@@ -85,10 +86,67 @@ MAX_REPORTS = 50
 EXPLORER_LIMIT = 60
 EXPLORER_CONTENT_LIMIT = 25  # objects from the content (search pipeline) layer
 MIN_CONTENT_QUERY = 3  # shorter input: name matching only
-LAB_STALE_SEC = 1800  # no progress for this long: the lab process is gone
-LAB_LOG = Path("data/logs/lab.log")
+LLM_POSTS = {"save": "save", "activate": "set_active", "delete": "delete",
+             "models": "models", "test": "test"}  # fmt: skip
 ANALYSES_LOG = "logs/analyses.jsonl"  # next to the feedback file (data/)
+ANSWERS_FILE = "cache/answers.jsonl"  # kept analyst answers (ADR-035)
 ADMIN_LIST_LIMIT = 3000  # newest analyses the admin screen loads
+MAX_LISTS = 5  # finished term lists kept for their reports
+
+
+def _line_id(line: str) -> str:
+    try:
+        return str(json.loads(line).get("id", ""))
+    except (json.JSONDecodeError, AttributeError):
+        return ""
+
+
+class ListJob:
+    """A term list being answered in the background, one term at a time (ADR-033)."""
+
+    def __init__(self, name: str, terms: list[str], engine: Engine) -> None:
+        self.id = uuid.uuid4().hex[:12]
+        self.result = ListResult(
+            name=name,
+            items=[ListItem(i, t) for i, t in enumerate(terms, 1)],
+            dictionary_source=Path(engine.dictionary.source_path).name,
+            dictionary_version=engine.dictionary.version,
+            generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+        )
+        self.token = cancel.Token()
+        self.current = 0  # index of the term being answered; 0 = none
+        self.running = True
+        self.started = time.perf_counter()
+        self.finished: float | None = None
+
+    def state(self, item: ListItem) -> str:
+        if item.result is not None:
+            return "bitti"
+        if item.error:
+            return "hata"
+        if item.index == self.current:
+            return "çalışıyor"
+        return "durduruldu" if self.token.cancelled else "sırada"
+
+    def snapshot(self) -> dict[str, Any]:
+        items = self.result.items
+        done = [i for i in items if i.result is not None or i.error]
+        left = len(items) - len(done)
+        mean = sum(i.elapsed_ms for i in done) / len(done) if done else 0
+        return {
+            "id": self.id,
+            "name": self.result.name,
+            "header": self.result.header,
+            "notes": self.result.notes,
+            "running": self.running,
+            "cancelled": self.token.cancelled,
+            "total": len(items),
+            "done": len(done),
+            "current": self.current,
+            "elapsed_ms": round(((self.finished or time.perf_counter()) - self.started) * 1000),
+            "eta_ms": round(mean * left) if self.running and done else None,
+            "items": [serialize.list_item(i, self.state(i)) for i in items],
+        }
 
 
 class App:
@@ -104,16 +162,25 @@ class App:
         self.out_dir = out_dir
         self.feedback_path = feedback_path
         self.analyses_path = analyses_path or feedback_path.parent / ANALYSES_LOG
+        self.answers = AnswerStore(feedback_path.parent / ANSWERS_FILE)  # ADR-035
         self._log_lock = threading.Lock()
         self._hosts: dict[str, str] = {}
+        self._running: dict[str, cancel.Token] = {}  # ask_id -> token of a running question
         self.settings_path = settings_path or DEFAULT_SETTINGS_PATH
         self.reindex_pending: list[str] = []
-        self._lab_proc: subprocess.Popen[bytes] | None = None
-        self._cloud_cache: tuple[float, str, dict[str, Any]] | None = None
-        self.lab_results, self.lab_progress = lab.RESULTS_PATH, lab.PROGRESS_PATH
-        self.lab_stop_flag = lab.STOP_PATH
         self.lock = threading.Lock()
-        self.results: dict[str, AnalysisResult | BatchResult] = {}
+        self.results: dict[str, AnalysisResult] = {}
+        self.lists: dict[str, ListJob] = {}
+        self.object_index = self._object_index()
+        self.llm_admin = LLMAdmin(self)
+
+    def reload(self) -> None:
+        """Rebuild the engine from the saved settings (and LLM integrations). Built
+        outside the engine lock: a question being answered (minutes with the analyst)
+        finishes on the old engine instead of holding the change back; the swap is one
+        assignment."""
+        engine = Engine.from_index(load_settings(self.settings_path))
+        self.engine = engine
         self.object_index = self._object_index()
 
     def _object_index(self) -> list[dict[str, Any]]:
@@ -136,7 +203,7 @@ class App:
         rows.sort(key=lambda r: str(r["name"]))
         return rows
 
-    def _remember(self, result: AnalysisResult | BatchResult) -> str:
+    def _remember(self, result: AnalysisResult) -> str:
         rid = uuid.uuid4().hex[:12]
         self.results[rid] = result
         while len(self.results) > MAX_REPORTS:
@@ -157,11 +224,10 @@ class App:
                         if source.is_file() else ""),
             "columns": len(e.dictionary.columns),
             "objects": len(e.objects),
-            "hybrid": e.hybrid,
-            "embedding_model": e.dense.model if e.dense else "",
-            "llm": e.llm.model if e.judge_enabled or e.analyst_enabled else "",
-            "judge_candidates": s.llm.judge_candidates,
+            "llm": e.llm.model if e.analyst_enabled else "",
             "analyst": e.analyst_enabled,  # ADR-029: the model writes the answer
+            # ADR-034: "ok" | "none" (no chat model) | "down" (configured, not answering)
+            "llm_state": self._llm_state(),
             "shortlist": s.analyst.shortlist,
             "examples": [
                 "Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?",
@@ -172,29 +238,183 @@ class App:
             ],
         }
 
+    def _llm_state(self) -> dict[str, str]:
+        e = self.engine
+        if not e.analyst_enabled:
+            return {"state": "none", "model": "", "reason": e.llm.health()}
+        reason = e.llm.health()  # a quick /models call, cached for 30 s
+        return {"state": "down" if reason else "ok", "model": e.llm.model, "reason": reason}
+
     def ask(self, body: dict[str, Any], client: str = "") -> dict[str, Any]:
         query = str(body.get("query", "")).strip()
         if not query:
             raise ValueError("Talep metni boş")
         top = max(1, min(10, int(body.get("top", 5))))
-        result: AnalysisResult | None = None
-        error = ""
-        with trace.recording() as tr:
-            try:
-                with trace.span("Sırada bekleme", "önceki analizin bitmesi"):
-                    self.lock.acquire()
-                try:
-                    result = self.engine.analyze(query, top_n=top)
-                finally:
-                    self.lock.release()
-            except Exception as exc:
-                error = str(exc)
-                raise
-            finally:
-                self._log_analysis(tr, query, client, result, error)
+        ask_id = str(body.get("ask_id") or uuid.uuid4().hex)[:64]
+        token = cancel.Token()
+        self._running[ask_id] = token
+        try:
+            result, error = self._answer(query, top, client, token, fresh=body.get("fresh") is True)
+        finally:
+            self._running.pop(ask_id, None)
+        if token.cancelled:
+            return {"cancelled": True, "ask_id": ask_id}
+        if result is None:
+            raise RuntimeError(error)
         data = serialize.analysis(result)
         data["report_id"] = self._remember(result)
-        return data
+        voter = str(body.get("voter", "")) or client
+        return self._with_feedback(data, voter, result.generated_at)
+
+    def _answer(
+        self,
+        query: str,
+        top: int,
+        client: str,
+        token: cancel.Token,
+        origin: str = "",
+        fresh: bool = False,
+    ) -> tuple[AnalysisResult | None, str]:
+        """The one question flow, for a single question and for every term of a list:
+        an earlier answer to the same question when there is one (ADR-035), otherwise
+        wait for the engine (stoppable) and answer; log the steps for the admin screen.
+        ``fresh`` skips the earlier answer (the user asked for a new analysis)."""
+        result: AnalysisResult | None = None
+        error = ""
+        with trace.recording() as tr, cancel.using(token):
+            try:
+                engine = self.engine
+                keys = engine.cache_keys(query)
+                fp = engine.cache_fingerprint(top)
+                result = None if fresh else self._reuse(engine, query, keys, fp)
+                if result is None:
+                    with trace.span("Sırada bekleme", "önceki analizin bitmesi"):
+                        while not self.lock.acquire(timeout=0.25):
+                            cancel.check()  # stopped while still in the queue
+                    try:
+                        result = self.engine.analyze(query, top_n=top)
+                    finally:
+                        self.lock.release()
+                    # Only the analyst's answers are worth keeping: a rule answer takes
+                    # seconds, and a fallback must not stand in once the model is back.
+                    if result.analyst and self.engine is engine:
+                        self.answers.put(query, *keys, fp, answer_cache.encode(result))
+            except cancel.Cancelled:
+                error = "Kullanıcı durdurdu"
+                trace.event("Durduruldu", "kullanıcı analizi durdurdu", status="error")
+            except Exception as exc:
+                log.exception("Analiz başarısız: %s", query[:80])
+                error = str(exc) or type(exc).__name__
+            finally:
+                self._log_analysis(tr, query, client, result, error, token.cancelled, origin)
+        return result, error
+
+    def _reuse(
+        self, engine: Engine, query: str, keys: tuple[str, str], fp: str
+    ) -> AnalysisResult | None:
+        """An earlier answer to this question, or to one meaning the same (ADR-035)."""
+        c = engine.settings.cache
+        if not c.enabled:
+            return None
+        started = time.perf_counter()
+        result: AnalysisResult | None = None
+        with trace.span("Önceki cevap araması") as sp:
+            hit = self.answers.lookup(
+                *keys, fp, use_meaning=c.meaning, max_age_days=c.max_age_days
+            )
+            if hit is not None:
+                result = answer_cache.decode(hit.entry["result"], engine.dictionary.by_key())
+            if sp is not None:
+                sp.detail = f"{hit.match}: {hit.entry['query'][:120]}" if hit and result else "yok"
+        if hit is None or result is None:
+            return None
+        at = datetime.fromisoformat(hit.entry["at"]).strftime("%d.%m.%Y %H:%M")
+        first = "Bu soru" if hit.match == "aynı soru" else (
+            f"Aynı anlama gelen “{hit.entry['query']}” sorusu")  # fmt: skip
+        result.method = [
+            f"{first} {at} tarihinde analiz edildi ({result.elapsed_ms / 1000:.0f} sn); kayıtlı "
+            "cevap yeniden kullanıldı (sözlük, model ve ayarlar aynı). Yeni bir analiz için "
+            "“Yeniden analiz et”.",
+            *result.method,
+        ]
+        result.reused_at, result.reused_match = at, hit.match
+        result.reused_query = hit.entry["query"]
+        result.query = query
+        result.elapsed_ms = round((time.perf_counter() - started) * 1000)
+        return result
+
+    # ------------------------------------------------------------------ term lists (ADR-033)
+
+    def list_start(self, raw: bytes, filename: str, client: str = "") -> dict[str, Any]:
+        if any(j.running for j in self.lists.values()):
+            raise ValueError("Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun.")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "liste.xlsx"
+            path.write_bytes(raw)
+            read = load_term_list(path)  # ValueError in Turkish for anything it cannot read
+        job = ListJob(Path(filename).name or "liste.xlsx", read.terms, self.engine)
+        job.result.header, job.result.notes = read.header, read.notes
+        self.lists[job.id] = job
+        for old in [k for k, j in self.lists.items() if not j.running][:-MAX_LISTS]:
+            self.lists.pop(old)
+        threading.Thread(target=self._run_list, args=(job, client), daemon=True).start()
+        return job.snapshot()
+
+    def _run_list(self, job: ListJob, client: str) -> None:
+        try:
+            for item in job.result.items:
+                if job.token.cancelled:
+                    break
+                job.current = item.index
+                t0 = time.perf_counter()
+                origin = f"{job.result.name} #{item.index}"
+                result, error = self._answer(item.term, 5, client, job.token, origin)
+                if job.token.cancelled and result is None:
+                    break  # the stopped term stays unanswered, not an error
+                item.result, item.error = result, error
+                item.elapsed_ms = round((time.perf_counter() - t0) * 1000)
+        finally:
+            job.current = 0
+            job.finished = time.perf_counter()
+            job.running = False
+            job.result.cancelled = job.token.cancelled
+
+    def list_job(self, jid: str) -> ListJob:
+        job = self.lists.get(jid)
+        if job is None:
+            raise KeyError(jid)
+        return job
+
+    def list_latest(self) -> dict[str, Any]:
+        jobs = list(self.lists.values())
+        return jobs[-1].snapshot() if jobs else {}
+
+    def list_item(self, jid: str, index: int, voter: str = "") -> dict[str, Any]:
+        items = self.list_job(jid).result.items
+        if not 1 <= index <= len(items) or items[index - 1].result is None:
+            raise KeyError(index)
+        result = items[index - 1].result
+        assert result is not None
+        data = serialize.analysis(result)
+        data["report_id"] = self._remember(result)
+        return self._with_feedback(data, voter, result.generated_at)
+
+    def list_cancel(self, jid: str) -> dict[str, Any]:
+        job = self.list_job(jid)
+        job.token.cancel()
+        return job.snapshot()
+
+    def list_report(self, jid: str) -> Path:
+        r = self.list_job(jid).result
+        r.generated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+        return write_list_report(r, report_path(self.out_dir, "liste", Path(r.name).stem))
+
+    def cancel_ask(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Stop a running question: its waits end and its LLM connections are cut."""
+        token = self._running.get(str(body.get("ask_id", "")))
+        if token is not None:
+            token.cancel()
+        return {"ok": token is not None}
 
     # ------------------------------------------------------------------ admin: analyses
 
@@ -210,27 +430,40 @@ class App:
         return self._hosts[ip]
 
     def _log_analysis(
-        self, tr: trace.Trace, query: str, ip: str, result: AnalysisResult | None, error: str
+        self,
+        tr: trace.Trace,
+        query: str,
+        ip: str,
+        result: AnalysisResult | None,
+        error: str,
+        stopped: bool = False,
+        origin: str = "",
     ) -> None:
         """One line per question in data/logs/analyses.jsonl: who, what, the path it took."""
         spans = tr.to_list()
-        if result is None:
+        if stopped:
+            flow = "durduruldu"
+        elif result is None:
             flow = "hata"
+        elif result.reused_at:
+            flow = "önbellek"  # an earlier analyst answer given again (ADR-035)
         else:
-            flow = "analist" if result.analyst else ("yedek" if result.fallback else "kural")
+            flow = "analist" if result.analyst else "yapılamadı"  # ADR-038: no rule answers
         entry = {
             "id": uuid.uuid4().hex[:12],
             "at": datetime.now().isoformat(timespec="seconds"),
             "ip": ip,
             "host": self._host(ip) if ip else "",
             "query": query[:2000],
+            "origin": origin,  # "liste.xlsx #3" for a term of a list (ADR-033)
             "flow": flow,
-            "model": self.engine.llm.model if flow in ("analist", "yedek") else (
+            "model": self.engine.llm.model if flow in ("analist", "yapılamadı", "durduruldu") else (
                 result.llm_model if result else ""),  # fmt: skip
             "verdict": result.verdict.value if result else "",
             "summary": result.summary[:500] if result else "",
             "objects": [m.object_key for m in result.objects][:10] if result else [],
             "fallback": result.fallback if result else "",
+            "reused": serialize.reused(result) if result else None,
             "error": error[:500],
             "ms": round(tr.now() * 1000),
             **tr.totals(),
@@ -272,36 +505,44 @@ class App:
             items.append(e)
         return {"items": items, "path": str(self.analyses_path), "limit": ADMIN_LIST_LIMIT}
 
+    def clear_analyses(self, body: dict[str, Any]) -> dict[str, Any]:
+        """Delete the given analyses, or all of them with ``{"all": true}`` — never by
+        omission. Deleted records are gone; no backup is kept."""
+        everything = body.get("all") is True
+        ids = {str(i) for i in body.get("ids") or []}
+        if not everything and not ids:
+            raise ValueError("Silinecek analiz seçilmedi")
+        if not self.analyses_path.is_file():
+            return {"removed": 0, "kept": 0}
+        with self._log_lock:
+            lines = self.analyses_path.read_text(encoding="utf-8").splitlines()
+            kept = [] if everything else [ln for ln in lines if _line_id(ln) not in ids]
+            self.analyses_path.write_text("".join(f"{ln}\n" for ln in kept), encoding="utf-8")
+        return {"removed": len(lines) - len(kept), "kept": len(kept)}
+
+    def clear_answers(self) -> dict[str, Any]:
+        """Forget every kept answer (ADR-035); the next questions are analysed anew."""
+        return {"removed": self.answers.clear()}
+
     def analysis(self, aid: str) -> dict[str, Any]:
         for e in self._analysis_lines():
             if e.get("id") == aid:
                 return e
         raise KeyError(aid)
 
-    def batch(self, fields: list[RequestField], name: str) -> dict[str, Any]:
-        if not fields:
-            raise ValueError("Talep dosyasında alan bulunamadı (TR başlık / EN başlık / açıklama)")
-        with self.lock:
-            result = BatchAnalyzer(self.engine).analyze(fields, name)
-        data = serialize.batch(result)
-        data["report_id"] = self._remember(result)
-        return data
-
     def report(self, rid: str) -> Path:
         result = self.results.get(rid)
         if result is None:
             raise KeyError(rid)
-        if isinstance(result, AnalysisResult):
-            return write_ask_report(result, report_path(self.out_dir, "ask", result.query))
-        return write_batch_report(result, report_path(self.out_dir, "batch", result.name))
+        return write_ask_report(result, report_path(self.out_dir, "ask", result.query))
 
     def objects(self, q: str) -> dict[str, Any]:
         """Explorer search: every search layer except the chat model.
 
         1. name — table / schema / dataset group contains the text (instant, listed first)
         2. content — the full pipeline without the LLM: Turkish normalization, term
-           dictionary, dictionary synonyms, BM25, dense (BGE-M3) and object aggregation;
-           finds tables by what their columns *mean*, not only by their names
+           dictionary, dictionary synonyms, BM25 and object aggregation;
+           finds tables by their column names and descriptions, not only by their names
         3. column name — a column name contains the text
         """
         started = time.perf_counter()
@@ -325,8 +566,8 @@ class App:
         if len(needle) >= MIN_CONTENT_QUERY:
             # No engine lock: this path only reads (its caches are plain dict get/set,
             # safe under the GIL), so the explorer — and the Evren route's candidate
-            # prefetch — stay instant while an LLM-judged question holds the lock.
-            ranked, eq = self.engine.rank_objects(text, use_llm=False, limit=EXPLORER_CONTENT_LIMIT)
+            # prefetch — stay instant while an analyst question holds the lock.
+            ranked, eq = self.engine.rank_objects(text, limit=EXPLORER_CONTENT_LIMIT)
             concepts = [c.display() for c in eq.concepts]
             by_key = {r["key"]: r for r in rows}
             for m in ranked:
@@ -363,92 +604,25 @@ class App:
             "items": result,
             "counts": counts,
             "concepts": concepts,
-            "hybrid": self.engine.hybrid,
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
     # ------------------------------------------------------------------ settings screen
 
-    def _lmstudio_models(self, endpoint: str) -> list[dict[str, Any]]:
-        """Models offered by the server; LM Studio's REST API adds type and load state."""
-        base = endpoint.rstrip("/").replace("://localhost", "://127.0.0.1")
-        root = base[: -len("/v1")] if base.endswith("/v1") else base
-        for url, rich in ((f"{root}/api/v0/models", True), (f"{base}/models", False)):
-            try:
-                with urllib.request.urlopen(url, timeout=3) as resp:
-                    data = json.loads(resp.read().decode("utf-8")).get("data", [])
-            except (OSError, ValueError):
-                continue
-            out = []
-            for m in data:
-                mid = str(m.get("id", ""))
-                mtype = (
-                    str(m.get("type", "")) if rich else ("embeddings" if "embed" in mid else "llm")
-                )
-                out.append(
-                    {
-                        "id": mid,
-                        "kind": "embedding" if mtype.startswith("embed") else "chat",
-                        "loaded": m.get("state") == "loaded" if rich else None,
-                        "arch": m.get("arch", ""),
-                        "quant": m.get("quantization", ""),
-                        "context": m.get("max_context_length"),
-                    }
-                )
-            return out
-        return []
-
-    def cloud_models(self, refresh: bool = False) -> dict[str, Any]:
-        """Chat models of the hosted catalog (lab only, ADR-026); cached for 10 minutes."""
-        key = cloud_api_key(self.engine.settings.cloud)
-        cloud = active_cloud(self.engine.settings.cloud)
-        if not cloud.enabled:
-            return {"ok": False, "reason": "Bulut ölçümü kapalı (Ayarlar → Bulut modelleri).",
-                    "models": []}  # fmt: skip
-        if not key:
-            return {"ok": False, "reason": "API anahtarı girilmemiş.", "models": []}
-        cached = self._cloud_cache
-        if cached and not refresh and time.time() - cached[0] < 600 and cached[1] == cloud.endpoint:
-            return cached[2]
-        req = urllib.request.Request(
-            cloud.endpoint.rstrip("/") + "/models", headers={"Authorization": f"Bearer {key}"}
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=20) as resp:
-                data = json.loads(resp.read().decode("utf-8")).get("data", [])
-        except urllib.error.HTTPError as exc:
-            return {"ok": False, "reason": f"Servis HTTP {exc.code} döndürdü (anahtar geçersiz "
-                    "olabilir).", "models": []}  # fmt: skip
-        except (OSError, ValueError) as exc:
-            return {"ok": False, "reason": f"Servise ulaşılamadı: {exc}", "models": []}
-        ids = sorted({str(m.get("id", "")).removeprefix("models/") for m in data} - {""})
-        models = [
-            {"id": CLOUD_PREFIX + mid, "name": mid, "publisher": mid.split("/")[0] if "/" in mid
-             else "", "kind": "cloud"}
-            for mid in ids if is_chat_model(mid)
-        ]  # fmt: skip
-        out = {"ok": True, "reason": "", "models": models, "total": len(ids)}
-        self._cloud_cache = (time.time(), cloud.endpoint, out)
-        return out
-
     def settings_get(self) -> dict[str, Any]:
         st = self.engine.settings
-        raw = asdict(st)
         return {
+            "pages": PAGES,
             "sections": SECTIONS,
             "values": values_of(st),
             "defaults": defaults(),
             "path": str(self.settings_path),
-            "has_api_key": bool(st.llm.api_key),
-            "has_secret": {k: bool(get_path(raw, k)) for k in SECRET_KEYS},
-            "models": self._lmstudio_models(st.llm.endpoint) if st.llm.endpoint else [],
             "status": {
-                "hybrid": self.engine.hybrid,
-                "judge": self.engine.judge_enabled,
+                "llm": self.engine.llm.available,
                 "llm_model": self.engine.llm.model,
-                "llm_provider": self.engine.settings.llm.provider,
                 "dictionary_version": self.engine.dictionary.version,
                 "index_built_at": self.engine.index_meta.get("built_at", ""),
+                "answers": self.answers.stats(self.engine.cache_fingerprint(5)),  # ADR-035
             },
             "reindex_pending": self.reindex_pending,
         }
@@ -468,12 +642,7 @@ class App:
                 errors.append(str(exc))
         if errors:
             raise ValueError("; ".join(errors))
-        raw = asdict(self.engine.settings)
-        for key in SECRET_KEYS:
-            if not new.get(key):
-                new[key] = get_path(raw, key)  # blank = keep the saved secret
-        changed = [k for k in FIELDS if k not in SECRET_KEYS and new[k] != current[k]]
-        changed += [k for k in SECRET_KEYS if submitted.get(k)]
+        changed = [k for k in FIELDS if new[k] != current[k]]
 
         self.settings_path.parent.mkdir(parents=True, exist_ok=True)
         header = (
@@ -481,98 +650,23 @@ class App:
             f"({datetime.now().isoformat(timespec='seconds')}).\n"
             "# Elle de düzenlenebilir; anlamları için: config/settings.example.yaml\n"
         )
+        base = (yaml.safe_load(self.settings_path.read_text(encoding="utf-8")) or {}
+                if self.settings_path.exists() else {})  # fmt: skip
         self.settings_path.write_text(
-            header + yaml.safe_dump(to_yaml_tree(new), allow_unicode=True, sort_keys=False),
+            header + yaml.safe_dump(to_yaml_tree(new, base), allow_unicode=True, sort_keys=False),
             encoding="utf-8",
         )
-        settings = load_settings(self.settings_path)
-        with self.lock:
-            engine = Engine.from_index(settings)
-            self.engine = engine
-            self.object_index = self._object_index()
+        self.reload()
         labels = {k: FIELDS[k]["label"] for k in changed}
         reindex = [labels[k] for k in changed if FIELDS[k]["effect"] == REINDEX]
-        dense = [labels[k] for k in changed if FIELDS[k]["effect"] == DENSE]
         self.reindex_pending = sorted(set(self.reindex_pending) | set(reindex))
         return {
             "ok": True,
             "changed": [labels[k] for k in changed],
             "reindex_needed": self.reindex_pending,
-            "dense_needed": dense,
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
             "status": self.settings_get()["status"],
         }
-
-    def settings_test(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Try the (unsaved) model settings from the form: server, chat model, embeddings."""
-        endpoint = str(body.get("endpoint") or self.engine.settings.llm.endpoint)
-        model = str(body.get("model") or "")
-        embed = str(body.get("embedding_model") or "")
-        client = OpenAICompatibleClient(
-            endpoint,
-            model,
-            embed,
-            temperature=float(body.get("temperature", 0.0)),
-            timeout=float(body.get("timeout", 120)),
-            api_key=self.engine.settings.llm.api_key,
-            reasoning_effort=str(body.get("reasoning_effort", "none")),
-        )
-        steps: list[dict[str, Any]] = []
-
-        def step(name: str, fn: Any) -> None:
-            t0 = time.perf_counter()
-            try:
-                ok, detail = fn()
-            except LLMError as exc:
-                ok, detail = False, str(exc)
-            steps.append(
-                {
-                    "name": name,
-                    "ok": ok,
-                    "detail": detail,
-                    "ms": round((time.perf_counter() - t0) * 1000),
-                }
-            )
-
-        def server() -> tuple[bool, str]:
-            ids = client.ping()
-            return True, f"{len(ids)} model sunuluyor"
-
-        def chat() -> tuple[bool, str]:
-            if not model:
-                return False, "Hakem modeli seçilmedi"
-            reply = client.chat_json(
-                "Kısa ve doğru cevap ver. SADECE JSON döndür.",
-                "Türkiye'nin başkenti neresidir?",
-                {
-                    "type": "object",
-                    "properties": {"cevap": {"type": "string"}},
-                    "required": ["cevap"],
-                    "additionalProperties": False,
-                },
-                max_tokens=60,
-            )
-            if reply is None:
-                return False, "Geçerli JSON dönmedi (düşünme modu açık olabilir)"
-            return True, f"JSON geçerli · cevap: {str(reply.get('cevap', ''))[:40]}"
-
-        def embedding() -> tuple[bool, str]:
-            if not embed:
-                return False, "Embedding modeli seçilmedi"
-            vec = client.embed(["kredi kartı limit doluluk oranı"])[0]
-            ok = not self.engine.dense or len(vec) == self.engine.dense.dim
-            note = (
-                ""
-                if ok
-                else f" (indeks {self.engine.dense.dim if self.engine.dense else '?'} boyutlu!)"
-            )
-            return ok, f"{len(vec)} boyutlu vektör{note}"
-
-        step("Sunucu", server)
-        if steps[0]["ok"]:
-            step("Hakem modeli", chat)
-            step("Embedding modeli", embedding)
-        return {"steps": steps}
 
     def reindex(self) -> dict[str, Any]:
         """Rebuild the BM25 index from the dictionary with the saved settings (~10 s)."""
@@ -589,83 +683,8 @@ class App:
             "columns": meta["columns"],
             "objects": meta["objects"],
             "version": meta["dictionary_version"],
-            "dense": self.engine.hybrid,
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
-
-    def lab_state(self) -> dict[str, Any]:
-        """Model lab results (ranked, best first) and the live progress of a running lab."""
-        results: dict[str, Any] = {}
-        if self.lab_results.exists():
-            results = json.loads(self.lab_results.read_text(encoding="utf-8"))
-        errors = {m: c["load_error"]["error"] for m, c in results.items() if "load_error" in c}
-        progress: dict[str, Any] = {}
-        if self.lab_progress.exists():
-            try:
-                progress = json.loads(self.lab_progress.read_text(encoding="utf-8"))
-            except json.JSONDecodeError:  # being rewritten right now
-                progress = {"running": True}
-        if progress.get("running"):
-            proc = self._lab_proc
-            if proc is not None and proc.poll() is not None:
-                progress["running"] = False  # our child died without cleaning up
-            elif time.time() - self.lab_progress.stat().st_mtime > LAB_STALE_SEC:
-                progress["running"] = False
-        progress["stopping"] = self.lab_stop_flag.exists()
-        return {
-            "rows": lab.rank(results),
-            "errors": errors,
-            "progress": progress,
-            "weights": {"judge": lab.W_JUDGE, "final": lab.W_FINAL, "picks": lab.W_PICKS,
-                        "order": lab.W_ORDER, "drift": lab.W_DRIFT, "tie": lab.TIE},
-        }  # fmt: skip
-
-    def lab_start(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Run `vsa lab` as a child process; progress is read back from its state file."""
-        if self.lab_state()["progress"].get("running"):
-            raise ValueError("Bir ölçüm zaten çalışıyor")
-        models = [str(m) for m in body.get("models") or []]
-        if not models:
-            raise ValueError("En az bir model seçin")
-        temps = [float(x) for x in str(body.get("temps", "0")).split(",") if x.strip()]
-        if not temps or any(not 0 <= x <= 1 for x in temps):
-            raise ValueError("Sıcaklıklar 0 ile 1 arasında olmalı")
-        runs = int(body.get("runs", 2))
-        if not 1 <= runs <= 5:
-            raise ValueError("Tekrar sayısı 1 ile 5 arasında olmalı")
-        chat = {m["id"] for m in self._lmstudio_models(self.engine.settings.llm.endpoint)
-                if m["kind"] == "chat"}  # fmt: skip
-        if any(m.startswith(CLOUD_PREFIX) for m in models):
-            cloud = self.cloud_models()
-            if not cloud["ok"]:
-                raise ValueError(cloud["reason"])
-            chat |= {m["id"] for m in cloud["models"]}
-        unknown = [m for m in models if m not in chat]
-        if unknown:
-            raise ValueError(f"LM Studio'da bulunmayan model: {', '.join(unknown)}")
-        args = [sys.executable, "-m", "vsa.cli", "lab", *models,
-                "--temps", ",".join(f"{x:g}" for x in temps), "--runs", str(runs),
-                "--settings", str(self.settings_path)]  # fmt: skip
-        LAB_LOG.parent.mkdir(parents=True, exist_ok=True)
-        self.lab_stop_flag.unlink(missing_ok=True)
-        env = {**os.environ, "PYTHONIOENCODING": "utf-8", "COLUMNS": "160"}
-        flags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-        with LAB_LOG.open("w", encoding="utf-8") as logf:
-            self._lab_proc = subprocess.Popen(
-                args, stdout=logf, stderr=subprocess.STDOUT, env=env, creationflags=flags
-            )
-        # Mark as running at once, so a second click cannot start a second lab.
-        self.lab_progress.parent.mkdir(parents=True, exist_ok=True)
-        self.lab_progress.write_text(json.dumps({
-            "running": True, "pid": self._lab_proc.pid, "updated": time.time(),
-            "done": 0, "total": 0, "models": models, "log": ["Başlatılıyor…"],
-        }, ensure_ascii=False), encoding="utf-8")  # fmt: skip
-        return {"ok": True, "pid": self._lab_proc.pid}
-
-    def lab_stop(self) -> dict[str, Any]:
-        self.lab_stop_flag.parent.mkdir(parents=True, exist_ok=True)
-        self.lab_stop_flag.write_text("stop", encoding="utf-8")
-        return {"ok": True}
 
     def galaxy(self) -> list[dict[str, Any]]:
         """Every object with its main dataset group — the star map of the "Evren" skin."""
@@ -697,23 +716,83 @@ class App:
             "join_keys": self.engine.join_keys.get(key, []),
         }
 
-    def feedback(self, body: dict[str, Any]) -> dict[str, Any]:
+    # ------------------------------------------------------------------ feedback (ADR-036)
+
+    def feedback(self, body: dict[str, Any], client: str = "") -> dict[str, Any]:
+        """One 👍/👎 on a suggested table, or on the whole answer (``scope: answer``).
+        Every person's latest vote counts; enough 👎 on the answer drop its kept copy,
+        so the next asker gets a fresh analysis (ADR-035/036)."""
         vote = str(body.get("vote", ""))
         if vote not in ("up", "down"):
             raise ValueError("vote: up | down")
+        scope = "answer" if body.get("scope") == "answer" else "object"
+        query = str(body.get("query", "")).strip()[:2000]
+        engine = self.engine
+        text, meaning = engine.cache_keys(query) if query else ("", "")
         entry = {
             "at": datetime.now().isoformat(timespec="seconds"),
-            "query": str(body.get("query", ""))[:2000],
-            "object": str(body.get("object", ""))[:300],
-            "field": str(body.get("field", ""))[:300],
+            "query": query,
+            "text_key": text,
+            "meaning_key": meaning,
+            "scope": scope,
+            "object": "" if scope == "answer" else str(body.get("object", ""))[:300],
             "vote": vote,
             "note": str(body.get("note", ""))[:2000],
-            "dictionary_version": self.engine.dictionary.version,
+            "voter": str(body.get("voter", ""))[:64] or client,
+            "rank": body.get("rank"),
+            "score": body.get("score"),
+            "analyst": bool(body.get("analyst")),
+            "reused": bool(body.get("reused")),
+            "report_id": str(body.get("report_id", ""))[:64],
+            "dictionary_version": engine.dictionary.version,
         }
         self.feedback_path.parent.mkdir(parents=True, exist_ok=True)
-        with self.lock, self.feedback_path.open("a", encoding="utf-8") as fh:
+        with _feedback_lock, self.feedback_path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
-        return {"ok": True}
+        view = self._feedback_view(
+            text, meaning, str(entry["voter"]), str(body.get("answer_at", ""))
+        )
+        dropped = 0
+        if scope == "answer" and view.answer_rejected:
+            dropped = self.answers.forget(text, meaning)
+        tally = view.answer if scope == "answer" else view.objects.get(str(entry["object"]))
+        return {
+            "ok": True,
+            "votes": tally.to_dict() if tally else None,
+            "answer_rejected": view.answer_rejected,
+            "forgotten": dropped,
+        }
+
+    def _feedback_view(
+        self, text: str, meaning: str, voter: str, answer_at: str = ""
+    ) -> fb.FeedbackView:
+        with _feedback_lock:
+            rows = fb.load_feedback(self.feedback_path)
+        for r in rows:  # votes from before ADR-036 carry the question only
+            if "text_key" not in r:
+                r["text_key"] = answer_cache.text_key(str(r.get("query", "")))
+        version = self.engine.dictionary.version
+        return fb.assess(
+            rows, text, meaning, dictionary_version=version, voter=voter, answer_since=answer_at
+        )
+
+    def _with_feedback(self, data: dict[str, Any], voter: str, answer_at: str) -> dict[str, Any]:
+        """The answer as earlier votes on this question shape it (ADR-036)."""
+        try:
+            keys = self.engine.cache_keys(data["query"])
+            out = fb.apply(data, self._feedback_view(*keys, voter, answer_at), self._known())
+        except Exception:  # votes must never cost the answer
+            log.exception("Geri bildirim değerlendirilemedi")
+            return data
+        out["feedback"]["answer_at"] = answer_at  # echoed back with a vote on the answer
+        return out
+
+    def _known(self) -> dict[str, dict[str, Any]]:
+        return {r["key"]: {"name": r["name"], "schema": r["schema"], "groups": r["groups"]}
+                for r in self.object_index}  # fmt: skip
+
+
+_feedback_lock = threading.Lock()  # not the engine lock: a vote must not wait for an analysis
 
 
 def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
@@ -735,12 +814,23 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
             self.send_header("X-Content-Type-Options", "nosniff")
             for k, v in (extra or {}).items():
                 self.send_header(k, v)
-            self.end_headers()
-            self.wfile.write(body)
+            try:
+                self.end_headers()
+                self.wfile.write(body)
+            except ConnectionError:  # the browser left (e.g. the question was stopped)
+                self.close_connection = True
 
         def _json(self, data: Any, status: int = 200) -> None:
             body = json.dumps(data, ensure_ascii=False).encode("utf-8")
             self._send(status, body, "application/json; charset=utf-8")
+
+        def _xlsx(self, path: Path) -> None:
+            self._send(
+                200,
+                path.read_bytes(),
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                {"Content-Disposition": f'attachment; filename="{path.name}"'},
+            )
 
         def _error(self, status: int, message: str) -> None:
             self._json({"error": message}, status)
@@ -768,23 +858,29 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._json(app.analysis(url.path.rsplit("/", 1)[-1]))
                 elif url.path == "/api/settings":
                     self._json(app.settings_get())
-                elif url.path == "/api/lab":
-                    self._json(app.lab_state())
-                elif url.path == "/api/cloud-models":
-                    self._json(app.cloud_models(refresh="refresh" in parse_qs(url.query)))
+                elif url.path == "/api/llm":
+                    self._json(app.llm_admin.state())
+                elif url.path == "/api/llm/inventory":
+                    self._json(app.llm_admin.inventory())
                 elif url.path == "/api/status":
                     self._json(app.status())
                 elif url.path == "/api/galaxy":
                     self._json(app.galaxy())
                 elif url.path.startswith("/api/report/"):
-                    path = app.report(url.path.rsplit("/", 1)[-1])
-                    name = path.name
-                    self._send(
-                        200,
-                        path.read_bytes(),
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        {"Content-Disposition": f'attachment; filename="{name}"'},
-                    )
+                    self._xlsx(app.report(url.path.rsplit("/", 1)[-1]))
+                elif url.path == "/api/list":
+                    self._json(app.list_latest())
+                elif url.path.startswith("/api/list/"):
+                    parts = url.path.split("/")[3:]  # <id> [, "item", <n>] | [, "report"]
+                    if len(parts) == 1:
+                        self._json(app.list_job(parts[0]).snapshot())
+                    elif parts[1:2] == ["report"]:
+                        self._xlsx(app.list_report(parts[0]))
+                    elif parts[1:2] == ["item"] and len(parts) == 3 and parts[2].isdigit():
+                        voter = parse_qs(url.query).get("voter", [""])[0] or self.client_address[0]
+                        self._json(app.list_item(parts[0], int(parts[2]), voter))
+                    else:
+                        self._error(404, "Bulunamadı")
                 elif url.path == "/api/objects":
                     q = parse_qs(url.query).get("q", [""])[0]
                     self._json(app.objects(q))
@@ -805,39 +901,30 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                 raw = self._body()
                 if url.path == "/api/ask":
                     self._json(app.ask(json.loads(raw or b"{}"), self.client_address[0]))
-                elif url.path == "/api/batch":
-                    ctype = self.headers.get("Content-Type", "")
-                    if ctype.startswith("application/json"):
-                        body = json.loads(raw or b"{}")
-                        fields = [
-                            RequestField(i, str(f.get("tr", "")), str(f.get("en", "")),
-                                         str(f.get("description", "")))
-                            for i, f in enumerate(body.get("fields", []), 1)
-                            if f.get("tr") or f.get("en")
-                        ]  # fmt: skip
-                        name = str(body.get("name") or "Talep")
-                    else:
-                        name = unquote(self.headers.get("X-Filename", "talep.xlsx"))
-                        with tempfile.TemporaryDirectory() as tmp:
-                            path = Path(tmp) / "request.xlsx"
-                            path.write_bytes(raw)
-                            fields = load_request_file(path)
-                        name = Path(name).stem
-                    self._json(app.batch(fields, name))
+                elif url.path == "/api/ask/cancel":
+                    self._json(app.cancel_ask(json.loads(raw or b"{}")))
+                elif url.path == "/api/admin/analyses/clear":
+                    self._json(app.clear_analyses(json.loads(raw or b"{}")))
+                elif url.path == "/api/admin/answers/clear":
+                    self._json(app.clear_answers())
+                elif url.path == "/api/list":
+                    name = unquote(self.headers.get("X-Filename", "liste.xlsx"))
+                    self._json(app.list_start(raw, name, self.client_address[0]))
+                elif url.path.startswith("/api/list/") and url.path.endswith("/cancel"):
+                    self._json(app.list_cancel(url.path.split("/")[3]))
                 elif url.path == "/api/settings":
                     self._json(app.settings_save(json.loads(raw or b"{}")))
-                elif url.path == "/api/settings/test":
-                    self._json(app.settings_test(json.loads(raw or b"{}")))
                 elif url.path == "/api/reindex":
                     self._json(app.reindex())
-                elif url.path == "/api/lab/start":
-                    self._json(app.lab_start(json.loads(raw or b"{}")))
-                elif url.path == "/api/lab/stop":
-                    self._json(app.lab_stop())
+                elif url.path.startswith("/api/llm/") and url.path[9:] in LLM_POSTS:
+                    action = getattr(app.llm_admin, LLM_POSTS[url.path[9:]])
+                    self._json(action(json.loads(raw or b"{}")))
                 elif url.path == "/api/feedback":
-                    self._json(app.feedback(json.loads(raw or b"{}")))
+                    self._json(app.feedback(json.loads(raw or b"{}"), self.client_address[0]))
                 else:
                     self._error(404, "Bulunamadı")
+            except KeyError:
+                self._error(404, "Kayıt bulunamadı")
             except (ValueError, json.JSONDecodeError) as exc:
                 self._error(400, str(exc))
             except Exception as exc:

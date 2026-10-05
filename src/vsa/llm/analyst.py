@@ -39,7 +39,7 @@ from vsa.llm.analyst_prompts import (
     shortlist_user,
 )
 from vsa.llm.client import LLMClient
-from vsa.models import DictColumn, FlagKind, Note, Verdict
+from vsa.models import DictColumn, FlagKind, Note, ObjectProfile, Verdict
 from vsa.text.normalize import fold
 
 log = logging.getLogger(__name__)
@@ -48,7 +48,6 @@ FLAG_TAG = {
     FlagKind.MODEL_ESTIMATED: "MODEL TAHMİNİ — DOĞRULANMALI",
     FlagKind.CORRECTED: "ORİJİNAL AÇIKLAMA HATALIYDI — DÜZELTİLDİ",
     FlagKind.NEEDS_VERIFICATION: "DOĞRULANMALI",
-    FlagKind.NAMING_MISMATCH: "İSİM/İÇERİK UYUMSUZLUĞU",
 }
 # Columns every recommendation should be able to carry: record keys and time axes.
 STRUCTURAL = frozenset(
@@ -80,7 +79,15 @@ def _group(columns: Sequence[DictColumn]) -> str:
     return groups.most_common(1)[0][0] if groups else "-"
 
 
-def build_catalog(objects: Mapping[str, Sequence[DictColumn]]) -> Catalog:
+def build_catalog(
+    objects: Mapping[str, Sequence[DictColumn]],
+    profiles: Mapping[str, ObjectProfile] | None = None,
+    with_columns: bool = False,
+) -> Catalog:
+    """One line per table. With a profile (the object sheet) the line carries what the
+    table holds, its row level and time columns; column names are added on request or
+    when a table has no profile description."""
+    profiles = profiles or {}
     lines: dict[str, str] = {}
     groups: dict[str, str] = {}
     ids: dict[str, str] = {}
@@ -88,9 +95,18 @@ def build_catalog(objects: Mapping[str, Sequence[DictColumn]]) -> Catalog:
         cols = objects[key]
         tid = f"T{i}"
         ids[tid] = key
-        groups[key] = _group(cols)
-        names = ", ".join(c.column for c in cols)
-        lines[key] = f"{tid} | {key} | {groups[key]} | {len(cols)} kolon | {names}"
+        prof = profiles.get(key)
+        groups[key] = (prof.group if prof else "") or _group(cols)
+        parts = [tid, key, groups[key], f"{len(cols)} kolon"]
+        if prof and prof.description:
+            parts.append(prof.description)
+            if prof.grain:
+                parts.append(f"Satır: {prof.grain}")
+            if prof.time_columns:
+                parts.append(f"Zaman: {', '.join(prof.time_columns)}")
+        if with_columns or not (prof and prof.description):
+            parts.append("Kolonlar: " + ", ".join(c.column for c in cols))
+        lines[key] = " | ".join(parts)
     return Catalog("\n".join(lines.values()), ids, {k: t for t, k in ids.items()}, lines, groups)
 
 
@@ -274,11 +290,17 @@ def _clip(text: str, limit: int) -> str:
     return text[:limit].rsplit(" ", 1)[0] + "…"
 
 
-def column_line(col: DictColumn, desc_chars: int) -> str:
+def column_line(col: DictColumn, desc_chars: int, detail: bool = True) -> str:
+    """One column for the model: ``- Name [Rol]: summary`` when compact, the (clipped)
+    description when ``detail`` is asked for or the dictionary has no summary."""
     tags = [FLAG_TAG[f.kind] for f in col.flags if f.kind in FLAG_TAG]
     tag = f" [{'; '.join(tags)}]" if tags else ""
     kvkk = " [KVKK]" if col.has_pii else ""
-    return f"- {col.column}{tag}{kvkk}: {_clip(col.description, desc_chars) or '(açıklama yok)'}"
+    role = f" [{col.role}]" if col.role else ""
+    if not detail and col.summary:
+        return f"- {col.column}{role}{tag}{kvkk}: {col.summary}"
+    text = _clip(col.description, desc_chars) or col.summary or "(açıklama yok)"
+    return f"- {col.column}{role}{tag}{kvkk}: {text}"
 
 
 def term_matcher(terms: Iterable[str]) -> Callable[[DictColumn], int]:
@@ -300,21 +322,36 @@ def table_material(
     desc_chars: int,
     full_limit: int,
     evidence: str = "",
+    detail_columns: int | None = None,
+    profile: ObjectProfile | None = None,
 ) -> str:
-    """Every column with its description; for very wide tables only the relevant ones
-    get a description and the rest are listed by name. ``evidence`` is a line under the
-    heading (which request concepts the table carries, why it was added)."""
-    head = f"### {tid} · {key} · Veri seti: {_group(columns)} · {len(columns)} kolon"
+    """Every column of a candidate table; for very wide tables only the relevant ones
+    get a line and the rest are listed by name. ``evidence`` is a line under the
+    heading (which request concepts the table carries, why it was added).
+    ``detail_columns``: None = every line carries the description; N = only the N most
+    relevant columns do, the others are compact (``Ad [Rol]: özet``)."""
+    head = f"### {tid} · {key} · Talep eden birim: {_group(columns)} · {len(columns)} kolon"
+    if profile and profile.grain:
+        head += f" · Satır: {profile.grain}"
     if evidence:
         head += "\n" + evidence
-    if len(columns) <= full_limit:
-        return "\n".join([head, *(column_line(c, desc_chars) for c in columns)])
     ranked = sorted(
         columns,
         key=lambda c: (-relevance.get(c.id, 0.0), -(fold(c.column) in STRUCTURAL), c.id),
     )
+    detailed = (
+        {c.id for c in columns}
+        if detail_columns is None
+        else {c.id for c in ranked[:detail_columns] if relevance.get(c.id, 0.0) > 0}
+    )
+
+    def line(c: DictColumn) -> str:
+        return column_line(c, desc_chars, detail=c.id in detailed)
+
+    if len(columns) <= full_limit:
+        return "\n".join([head, *(line(c) for c in columns)])
     shown = {c.id for c in ranked[:full_limit]}
-    lines = [head, *(column_line(c, desc_chars) for c in columns if c.id in shown)]
+    lines = [head, *(line(c) for c in columns if c.id in shown)]
     rest = [c.column for c in columns if c.id not in shown]
     lines.append(f"- Diğer {len(rest)} kolon (yalnız ad): {', '.join(rest)}")
     return "\n".join(lines)
@@ -457,7 +494,6 @@ class Recommendation:
     caveat: str
     usage: str
     confidence: float
-    derivation: str = ""  # batch: how to compute the field when no column holds it
 
 
 @dataclass(slots=True)
@@ -607,7 +643,6 @@ class Cleaner:
             caveat=without_typo_remarks(self.text(item.get("caveat"))) or "-",
             usage=self.text(item.get("usage")),
             confidence=conf,
-            derivation=self.text(item.get("derivation")),
         )
 
 
@@ -678,87 +713,6 @@ def build_answer(
         verdict=verdict,
         summary=summary,
         recommendations=recs,
-        design=clean.bullets(reply.get("design")),
-        attention=[a for a in clean.bullets(reply.get("attention")) if not _is_typo_remark(a)],
-        notes=clean.notes(reply.get("notes")),
-        dropped=clean.dropped,
-    )
-
-
-# --------------------------------------------------------------------------- batch
-
-BATCH_STATUSES = ("Hazır", "Kısmen hazır", "Türetilmeli", "Bulunamadı")
-
-
-@dataclass(slots=True)
-class FieldAnswer:
-    status: str  # one of BATCH_STATUSES
-    candidates: list[Recommendation]
-
-
-@dataclass(slots=True)
-class BatchAnswer:
-    summary: str
-    said: str  # the model's verdict word; the final verdict follows the field statuses
-    core: str | None
-    fields: dict[int, FieldAnswer]
-    design: list[str]
-    attention: list[str]
-    notes: list[Note]
-    dropped: int = 0
-
-
-def build_batch_answer(
-    reply: Mapping[str, object],
-    ids: Mapping[str, str],
-    columns_of: Mapping[str, Sequence[DictColumn]],
-    checker: MentionChecker,
-    indexes: Iterable[int],
-    min_confidence: float,
-    catalog_ids: Mapping[str, str] | None = None,
-    per_field: int = 3,
-) -> BatchAnswer:
-    """One chunk of a target-table analysis, checked against the dictionary. Fields the
-    model skipped or answered with nothing valid are "Bulunamadı" (ADR-006)."""
-    clean = Cleaner(checker, ids, columns_of, catalog_ids)
-    wanted = set(indexes)
-    fields: dict[int, FieldAnswer] = {}
-    raw_fields = reply.get("fields")
-    for item in raw_fields if isinstance(raw_fields, list) else []:
-        if not isinstance(item, dict):
-            continue
-        try:
-            index = int(item.get("index", -1))
-        except (TypeError, ValueError):
-            continue
-        if index not in wanted or index in fields:
-            continue
-        cands: list[Recommendation] = []
-        raw_cands = item.get("candidates")
-        for c in raw_cands if isinstance(raw_cands, list) else []:
-            if not isinstance(c, dict):
-                continue
-            rec = clean.recommendation(c, min_confidence)
-            if rec is not None and all(r.object_key != rec.object_key for r in cands):
-                cands.append(rec)
-        cands.sort(key=lambda r: -r.confidence)
-        status = str(item.get("status", "")).strip()
-        if status not in BATCH_STATUSES:
-            status = "Kısmen hazır"
-        if not cands:
-            status = "Bulunamadı"
-        elif status == "Bulunamadı":
-            status = "Kısmen hazır"
-        fields[index] = FieldAnswer(status, cands[:per_field])
-    for index in wanted - fields.keys():
-        log.warning("Analist %d numaralı alanı cevaplamadı", index)
-        fields[index] = FieldAnswer("Bulunamadı", [])
-    core = resolve_id(reply.get("core"), ids)
-    return BatchAnswer(
-        summary=clean.text(reply.get("summary")),
-        said=str(reply.get("verdict", "")).strip(),
-        core=core,
-        fields=fields,
         design=clean.bullets(reply.get("design")),
         attention=[a for a in clean.bullets(reply.get("attention")) if not _is_typo_remark(a)],
         notes=clean.notes(reply.get("notes")),

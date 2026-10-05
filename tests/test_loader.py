@@ -74,20 +74,14 @@ class TestBuildColumns:
         assert d.version.endswith("-4")
         assert len(d.version.split("-")[0]) == 12
 
-    def test_flags_and_quality_sheet(self, sample_dictionary_path: Path) -> None:
+    def test_leading_flags(self, sample_dictionary_path: Path) -> None:
+        """Old-style leading [...] flags still parse (the current dictionary has none)."""
         cols = {c.column: c for c in load_dictionary(sample_dictionary_path).columns}
         assert cols["CustomerPartyId"].has_flag(FlagKind.MODEL_ESTIMATED)
         assert cols["CustomerPartyId"].dataset_group is None
         ratio = cols["CardLimitRatio"]
         assert ratio.has_flag(FlagKind.CORRECTED)
-        assert ratio.has_flag(FlagKind.NAMING_MISMATCH)
         assert ratio.has_pii
-        assert cols["CardLimitFullnessToday"].has_flag(FlagKind.QUALITY_NOTE)
-
-    def test_missing_quality_sheet_only_warns(self, sample_dictionary_path: Path) -> None:
-        d = load_dictionary(sample_dictionary_path, quality_sheet="Yok")
-        assert len(d.columns) == 3
-        assert any("Kalite sayfası" in w for w in d.warnings)
 
     def test_correct_spelling_also_accepted(self) -> None:
         df = pd.DataFrame(
@@ -138,12 +132,94 @@ def test_term_dictionary_seed() -> None:
 
 def test_real_dictionary(real_dictionary_path: Path) -> None:
     d = load_dictionary(real_dictionary_path)
-    assert d.version.endswith("-11158")
-    assert 11_100 <= len(d.columns) <= 11_158
-    assert len(d.object_keys) >= 389
-    estimated = sum(c.has_flag(FlagKind.MODEL_ESTIMATED) for c in d.columns)
-    assert 235 <= estimated <= 240
+    assert d.version.endswith("-11136")
+    assert len(d.columns) == 11_136 and not d.warnings  # consolidated: no duplicate rows left
+    assert len(d.object_keys) == 390
+    # every description counts as verified: no leading [...] flags in the column sheet
+    assert not any(c.raw_description.startswith("[") for c in d.columns)
+    assert not any(c.has_flag(FlagKind.MODEL_ESTIMATED) for c in d.columns)
     with_syn = sum(bool(c.synonyms) for c in d.columns)
     assert with_syn / len(d.columns) > 0.99
     assert all(c.object_name == c.object_name.strip() for c in d.columns)
     assert "EDWDM.CMP.vCardLimitFullness.CardLimitFullnessToday" in d.by_key()
+
+
+def test_synonyms_column_wins_over_trailing_part() -> None:
+    rows = pd.DataFrame({
+        "DatabaseName": ["EDWDM", "EDWDM"],
+        "SchemaName": ["CUS", "CUS"],
+        "ObjectName": ["vCustomer", "vCustomer"],
+        "ColumnName": ["CustomerName", "Period"],
+        "ColumnDescription": [
+            "Müşteri adı; KVKK kapsamında kişisel veri.",
+            "Periyot. Eş anlamlılar: dönem, ay",
+        ],
+        "Synonyms": ["müşteri adı, unvan (tüzel), name.", None],
+    })  # fmt: skip
+    cols, _ = build_columns(rows)
+    assert cols[0].synonyms == ("müşteri adı", "unvan (tüzel)", "name")
+    assert cols[0].description == "Müşteri adı; KVKK kapsamında kişisel veri." and cols[0].has_pii
+    assert cols[1].synonyms == ("dönem", "ay")  # empty cell: the old trailing form still works
+
+
+def test_group_comes_from_object_sheet() -> None:
+    from vsa.loader import object_groups
+
+    rows = pd.DataFrame({
+        "DatabaseName": ["EDWDM", "EDWDM"],
+        "SchemaName": ["CMP", "CUS"],
+        "ObjectName": ["vCardLimitFullness", "vCustomer"],
+        "ColumnName": ["Period", "CustomerPartyId"],
+        "ColumnDescription": ["Periyot.", "Müşteri anahtarı."],
+    })  # fmt: skip
+    objects = pd.DataFrame(
+        {"ObjectKey": ["EDWDM.CMP.vCardLimitFullness"], "DatasetGroup": ["Kart"]}
+    )
+    cols, warnings = build_columns(rows, groups=object_groups(objects))
+    assert [c.dataset_group for c in cols] == ["Kart", None] and not warnings
+
+
+def test_term_list_parsing() -> None:
+    """ADR-033: one fixed format — column A, row 1 is the header, a term per row below."""
+    from vsa.loader import parse_term_sheet
+
+    nan = float("nan")
+    rows = [["Terim"], [" kredi  kartı "], [None], [nan], ["Kredi kartı"], ["mevduat"]]
+    r = parse_term_sheet(rows)
+    assert r.terms == ["kredi kartı", "mevduat"] and r.header == "Terim"
+    assert r.notes == [
+        "2 boş satır atlandı.",
+        "1 tekrar eden terim atlandı (ilk geçtiği satır arandı).",
+    ]
+
+    # the first row is always the header, even when it reads like a term — and it is said
+    r = parse_term_sheet([["kredi kartı"], ["mevduat"]])
+    assert r.terms == ["mevduat"]
+    assert r.notes == ["İlk satır (“kredi kartı”) başlık sayıldı ve aranmadı."]
+    assert parse_term_sheet([["Terim"], ["x"]], ["Sayfa2"]).notes == [
+        "Yalnız ilk sayfa okundu; şu sayfalardaki veriler alınmadı: Sayfa2."]  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    ("rows", "message"),
+    [
+        ([], "Dosya boş"),
+        ([["Terim", "Açıklama"], ["kart", "x"]], "tek sütunlu olmalı; dosyada A, B"),
+        ([[None, "Terim"], [None, "kart"]], "A sütununda olmalı; dosyada veri B"),
+        ([[None], ["kart"]], "A1 hücresi boş"),
+        ([["Terim"], [None]], "altında aranacak terim yok"),
+        ([["Terim"], ["x" * 501]], "2. satır çok uzun"),
+    ],
+)
+def test_term_list_rejects_unclear_files(rows: list[list[object]], message: str) -> None:
+    from vsa.loader import parse_term_sheet
+
+    with pytest.raises(ValueError, match=message):
+        parse_term_sheet(rows)
+
+
+def test_term_list_limit() -> None:
+    from vsa.loader import MAX_TERMS, parse_term_sheet
+
+    with pytest.raises(ValueError, match="en fazla"):
+        parse_term_sheet([["Terim"], *([f"t{i}"] for i in range(MAX_TERMS + 1))])
