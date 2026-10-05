@@ -275,38 +275,40 @@ def test_settings_roundtrip(app_with_settings: App) -> None:
     assert [p["id"] for p in got["pages"]] == ["llm", "search", "data"]
     pages = {p["id"] for p in got["pages"]}
     assert all(s["page"] in pages for s in got["sections"])
-    res = app.settings_save({"values": {"scoring.min_answer_score": 0.4}})
-    assert res["ok"] and res["changed"] == ["Cevap vermek için gereken güven"]
-    assert app.engine.settings.scoring.min_answer_score == 0.4  # engine reloaded
-    assert "min_answer_score: 0.4" in app.settings_path.read_text(encoding="utf-8")
+    res = app.settings_save({"values": {"expansion.weight": 0.4}})
+    assert res["ok"] and res["changed"] == ["Eş anlamlı terimlerin ağırlığı"]
+    assert app.engine.settings.expansion.weight == 0.4  # engine reloaded
+    assert "weight: 0.4" in app.settings_path.read_text(encoding="utf-8")
 
 
 def test_model_connection_is_not_on_the_screen(app_with_settings: App) -> None:
     """The plain settings pages never carry the model connection (that is the LLM page,
-    ADR-032), and saving them keeps the llm/analyst sections of the file."""
+    ADR-032), and saving them keeps the llm section of the file. The analyst's reading
+    settings are on the "Arama ve cevap" page (ADR-040)."""
     app = app_with_settings
     path = app.settings_path
     path.write_text(
         path.read_text(encoding="utf-8")
         + "llm:\n  enabled: false\n  endpoint: http://spark-1:8000/v1\n  model: m\n"
-        "  api_key: gizli\nanalyst:\n  shortlist: 9\n",
+        "  api_key: gizli\nanalyst:\n  family_tables: 3\n",
         encoding="utf-8",
     )
     got = app.settings_get()
     keys = {f["key"] for sec in got["sections"] for f in sec["fields"]}
-    assert not {k for k in keys if k.startswith(("llm.", "analyst.", "cloud."))}
+    assert not {k for k in keys if k.startswith(("llm.", "cloud."))}
+    assert "analyst.detail_columns" in keys
     assert "gizli" not in json.dumps(got) and "spark-1" not in json.dumps(got)
     with pytest.raises(ValueError, match="Bilinmeyen"):
         app.settings_save({"values": {"llm.endpoint": "http://evil/v1"}})
     app.settings_save({"values": {"search.top_k_objects": 7}})
     s = app.engine.settings
-    assert s.search.top_k_objects == 7 and s.analyst.shortlist == 9
+    assert s.search.top_k_objects == 7 and s.analyst.family_tables == 3  # not on the screen
     assert (s.llm.endpoint, s.llm.model, s.llm.api_key) == ("http://spark-1:8000/v1", "m", "gizli")
 
 
 def test_settings_validation(app_with_settings: App) -> None:
     with pytest.raises(ValueError, match="arasında"):
-        app_with_settings.settings_save({"values": {"scoring.min_answer_score": 3}})
+        app_with_settings.settings_save({"values": {"expansion.weight": 3}})
     with pytest.raises(ValueError, match="Bilinmeyen"):
         app_with_settings.settings_save({"values": {"search.hack": 1}})
 
@@ -410,11 +412,11 @@ def test_settings_change_does_not_wait_for_a_running_question(app_with_settings:
     try:
         done = threading.Event()
         worker = threading.Thread(
-            target=lambda: (app.settings_save({"values": {"scoring.min_answer_score": 0.4}}),
+            target=lambda: (app.settings_save({"values": {"expansion.weight": 0.4}}),
                             done.set()))  # fmt: skip
         worker.start()
         assert done.wait(20), "saving waited for the running question"
     finally:
         app.lock.release()
-    assert app.engine is not old and app.engine.settings.scoring.min_answer_score == 0.4
+    assert app.engine is not old and app.engine.settings.expansion.weight == 0.4
     assert app.engine.features is old.features  # same dictionary: column texts not redone

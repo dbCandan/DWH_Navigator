@@ -9,11 +9,9 @@ from enum import StrEnum
 class FlagKind(StrEnum):
     """Quality flags attached to a dictionary column (HANDOVER §3.3, §3.4)."""
 
-    MODEL_ESTIMATED = "model_estimated"  # [MODEL TAHMİNİ — DOĞRULANMALI] -> score ×0.85
+    MODEL_ESTIMATED = "model_estimated"  # [MODEL TAHMİNİ — DOĞRULANMALI] -> note only
     CORRECTED = "corrected"  # [ORİJİNAL AÇIKLAMA HATALIYDI — DÜZELTİLDİ ...] -> note only
     NEEDS_VERIFICATION = "needs_verification"  # other leading [...] notes -> note only
-    NAMING_MISMATCH = "naming_mismatch"  # Kalite "İsimlendirme/İçerik Uyumsuzluğu" -> ×0.90
-    QUALITY_NOTE = "quality_note"  # any other Kalite finding -> note only
 
 
 @dataclass(frozen=True, slots=True)

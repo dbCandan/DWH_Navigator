@@ -184,7 +184,7 @@ class Engine:
     @classmethod
     def from_dictionary_file(cls, settings: Settings) -> Engine:
         d = settings.dictionary
-        dictionary = load_dictionary(Path(d.path), d.sheet, d.quality_sheet)
+        dictionary = load_dictionary(Path(d.path), d.sheet)
         return cls(
             dictionary,
             settings,
@@ -261,7 +261,6 @@ class Engine:
                     bm25_map.get(f.col.id, 0.0),
                     max_bm25,
                     q,
-                    s.scoring.flag_penalty,
                 )
         lap.note(f"{len(candidate_objects)} tablonun {len(hits)} kolonu")
         lap("Tablo toplama ve konu uyumu")

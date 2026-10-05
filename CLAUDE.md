@@ -128,5 +128,6 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 Modeller ekibin DGX Spark sunucularında, OpenAI uyumlu API ile (ADR-031); bu makinede model
 çalıştırılmaz, `baslat.bat` LM Studio açmaz. Bağlantı `/admin` → Ayarlar → Yapay zekâ ekranından
 (ADR-032): entegrasyonlar `config/llm_integrations.yaml` (repoda yok, API anahtarı içerir). Dosya
-yoksa `config/settings.yaml` → `llm:` geçerli. `analyst:` yalnız `settings.yaml`. Model
+yoksa `config/settings.yaml` → `llm:` geçerli. Analist okuma ayarları (aday sayısı, `detail_columns`,
+`catalog_chunks`, `catalog_columns`) `/admin` → Arama ve cevap → Analist'te. Model
 değişikliğinden önce ve sonra `vsa eval --save`.

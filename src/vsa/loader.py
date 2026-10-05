@@ -45,7 +45,6 @@ _OPTIONAL = {
     "summary": ("summary", "ozet"),
 }
 
-NAMING_MISMATCH_CATEGORY = "isimlendirme/icerik uyumsuzlugu"
 
 
 # --------------------------------------------------------------------------- parsing
@@ -162,19 +161,13 @@ def object_groups(objects: pd.DataFrame) -> dict[str, str]:
 
 
 def build_columns(
-    rows: pd.DataFrame,
-    quality: pd.DataFrame | None = None,
-    groups: Mapping[str, str] | None = None,
+    rows: pd.DataFrame, groups: Mapping[str, str] | None = None
 ) -> tuple[list[DictColumn], list[str]]:
-    """Turn dictionary rows (+ optional quality findings) into DictColumns. Pure.
-    A column's DatasetGroup comes from its own row when the column sheet has one,
-    otherwise from its object (``groups``, read from the object sheet)."""
+    """Turn dictionary rows into DictColumns. Pure. A column's DatasetGroup comes from
+    its own row when the column sheet has one, otherwise from its object (``groups``,
+    read from the object sheet)."""
     names = _resolve_columns(rows.columns)
     warnings: list[str] = []
-
-    findings: dict[tuple[str, str], list[Flag]] = {}
-    if quality is not None:
-        findings = _quality_flags(quality, warnings)
 
     columns: list[DictColumn] = []
     seen: set[str] = set()
@@ -196,7 +189,6 @@ def build_columns(
         if listed:  # a Synonyms column wins over a trailing "Eş anlamlılar:" part
             synonyms = tuple(split_synonyms(listed))
         flags = tuple(f for f in flags if not _is_account_number_note(col, f))
-        extra = findings.get((fold(obj), fold(col)), [])
         group = _cell(rec[names["dataset_group"]]) if "dataset_group" in names else ""
         if not group and groups:
             group = groups.get(f"{db}.{schema}.{obj}", "")
@@ -210,7 +202,7 @@ def build_columns(
                 description=body,
                 raw_description=raw,
                 synonyms=synonyms,
-                flags=flags + tuple(extra),
+                flags=flags,
                 dataset_group=group or None,
                 has_pii=bool(_PII_MARKER.search(f"{raw} {listed}")),
                 role=_cell(rec[names["role"]]) if "role" in names else "",
@@ -218,33 +210,6 @@ def build_columns(
             )
         )
     return columns, warnings
-
-
-def _quality_flags(quality: pd.DataFrame, warnings: list[str]) -> dict[tuple[str, str], list[Flag]]:
-    """Quality findings keyed by folded (object, column); db/schema columns are not needed."""
-    cols = {fold(str(c)): str(c) for c in quality.columns}
-    needed = ("kategori", "objectname", "columnname")
-    if not all(n in cols for n in needed):
-        warnings.append("Kalite sayfası beklenen formatta değil, yok sayıldı")
-        return {}
-    finding_col = cols.get("bulgu")
-    out: dict[tuple[str, str], list[Flag]] = {}
-    for rec in quality.to_dict("records"):
-        category = _cell(rec[cols["kategori"]])
-        obj, col = _cell(rec[cols["objectname"]]), _cell(rec[cols["columnname"]])
-        if not (obj and col and category):
-            continue
-        kind = (
-            FlagKind.NAMING_MISMATCH
-            if fold(category) == NAMING_MISMATCH_CATEGORY
-            else FlagKind.QUALITY_NOTE
-        )
-        detail = _cell(rec[finding_col]) if finding_col else ""
-        text = f"{category}: {detail}" if detail else category
-        flags = out.setdefault((fold(obj), fold(col)), [])
-        if all(f.kind is not kind or f.text != text for f in flags):
-            flags.append(Flag(kind, text))
-    return out
 
 
 # --------------------------------------------------------------------------- I/O
@@ -255,10 +220,8 @@ def file_version(path: Path, row_count: int) -> str:
     return f"{digest}-{row_count}"
 
 
-def load_dictionary(
-    path: Path, sheet: str = "Kolonlar", quality_sheet: str | None = None
-) -> Dictionary:
-    """Read the dictionary workbook. A missing quality sheet only yields a warning."""
+def load_dictionary(path: Path, sheet: str = "Kolonlar") -> Dictionary:
+    """Read the dictionary workbook: the column sheet, plus the object sheet if present."""
     with pd.ExcelFile(path) as book:
         rows = book.parse(sheet, dtype=str)
         profiles = (
@@ -267,18 +230,8 @@ def load_dictionary(
             else {}
         )
         groups = {k: p.group for k, p in profiles.items() if p.group} or None
-        quality: pd.DataFrame | None = None
-        extra_warnings: list[str] = []
-        if quality_sheet:
-            if quality_sheet in book.sheet_names:
-                quality = book.parse(quality_sheet, dtype=str)
-            else:
-                extra_warnings.append(
-                    f"Kalite sayfası '{quality_sheet}' bulunamadı; bayraksız devam ediliyor"
-                )
 
-    columns, warnings = build_columns(rows, quality, groups)
-    warnings = extra_warnings + warnings
+    columns, warnings = build_columns(rows, groups)
     for w in warnings:
         log.info(w)
     if warnings:

@@ -74,21 +74,14 @@ class TestBuildColumns:
         assert d.version.endswith("-4")
         assert len(d.version.split("-")[0]) == 12
 
-    def test_flags_and_quality_sheet(self, sample_dictionary_path: Path) -> None:
-        d = load_dictionary(sample_dictionary_path, quality_sheet="Kalite")  # optional sheet
-        cols = {c.column: c for c in d.columns}
+    def test_leading_flags(self, sample_dictionary_path: Path) -> None:
+        """Old-style leading [...] flags still parse (the current dictionary has none)."""
+        cols = {c.column: c for c in load_dictionary(sample_dictionary_path).columns}
         assert cols["CustomerPartyId"].has_flag(FlagKind.MODEL_ESTIMATED)
         assert cols["CustomerPartyId"].dataset_group is None
         ratio = cols["CardLimitRatio"]
         assert ratio.has_flag(FlagKind.CORRECTED)
-        assert ratio.has_flag(FlagKind.NAMING_MISMATCH)
         assert ratio.has_pii
-        assert cols["CardLimitFullnessToday"].has_flag(FlagKind.QUALITY_NOTE)
-
-    def test_missing_quality_sheet_only_warns(self, sample_dictionary_path: Path) -> None:
-        d = load_dictionary(sample_dictionary_path, quality_sheet="Yok")
-        assert len(d.columns) == 3
-        assert any("Kalite sayfası" in w for w in d.warnings)
 
     def test_correct_spelling_also_accepted(self) -> None:
         df = pd.DataFrame(

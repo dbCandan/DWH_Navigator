@@ -9,7 +9,6 @@ Time and granularity are NOT scored here — they are object properties (ADR-010
 
 from __future__ import annotations
 
-from vsa.config import FlagPenalty
 from vsa.expansion.query_expander import Concept, ConceptKind, ExpandedQuery
 from vsa.features import ColumnFeatures, contains_sequence
 from vsa.models import ColumnHit, FlagKind
@@ -26,7 +25,6 @@ PENALTY_SCOPE = 0.10
 NEGATION_WINDOW = 1  # "bazlı" is a stopword, so "Kart bazlı değil" -> (kart, değil)
 
 CAVEAT_MODEL_ESTIMATED = "Açıklama model tahmini; iş birimiyle doğrulanmalı"
-CAVEAT_NAMING_MISMATCH = "Kalite bulgusu: kolon adı ile içerik uyumsuz"
 CAVEAT_DERIVATION = "Hazır oran değil; oran pay/payda alanlarından türetilmeli"
 CAVEAT_PII = "Kişisel veri (KVKK) içerir; maskelenmiş alternatif tercih edilmeli"
 
@@ -41,7 +39,6 @@ def score_column(
     bm25: float,
     max_bm25: float,
     q: ExpandedQuery,
-    penalty: FlagPenalty,
 ) -> ColumnHit:
     content = q.content_concepts
     covered = [c for c in content if covers(f.all_tokens, c)]
@@ -97,11 +94,7 @@ def score_column(
             caveats.append(c.scope_note)
 
     if f.col.has_flag(FlagKind.MODEL_ESTIMATED):
-        score *= penalty.model_estimated
         caveats.append(CAVEAT_MODEL_ESTIMATED)
-    if f.col.has_flag(FlagKind.NAMING_MISMATCH):
-        score *= penalty.naming_mismatch
-        caveats.append(CAVEAT_NAMING_MISMATCH)
     for flag in f.col.flags:
         if flag.kind is FlagKind.NEEDS_VERIFICATION:
             caveats.append(flag.text)

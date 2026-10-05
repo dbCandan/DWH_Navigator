@@ -16,7 +16,6 @@ from vsa.llm.integrations import apply as apply_integrations
 class DictionarySettings:
     path: str = "data/VeriSozlugu.xlsx"
     sheet: str = "Kolonlar"
-    quality_sheet: str | None = None
 
 
 @dataclass(slots=True)
@@ -32,7 +31,6 @@ class BM25Settings:
 
 @dataclass(slots=True)
 class SearchSettings:
-    top_k_columns: int = 120
     # Objects reached through their best columns in the top N of BM25 are scored as a
     # whole; wider than top_k_columns so coverage-driven winners are not missed (§8).
     candidate_object_columns: int = 400
@@ -63,12 +61,6 @@ class ObjectWeights:
 
 
 @dataclass(slots=True)
-class FlagPenalty:
-    model_estimated: float = 0.85
-    naming_mismatch: float = 0.90
-
-
-@dataclass(slots=True)
 class ScoringSettings:
     min_candidate_score: float = 0.25
     min_answer_score: float = 0.35
@@ -78,7 +70,6 @@ class ScoringSettings:
     # 7 in 8 (ADR-029); a rule answer must not look as sure as an analyst's (ADR-034).
     rule_only_factor: float = 0.8
     object: ObjectWeights = field(default_factory=ObjectWeights)
-    flag_penalty: FlagPenalty = field(default_factory=FlagPenalty)
 
 
 @dataclass(slots=True)
@@ -159,6 +150,7 @@ RETIRED = frozenset({
     "llm.judge", "llm.judge_candidates", "llm.expand_query", "llm.provider",
     "scoring.w_rule", "scoring.w_llm", "analyst.enabled", "analyst.batch",
     "dense", "llm.embedding_model", "llm.embedding_endpoint", "llm.embedding_api_key",
+    "dictionary.quality_sheet", "search.top_k_columns", "scoring.flag_penalty",
 })  # fmt: skip
 
 

@@ -460,7 +460,7 @@ function pageStatus(id) {
     const c = L.roles.chat;
     return c ? "Sohbet: " + short(c.model) : "Bağlı model yok";
   }
-  if (id === "search") return `Cevap eşiği %${Math.round(saved["scoring.min_answer_score"] * 100)}`;
+  if (id === "search") return `${saved["analyst.shortlist"]} aday tablo · ${saved["analyst.detail_columns"] < 0 ? "tüm" : saved["analyst.detail_columns"]} tam açıklama`;
   return `${S.status.dictionary_version} · ${(S.status.index_built_at || "").slice(0, 10) || "indeks yok"}`;
 }
 function renderTiles() {

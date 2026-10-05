@@ -58,8 +58,6 @@ FLAG_LABEL = {
     FlagKind.MODEL_ESTIMATED: "Model tahmini — doğrulanmalı",
     FlagKind.CORRECTED: "Kaynak açıklama düzeltildi",
     FlagKind.NEEDS_VERIFICATION: "Doğrulanmalı",
-    FlagKind.NAMING_MISMATCH: "İsim/içerik uyumsuzluğu",
-    FlagKind.QUALITY_NOTE: "Kalite notu",
 }
 
 

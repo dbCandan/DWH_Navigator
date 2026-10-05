@@ -22,7 +22,7 @@ GROUPS = [TermGroup("müşteri no", ("hesap no", "customer id"))]
 def engine(sample_dictionary_path: Path) -> Engine:
     s = Settings()
     s.dictionary.path = str(sample_dictionary_path)
-    d = load_dictionary(sample_dictionary_path, "Kolonlar", "Kalite")
+    d = load_dictionary(sample_dictionary_path)
     return Engine(d, s, Resources(GROUPS, frozenset({"ve", "ile", "bir"})))
 
 

@@ -64,8 +64,8 @@ header.top .wrap { display: flex; align-items: center; gap: 14px; height: 60px; 
 .hero { padding: 54px 0 22px; text-align: center; transition: padding .35s ease; }
 /* landing: the hero fills the free screen height and centres the title and search bar */
 #hero:not(.compact) { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center;
-  /* +8vh at the bottom: the optical centre sits a little above the geometric one */
-  padding: calc(24px + var(--shift-top, 0px)) 0 calc(24px + 8vh + var(--shift-bottom, 0px)); transition: none; }
+  /* +14vh at the bottom lifts the block to the optical centre, so the search bar does not sit low */
+  padding: calc(24px + var(--shift-top, 0px)) 0 calc(24px + 14vh + var(--shift-bottom, 0px)); transition: none; }
 #hero > .searchbox { width: 100%; }
 .hero h1 {
   font-family: var(--display); font-size: clamp(26px, min(4vw, 6vh), 40px); line-height: 1.15; font-weight: 700;
@@ -246,7 +246,7 @@ kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); 
   .answer-sum { font-size: 18px; }
 }
 @media (max-height: 760px) {
-  footer { padding: 12px 16px 14px; }
+  footer { padding-top: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
@@ -329,7 +329,13 @@ html.dropping .searchbox .drop-hint { opacity: 1; }
   opacity: 0; transition: opacity .15s; z-index: 3;
 }
 .drop-hint small { display: block; color: #a3acd6; font-weight: 500; font-size: 12.5px; margin-top: 2px; text-align: center; }
-#hero .searchbox { position: relative; }
+/* landing bar, balanced: a search mark on the left mirrors the Excel button on the right */
+#hero .searchbox {
+  position: relative; padding: 12px;
+  background: rgba(8, 12, 30, .78) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237cf4ff' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E") no-repeat left 22px bottom 22px;
+  padding-left: 58px;  /* icon stays on the last line, beside the buttons */
+}
+@media (max-width: 760px) { #hero .searchbox { padding-left: 16px; background-image: none; } }  /* phones: the text needs the room */
 .listpill { cursor: pointer; }
 .listpill:hover { color: #fff; border-color: rgba(124, 244, 255, .5); }
 .list { margin: 28px 0 20px; }
@@ -528,8 +534,19 @@ html.has-results #hud { opacity: 0; }
 @keyframes powerOn { 0% { opacity: 0; } 12% { opacity: 1; } 18% { opacity: .2; } 26% { opacity: 1; } 34% { opacity: .5; } 44%, 100% { opacity: 1; } }
 .clarify { border-left: 0; box-shadow: inset 3px 0 0 var(--accent), var(--shadow); }
 
-footer { color: var(--faint); text-align: right; padding-left: 240px; padding-right: 20px; }  /* HUD sits bottom-left */
+/* the HUD's mirror: bottom-right, same type and the same distance from the corner as the HUD bottom-left */
+footer {
+  text-align: right; padding: 18px 16px 18.5px 240px;
+  font: 11px/1.5 var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: rgba(190, 205, 255, .6);
+}
 @media (max-width: 760px) { footer { text-align: center; padding-left: 16px; padding-right: 16px; } }
+/* the model state, bottom-right: plain HUD text instead of a pill; details in its tooltip */
+#foot .status { display: flex; justify-content: flex-end; margin: 0; }
+#foot .pill { border: 0; background: none; padding: 0; border-radius: 0; gap: 8px; font: inherit; letter-spacing: inherit; color: inherit; }
+#foot .pill .dot { width: 6px; height: 6px; }
+#foot .pill[title] { cursor: help; }
+#foot .pill.warn { color: #ffd166; } #foot .pill.bad { color: #ff9ab8; }
+@media (max-width: 760px) { #foot .status { justify-content: center; } }
 
 /* ---------- HUD + star tooltip ---------- */
 #hud {
@@ -1079,9 +1096,7 @@ details.side-card > summary.side-h:hover { color: var(--text); }
       <div><b>DWH Navigator</b><span>Veri ambarı rehberi</span></div>
     </a>
     <div class="slot" id="bar-slot"></div>
-    <div class="tools">
-      <div class="status" id="status"></div>
-    </div>
+    <div class="tools"></div>
   </div>
 </header>
 
@@ -1102,7 +1117,7 @@ details.side-card > summary.side-h:hover { color: var(--text); }
   </section>
 
 </main>
-<footer id="foot"></footer>
+<footer id="foot"><div class="status" id="status"></div></footer>
 
 <script>
 "use strict";
@@ -1161,7 +1176,6 @@ async function loadStatus() {
     $("#status").replaceChildren(h("span", { class: "pill " + cls, title: tip }, h("i", { class: "dot" + (cls ? "" : " on") }), label));
     const mw = $("#model-warn");
     mw.className = "model-warn" + (m.state === "down" ? " bad" : ""); mw.textContent = warn;
-    $("#foot").textContent = s.updated ? "Sözlük güncelleme: " + new Date(s.updated + "T00:00").toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" }) : "";
     centreHero();
   } catch (e) {
     $("#status").replaceChildren(h("span", { class: "pill" }, "Sunucuya ulaşılamadı"));
@@ -1189,6 +1203,7 @@ function centreHero() {
   hero.style.setProperty("--shift-bottom", Math.max(0, d) + "px");
 }
 addEventListener("resize", centreHero);
+addEventListener("load", centreHero);
 
 // ---------------------------------------------------------------- the search bar becomes the heading
 // Landing: title and search bar in the middle of the sky. After the first question the bar

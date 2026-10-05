@@ -55,30 +55,11 @@ SAMPLE_ROWS = [
     },
 ]
 
-SAMPLE_QUALITY = [
-    {
-        "Kategori": "İsimlendirme/İçerik Uyumsuzluğu",
-        "ObjectName": "vCreditCardLimit",
-        "ColumnName": "CardLimitRatio",
-        "Bulgu": "Ad oran diyor, içerik farklı.",
-        "Öneri": "Doğrulanmalı.",
-    },
-    {
-        "Kategori": "Yazım Hatası",
-        "ObjectName": "vCardLimitFullness",
-        "ColumnName": "CardLimitFullnessToday",
-        "Bulgu": "Yazım hatası.",
-        "Öneri": "-",
-    },
-]
-
-
 @pytest.fixture
 def sample_dictionary_path(tmp_path: Path) -> Path:
     path = tmp_path / "dictionary.xlsx"
     with pd.ExcelWriter(path) as writer:
         pd.DataFrame(SAMPLE_ROWS).to_excel(writer, sheet_name="Kolonlar", index=False)
-        pd.DataFrame(SAMPLE_QUALITY).to_excel(writer, sheet_name="Kalite", index=False)
     return path
 
 

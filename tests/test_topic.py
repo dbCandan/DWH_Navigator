@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from vsa.config import FlagPenalty, ObjectWeights
+from vsa.config import ObjectWeights
 from vsa.expansion.query_expander import QueryExpander
 from vsa.models import ColumnHit
 from vsa.scoring.aggregate import aggregate
@@ -48,7 +48,7 @@ def test_topic_breaks_the_tie_between_wide_and_focused_tables() -> None:
     feats = [f for o in objects.values() for f in o.features]
     q = QueryExpander(GROUPS, feats, STOP).expand("kart işlem")
     hits: dict[int, ColumnHit] = {
-        f.col.id: score_column(f, 1.0, 1.0, q, FlagPenalty()) for f in feats
+        f.col.id: score_column(f, 1.0, 1.0, q) for f in feats
     }
     by_obj = {k: o.features for k, o in objects.items()}
     keys, index = build_topic_index(by_obj)

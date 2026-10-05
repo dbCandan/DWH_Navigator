@@ -48,7 +48,6 @@ FLAG_TAG = {
     FlagKind.MODEL_ESTIMATED: "MODEL TAHMİNİ — DOĞRULANMALI",
     FlagKind.CORRECTED: "ORİJİNAL AÇIKLAMA HATALIYDI — DÜZELTİLDİ",
     FlagKind.NEEDS_VERIFICATION: "DOĞRULANMALI",
-    FlagKind.NAMING_MISMATCH: "İSİM/İÇERİK UYUMSUZLUĞU",
 }
 # Columns every recommendation should be able to carry: record keys and time axes.
 STRUCTURAL = frozenset(

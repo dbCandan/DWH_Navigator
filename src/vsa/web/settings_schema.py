@@ -3,7 +3,7 @@
 The schema is the single list of what the screen may change, grouped into pages and
 sections in plain language; rarely touched fields are marked ``advanced``. The model
 connection is not here: it is the LLM integrations page (ADR-032). Values are read from
-and written to the ``Settings`` dataclasses by dotted path (``"scoring.min_answer_score"``).
+and written to the ``Settings`` dataclasses by dotted path (``"analyst.shortlist"``).
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ PAGES: list[dict[str, Any]] = [
     {
         "id": "search",
         "title": "Arama ve cevap",
-        "intro": "Hangi tablonun önerileceğini ve ne zaman “bulunamadı” deneceğini belirler.",
+        "intro": "Analistin ne kadar malzeme okuyacağını ve ona verilen arama ipuçlarını belirler.",
     },
     {
         "id": "data",
@@ -41,46 +41,75 @@ PAGES: list[dict[str, Any]] = [
 # as a whole. ``format: pct`` shows a 0–1 value as a percentage.
 SECTIONS: list[dict[str, Any]] = [
     {
-        "id": "answer",
+        "id": "analyst",
         "page": "search",
-        "title": "Cevap ne zaman verilir?",
-        "intro": "Uygulama emin olmadığı tabloyu önermez; eşiği geçen bir tablo yoksa "
-        "“bulunamadı” der. Eşikleri yükseltmek daha az ama daha kesin öneri demektir.",
+        "title": "Analist",
+        "intro": "Cevabı sohbet modeli yazar (ADR-038). Önce bütün tablo kataloğundan aday "
+        "seçer, sonra adayların kolonlarını okur. Okunan malzeme büyüdükçe cevap yavaşlar.",
         "fields": [
             {
-                "key": "scoring.min_answer_score",
-                "label": "Cevap vermek için gereken güven",
+                "key": "analyst.shortlist",
+                "label": "Kolonları okunacak aday tablo sayısı",
+                "type": "int",
+                "min": 3,
+                "max": 30,
+                "step": 1,
+                "effect": NOW,
+                "help": "1. adımda modelin seçebileceği en fazla tablo.",
+            },
+            {
+                "key": "analyst.detail_columns",
+                "label": "Tam açıklamasıyla okunan kolon sayısı (tablo başına)",
+                "type": "int",
+                "min": -1,
+                "max": 60,
+                "step": 1,
+                "effect": NOW,
+                "help": "Talebe en ilgili bu kadar kolon tam sözlük açıklamasıyla, diğerleri "
+                "“Ad [Rol]: özet” olarak gider. -1: hepsi tam açıklamayla (yavaş).",
+            },
+            {
+                "key": "analyst.min_confidence",
+                "label": "Gösterilecek en düşük model güveni",
                 "type": "float",
                 "format": "pct",
                 "min": 0,
                 "max": 1,
                 "step": 0.05,
                 "effect": NOW,
-                "help": "En iyi tablonun güveni bunun altındaysa cevap “bulunamadı” olur.",
+                "help": "Modelin bundan az emin olduğu tablolar önerilmez (“bulunamadı” geçerli cevap).",
             },
             {
-                "key": "scoring.min_candidate_score",
-                "label": "Listede gösterilecek en düşük güven",
-                "type": "float",
-                "format": "pct",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Bunun altındaki tablolar hiç listelenmez.",
-            },
-            {
-                "key": "scoring.min_answer_coverage",
-                "label": "Talebin ne kadarı karşılanmalı",
-                "type": "float",
-                "format": "pct",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
+                "key": "analyst.catalog_chunks",
+                "label": "Katalog kaç parçada okunur",
+                "type": "int",
+                "min": 1,
+                "max": 8,
+                "step": 1,
                 "effect": NOW,
                 "advanced": True,
-                "help": "En iyi tablo, talepteki kavramların (nadir olanlar daha ağır sayılır) en "
-                "az bu kadarını taşımalı.",
+                "help": "1: tek çağrı (hızlı, önek önbelleğine uygun). N: N parça paralel okunur, "
+                "adaylar sonra yan yana kıyaslanır.",
+            },
+            {
+                "key": "analyst.catalog_columns",
+                "label": "Katalogda kolon adları da olsun",
+                "type": "bool",
+                "effect": NOW,
+                "advanced": True,
+                "help": "Kapalıyken katalog tablo açıklaması, satır düzeyi ve zaman kolonlarından "
+                "oluşur (~43 bin token); açıkken kolon adları da eklenir (çok daha uzun).",
+            },
+            {
+                "key": "analyst.max_tokens",
+                "label": "Cevap için en fazla token",
+                "type": "int",
+                "min": 1000,
+                "max": 32000,
+                "step": 500,
+                "effect": NOW,
+                "advanced": True,
+                "help": "2. adımda modelin yazabileceği en uzun cevap.",
             },
         ],
     },
@@ -123,8 +152,9 @@ SECTIONS: list[dict[str, Any]] = [
         "id": "ranking",
         "page": "search",
         "advanced": True,
-        "title": "Tablo sıralaması",
-        "intro": "Bir tablonun puanı beş parçadan oluşur. Değiştirmeden önce ve sonra "
+        "title": "Kural ipuçları (tablo sıralaması)",
+        "intro": "Kural motoru cevap yazmaz; modele “kural skoru en yüksek tablolar” ipucunu "
+        "hazırlar. Bir tablonun kural puanı beş parçadan oluşur. Değiştirmeden önce ve sonra "
         "`vsa eval --save` ile ölçün.",
         "fields": [
             {
@@ -178,28 +208,6 @@ SECTIONS: list[dict[str, Any]] = [
                 "help": "Müşteri bazlı talepte müşteri anahtarı var mı.",
             },
             {
-                "key": "scoring.flag_penalty.model_estimated",
-                "label": "Doğrulanmamış açıklama cezası",
-                "type": "float",
-                "format": "pct",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Açıklaması “model tahmini” olan kolonun puanı bu orana iner.",
-            },
-            {
-                "key": "scoring.flag_penalty.naming_mismatch",
-                "label": "Ad/içerik uyumsuzluğu cezası",
-                "type": "float",
-                "format": "pct",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Kalite bulgularında adı içeriğiyle uyuşmayan kolonun puanı bu orana iner.",
-            },
-            {
                 "key": "search.top_k_objects",
                 "label": "Değerlendirilen tablo sayısı",
                 "type": "int",
@@ -207,7 +215,18 @@ SECTIONS: list[dict[str, Any]] = [
                 "max": 50,
                 "step": 1,
                 "effect": NOW,
-                "help": "Soru başına sıralanan en iyi tablo sayısı.",
+                "help": "Soru başına kural motorunun sıraladığı tablo sayısı (ipucu havuzu).",
+            },
+            {
+                "key": "scoring.min_candidate_score",
+                "label": "İpucu listesine girecek en düşük kural puanı",
+                "type": "float",
+                "format": "pct",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Bunun altındaki tablolar modele ipucu olarak gösterilmez.",
             },
         ],
     },
@@ -258,16 +277,6 @@ SECTIONS: list[dict[str, Any]] = [
                 "step": 0.5,
                 "effect": REINDEX,
                 "help": "",
-            },
-            {
-                "key": "search.top_k_columns",
-                "label": "Aday kolon sayısı",
-                "type": "int",
-                "min": 20,
-                "max": 1000,
-                "step": 10,
-                "effect": NOW,
-                "help": "Kelime aramasından alınan en iyi kolon sayısı.",
             },
             {
                 "key": "search.candidate_object_columns",
@@ -321,14 +330,6 @@ SECTIONS: list[dict[str, Any]] = [
                 "effect": REINDEX,
                 "advanced": True,
                 "help": "",
-            },
-            {
-                "key": "dictionary.quality_sheet",
-                "label": "Kalite bulguları sayfası",
-                "type": "str",
-                "effect": REINDEX,
-                "advanced": True,
-                "help": "İsteğe bağlı; boş bırakılabilir.",
             },
             {
                 "key": "expansion.term_dictionary",
@@ -466,10 +467,8 @@ def coerce(key: str, value: Any) -> Any:
 
 def to_yaml_tree(values: dict[str, Any], base: dict[str, Any] | None = None) -> dict[str, Any]:
     """The screen's values written over ``base`` (the settings file as it is), so keys the
-    screen does not show — the model connection under ``llm:`` / ``analyst:`` — survive."""
+    screen does not show — the model connection under ``llm:`` — survive."""
     tree: dict[str, Any] = copy.deepcopy(base or {})
     for key, value in values.items():
-        if key == "dictionary.quality_sheet" and value == "":
-            value = None
         set_path(tree, key, value)
     return tree
