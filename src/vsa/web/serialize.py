@@ -6,11 +6,9 @@ from typing import Any
 
 from vsa.models import (
     AnalysisResult,
-    BatchResult,
     ColumnHit,
     DictColumn,
-    FieldCandidate,
-    FieldResult,
+    ListItem,
     ObjectMatch,
 )
 
@@ -67,7 +65,6 @@ def match(m: ObjectMatch, rank: int = 0) -> dict[str, Any]:
 
 def analysis(r: AnalysisResult) -> dict[str, Any]:
     return {
-        "mode": "ask",
         "query": r.query,
         "verdict": r.verdict.value,
         "summary": r.summary,
@@ -83,55 +80,36 @@ def analysis(r: AnalysisResult) -> dict[str, Any]:
         "dropped": r.dropped_by_validation,
         "analyst": r.analyst,
         "fallback": r.fallback,
+        "confidence_factor": r.confidence_factor,
         "interpretation": r.interpretation,
         "design": r.design,
         "attention": r.attention,
+        "reused": reused(r),
     }
 
 
-def candidate(c: FieldCandidate, rank: int) -> dict[str, Any]:
+def reused(r: AnalysisResult) -> dict[str, str] | None:
+    """ADR-035: when and to which question an earlier answer was written; None if fresh."""
+    if not r.reused_at:
+        return None
+    return {"at": r.reused_at, "query": r.reused_query, "match": r.reused_match}
+
+
+def list_item(item: ListItem, state: str) -> dict[str, Any]:
+    """One row of a running term list: enough for the progress table, not the answer."""
+    r = item.result
+    best = r.objects[0] if r and r.objects else None
     return {
-        **match(c.match, rank),
-        "field_score": round(c.score, 4),
-        "in_core": c.in_core,
-        "derivation": c.derivation,
-        "notes": c.notes,
-    }
-
-
-def field_result(fr: FieldResult) -> dict[str, Any]:
-    f = fr.field
-    return {
-        "index": f.index,
-        "tr": f.tr,
-        "en": f.en,
-        "description": f.description,
-        "status": fr.status.value,
-        "candidates": [candidate(c, i) for i, c in enumerate(fr.candidates, 1)],
-    }
-
-
-def batch(r: BatchResult) -> dict[str, Any]:
-    return {
-        "mode": "batch",
-        "name": r.name,
-        "verdict": r.verdict.value,
-        "summary": r.summary,
-        "time_grain": r.time_grain,
-        "fields": [field_result(fr) for fr in r.fields],
-        "coverage": [
-            {
-                "key": c.object_key,
-                "name": c.object_name,
-                "fields": c.fields,
-                "ready": c.ready,
-                "partial": c.partial,
-                "mean": round(c.mean_score, 4),
-            }
-            for c in r.coverage
-        ],
-        "notes": [{"scope": n.scope, "title": n.title, "text": n.text} for n in r.notes],
-        "method": r.method,
-        "elapsed_ms": r.elapsed_ms,
-        "dictionary_version": r.dictionary_version,
-    }
+        "index": item.index,
+        "term": item.term,
+        "state": state,  # sırada / çalışıyor / bitti / hata / durduruldu
+        "verdict": r.verdict.value if r else "",
+        "summary": r.summary if r else item.error,
+        "best": None if best is None else {
+            "key": best.object_key, "name": best.object_name,
+            "score": round(best.score, 4), "level": best.level.value,
+        },
+        "flow": "" if r is None else "önbellek" if r.reused_at else "analist" if r.analyst
+        else "yedek" if r.fallback else "kural",
+        "elapsed_ms": item.elapsed_ms,
+    }  # fmt: skip

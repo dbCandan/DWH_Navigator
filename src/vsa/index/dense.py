@@ -3,7 +3,8 @@
 Vectors come from a local embedding model (BGE-M3 via an OpenAI-compatible server).
 The build is resumable: each column's vector is cached under a hash of its text and the
 model name, so an interrupted build continues where it stopped and a dictionary update
-only re-embeds changed columns.
+only re-embeds changed columns. A build started from the admin screen runs under a
+``cancel.Token``: "Durdur" stops it between batches and the cache keeps what was done.
 
 Per ADR-004 the dense arm is queried with the user's ORIGINAL wording, not the
 synonym-expanded one.
@@ -14,12 +15,13 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
+from vsa import cancel
 from vsa.llm.client import LLMClient
 from vsa.models import DictColumn
 from vsa.text.normalize import split_camel
@@ -69,6 +71,7 @@ def text_key(model: str, text: str) -> str:
 @dataclass(slots=True)
 class DenseIndex:
     vectors: np.ndarray  # (n_columns, dim), L2-normalized float32; row i == column id i
+    # (rows are matched to columns by text hash at load, never by file position)
     model: str
 
     @property
@@ -116,24 +119,27 @@ def build_dense_index(
     )
 
     done = len(keys) - len(missing)
-    for start in range(0, len(missing), batch_size):
-        chunk = missing[start : start + batch_size]
-        vectors = client.embed([texts[i] for i in chunk])
-        for i, vec in zip(chunk, vectors, strict=True):
-            cache[keys[i]] = np.asarray(vec, dtype=np.float32)
-        done += len(chunk)
-        if progress:
-            progress(done, len(keys))
-        if (start // batch_size) % 10 == 9:
-            _save_cache(directory, model, cache)  # checkpoint every ~10 batches
-    _save_cache(directory, model, cache)
+    if progress:
+        progress(done, len(keys))
+    try:
+        for start in range(0, len(missing), batch_size):
+            cancel.check()
+            chunk = missing[start : start + batch_size]
+            vectors = client.embed([texts[i] for i in chunk])
+            for i, vec in zip(chunk, vectors, strict=True):
+                cache[keys[i]] = np.asarray(vec, dtype=np.float32)
+            done += len(chunk)
+            if progress:
+                progress(done, len(keys))
+            if (start // batch_size) % 10 == 9:
+                _save_cache(directory, model, cache)  # checkpoint every ~10 batches
+    finally:
+        _save_cache(directory, model, cache)  # a stopped or failed build resumes from here
 
     matrix = normalize(np.stack([cache[k] for k in keys]))
     np.save(directory / VECTORS_FILE, matrix)
-    (directory / META_FILE).write_text(
-        json.dumps({"model": model, "columns": len(keys), "dim": int(matrix.shape[1])}),
-        encoding="utf-8",
-    )
+    meta = {"model": model, "columns": len(keys), "dim": int(matrix.shape[1]), "keys": keys}
+    (directory / META_FILE).write_text(json.dumps(meta), encoding="utf-8")
     return DenseIndex(matrix, model)
 
 
@@ -156,6 +162,7 @@ def build_object_index(
     model: str,
     directory: Path,
     batch_size: int = 16,
+    progress: Callable[[int, int], None] | None = None,
 ) -> ObjectDenseIndex:
     """Embed every table profile (sharing the column vector cache) and save."""
     directory.mkdir(parents=True, exist_ok=True)
@@ -164,42 +171,108 @@ def build_object_index(
     texts = [object_text(objects[k]) for k in keys]
     hashes = [text_key(model, t) for t in texts]
     missing = [i for i, h in enumerate(hashes) if h not in cache]
-    for start in range(0, len(missing), batch_size):
-        chunk = missing[start : start + batch_size]
-        for i, vec in zip(chunk, client.embed([texts[i] for i in chunk]), strict=True):
-            cache[hashes[i]] = np.asarray(vec, dtype=np.float32)
-    _save_cache(directory, model, cache)
+    done = len(keys) - len(missing)
+    if progress:
+        progress(done, len(keys))
+    try:
+        for start in range(0, len(missing), batch_size):
+            cancel.check()
+            chunk = missing[start : start + batch_size]
+            for i, vec in zip(chunk, client.embed([texts[i] for i in chunk]), strict=True):
+                cache[hashes[i]] = np.asarray(vec, dtype=np.float32)
+            done += len(chunk)
+            if progress:
+                progress(done, len(keys))
+    finally:
+        _save_cache(directory, model, cache)
     matrix = normalize(np.stack([cache[h] for h in hashes]))
     np.save(directory / OBJECT_VECTORS_FILE, matrix)
     (directory / OBJECT_META_FILE).write_text(
-        json.dumps({"model": model, "keys": keys}), encoding="utf-8"
+        json.dumps({"model": model, "keys": keys, "hashes": hashes}), encoding="utf-8"
     )
     return ObjectDenseIndex(keys, matrix, model)
 
 
-def load_object_index(directory: Path, object_keys: Iterable[str]) -> ObjectDenseIndex | None:
+def build_all(
+    columns: Sequence[DictColumn],
+    objects: Mapping[str, Sequence[DictColumn]],
+    client: LLMClient,
+    model: str,
+    directory: Path,
+    progress: Callable[[str, int, int], None] | None = None,
+) -> None:
+    """Column vectors, then table profile vectors (ADR-028) — what ``vsa index --dense``
+    and the admin screen's button build. ``progress(phase, done, total)``, phase is
+    ``"columns"`` or ``"objects"``."""
+
+    def step(phase: str) -> Callable[[int, int], None] | None:
+        return None if progress is None else lambda done, total: progress(phase, done, total)
+
+    build_dense_index(columns, client, model, directory, progress=step("columns"))
+    build_object_index(objects, client, model, directory, progress=step("objects"))
+
+
+def _rows_by_hash(stored: Sequence[str], wanted: Sequence[str]) -> list[int] | None:
+    """Row of each wanted text hash in the stored index, or None if any is missing."""
+    pos = {h: i for i, h in enumerate(stored)}
+    rows = [pos.get(h) for h in wanted]
+    return None if any(r is None for r in rows) else [r for r in rows if r is not None]
+
+
+def column_staleness(meta: Mapping[str, object], columns: Sequence[DictColumn]) -> int:
+    """How many columns have no vector for their current text: a new column, a changed
+    description or synonym, or an index saved before hashes were kept (all count). 0 = fresh."""
+    stored = meta.get("keys")
+    if not isinstance(stored, list):
+        return len(columns)
+    model = str(meta.get("model", ""))
+    have = set(stored)
+    return sum(text_key(model, column_text(c)) not in have for c in columns)
+
+
+def load_object_index(
+    directory: Path, objects: Mapping[str, Sequence[DictColumn]]
+) -> ObjectDenseIndex | None:
     meta_path = directory / OBJECT_META_FILE
     if not meta_path.exists() or not (directory / OBJECT_VECTORS_FILE).exists():
         return None
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    if sorted(object_keys) != meta["keys"]:
+    model = str(meta["model"])
+    keys = sorted(objects)
+    stored = meta.get("hashes")
+    rows = (
+        _rows_by_hash(stored, [text_key(model, object_text(objects[k])) for k in keys])
+        if isinstance(stored, list) and len(stored) == len(meta["keys"])
+        else None
+    )
+    if rows is None:
         log.warning("Tablo vektörleri sözlükle uyumsuz; `vsa index --dense` çalıştırın")
         return None
     vectors = np.load(directory / OBJECT_VECTORS_FILE).astype(np.float32)
-    return ObjectDenseIndex(list(meta["keys"]), vectors, str(meta["model"]))
+    return ObjectDenseIndex(keys, vectors[rows], model)
 
 
-def load_dense_index(directory: Path, n_columns: int) -> DenseIndex | None:
+def load_dense_index(directory: Path, columns: Sequence[DictColumn]) -> DenseIndex | None:
+    """Column vectors in dictionary order, matched by text hash: reordering the dictionary
+    is harmless, and a changed or new column makes the index stale (None) instead of
+    silently pairing a column with another column's vector."""
     meta_path = directory / META_FILE
     if not meta_path.exists() or not (directory / VECTORS_FILE).exists():
         return None
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    model = str(meta["model"])
+    stored = meta.get("keys")
     vectors = np.load(directory / VECTORS_FILE)
-    if vectors.shape[0] != n_columns:
-        log.warning("Vektör indeksi sözlükle uyumsuz (%d ≠ %d); `vsa index --dense` çalıştırın",
-                    vectors.shape[0], n_columns)  # fmt: skip
+    rows = (
+        _rows_by_hash(stored, [text_key(model, column_text(c)) for c in columns])
+        if isinstance(stored, list) and len(stored) == vectors.shape[0]
+        else None
+    )
+    if rows is None:
+        log.warning("Vektör indeksi sözlükle uyumsuz (%d kolonun vektörü yok ya da eski); "
+                    "`vsa index --dense` çalıştırın", column_staleness(meta, columns))  # fmt: skip
         return None
-    return DenseIndex(vectors.astype(np.float32), str(meta["model"]))
+    return DenseIndex(vectors[rows].astype(np.float32), model)
 
 
 # --------------------------------------------------------------------------- cache

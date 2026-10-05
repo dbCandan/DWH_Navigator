@@ -457,7 +457,6 @@ class Recommendation:
     caveat: str
     usage: str
     confidence: float
-    derivation: str = ""  # batch: how to compute the field when no column holds it
 
 
 @dataclass(slots=True)
@@ -607,7 +606,6 @@ class Cleaner:
             caveat=without_typo_remarks(self.text(item.get("caveat"))) or "-",
             usage=self.text(item.get("usage")),
             confidence=conf,
-            derivation=self.text(item.get("derivation")),
         )
 
 
@@ -678,87 +676,6 @@ def build_answer(
         verdict=verdict,
         summary=summary,
         recommendations=recs,
-        design=clean.bullets(reply.get("design")),
-        attention=[a for a in clean.bullets(reply.get("attention")) if not _is_typo_remark(a)],
-        notes=clean.notes(reply.get("notes")),
-        dropped=clean.dropped,
-    )
-
-
-# --------------------------------------------------------------------------- batch
-
-BATCH_STATUSES = ("Hazır", "Kısmen hazır", "Türetilmeli", "Bulunamadı")
-
-
-@dataclass(slots=True)
-class FieldAnswer:
-    status: str  # one of BATCH_STATUSES
-    candidates: list[Recommendation]
-
-
-@dataclass(slots=True)
-class BatchAnswer:
-    summary: str
-    said: str  # the model's verdict word; the final verdict follows the field statuses
-    core: str | None
-    fields: dict[int, FieldAnswer]
-    design: list[str]
-    attention: list[str]
-    notes: list[Note]
-    dropped: int = 0
-
-
-def build_batch_answer(
-    reply: Mapping[str, object],
-    ids: Mapping[str, str],
-    columns_of: Mapping[str, Sequence[DictColumn]],
-    checker: MentionChecker,
-    indexes: Iterable[int],
-    min_confidence: float,
-    catalog_ids: Mapping[str, str] | None = None,
-    per_field: int = 3,
-) -> BatchAnswer:
-    """One chunk of a target-table analysis, checked against the dictionary. Fields the
-    model skipped or answered with nothing valid are "Bulunamadı" (ADR-006)."""
-    clean = Cleaner(checker, ids, columns_of, catalog_ids)
-    wanted = set(indexes)
-    fields: dict[int, FieldAnswer] = {}
-    raw_fields = reply.get("fields")
-    for item in raw_fields if isinstance(raw_fields, list) else []:
-        if not isinstance(item, dict):
-            continue
-        try:
-            index = int(item.get("index", -1))
-        except (TypeError, ValueError):
-            continue
-        if index not in wanted or index in fields:
-            continue
-        cands: list[Recommendation] = []
-        raw_cands = item.get("candidates")
-        for c in raw_cands if isinstance(raw_cands, list) else []:
-            if not isinstance(c, dict):
-                continue
-            rec = clean.recommendation(c, min_confidence)
-            if rec is not None and all(r.object_key != rec.object_key for r in cands):
-                cands.append(rec)
-        cands.sort(key=lambda r: -r.confidence)
-        status = str(item.get("status", "")).strip()
-        if status not in BATCH_STATUSES:
-            status = "Kısmen hazır"
-        if not cands:
-            status = "Bulunamadı"
-        elif status == "Bulunamadı":
-            status = "Kısmen hazır"
-        fields[index] = FieldAnswer(status, cands[:per_field])
-    for index in wanted - fields.keys():
-        log.warning("Analist %d numaralı alanı cevaplamadı", index)
-        fields[index] = FieldAnswer("Bulunamadı", [])
-    core = resolve_id(reply.get("core"), ids)
-    return BatchAnswer(
-        summary=clean.text(reply.get("summary")),
-        said=str(reply.get("verdict", "")).strip(),
-        core=core,
-        fields=fields,
         design=clean.bullets(reply.get("design")),
         attention=[a for a in clean.bullets(reply.get("attention")) if not _is_typo_remark(a)],
         notes=clean.notes(reply.get("notes")),

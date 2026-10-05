@@ -1,6 +1,7 @@
-"""Excel analysis report for ``ask`` mode (HANDOVER §12.1, §12.2). Does file I/O.
+"""Excel analysis reports (HANDOVER §12.1, §12.2). Does file I/O.
 
-Sheets: Özet · Öneriler · Alan Detayları · Notlar ve Öneriler
+One question: Özet · Öneriler · Alan Detayları · Notlar ve Öneriler.
+A term list (ADR-033): the same four sheets, combined, with a term column.
 """
 
 from __future__ import annotations
@@ -18,16 +19,14 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from vsa.models import (
     AnalysisResult,
-    BatchResult,
     DictColumn,
-    FieldStatus,
     FlagKind,
     Level,
-    Note,
+    ListItem,
+    ListResult,
     ObjectMatch,
     Verdict,
 )
-from vsa.scoring.combine import level_for
 from vsa.text.normalize import fold
 
 CellValue = str | int | float | None
@@ -141,6 +140,20 @@ def _covers(m: ObjectMatch) -> str:
     return ", ".join(m.covered) or ", ".join(h.col.column for h in m.columns[:4])
 
 
+WARN_FILL = PatternFill("solid", fgColor="FFEB9C")
+
+
+def answered_by(r: AnalysisResult) -> str:
+    """Who wrote the answer, said plainly (ADR-034)."""
+    if r.analyst:
+        return f"Analist (dil modeli: {r.llm_model})"
+    cut = f"güven skorları %{round((1 - r.confidence_factor) * 100)} düşürülerek gösteriliyor"
+    if r.fallback:
+        return f"Kural motoru (yedek) — analist çalışamadı: {r.fallback} Bu yüzden {cut}."
+    return ("Kural motoru — sohbet modeli bağlı değil. Kural motoru tabloları kelime ve anlam "
+            f"eşleşmesiyle sıralar, analist kadar isabetli değildir; {cut}.")  # fmt: skip
+
+
 def _dictionary_line(r: AnalysisResult) -> str:
     rows = r.dictionary_version.rsplit("-", 1)[-1]
     size = f"{int(rows):,}".replace(",", ".") + " satır" if rows.isdigit() else r.dictionary_version
@@ -161,7 +174,7 @@ def _summary(ws: Worksheet, r: AnalysisResult) -> None:
     _merged(ws, 2, 4, 5, f"Üretim: {stamp}").font = SMALL_FONT
 
     row = 4
-    info = [("Talep", r.query), ("Sonuç", r.summary)]
+    info = [("Talep", r.query), ("Sonuç", r.summary), ("Cevabı üreten", answered_by(r))]
     if r.interpretation:
         info.append(("Talebin yorumu", r.interpretation))
     for label, value in info:
@@ -171,6 +184,8 @@ def _summary(ws: Worksheet, r: AnalysisResult) -> None:
         _grow(ws, row, value, 120)
         if label == "Sonuç":
             cell.fill, cell.font = VERDICT_FILL[r.verdict], BOLD
+        if label == "Cevabı üreten" and not r.analyst:
+            cell.fill = WARN_FILL
         row += 1
 
     row = _section(ws, row + 1, "Öneri Özeti")
@@ -303,173 +318,169 @@ def write_ask_report(result: AnalysisResult, path: Path) -> Path:
     return path
 
 
-# --------------------------------------------------------------------------- batch (§12.3)
-
-STATUS_FILL = {
-    FieldStatus.READY: PatternFill("solid", fgColor="C6EFCE"),
-    FieldStatus.PARTIAL: PatternFill("solid", fgColor="FFEB9C"),
-    FieldStatus.DERIVE: PatternFill("solid", fgColor="FCE4D6"),
-    FieldStatus.NOT_FOUND: PatternFill("solid", fgColor="FFC7CE"),
-}
-STATUS_MEANING = {
-    FieldStatus.READY: "En iyi eşleşme ≥ %80 ve türetme gerektirmiyor",
-    FieldStatus.PARTIAL: "%50–79, veya ≥ %80 ama kapsam/format farkı var",
-    FieldStatus.DERIVE: "Hazır kolon yok; işlem seviyesi tablodan hesaplanabilir",
-    FieldStatus.NOT_FOUND: "Tüm adaylar eşiğin altında",
-}
+# --------------------------------------------------------------------------- list search (ADR-033)
 
 
-def _fill_column(ws: Worksheet, col: int, first: int, last: int) -> None:
+def _level_fill(ws: Worksheet, col: int, first: int, last: int) -> None:
     for row in range(first, last + 1):
-        value = ws.cell(row=row, column=col).value
-        for status, fill in STATUS_FILL.items():
-            if value == status.value:
-                ws.cell(row=row, column=col).fill = fill
+        cell = ws.cell(row=row, column=col)
         for lvl, fill in LEVEL_FILL.items():
-            if value == lvl.value:
-                ws.cell(row=row, column=col).fill = fill
+            if cell.value == lvl.value:
+                cell.fill = fill
+        for verdict, vfill in VERDICT_FILL.items():
+            if cell.value == verdict.value:
+                cell.fill = vfill
 
 
-def _batch_summary(ws: Worksheet, r: BatchResult) -> None:
+def _item_state(item: ListItem, cancelled: bool) -> str:
+    if item.result is not None:
+        return item.result.verdict.value
+    if item.error:
+        return "HATA"
+    return "DURDURULDU" if cancelled else "BEKLİYOR"
+
+
+def _list_summary(ws: Worksheet, r: ListResult, first_rows: dict[int, int]) -> None:
     ws.title = "Özet"
     ws.sheet_view.showGridLines = False
-    ws["A1"] = "Veri Sözlüğü Asistanı — Hedef Tablo Analizi"
+    ws["A1"] = "Veri Ambarı Veri Sözlüğü – Toplu Talep Analizi"
     ws["A1"].font = TITLE_FONT
-    info = [
-        ("Kaynak sözlük", f"{r.dictionary_source} (sürüm {r.dictionary_version})"),
-        ("Üretim tarihi", r.generated_at),
-        ("Talep", r.name),
-        ("Zaman düzeyi", r.time_grain or "-"),
-        ("Genel sonuç", r.summary),
-    ]
-    if r.interpretation:
-        info.append(("Talebin yorumu", r.interpretation))
-    row = 3
-    for label, value in info:
-        ws.cell(row=row, column=1, value=label).font = BOLD
-        cell = ws.cell(row=row, column=2, value=value)
-        cell.font, cell.alignment = BODY_FONT, WRAP
-        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
-        _grow(ws, row, value, 130)
-        if label == "Genel sonuç":
-            cell.fill, cell.font = VERDICT_FILL[r.verdict], BOLD
-        row += 1
-
-    row += 1
-    row = _bullets(ws, row, "Önerilen Kurgu", r.design)
-    row = _bullets(ws, row, "Dikkat Edilmesi Gerekenler", r.attention)
-    ws.cell(row=row, column=1, value="Alan bazında durum").font = BOLD
-    status_rows: list[list[CellValue]] = []
-    for fr in r.fields:
-        best = fr.best
-        match = (
-            f"{best.match.object_name}.{best.match.columns[0].col.column}"
-            + (f"  →  {best.derivation}" if best.derivation else "")
-            if best
-            else "-"
-        )
-        status_rows.append(
-            [fr.field.index, fr.field.tr, fr.field.en, fr.status.value, match,
-             round(best.score, 4) if best else 0]
-        )  # fmt: skip
-    start = row + 1
-    status_headers = ["#", "Talep Alanı (TR)", "Talep Alanı (EN)", "Durum", "En İyi Eşleşme"]
-    row = _table(ws, start, [*status_headers, "Güven"], status_rows)
-    for i in range(start + 1, row):
-        ws.cell(row=i, column=6).number_format = "0%"
-    _fill_column(ws, 4, start + 1, row - 1)
-
-    row += 1
-    ws.cell(row=row, column=1, value="Tek tablo kapsama").font = BOLD
-    cov_rows: list[list[CellValue]] = [
-        [c.object_name, f"{len(c.fields)} / {len(r.fields)}", c.ready, ", ".join(c.fields)]
-        for c in r.coverage
-    ]
-    row = _table(ws, row + 1, ["Obje", "Karşılanan alan", "Hazır düzeyde", "Alanlar"], cov_rows)
-
-    row += 1
-    ws.cell(row=row, column=1, value="Durum ölçeği").font = BOLD
-    start = row + 1
-    row = _table(
-        ws, start, ["Durum", "Anlamı"], [[s.value, STATUS_MEANING[s]] for s in FieldStatus]
+    done = [i.result for i in r.items if i.result is not None]
+    counts = {v: sum(1 for d in done if d.verdict is v) for v in Verdict}
+    stamp = datetime.strptime(r.generated_at, "%Y-%m-%d %H:%M").strftime("%d.%m.%Y %H:%M")
+    outcome = (
+        f"{len(r.items)} terim: {counts[Verdict.FOUND]} VAR, {counts[Verdict.PARTIAL]} KISMEN VAR, "
+        f"{counts[Verdict.NOT_FOUND]} BULUNAMADI"
     )
-    _fill_column(ws, 1, start + 1, row - 1)
-
-    row += 1
-    ws.cell(row=row, column=1, value="Yöntem notları").font = BOLD
-    for n in r.method:
-        row += 1
-        cell = ws.cell(row=row, column=2, value=n)
-        cell.font, cell.alignment = BODY_FONT, WRAP
-        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
-    for col, width in zip("ABCDEF", (24, 30, 30, 16, 60, 10), strict=True):
-        ws.column_dimensions[col].width = width
-
-
-def _field_matching(ws: Worksheet, r: BatchResult) -> None:
+    if len(done) < len(r.items):
+        outcome += f", {len(r.items) - len(done)} cevapsız"
+    if r.cancelled:
+        outcome += " — liste durduruldu, rapor yarım"
+    by_rules = [d for d in done if not d.analyst]
+    method = f"{len(done) - len(by_rules)} terim analist (dil modeli)"
+    if by_rules:
+        cut = round((1 - by_rules[0].confidence_factor) * 100)
+        method += (f", {len(by_rules)} terim kural motoru — model bağlı değil ya da çalışamadı; "
+                   f"bu terimlerde güven %{cut} düşürüldü (Yöntem sütunu)")  # fmt: skip
+    lines = [
+        ("Liste", r.name),
+        ("Kaynak sözlük", f"{r.dictionary_source} (sürüm {r.dictionary_version})"),
+        ("Üretim", stamp),
+        ("Sonuç", outcome),
+        ("Cevabı üreten", method),
+    ]
+    if r.notes:
+        lines.append(("Dosya", " ".join(r.notes)))
+    for row, (label, value) in enumerate(lines, 3):
+        ws.cell(row=row, column=1, value=label).font = BOLD
+        cell = _merged(ws, row, 2, 9, value)
+        if label == "Cevabı üreten" and by_rules:
+            cell.fill = WARN_FILL
+    start = len(lines) + 4
     headers = [
-        "#", "Talep Alanı (TR)", "Talep Alanı (EN)", "Talep Açıklaması", "Durum",
-        "Öneri Sırası", "Obje", "Veri Seti Grubu", "Önerilen Alan(lar)", "Türetme",
-        "Gerekçe", "Kısıt / Dikkat", "Güven", "Seviye",
+        "#", "Terim", "Sonuç", "En İyi Tablo", "Güven", "Seviye", "Özet", "Yöntem", "Süre (sn)",
     ]  # fmt: skip
     rows: list[list[CellValue]] = []
-    for fr in r.fields:
-        f = fr.field
-        if not fr.candidates:
-            rows.append([f.index, f.tr, f.en, f.description, fr.status.value, "-", "-", "-",
-                         "-", "-", "Sözlükte karşılığı bulunamadı.", "-", 0, "-"])  # fmt: skip
-            continue
-        for rank, c in enumerate(fr.candidates, 1):
-            m = c.match
-            caveat = "\n".join(x for x in [*c.notes, m.caveat] if x and x != "-") or "-"
-            rows.append(
-                [
-                    f.index, f.tr, f.en, f.description,
-                    fr.status.value if rank == 1 else "",
-                    rank, m.object_key, ", ".join(m.dataset_groups) or "-",
-                    "\n".join(h.col.column for h in m.columns[:5]),
-                    c.derivation or "-", m.reason, caveat,
-                    round(c.score, 4), level_for(c.score).value,
-                ]
-            )  # fmt: skip
-    _table(ws, 1, headers, rows, [5, 24, 26, 36, 13, 7, 40, 20, 32, 30, 60, 60, 8, 9])
-    for i in range(2, len(rows) + 2):
-        ws.cell(row=i, column=13).number_format = "0%"
-    _fill_column(ws, 5, 2, len(rows) + 1)
-    _fill_column(ws, 14, 2, len(rows) + 1)
-    _finish_sheet(ws, 1, len(headers), len(rows))
+    for item in r.items:
+        res = item.result
+        best = res.objects[0] if res and res.objects else None
+        if res is None:
+            method = "-"
+        else:
+            method = "Analist" if res.analyst else "Kural (yedek)" if res.fallback else "Kural"
+        rows.append([
+            item.index, item.term, _item_state(item, r.cancelled),
+            best.object_key if best else "-",
+            round(best.score, 2) if best else None,
+            best.level.value if best else "-",
+            res.summary if res else item.error or "-",
+            method, round(item.elapsed_ms / 1000, 1) if item.elapsed_ms else None,
+        ])  # fmt: skip
+    _table(ws, start, headers, rows, [5, 34, 14, 44, 8, 9, 80, 13, 9])
+    for n, item in enumerate(r.items):
+        row = start + 1 + n
+        ws.cell(row=row, column=5).number_format = "0.00"
+        target = first_rows.get(item.index)
+        if target:  # the term jumps to its suggestions
+            term = ws.cell(row=row, column=2)
+            term.hyperlink = f"#'Öneriler'!A{target}"
+            term.font = Font(name=FONT, size=10, color="1F3864", underline="single")
+    _level_fill(ws, 3, start + 1, start + len(rows))
+    _level_fill(ws, 6, start + 1, start + len(rows))
+    _finish_sheet(ws, start, len(headers), len(rows))
 
 
-def _batch_details(ws: Worksheet, r: BatchResult) -> None:
-    seen: dict[str, tuple[str, DictColumn]] = {}
-    for fr in r.fields:
-        for c in fr.candidates:
-            for h in c.match.columns[:5]:
-                seen.setdefault(h.col.key, (c.match.object_key, h.col))
+def _list_suggestions(ws: Worksheet, r: ListResult) -> dict[int, int]:
+    """Every term's suggestions one under the other; returns term index -> first row."""
+    headers = [
+        "#", "Terim", "Sıra", "Veritabanı.Şema.Obje", "Veri Seti Grubu", "Kapsadığı Bilgi",
+        "İlgili Alanlar", "Gerekçe", "Kısıt / Dikkat", "Güven", "Seviye", "Kullanım Önerisi",
+    ]  # fmt: skip
     rows: list[list[CellValue]] = []
-    for obj, col in seen.values():
+    first: dict[int, int] = {}
+    for item in r.items:
+        first[item.index] = len(rows) + 2
+        res = item.result
+        if res is None or not res.objects:
+            text = res.summary if res else item.error or _item_state(item, r.cancelled)
+            rows.append([item.index, item.term, "-", "-", "-", "-", "-", text, "-", None, "-", "-"])
+            continue
+        for rank, m in enumerate(res.objects, 1):
+            rows.append([
+                item.index, item.term, rank, m.object_key, ", ".join(m.dataset_groups) or "-",
+                _covers(m), "\n".join(h.col.column for h in m.columns), m.reason, m.caveat,
+                round(m.score, 2), m.level.value, m.usage,
+            ])  # fmt: skip
+    _table(ws, 1, headers, rows, [5, 30, 6, 42, 20, 30, 30, 70, 60, 8, 9, 40])
+    for i in range(2, len(rows) + 2):
+        ws.cell(row=i, column=10).number_format = "0.00"
+    _level_fill(ws, 11, 2, len(rows) + 1)
+    _finish_sheet(ws, 1, len(headers), len(rows))
+    return first
+
+
+def _list_fields(ws: Worksheet, r: ListResult) -> None:
+    """Suggested columns with their dictionary text, each once, with the terms it serves."""
+    seen: dict[str, tuple[str, DictColumn, list[int]]] = {}
+    for item in r.items:
+        for m in item.result.objects if item.result else []:
+            for h in m.columns:
+                entry = seen.setdefault(h.col.key, (m.object_key, h.col, []))
+                if item.index not in entry[2]:
+                    entry[2].append(item.index)
+    rows: list[list[CellValue]] = []
+    for obj, col, terms in seen.values():
         flags = "\n".join(FLAG_LABEL[f.kind] for f in col.flags) or "-"
-        rows.append([obj, col.column, col.description, ", ".join(col.synonyms) or "-", flags])
-    headers = ["Obje", "Alan Adı", "Sözlük Açıklaması", "Eş Anlamlılar", "Kalite Bayrağı"]
-    _table(ws, 1, headers, rows, [40, 32, 80, 40, 30])
+        rows.append([obj, col.column, _column_text(col), flags, ", ".join(map(str, terms))])
+    headers = ["Veritabanı.Şema.Obje", "Alan Adı", "Sözlük Açıklaması", "Kalite Bayrağı", "Terim #"]
+    _table(ws, 1, headers, rows, [42, 30, 100, 30, 10])
     _finish_sheet(ws, 1, len(headers), len(rows))
 
 
-def _notes_sheet(ws: Worksheet, notes: Sequence[Note]) -> None:
-    headers = ["Kapsam", "Başlık", "Açıklama"]
-    rows: list[list[CellValue]] = [[n.scope, n.title, n.text] for n in notes]
-    _table(ws, 1, headers, rows, [18, 40, 100])
+def _list_notes(ws: Worksheet, r: ListResult) -> None:
+    rows: list[list[CellValue]] = []
+    for item in r.items:
+        res = item.result
+        if res is None:
+            continue
+        rows += [[item.index, item.term, "Önerilen kurgu", "", d] for d in res.design]
+        rows += [[item.index, item.term, "Dikkat", "", a] for a in res.attention]
+        rows += [[item.index, item.term, n.scope, n.title, n.text] for n in res.notes]
+    headers = ["#", "Terim", "Kapsam", "Başlık", "Açıklama"]
+    _table(ws, 1, headers, rows, [5, 30, 16, 36, 100])
     _finish_sheet(ws, 1, len(headers), len(rows))
 
 
-def write_batch_report(result: BatchResult, path: Path) -> Path:
+def write_list_report(result: ListResult, path: Path) -> Path:
+    """One workbook for a whole term list: Özet (a row per term) · Öneriler · Alan
+    Detayları · Notlar — combined sheets with a term column, filterable (ADR-033)."""
     wb = Workbook()
     ws = wb.active
     assert ws is not None
-    _batch_summary(ws, result)
-    _field_matching(wb.create_sheet("Alan Eşleştirme"), result)
-    _batch_details(wb.create_sheet("Alan Detayları"), result)
-    _notes_sheet(wb.create_sheet("Notlar ve Öneriler"), result.notes)
+    first_rows = _list_suggestions(wb.create_sheet("Öneriler"), result)
+    _list_summary(ws, result, first_rows)
+    _list_fields(wb.create_sheet("Alan Detayları"), result)
+    _list_notes(wb.create_sheet("Notlar ve Öneriler"), result)
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
     return path

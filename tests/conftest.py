@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
-REAL_DICTIONARY = ROOT / "data" / "DataDictionary-Final.xlsx"
+REAL_DICTIONARY = ROOT / "data" / "VeriSozlugu.xlsx"
 
 SAMPLE_ROWS = [
     # DAtabaseName is misspelled on purpose — matches the real source file.
@@ -77,8 +77,8 @@ SAMPLE_QUALITY = [
 def sample_dictionary_path(tmp_path: Path) -> Path:
     path = tmp_path / "dictionary.xlsx"
     with pd.ExcelWriter(path) as writer:
-        pd.DataFrame(SAMPLE_ROWS).to_excel(writer, sheet_name="Sheet1", index=False)
-        pd.DataFrame(SAMPLE_QUALITY).to_excel(writer, sheet_name="Sheet2", index=False)
+        pd.DataFrame(SAMPLE_ROWS).to_excel(writer, sheet_name="Kolonlar", index=False)
+        pd.DataFrame(SAMPLE_QUALITY).to_excel(writer, sheet_name="Kalite", index=False)
     return path
 
 

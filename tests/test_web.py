@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -65,6 +66,8 @@ def test_status(base_url: str) -> None:
     status, body, _ = get(base_url + "/api/status")
     data = json.loads(body)
     assert status == 200 and data["columns"] == 3 and data["llm"] == ""
+    assert data["llm_state"]["state"] == "none"  # ADR-034: the page warns
+    assert data["rule_only_factor"] == 0.8
     assert len(data["updated"]) == 10  # ISO date of the dictionary file
 
 
@@ -82,16 +85,65 @@ def test_ask_validation(base_url: str) -> None:
     assert status == 400 and "boş" in data["error"]
 
 
-def test_batch_json(base_url: str) -> None:
-    fields = [
-        {
-            "tr": "Limit Doluluk",
-            "en": "CardLimitFullness",
-            "description": "Kart limit doluluk oranı",
-        }
-    ]
-    status, data = post(base_url + "/api/batch", {"name": "t", "fields": fields})
-    assert status == 200 and data["fields"][0]["status"]
+def _xlsx(cells: list[str]) -> bytes:
+    import io
+
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    assert ws is not None
+    for v in cells:
+        ws.append([v])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def test_term_list_end_to_end(base_url: str) -> None:
+    """Upload a one-column list, follow its progress, read a term, get one report."""
+    body = _xlsx(["Terim", "kart limit doluluk oranı", "", "uzay gemisi yakıtı",
+                  "Kart limit doluluk oranı"])  # fmt: skip
+    req = urllib.request.Request(base_url + "/api/list", data=body,
+                                 headers={"X-Filename": "terimler.xlsx"})  # fmt: skip
+    with urllib.request.urlopen(req, timeout=30) as r:
+        job = json.loads(r.read())
+    assert [i["term"] for i in job["items"]] == ["kart limit doluluk oranı", "uzay gemisi yakıtı"]
+    for _ in range(300):
+        _, raw, _ = get(f"{base_url}/api/list/{job['id']}")
+        job = json.loads(raw)
+        if not job["running"]:
+            break
+        time.sleep(0.05)
+    assert job["done"] == 2 and [i["state"] for i in job["items"]] == ["bitti", "bitti"]
+    assert job["header"] == "Terim" and len(job["notes"]) == 2  # a blank row and a repeat
+    assert job["items"][1]["verdict"] == "BULUNAMADI"
+    assert json.loads(get(base_url + "/api/list")[1])["id"] == job["id"]
+    status, raw, _ = get(f"{base_url}/api/list/{job['id']}/item/1")
+    item = json.loads(raw)
+    assert status == 200 and item["query"] == "kart limit doluluk oranı" and item["report_id"]
+    status, raw, ctype = get(f"{base_url}/api/list/{job['id']}/report")
+    assert status == 200 and "spreadsheet" in ctype and raw[:2] == b"PK"
+    assert get(f"{base_url}/api/list/yok")[0] == 404
+
+
+def test_term_list_rejects_bad_files(base_url: str) -> None:
+    def upload(body: bytes) -> tuple[int, dict[str, Any]]:
+        req = urllib.request.Request(base_url + "/api/list", data=body)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as r:
+                return r.status, json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            return e.code, json.loads(e.read())
+
+    status, data = upload(b"not an excel file")
+    assert status == 400 and "Excel (.xlsx) olarak okunamadı" in data["error"]
+    status, data = upload(_xlsx(["Terim"]))
+    assert status == 400 and "aranacak terim yok" in data["error"]
+
+
+def test_target_table_endpoint_is_gone(base_url: str) -> None:
+    assert post(base_url + "/api/batch", {"fields": []})[0] == 404
 
 
 def test_explorer(base_url: str) -> None:
@@ -110,9 +162,31 @@ def test_feedback(base_url: str, tmp_path: Path) -> None:
     status, data = post(base_url + "/api/feedback", {"query": "q", "object": "o", "vote": "up"})
     assert status == 200 and data["ok"]
     lines = (tmp_path / "feedback.jsonl").read_text(encoding="utf-8").splitlines()
-    assert json.loads(lines[0])["vote"] == "up"
+    row = json.loads(lines[0])
+    assert row["vote"] == "up" and row["text_key"] == "q" and row["voter"]
+    assert data["votes"]["up"] == 1
     status, _ = post(base_url + "/api/feedback", {"vote": "maybe"})
     assert status == 400
+
+
+def test_answer_votes_drop_the_kept_answer(base_url: str) -> None:
+    for who in ("a", "b"):
+        body = {"query": "yeni soru", "scope": "answer", "vote": "down", "voter": who}
+        status, data = post(base_url + "/api/feedback", body)
+        assert status == 200
+    assert data["answer_rejected"] is True
+
+
+def test_ask_carries_earlier_votes(base_url: str) -> None:
+    q = "kredi kartı limit doluluk oranı"
+    _, first = post(base_url + "/api/ask", {"query": q, "top": 5})
+    best = first["objects"][0]["key"]
+    for who in ("a", "b"):
+        post(base_url + "/api/feedback", {"query": q, "object": best, "vote": "down", "voter": who})
+    _, again = post(base_url + "/api/ask", {"query": q, "top": 5, "voter": "a"})
+    assert best not in [m["key"] for m in again["objects"]]
+    assert again["rejected"][0]["key"] == best
+    assert again["feedback"]["mine"] == {best: "down"}
 
 
 def test_feedback_to_golden_candidates(tmp_path: Path) -> None:
@@ -167,7 +241,7 @@ def test_galaxy(base_url: str) -> None:
 def test_explorer_not_blocked_by_a_running_question(
     sample_dictionary_path: Path, tmp_path: Path
 ) -> None:
-    """The explorer must answer while an (LLM-judged) question holds the engine lock."""
+    """The explorer must answer while an analyst question holds the engine lock."""
     s = Settings()
     s.dictionary.path = str(sample_dictionary_path)
     app = App(Engine.from_dictionary_file(s), tmp_path / "out", tmp_path / "fb.jsonl")
@@ -194,26 +268,49 @@ def app_with_settings(sample_dictionary_path: Path, tmp_path: Path) -> App:
 def test_settings_roundtrip(app_with_settings: App) -> None:
     app = app_with_settings
     got = app.settings_get()
-    assert {s["id"] for s in got["sections"]} >= {"llm", "dense", "scoring", "search"}
-    assert got["values"]["llm.api_key"] == ""  # never sent to the browser
-    res = app.settings_save({"values": {"llm.temperature": 0.0, "scoring.w_llm": 0.3}})
-    assert res["ok"] and set(res["changed"]) == {"Sıcaklık", "LLM ağırlığı"}
-    assert app.engine.settings.llm.temperature == 0.0  # engine reloaded
-    text = app.settings_path.read_text(encoding="utf-8")
-    assert "temperature: 0.0" in text and "w_llm: 0.3" in text
+    assert [p["id"] for p in got["pages"]] == ["llm", "search", "data"]
+    pages = {p["id"] for p in got["pages"]}
+    assert all(s["page"] in pages for s in got["sections"])
+    res = app.settings_save({"values": {"scoring.min_answer_score": 0.4}})
+    assert res["ok"] and res["changed"] == ["Cevap vermek için gereken güven"]
+    assert app.engine.settings.scoring.min_answer_score == 0.4  # engine reloaded
+    assert "min_answer_score: 0.4" in app.settings_path.read_text(encoding="utf-8")
+
+
+def test_model_connection_is_not_on_the_screen(app_with_settings: App) -> None:
+    """The plain settings pages never carry the model connection (that is the LLM page,
+    ADR-032), and saving them keeps the llm/analyst sections of the file."""
+    app = app_with_settings
+    path = app.settings_path
+    path.write_text(
+        path.read_text(encoding="utf-8")
+        + "llm:\n  enabled: false\n  endpoint: http://spark-1:8000/v1\n  model: m\n"
+        "  api_key: gizli\nanalyst:\n  shortlist: 9\n",
+        encoding="utf-8",
+    )
+    got = app.settings_get()
+    keys = {f["key"] for sec in got["sections"] for f in sec["fields"]}
+    assert not {k for k in keys if k.startswith(("llm.", "analyst.", "cloud."))}
+    assert "gizli" not in json.dumps(got) and "spark-1" not in json.dumps(got)
+    with pytest.raises(ValueError, match="Bilinmeyen"):
+        app.settings_save({"values": {"llm.endpoint": "http://evil/v1"}})
+    app.settings_save({"values": {"dense.top_k": 150}})
+    s = app.engine.settings
+    assert s.dense.top_k == 150 and s.analyst.shortlist == 9
+    assert (s.llm.endpoint, s.llm.model, s.llm.api_key) == ("http://spark-1:8000/v1", "m", "gizli")
 
 
 def test_settings_validation(app_with_settings: App) -> None:
     with pytest.raises(ValueError, match="arasında"):
-        app_with_settings.settings_save({"values": {"llm.temperature": 3}})
+        app_with_settings.settings_save({"values": {"scoring.min_answer_score": 3}})
     with pytest.raises(ValueError, match="Bilinmeyen"):
-        app_with_settings.settings_save({"values": {"llm.hack": 1}})
+        app_with_settings.settings_save({"values": {"search.hack": 1}})
 
 
 def test_settings_reindex_flag_and_rebuild(app_with_settings: App) -> None:
     app = app_with_settings
     res = app.settings_save({"values": {"search.field_weights.name": 4.0}})
-    assert res["reindex_needed"] == ["Alan ağırlığı: kolon adı"]
+    assert res["reindex_needed"] == ["Kolon adı ağırlığı"]
     out = app.reindex()
     assert out["ok"] and out["columns"] == 3 and app.reindex_pending == []
 
@@ -246,43 +343,74 @@ def test_ask_is_logged_for_admin(base_url: str, tmp_path: Path) -> None:
     assert get(base_url + "/api/admin/analysis/nope")[0] == 404
 
 
-def test_lab_start_validation(app_with_settings: App, tmp_path: Path) -> None:
+def test_lab_and_cloud_endpoints_are_gone(base_url: str) -> None:
+    assert get(base_url + "/api/lab")[0] == 404
+    assert get(base_url + "/api/cloud-models")[0] == 404
+    assert post(base_url + "/api/settings/test", {})[0] == 404
+    html = get(base_url + "/admin")[1].decode("utf-8")
+    assert "laboratuvar" not in html and "/api/lab" not in html
+
+
+def test_stopped_ask_is_cancelled_and_logged(
+    base_url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The button's call: the question ends at once, as "durduruldu", without a rule answer."""
+    from vsa import cancel
+
+    started = threading.Event()
+
+    def slow_analyze(self: Engine, query: str, top_n: int = 5) -> Any:
+        started.set()
+        cancel.sleep(30)  # stands in for a long LLM call
+        raise AssertionError("not stopped")
+
+    monkeypatch.setattr(Engine, "analyze", slow_analyze)
+    result: dict[str, Any] = {}
+    worker = threading.Thread(target=lambda: result.update(
+        post(base_url + "/api/ask", {"query": "uzun soru", "ask_id": "abc123"})[1]))
+    worker.start()
+    assert started.wait(5)
+    assert post(base_url + "/api/ask/cancel", {"ask_id": "abc123"}) == (200, {"ok": True})
+    worker.join(5)
+    assert not worker.is_alive()
+    assert result == {"cancelled": True, "ask_id": "abc123"}
+    assert post(base_url + "/api/ask/cancel", {"ask_id": "abc123"})[1] == {"ok": False}
+    lines = (tmp_path / "logs" / "analyses.jsonl").read_text(encoding="utf-8").splitlines()
+    entry = json.loads(lines[-1])
+    assert entry["flow"] == "durduruldu" and entry["error"] == "Kullanıcı durdurdu"
+    assert any(s["name"] == "Durduruldu" for s in entry["spans"])
+
+
+def test_clear_analyses(app_with_settings: App) -> None:
+    """Delete chosen records or all of them; never by omission; no backup is left."""
     app = app_with_settings
-    app.lab_results, app.lab_progress = tmp_path / "lab.json", tmp_path / "progress.json"
-    app.lab_stop_flag = tmp_path / "stop"
-    with pytest.raises(ValueError, match="En az bir model"):
-        app.lab_start({"models": []})
-    with pytest.raises(ValueError, match="Sıcaklık"):
-        app.lab_start({"models": ["m"], "temps": "0,2"})
-    with pytest.raises(ValueError, match="Tekrar"):
-        app.lab_start({"models": ["m"], "runs": 9})
-    with pytest.raises(ValueError, match="bulunmayan"):
-        app.lab_start({"models": ["yok/boyle-bir-model"]})
-    app.lab_progress.write_text('{"running": true}', encoding="utf-8")
-    with pytest.raises(ValueError, match="zaten"):  # one lab at a time
-        app.lab_start({"models": ["m"]})
-    assert app.lab_stop()["ok"] and app.lab_state()["progress"]["stopping"]
+    app.analyses_path.parent.mkdir(parents=True, exist_ok=True)
+    app.analyses_path.write_text(
+        "".join(json.dumps({"id": i, "query": i}) + "\n" for i in ("a", "b", "c")), encoding="utf-8"
+    )
+    with pytest.raises(ValueError, match="seçilmedi"):
+        app.clear_analyses({})
+    assert app.clear_analyses({"ids": ["a", "c"]}) == {"removed": 2, "kept": 1}
+    assert [e["id"] for e in app.analyses()["items"]] == ["b"]
+    assert not app.analyses_path.with_name(app.analyses_path.name + ".bak").exists()
+    assert app.clear_analyses({"all": True}) == {"removed": 1, "kept": 0}
+    assert app.analyses()["items"] == []
 
 
-def test_lab_state_shape(base_url: str) -> None:
-    _, body, _ = get(base_url + "/api/lab")
-    data = json.loads(body)
-    assert set(data) >= {"rows", "errors", "progress", "weights"}
-    assert all("quality" in r and "recommended" in r for r in data["rows"])
-
-
-def test_settings_save_keeps_cloud_secret(app_with_settings: App) -> None:
+def test_settings_change_does_not_wait_for_a_running_question(app_with_settings: App) -> None:
+    """A question holds the engine lock for minutes with the analyst; saving settings
+    builds the new engine beside it instead of waiting (the old one finishes the question)."""
     app = app_with_settings
-    res = app.settings_save({"values": {"cloud.enabled": True, "cloud.api_key": "nvapi-x"}})
-    assert "API anahtarı" in res["changed"] and app.engine.settings.cloud.api_key == "nvapi-x"
-    app.settings_save({"values": {"cloud.rpm": 20, "cloud.api_key": ""}})  # blank = keep
-    assert app.engine.settings.cloud.api_key == "nvapi-x"
-    got = app.settings_get()
-    assert got["values"]["cloud.api_key"] == "" and got["has_secret"]["cloud.api_key"]
-
-
-def test_lab_rejects_cloud_models_when_disabled(app_with_settings: App, tmp_path: Path) -> None:
-    app = app_with_settings
-    app.lab_progress = tmp_path / "progress.json"
-    with pytest.raises(ValueError, match="kapalı"):
-        app.lab_start({"models": ["cloud:meta/llama-3.3-70b-instruct"]})
+    old = app.engine
+    app.lock.acquire()  # a question is being answered
+    try:
+        done = threading.Event()
+        worker = threading.Thread(
+            target=lambda: (app.settings_save({"values": {"scoring.min_answer_score": 0.4}}),
+                            done.set()))  # fmt: skip
+        worker.start()
+        assert done.wait(20), "saving waited for the running question"
+    finally:
+        app.lock.release()
+    assert app.engine is not old and app.engine.settings.scoring.min_answer_score == 0.4
+    assert app.engine.features is old.features  # same dictionary: column texts not redone

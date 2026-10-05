@@ -9,7 +9,7 @@ import logging
 import math
 import time
 from collections import defaultdict
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +18,8 @@ from typing import Any
 import numpy as np
 import yaml
 
-from vsa import trace
+from vsa import cancel, trace
+from vsa.answer_cache import fingerprint, meaning_key, text_key
 from vsa.config import Settings
 from vsa.expansion.query_expander import (
     Concept,
@@ -56,8 +57,6 @@ from vsa.llm.analyst import (
     term_matcher,
 )
 from vsa.llm.client import LLMClient, LLMError, NullClient, client_from_settings
-from vsa.llm.judge import JudgeResult, judge
-from vsa.llm.prompts import EXPAND_SCHEMA, EXPAND_SYSTEM, expand_user
 from vsa.loader import load_dictionary, load_stopword_file, load_term_dictionary
 from vsa.models import (
     AnalysisResult,
@@ -70,10 +69,9 @@ from vsa.models import (
     Verdict,
 )
 from vsa.scoring.aggregate import ObjectColumns, aggregate
-from vsa.scoring.combine import combine, level_for
+from vsa.scoring.combine import level_for
 from vsa.scoring.explain import (
     Clarification,
-    apply_llm_texts,
     clarification_notes,
     compile_clarifications,
     explain,
@@ -124,7 +122,7 @@ class Resources:
 
 @dataclass(slots=True)
 class AnalystReading:
-    """What the analyst model reads in step 2 (ADR-029), shared by ``ask`` and batch."""
+    """What the analyst model reads in step 2 (ADR-029)."""
 
     catalog: Catalog
     checker: MentionChecker
@@ -163,9 +161,8 @@ class Engine:
         self.dense = dense
         self.object_dense: ObjectDenseIndex | None = None
         self._qvec_cache: dict[str, np.ndarray] = {}
-        self._expand_cache: dict[str, list[str]] = {}
         self._dense_error = ""
-        self.features = [build_features(c, resources.stopwords) for c in dictionary.columns]
+        self.features = _features_for(dictionary, resources.stopwords)
         if [f.col.id for f in self.features] != list(range(len(self.features))):
             raise ValueError("Kolon id'leri 0..N-1 sıralı olmalı")
 
@@ -209,9 +206,9 @@ class Engine:
             settings,
             Resources.from_settings(settings),
             llm=client_from_settings(
-                settings.llm, embeddings=settings.dense.enabled, cloud=settings.cloud
+                settings.llm, embeddings=settings.dense.enabled
             ),
-            dense=_dense_for(settings, len(dictionary.columns)),
+            dense=_dense_for(settings, dictionary.columns),
         )
         engine.object_dense = _object_dense_for(settings, engine.objects)
         return engine
@@ -225,9 +222,9 @@ class Engine:
             Resources.from_settings(settings),
             bm25=bm25,
             llm=client_from_settings(
-                settings.llm, embeddings=settings.dense.enabled, cloud=settings.cloud
+                settings.llm, embeddings=settings.dense.enabled
             ),
-            dense=_dense_for(settings, len(dictionary.columns)),
+            dense=_dense_for(settings, dictionary.columns),
         )
         engine.object_dense = _object_dense_for(settings, engine.objects)
         engine.index_meta = meta
@@ -237,6 +234,20 @@ class Engine:
     def hybrid(self) -> bool:
         """Dense arm active: index loaded and the embedding model reachable so far."""
         return self.dense is not None and not self._dense_error
+
+    def cache_keys(self, query: str) -> tuple[str, str]:
+        """(text key, meaning key) of a question for reusing earlier answers (ADR-035)."""
+        return text_key(query), meaning_key(self.expander.expand(query))
+
+    def cache_fingerprint(self, top_n: int) -> str:
+        """What this engine's answers depend on besides the question (ADR-035)."""
+        return fingerprint(
+            self.settings,
+            self.dictionary.version,
+            self.dense.model if self.dense else "",
+            self.resources.term_groups,
+            top_n,
+        )
 
     def _query_vector(self, text: str) -> np.ndarray | None:
         if not self.hybrid:
@@ -266,27 +277,15 @@ class Engine:
     # ------------------------------------------------------------------ analysis
 
     def rank_objects(
-        self,
-        query: str,
-        include: Iterable[str] = (),
-        *,
-        use_llm: bool = True,
-        limit: int | None = None,
-        topic_fit: bool = True,
+        self, query: str, *, limit: int | None = None
     ) -> tuple[list[ObjectMatch], ExpandedQuery]:
-        """Ranked objects for a query (no answer threshold). Objects in ``include`` are
-        always scored and kept, even when search alone would not reach them — batch
-        mode uses this to judge every field against the core table. ``use_llm=False``
-        skips the chat model (LLM query expansion); embeddings still run. ``limit``
-        overrides how many objects are returned. ``topic_fit=False`` leaves out the
-        table-level topic component (ADR-028); batch mode scores fields, not tables."""
+        """The rule engine's ranked objects for a query (no answer threshold): the
+        analyst's hints and the fallback answer. ``limit`` overrides how many are kept."""
         s = self.settings
         lap = trace.Laps()
         lap("Sorgu genişletme")
         q = self.expander.expand(query)
         self._weigh_concepts(q)
-        if use_llm:
-            self._llm_expand(q)
         lap.note(f"{len(q.concepts)} kavram, {len(q.sparse_terms)} arama terimi")
         lap("BM25 arama")
         scored = self.bm25.search(q.sparse_terms, top_k=len(self.features))
@@ -309,14 +308,12 @@ class Engine:
             dense_hi, dense_lo = dense_top[0][1], dense_top[-1][1]
 
         lap("Kolon skorlama")
-        forced = {k for k in include if k in self.objects}
-        candidate_objects = {self.features[i].col.object_key for i in pool} | forced
+        candidate_objects = {self.features[i].col.object_key for i in pool}
         object_sim: dict[str, float] | None = None
         if qvec is not None and self.object_dense is not None:
             object_sim = self.object_dense.similarity(qvec)
-            if topic_fit:
-                best = sorted(object_sim, key=lambda k: -object_sim[k])[:OBJECT_POOL]
-                candidate_objects |= set(best)
+            best = sorted(object_sim, key=lambda k: -object_sim[k])[:OBJECT_POOL]
+            candidate_objects |= set(best)
 
         dense_sim: dict[int, float] = {}
         if qvec is not None and self.dense is not None and dense_hi > dense_lo:
@@ -349,7 +346,7 @@ class Engine:
                 dense_sim or None,
                 object_sim,
             )
-            if topic_fit and s.scoring.object.topic > 0
+            if s.scoring.object.topic > 0
             else None
         )
         ranked = aggregate(
@@ -365,64 +362,11 @@ class Engine:
         kept = [
             m
             for i, m in enumerate(ranked)
-            if m.object_key in forced or (i < limit and m.score >= s.scoring.min_candidate_score)
+            if i < limit and m.score >= s.scoring.min_candidate_score
         ]
         lap.note(f"{len(kept)} tablo eşik üstünde")
         lap.done()
         return kept, q
-
-    def rank(
-        self, query: str, include: Iterable[str] = ()
-    ) -> tuple[list[ObjectMatch], ExpandedQuery, JudgeResult | None]:
-        """``rank_objects`` plus the LLM judge on the top candidates when enabled."""
-        ranked, q = self.rank_objects(query, include)
-        verdict = self._judge(query, ranked)
-        return ranked, q, verdict
-
-    @property
-    def judge_enabled(self) -> bool:
-        return self.llm.available and self.settings.llm.judge
-
-    def _judge(self, query: str, ranked: list[ObjectMatch]) -> JudgeResult | None:
-        """Re-score with the judge (ADR-003): final = w_rule × rule + w_llm × llm, where
-        objects the judge did not pick or did not see get llm = 0."""
-        if not self.judge_enabled or not ranked:
-            return None
-        s = self.settings
-        top = ranked[: s.llm.judge_candidates]
-        with trace.span("LLM hakem", f"ilk {len(top)} aday"):
-            result = judge(query, top, self.llm)
-        if result is None:
-            return None  # LLM failure -> rule result stands (ADR-008)
-        for m in ranked:
-            v = result.verdicts.get(m.object_key)
-            m.rule_score = m.score
-            m.llm_confidence = v.confidence if v else 0.0
-            m.score = combine(m.score, m.llm_confidence, s.scoring.w_rule, s.scoring.w_llm)
-            m.level = level_for(m.score)
-            if v:
-                m.llm_reason, m.llm_caveat, m.llm_usage = v.reason, v.caveat, v.usage
-        ranked.sort(key=lambda m: (-m.score, m.object_key))
-        return result
-
-    def _llm_expand(self, q: ExpandedQuery) -> None:
-        """§7.2c: model-generated terms only widen the BM25 pool (weight 0.6); they never
-        become concepts or signals, so a misread concept cannot steer the score."""
-        s = self.settings
-        if not (s.llm.expand_query and self.llm.available):
-            return
-        if q.text not in self._expand_cache:
-            reply = self.llm.chat_json(
-                EXPAND_SYSTEM, expand_user(q.text), EXPAND_SCHEMA, max_tokens=400
-            )
-            terms: list[str] = []
-            if reply:
-                for key in ("synonyms_tr", "terms_en", "column_name_guesses"):
-                    terms += [str(t) for t in reply.get(key, []) or [] if str(t).strip()][:8]
-            self._expand_cache[q.text] = terms
-        for term in self._expand_cache[q.text]:
-            for tok in tokenize(term, stopwords=self.resources.stopwords):
-                q.sparse_terms.setdefault(tok, s.expansion.weight)
 
     def _concept_df(self, concept: Concept) -> int:
         if concept not in self._df_cache:
@@ -440,26 +384,35 @@ class Engine:
 
     @property
     def analyst_enabled(self) -> bool:
-        return self.llm.available and self.settings.analyst.enabled
+        """A chat model is connected: the analyst writes the answer (ADR-029)."""
+        return self.llm.available
 
     def analyze(self, query: str, top_n: int = 5) -> AnalysisResult:
-        """Analyst flow when the chat model is on (ADR-029); rule pipeline otherwise and
-        whenever the model fails (ADR-008)."""
+        """The one question flow: the analyst when a chat model is connected (ADR-029);
+        the rule engine when none is, or when the model fails (ADR-008)."""
         if self.analyst_enabled:
+            with trace.span("Model sunucusu kontrolü", self.llm.model) as s:
+                down = self.llm.health()
+                if s is not None and down:
+                    s.status, s.detail = "error", down
+            if down:  # do not wait on a dead server: answer with rules at once, and say so
+                reason = down if "ulaşılamadı" in down else f"Model sunucusu yanıt vermedi: {down}"
+                return self._rules_after_failure(query, top_n, reason)
             with trace.span("Analist akışı", self.llm.model) as s:
                 result = self._analyze_llm(query, top_n)
                 if s is not None and result is None:
                     s.status = "error"
             if result is not None:
                 return result
+            cancel.check()  # a stopped analysis ends here, it does not fall back to rules
             log.warning("Analist akışı sonuç veremedi; kural tabanlı sonuca dönülüyor")
             return self._rules_after_failure(query, top_n)
         with trace.span("Kural akışı"):
             return self._analyze_rules(query, top_n)
 
-    def _rules_after_failure(self, query: str, top_n: int) -> AnalysisResult:
+    def _rules_after_failure(self, query: str, top_n: int, reason: str = "") -> AnalysisResult:
         """Rule answer that says the analyst could not run, and why (ADR-008)."""
-        reason = fallback_reason(str(getattr(self.llm, "last_error", "")))
+        reason = reason or fallback_reason(str(getattr(self.llm, "last_error", "")))
         trace.event("Kural motoruna dönüldü", reason)
         with trace.span("Kural akışı (yedek)"):
             result = self._analyze_rules(query, top_n)
@@ -511,7 +464,7 @@ class Engine:
         a = self.settings.analyst
         catalog, checker = self._analyst_parts()
         with trace.span("Kural motoru ipuçları"):
-            ranked, q = self.rank_objects(query, use_llm=False, limit=ANALYST_RULE_POOL)
+            ranked, q = self.rank_objects(query, limit=ANALYST_RULE_POOL)
             relevance = self._column_relevance(q)
         started = time.perf_counter()
         steps: list[str] = []
@@ -808,16 +761,21 @@ class Engine:
     def _analyze_rules(self, query: str, top_n: int = 5) -> AnalysisResult:
         started = time.perf_counter()
         s = self.settings
-        ranked, q, judged = self.rank(query)
+        ranked, q = self.rank_objects(query)
         ranked, dropped = validate(ranked, self.column_keys)
 
         top = ranked[:top_n]
         near = ranked[top_n : top_n + NEAR_MISS_COUNT]
-        if (
-            not top
-            or top[0].score < s.scoring.min_answer_score
-            or top[0].components.get("coverage", 1.0) < s.scoring.min_answer_coverage
-        ):
+        found = bool(top) and top[0].score >= s.scoring.min_answer_score and (
+            top[0].components.get("coverage", 1.0) >= s.scoring.min_answer_coverage)  # fmt: skip
+        # Without the analyst the ranking is word and meaning matching only (ADR-034): the
+        # confidence shown is the rule score times a factor; "bulunamadı" stays on the raw score.
+        factor = s.scoring.rule_only_factor
+        for m in ranked:
+            m.rule_score = m.score
+            m.score = round(m.score * factor, 4)
+            m.level = level_for(m.score)
+        if not found:
             verdict = Verdict.NOT_FOUND
             near, top = top[:NEAR_MISS_COUNT], []
         elif top[0].level.value == "Yüksek" and not top[0].missing:
@@ -826,8 +784,6 @@ class Engine:
             verdict = Verdict.PARTIAL
         for m in (*top, *near):
             explain(m, q)
-            if m.llm_reason:
-                apply_llm_texts(m)
 
         notes: list[Note] = []
         if q.unknown_concepts:
@@ -865,12 +821,10 @@ class Engine:
         method = [
             "Arama: alan ağırlıklı BM25 (kolon adı ×3, eş anlamlılar ×2, açıklama ×1, obje ×1)",
             "Sorgu genişletme: kurumsal terim sözlüğü + sözlük içi eş anlamlılar",
-            "Skorlama: kural tabanlı; obje seviyesinde en iyi kolon + kapsama + zaman "
-            "+ granülerlik",
-            "LLM: kullanılmadı"
-            if judged is None
-            else f"LLM hakem: {self.llm.model} (ilk {s.llm.judge_candidates} aday; "
-            f"final = {s.scoring.w_rule:g} × kural + {s.scoring.w_llm:g} × LLM)",
+            "Skorlama: kural tabanlı; tablo seviyesinde en iyi kolon + kapsama + zaman "
+            "+ granülerlik + konu uyumu",
+            "Model: kullanılmadı — cevabı kural motoru üretti",
+            f"Güven skorları: kural skoru × {factor:g} (analist olmadan daha az isabetli; ADR-034)",
         ]
         if self.hybrid:
             method.insert(1, f"Anlamsal arama: {self.dense.model if self.dense else ''} "
@@ -891,9 +845,24 @@ class Engine:
             method=method,
             dropped_by_validation=dropped,
             elapsed_ms=round((time.perf_counter() - started) * 1000),
-            llm_model=self.llm.model if judged is not None else "",
-            llm_unknown_ids=judged.unknown_ids if judged is not None else 0,
+            confidence_factor=factor,
         )
+
+
+# Tokenizing 11k column texts is ~95% of building an engine (~3 s). Every settings change
+# rebuilds the engine with the same dictionary, so the features are kept per content.
+_FEATURES: dict[int, list[ColumnFeatures]] = {}
+_FEATURES_KEPT = 2  # the app's dictionary, and a restricted one during `vsa eval`
+
+
+def _features_for(dictionary: Dictionary, stopwords: frozenset[str]) -> list[ColumnFeatures]:
+    key = hash((stopwords, tuple((c.id, c.key, c.description, c.synonyms, c.flags)
+                                 for c in dictionary.columns)))  # fmt: skip
+    if key not in _FEATURES:
+        while len(_FEATURES) >= _FEATURES_KEPT:
+            _FEATURES.pop(next(iter(_FEATURES)))
+        _FEATURES[key] = [build_features(c, stopwords) for c in dictionary.columns]
+    return _FEATURES[key]
 
 
 def _object_dense_for(
@@ -901,16 +870,30 @@ def _object_dense_for(
 ) -> ObjectDenseIndex | None:
     if not settings.dense.enabled:
         return None
-    return load_object_index(Path(settings.index.dir), objects)
+    columns = {k: [f.col for f in o.features] for k, o in objects.items()}
+    index = load_object_index(Path(settings.index.dir), columns)
+    return index if index is not None and _same_embedder(settings, index.model) else None
 
 
-def _dense_for(settings: Settings, n_columns: int) -> DenseIndex | None:
+def _same_embedder(settings: Settings, index_model: str) -> bool:
+    """Query vectors must come from the model that built the index; another model's
+    vectors live in another space and would give silent nonsense (ADR-032)."""
+    active = settings.llm.embedding_model
+    if active == index_model:
+        return True
+    log.warning("Vektör indeksi %s ile kuruldu, aktif embedding modeli %s; anlamsal arama "
+                "kapalı. `vsa index --dense` ile yeniden kurun.", index_model, active or "yok")
+    return False
+
+
+def _dense_for(settings: Settings, columns: Sequence[DictColumn]) -> DenseIndex | None:
     if not settings.dense.enabled:
         return None
-    index = load_dense_index(Path(settings.index.dir), n_columns)
+    index = load_dense_index(Path(settings.index.dir), columns)
     if index is None:
         log.warning("Vektör indeksi bulunamadı; `vsa index --dense` ile kurun. Yalnız BM25.")
-    return index
+        return None
+    return index if _same_embedder(settings, index.model) else None
 
 
 def fallback_reason(error: str) -> str:
@@ -918,8 +901,9 @@ def fallback_reason(error: str) -> str:
     text = fold(error)
     if "context" in text and ("exceed" in text or "size" in text or "length" in text):
         return (
-            "Modelin bağlam penceresi tablo kataloğu için küçük. Yerel modeli daha geniş "
-            "bağlamla yükleyin (LM Studio'da Context Length) veya ayarlardan bulut modelini seçin."
+            "Modelin bağlam penceresi tablo kataloğu için küçük (~70k token gerekir). Model "
+            "sunucusunda daha geniş bağlam açın (vLLM: --max-model-len) veya Yönetim → Ayarlar → "
+            "Yapay zekâ'dan daha geniş bağlamlı bir sohbet modeli seçin."
         )
     if "timed out" in text or "timeout" in text or "504" in text:
         return "Model zamanında yanıt vermedi (zaman aşımı)."

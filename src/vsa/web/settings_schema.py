@@ -1,507 +1,335 @@
 """Editable settings for the settings screen: labels, help, types, ranges, effects.
 
-The schema is the single list of what the screen may change. Values are read from and
-written to the ``Settings`` dataclasses by dotted path (``"llm.temperature"``).
+The schema is the single list of what the screen may change, grouped into pages and
+sections in plain language; rarely touched fields are marked ``advanced``. The model
+connection is not here: it is the LLM integrations page (ADR-032). Values are read from
+and written to the ``Settings`` dataclasses by dotted path (``"scoring.min_answer_score"``).
 """
 
 from __future__ import annotations
 
+import copy
 from dataclasses import asdict
 from typing import Any
 
 from vsa.config import Settings
-from vsa.text.normalize import fold
 
 # effect: when does a change take hold?
 NOW = "anında"  # engine is rebuilt from the index on save (seconds)
 REINDEX = "indeks"  # BM25 index must be rebuilt (button on the screen, ~10 s)
-DENSE = "vektör"  # dense index must be rebuilt (`vsa index --dense`, ~45 min on CPU)
+DENSE = "vektör"  # dense index must be rebuilt (admin button or `vsa index --dense`)
 
-SECTIONS: list[dict[str, Any]] = [
+# Pages of the settings screen, in order. The LLM page is drawn from /api/llm, not from fields.
+PAGES: list[dict[str, Any]] = [
     {
         "id": "llm",
-        "title": "Yapay zekâ hakemi",
-        "intro": "Aday tabloları okuyup gerekçe yazan ve sıralamaya katkı veren yerel dil modeli "
-        "(HANDOVER §10). Kapalıysa uygulama kural tabanlı çalışır.",
-        "fields": [
-            {
-                "key": "llm.enabled",
-                "label": "LLM katmanı açık",
-                "type": "bool",
-                "effect": NOW,
-                "help": "Hakem ve LLM sorgu genişletme bu anahtara bağlı. Vektör araması bundan bağımsızdır.",
-            },
-            {
-                "key": "llm.endpoint",
-                "label": "Model sunucusu adresi",
-                "type": "str",
-                "effect": NOW,
-                "help": "OpenAI uyumlu uç nokta (LM Studio, vLLM, llama.cpp, Ollama). "
-                "Windows'ta 'localhost' yerine 127.0.0.1 kullanılır.",
-            },
-            {
-                "key": "llm.provider",
-                "label": "Hakem nerede çalışsın",
-                "type": "select",
-                "effect": NOW,
-                "options": [
-                    ["local", "Yerel (LM Studio) — veri dışarı çıkmaz"],
-                    ["cloud", "Bulut (Bulut modelleri bölümündeki servis)"],
-                ],
-                "help": "Bulut seçilirse HER soruda aday tabloların adları, kolon adları ve açıklamaları "
-                "servise gönderilir (müşteri verisi gönderilmez). İnternet yoksa hakem çalışmaz, uygulama "
-                "kural tabanlı sonuç verir. Vektör araması her durumda yerelde kalır (ADR-026).",
-            },
-            {
-                "key": "llm.model",
-                "label": "Hakem modeli",
-                "type": "model",
-                "kind": "chat",
-                "effect": NOW,
-                "help": "Aday listesinden seçim yapan sohbet modeli. Bkz. aşağıdaki ölçüm sonuçları.",
-            },
-            {
-                "key": "llm.temperature",
-                "label": "Sıcaklık",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "0: her seferinde aynı cevap (tutarlılık). Yükseldikçe çeşitlilik ve "
-                "tutarsızlık artar.",
-            },
-            {
-                "key": "llm.reasoning_effort",
-                "label": "Düşünme modu",
-                "type": "select",
-                "effect": NOW,
-                "options": [
-                    ["none", "Kapalı (doğrudan cevap)"],
-                    ["low", "Düşük"],
-                    ["medium", "Orta"],
-                    ["high", "Yüksek"],
-                    ["", "Gönderme (model varsayılanı)"],
-                ],
-                "help": "Düşünen modeller (Qwen3.x) için. Kapalı değilse cevap çok uzar; qwen3.5 düşünmede "
-                "tüm bütçeyi harcayıp boş dönebiliyor (ADR-021).",
-            },
-            {
-                "key": "llm.seed",
-                "label": "Sabit tohum (seed)",
-                "type": "int",
-                "min": -1,
-                "max": 2147483647,
-                "step": 1,
-                "effect": NOW,
-                "help": "Aynı soruya aynı cevabın gelmesine yardım eder (sıcaklık 0 ile birlikte). "
-                "-1: gönderme. Bulut servisleri istekleri toplu işlediği için tam garanti vermez.",
-            },
-            {
-                "key": "llm.judge",
-                "label": "Hakem sıralamaya katılsın",
-                "type": "bool",
-                "effect": NOW,
-                "help": "Kapalıysa LLM çağrılmaz (Soru sor ~0,1 sn), gerekçeler kural tabanlı yazılır.",
-            },
-            {
-                "key": "llm.judge_candidates",
-                "label": "Hakeme gösterilen tablo sayısı",
-                "type": "int",
-                "min": 2,
-                "max": 15,
-                "step": 1,
-                "effect": NOW,
-                "help": "Daha fazla aday = daha uzun istem = daha yavaş cevap.",
-            },
-            {
-                "key": "llm.timeout",
-                "label": "Zaman aşımı (sn)",
-                "type": "int",
-                "min": 10,
-                "max": 1800,
-                "step": 10,
-                "effect": NOW,
-                "help": "Süre dolarsa kural tabanlı sonuç döner (ADR-008).",
-            },
-            {
-                "key": "llm.expand_query",
-                "label": "LLM ile sorgu genişletme",
-                "type": "bool",
-                "effect": NOW,
-                "help": "Her soruya ek bir LLM çağrısı; terimler yalnız BM25 aday havuzunu genişletir (§7.2c).",
-            },
-            {
-                "key": "llm.api_key",
-                "label": "API anahtarı",
-                "type": "secret",
-                "effect": NOW,
-                "help": "Yalnız sunucu anahtar istiyorsa. Boş bırakılırsa mevcut anahtar korunur.",
-            },
-        ],
-    },
-    {
-        "id": "analyst",
-        "title": "Analist akışı",
-        "intro": "LLM açıkken soruların cevabını model bir analist gibi yazar (ADR-029): önce tüm "
-        "tabloların kataloğundan aday seçer, sonra adayların bütün kolon açıklamalarını okuyup "
-        "gerekçe, kısıt, kurgu ve uyarıları yazar. Yazdığı her tablo ve kolon sözlüğe karşı "
-        "doğrulanır; model yoksa veya hata verirse kural tabanlı cevap döner.",
-        "fields": [
-            {
-                "key": "analyst.enabled",
-                "label": "Analist akışı açık",
-                "type": "bool",
-                "effect": NOW,
-                "help": "Kapalıysa LLM yalnız hakem olarak ilk adayları puanlar (eski akış).",
-            },
-            {
-                "key": "analyst.shortlist",
-                "label": "Kolon kolon okunan aday tablo",
-                "type": "int",
-                "min": 3,
-                "max": 20,
-                "step": 1,
-                "effect": NOW,
-                "help": "Çok = kaçırma riski az ama istem uzun ve cevap yavaş.",
-            },
-            {
-                "key": "analyst.catalog_chunks",
-                "label": "Katalog kaç parçada okunsun",
-                "type": "int",
-                "min": 1,
-                "max": 10,
-                "step": 1,
-                "effect": NOW,
-                "help": "1. adımda tablo kataloğu bu kadar parçaya bölünüp aynı anda okunur, adaylar "
-                "sonra yan yana kıyaslanır. 1: katalog tek istekte (büyük bağlamlı, hızlı sunucular için).",
-            },
-            {
-                "key": "analyst.confusables",
-                "label": "Uyarı için okunan benzer tablo",
-                "type": "int",
-                "min": 0,
-                "max": 12,
-                "step": 1,
-                "effect": NOW,
-                "help": "Talebe benzeyip yanlış cevap verecek tablolar; 'Uyarı' notlarının kaynağı.",
-            },
-            {
-                "key": "analyst.min_confidence",
-                "label": "Gösterilecek en düşük güven",
-                "type": "float",
-                "min": 0,
-                "max": 0.9,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Altındaki öneriler gösterilmez; 'Bulunamadı' geçerli cevaptır (ADR-006).",
-            },
-            {
-                "key": "analyst.max_tokens",
-                "label": "Rapor uzunluğu (token)",
-                "type": "int",
-                "min": 2000,
-                "max": 16000,
-                "step": 500,
-                "effect": NOW,
-                "help": "Cevap bu sınırda kesilirse rapor yazılamaz ve kural tabanlı sonuç döner.",
-            },
-        ],
-    },
-    {
-        "id": "cloud",
-        "title": "Bulut modelleri (yalnız ölçüm)",
-        "intro": "NVIDIA API kataloğundaki (build.nvidia.com) modelleri Model laboratuvarında ölçmek için. "
-        "Uygulamanın hakemi yerelde kalır; bu ayar yalnız ölçüme etki eder. Ölçüm sırasında test soruları "
-        "ile aday tabloların adları, kolon adları ve açıklamaları kurum dışına gönderilir (ADR-026).",
-        "fields": [
-            {
-                "key": "cloud.enabled",
-                "label": "Bulut ölçümü açık",
-                "type": "bool",
-                "effect": NOW,
-                "help": "Kapalıyken laboratuvar bulut modellerini listelemez ve hiçbir istek dışarı çıkmaz.",
-            },
-            {
-                "key": "cloud.api_key",
-                "label": "API anahtarı",
-                "type": "secret",
-                "effect": NOW,
-                "help": "build.nvidia.com → bir model → 'Get API Key' (nvapi-… ile başlar). Boş bırakılırsa "
-                "kayıtlı anahtar korunur; NVIDIA_API_KEY ortam değişkeni de kullanılabilir.",
-            },
-            {
-                "key": "cloud.endpoint",
-                "label": "API adresi",
-                "type": "str",
-                "effect": NOW,
-                "help": "OpenAI uyumlu uç nokta. Varsayılan NVIDIA: https://integrate.api.nvidia.com/v1",
-            },
-            {
-                "key": "cloud.rpm",
-                "label": "Dakikadaki istek sınırı",
-                "type": "int",
-                "min": 1,
-                "max": 120,
-                "step": 1,
-                "effect": NOW,
-                "help": "Ücretsiz katman dakikada ~40 istek tanır; sınır aşılırsa istemci bekleyip yeniden dener.",
-            },
-            {
-                "key": "cloud.active",
-                "label": "Etkin bulut profili",
-                "type": "str",
-                "effect": NOW,
-                "help": "settings.yaml'daki cloud.profiles içinden bir ad (ör. google). Boş: yukarıdaki "
-                "adres ve anahtar (NVIDIA). Profil kendi adresini, anahtarını ve model adını taşır.",
-            },
-        ],
-    },
-    {
-        "id": "dense",
-        "title": "Anlamsal arama",
-        "intro": "Kelimesi farklı ama anlamı yakın kolonları bulan vektör araması (M3, ADR-019).",
-        "fields": [
-            {
-                "key": "dense.enabled",
-                "label": "Anlamsal arama açık",
-                "type": "bool",
-                "effect": NOW,
-                "help": "Vektör indeksi yoksa uyarı verir ve yalnız BM25 ile çalışır.",
-            },
-            {
-                "key": "llm.embedding_model",
-                "label": "Embedding modeli",
-                "type": "model",
-                "kind": "embedding",
-                "effect": DENSE,
-                "help": "Değişirse vektör indeksi yeniden kurulmalı (vsa index --dense).",
-            },
-            {
-                "key": "dense.weight",
-                "label": "Anlamsal benzerlik ağırlığı",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Kolon arama skorunda vektör benzerliğinin payı; kalanı BM25.",
-            },
-            {
-                "key": "dense.top_k",
-                "label": "Vektör aday kolon sayısı",
-                "type": "int",
-                "min": 20,
-                "max": 1000,
-                "step": 10,
-                "effect": NOW,
-                "help": "Aday havuzuna eklenen en benzer kolon sayısı.",
-            },
-        ],
-    },
-    {
-        "id": "scoring",
-        "title": "Skorlama",
-        "intro": "Kural skoru, LLM katkısı ve eşikler (§8, §9, ADR-022). Değiştirmeden önce ve sonra "
-        "`vsa eval --save` çalıştırın.",
-        "fields": [
-            {
-                "key": "scoring.w_rule",
-                "label": "Kural ağırlığı",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Nihai skor = (w_kural × kural + w_LLM × LLM) / toplam.",
-            },
-            {
-                "key": "scoring.w_llm",
-                "label": "LLM ağırlığı",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "0,4'te hakem sıralamayı bozuyordu; 0,25 ölçümle seçildi.",
-            },
-            {
-                "key": "scoring.min_candidate_score",
-                "label": "Gösterilecek en düşük skor",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Altındaki adaylar hiç gösterilmez.",
-            },
-            {
-                "key": "scoring.min_answer_score",
-                "label": "Cevap eşiği",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "En iyi aday bunun altındaysa cevap BULUNAMADI (ADR-006).",
-            },
-            {
-                "key": "scoring.min_answer_coverage",
-                "label": "Cevap için kavram kapsaması",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "En iyi tablo talebin bilgi içeriğinin bu kadarını karşılamalı (ADR-013).",
-            },
-            {
-                "key": "scoring.object.best_column",
-                "label": "Tablo skoru: en iyi kolon",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "§8 obje skoru bileşeni.",
-            },
-            {
-                "key": "scoring.object.coverage",
-                "label": "Tablo skoru: kavram kapsaması",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "§8 obje skoru bileşeni.",
-            },
-            {
-                "key": "scoring.object.time",
-                "label": "Tablo skoru: zaman boyutu",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Talepte zaman yoksa hesaba katılmaz (ADR-011).",
-            },
-            {
-                "key": "scoring.object.granularity",
-                "label": "Tablo skoru: müşteri seviyesi",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Müşteri bazlı talepte uygulanır.",
-            },
-            {
-                "key": "scoring.object.topic",
-                "label": "Tablo skoru: konu uyumu",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Tablonun bütün olarak talebin konusuyla uyumu: tablo adı ve profil "
-                "vektörü; geniş tabloları dengeler (ADR-028).",
-            },
-            {
-                "key": "scoring.flag_penalty.model_estimated",
-                "label": "Ceza çarpanı: model tahmini açıklama",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "§9.2 (×0,85).",
-            },
-            {
-                "key": "scoring.flag_penalty.naming_mismatch",
-                "label": "Ceza çarpanı: isim/içerik uyumsuzluğu",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "§9.2 (×0,90).",
-            },
-        ],
+        "title": "Yapay zekâ",
+        "intro": "Cevabı yazan sohbet modeli ve anlam araması için embedding modeli.",
     },
     {
         "id": "search",
-        "title": "Arama",
-        "intro": "BM25 kelime araması ve aday havuzu (§6.6, ADR-015).",
+        "title": "Arama ve cevap",
+        "intro": "Hangi tablonun önerileceğini ve ne zaman “bulunamadı” deneceğini belirler.",
+    },
+    {
+        "id": "data",
+        "title": "Veri ve bakım",
+        "intro": "Veri sözlüğü, indeks ve rapor konumları; indeksin yeniden kurulması.",
+    },
+]
+
+# ``advanced`` fields sit behind "Uzman ayarları"; a section that is all advanced is folded
+# as a whole. ``format: pct`` shows a 0–1 value as a percentage.
+SECTIONS: list[dict[str, Any]] = [
+    {
+        "id": "answer",
+        "page": "search",
+        "title": "Cevap ne zaman verilir?",
+        "intro": "Uygulama emin olmadığı tabloyu önermez; eşiği geçen bir tablo yoksa "
+        "“bulunamadı” der. Eşikleri yükseltmek daha az ama daha kesin öneri demektir.",
         "fields": [
             {
-                "key": "search.top_k_columns",
-                "label": "Kolon aday havuzu",
+                "key": "scoring.min_answer_score",
+                "label": "Cevap vermek için gereken güven",
+                "type": "float",
+                "format": "pct",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "En iyi tablonun güveni bunun altındaysa cevap “bulunamadı” olur.",
+            },
+            {
+                "key": "scoring.min_candidate_score",
+                "label": "Listede gösterilecek en düşük güven",
+                "type": "float",
+                "format": "pct",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Bunun altındaki tablolar hiç listelenmez.",
+            },
+            {
+                "key": "scoring.rule_only_factor",
+                "label": "Model olmadan verilen cevapta güven çarpanı",
+                "type": "float",
+                "format": "pct",
+                "min": 0.3,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Sohbet modeli bağlı değilken ya da hata verdiğinde cevabı kural motoru "
+                "yazar; gösterilen güven, kural skorunun bu oranıdır.",
+            },
+            {
+                "key": "scoring.min_answer_coverage",
+                "label": "Talebin ne kadarı karşılanmalı",
+                "type": "float",
+                "format": "pct",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "advanced": True,
+                "help": "En iyi tablo, talepteki kavramların (nadir olanlar daha ağır sayılır) en "
+                "az bu kadarını taşımalı.",
+            },
+        ],
+    },
+    {
+        "id": "terms",
+        "page": "search",
+        "title": "Eş anlamlılar ve terimler",
+        "intro": "İş biriminin kelimeleriyle sözlüğün kelimeleri arasında köprü kurar: “kredi” "
+        "arayan “fon kullandırım”ı da bulur.",
+        "fields": [
+            {
+                "key": "expansion.enabled",
+                "label": "Kurumsal terim sözlüğünü kullan",
+                "type": "bool",
+                "effect": NOW,
+                "help": "Katılım bankacılığı terimleri ve kısaltmalar (config/term_dictionary.csv).",
+            },
+            {
+                "key": "expansion.synonyms",
+                "label": "Sözlüğün eş anlamlılarını kullan",
+                "type": "bool",
+                "effect": NOW,
+                "help": "Kolon açıklamalarındaki “Eş anlamlılar / aranabilir terimler” bölümleri.",
+            },
+            {
+                "key": "expansion.weight",
+                "label": "Eş anlamlı terimlerin ağırlığı",
+                "type": "float",
+                "format": "pct",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "advanced": True,
+                "help": "Kullanıcının kendi yazdığı kelimeler %100 sayılır.",
+            },
+        ],
+    },
+    {
+        "id": "meaning",
+        "page": "search",
+        "title": "Anlam araması",
+        "intro": "Kelimeleri farklı ama anlamı yakın kolonları ve tabloları bulur. Aktif bir "
+        "embedding modeli ve onunla kurulmuş vektör indeksi gerekir.",
+        "fields": [
+            {
+                "key": "dense.enabled",
+                "label": "Anlam aramasını kullan",
+                "type": "bool",
+                "effect": NOW,
+                "help": "Kapalıyken yalnız kelime eşleşmesiyle aranır.",
+            },
+            {
+                "key": "dense.weight",
+                "label": "Anlam benzerliğinin payı",
+                "type": "float",
+                "format": "pct",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "advanced": True,
+                "help": "Kolon arama puanında anlam benzerliğinin payı; kalanı kelime eşleşmesi.",
+            },
+            {
+                "key": "dense.top_k",
+                "label": "Anlamca en yakın kaç kolon aday olsun",
                 "type": "int",
                 "min": 20,
                 "max": 1000,
                 "step": 10,
                 "effect": NOW,
-                "help": "BM25'ten alınan en iyi kolon sayısı.",
+                "advanced": True,
+                "help": "",
+            },
+        ],
+    },
+    {
+        "id": "ranking",
+        "page": "search",
+        "advanced": True,
+        "title": "Tablo sıralaması",
+        "intro": "Bir tablonun puanı beş parçadan oluşur. Değiştirmeden önce ve sonra "
+        "`vsa eval --save` ile ölçün.",
+        "fields": [
+            {
+                "key": "scoring.object.best_column",
+                "label": "En iyi eşleşen kolon",
+                "type": "float",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Tablodaki en iyi kolonun talebe uyumu.",
             },
             {
-                "key": "search.candidate_object_columns",
-                "label": "Obje adayı için taranan kolon",
-                "type": "int",
-                "min": 50,
-                "max": 3000,
-                "step": 50,
+                "key": "scoring.object.coverage",
+                "label": "Kavramları birlikte taşıma",
+                "type": "float",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
                 "effect": NOW,
-                "help": "Kavramları birlikte karşılayan tabloların kaçmaması için geniş tutulur.",
+                "help": "Talepteki kavramların kaçı aynı tabloda.",
+            },
+            {
+                "key": "scoring.object.topic",
+                "label": "Konu uyumu",
+                "type": "float",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Tablonun bütün olarak talebin konusu olması; çok geniş tabloları dengeler.",
+            },
+            {
+                "key": "scoring.object.time",
+                "label": "Zaman kolonu",
+                "type": "float",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "“Aylık”, “günlük” istenirse dönem/tarih kolonu var mı. İstenmezse sayılmaz.",
+            },
+            {
+                "key": "scoring.object.granularity",
+                "label": "Müşteri seviyesi",
+                "type": "float",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Müşteri bazlı talepte müşteri anahtarı var mı.",
+            },
+            {
+                "key": "scoring.flag_penalty.model_estimated",
+                "label": "Doğrulanmamış açıklama cezası",
+                "type": "float",
+                "format": "pct",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Açıklaması “model tahmini” olan kolonun puanı bu orana iner.",
+            },
+            {
+                "key": "scoring.flag_penalty.naming_mismatch",
+                "label": "Ad/içerik uyumsuzluğu cezası",
+                "type": "float",
+                "format": "pct",
+                "min": 0,
+                "max": 1,
+                "step": 0.05,
+                "effect": NOW,
+                "help": "Kalite bulgularında adı içeriğiyle uyuşmayan kolonun puanı bu orana iner.",
             },
             {
                 "key": "search.top_k_objects",
-                "label": "Sıralanan tablo sayısı",
+                "label": "Değerlendirilen tablo sayısı",
                 "type": "int",
                 "min": 3,
                 "max": 50,
                 "step": 1,
                 "effect": NOW,
-                "help": "Soru başına değerlendirilen en iyi tablo sayısı.",
+                "help": "Soru başına sıralanan en iyi tablo sayısı.",
             },
+        ],
+    },
+    {
+        "id": "words",
+        "page": "search",
+        "advanced": True,
+        "title": "Kelime araması",
+        "intro": "Kolon adları, eş anlamlılar ve açıklamalar üzerinde BM25 araması. Alan "
+        "ağırlıkları ve BM25 değerleri indekse gömülüdür; değişince indeks yeniden kurulur.",
+        "fields": [
             {
                 "key": "search.field_weights.name",
-                "label": "Alan ağırlığı: kolon adı",
+                "label": "Kolon adı ağırlığı",
                 "type": "float",
                 "min": 0,
                 "max": 10,
                 "step": 0.5,
                 "effect": REINDEX,
-                "help": "§6.6 (3).",
+                "help": "",
             },
             {
                 "key": "search.field_weights.synonyms",
-                "label": "Alan ağırlığı: eş anlamlılar",
+                "label": "Eş anlamlılar ağırlığı",
                 "type": "float",
                 "min": 0,
                 "max": 10,
                 "step": 0.5,
                 "effect": REINDEX,
-                "help": "§6.6 (2).",
+                "help": "",
             },
             {
                 "key": "search.field_weights.description",
-                "label": "Alan ağırlığı: açıklama",
+                "label": "Açıklama ağırlığı",
                 "type": "float",
                 "min": 0,
                 "max": 10,
                 "step": 0.5,
                 "effect": REINDEX,
-                "help": "§6.6 (1).",
+                "help": "",
             },
             {
                 "key": "search.field_weights.object",
-                "label": "Alan ağırlığı: tablo adı",
+                "label": "Tablo adı ağırlığı",
                 "type": "float",
                 "min": 0,
                 "max": 10,
                 "step": 0.5,
                 "effect": REINDEX,
-                "help": "§6.6 (1).",
+                "help": "",
+            },
+            {
+                "key": "search.top_k_columns",
+                "label": "Aday kolon sayısı",
+                "type": "int",
+                "min": 20,
+                "max": 1000,
+                "step": 10,
+                "effect": NOW,
+                "help": "Kelime aramasından alınan en iyi kolon sayısı.",
+            },
+            {
+                "key": "search.candidate_object_columns",
+                "label": "Aday tablo için taranan kolon",
+                "type": "int",
+                "min": 50,
+                "max": 3000,
+                "step": 50,
+                "effect": NOW,
+                "help": "Kavramları birlikte taşıyan tablolar kaçmasın diye geniş tutulur.",
             },
             {
                 "key": "search.bm25.k1",
@@ -511,7 +339,7 @@ SECTIONS: list[dict[str, Any]] = [
                 "max": 3,
                 "step": 0.1,
                 "effect": REINDEX,
-                "help": "Terim frekansı doygunluğu.",
+                "help": "Aynı kelimenin tekrarı ne kadar sayılsın.",
             },
             {
                 "key": "search.bm25.b",
@@ -521,59 +349,29 @@ SECTIONS: list[dict[str, Any]] = [
                 "max": 1,
                 "step": 0.05,
                 "effect": REINDEX,
-                "help": "Belge uzunluğu normalizasyonu.",
+                "help": "Uzun açıklamalar ne kadar dengelensin.",
             },
         ],
     },
     {
-        "id": "expansion",
-        "title": "Sorgu genişletme",
-        "intro": "Kurumsal terim sözlüğü ve sözlüğün kendi eş anlamlıları (§7).",
-        "fields": [
-            {
-                "key": "expansion.enabled",
-                "label": "Kurumsal terim sözlüğü",
-                "type": "bool",
-                "effect": NOW,
-                "help": "config/term_dictionary.csv — katılım bankacılığı terimleri.",
-            },
-            {
-                "key": "expansion.synonyms",
-                "label": "Sözlük eş anlamlıları",
-                "type": "bool",
-                "effect": NOW,
-                "help": "Açıklamalardaki 'Eş anlamlılar/aranabilir terimler' bölümü.",
-            },
-            {
-                "key": "expansion.weight",
-                "label": "Genişletme terimi ağırlığı",
-                "type": "float",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Özgün sorgu terimleri 1,0 ağırlık alır.",
-            },
-        ],
-    },
-    {
-        "id": "files",
-        "title": "Dosyalar",
-        "intro": "Sözlük, indeks ve rapor konumları. Sözlük veya durak kelimeler değişirse indeks "
-        "yeniden kurulmalı.",
+        "id": "dictionary",
+        "page": "data",
+        "title": "Veri sözlüğü",
+        "intro": "Uygulamanın aradığı kaynak. Dosya değişirse indeks yeniden kurulmalı.",
         "fields": [
             {
                 "key": "dictionary.path",
-                "label": "Veri sözlüğü",
+                "label": "Sözlük dosyası",
                 "type": "str",
                 "effect": REINDEX,
-                "help": "Excel dosyası (Sheet1: kolonlar).",
+                "help": "Excel dosyası (data/VeriSozlugu.xlsx); kolonlar Kolonlar sayfasında.",
             },
             {
                 "key": "dictionary.sheet",
                 "label": "Kolon sayfası",
                 "type": "str",
                 "effect": REINDEX,
+                "advanced": True,
                 "help": "",
             },
             {
@@ -581,42 +379,89 @@ SECTIONS: list[dict[str, Any]] = [
                 "label": "Kalite bulguları sayfası",
                 "type": "str",
                 "effect": REINDEX,
-                "help": "Opsiyonel; boş bırakılabilir.",
+                "advanced": True,
+                "help": "İsteğe bağlı; boş bırakılabilir.",
             },
             {
                 "key": "expansion.term_dictionary",
-                "label": "Terim sözlüğü",
+                "label": "Terim sözlüğü dosyası",
                 "type": "str",
                 "effect": NOW,
-                "help": "CSV: term,equivalents,domain,note.",
+                "advanced": True,
+                "help": "CSV: term, equivalents, domain, note.",
             },
             {
                 "key": "expansion.stopwords",
-                "label": "Durak kelimeler",
+                "label": "Durak kelimeler dosyası",
                 "type": "str",
                 "effect": REINDEX,
-                "help": "Satır başına bir kelime.",
+                "advanced": True,
+                "help": "Aramada yok sayılan kelimeler, satır başına bir tane.",
+            },
+        ],
+    },
+    {
+        "id": "cache",
+        "page": "data",
+        "title": "Önceki cevaplar",
+        "intro": "Analistin yazdığı cevaplar saklanır. Aynı soru ya da terim sözlüğüne göre aynı "
+        "anlama gelen bir soru yeniden sorulunca dakikalarca analiz yerine kayıtlı cevap gelir. "
+        "Sözlük, model veya cevabı etkileyen bir ayar değişince eski cevaplar kullanılmaz.",
+        "fields": [
+            {
+                "key": "cache.enabled",
+                "label": "Önceki cevapları kullan",
+                "type": "bool",
+                "effect": NOW,
+                "help": "Kapalıyken her soru baştan analiz edilir; cevaplar yine saklanır.",
+            },
+            {
+                "key": "cache.meaning",
+                "label": "Aynı anlama gelen sorularda da kullan",
+                "type": "bool",
+                "effect": NOW,
+                "help": "Kelimeleri farklı ama kavramları aynı soru (ör. “müşteri no” / “hesap "
+                "no”). Kapalıyken yalnız aynı kelimelerle sorulan soru.",
+            },
+            {
+                "key": "cache.max_age_days",
+                "label": "Cevap kaç gün geçerli",
+                "type": "int",
+                "min": 0,
+                "max": 365,
+                "step": 1,
+                "effect": NOW,
+                "advanced": True,
+                "help": "Daha eski cevaplar yeniden analiz edilir. 0 = süre sınırı yok.",
+            },
+        ],
+    },
+    {
+        "id": "places",
+        "page": "data",
+        "title": "Klasörler",
+        "intro": "",
+        "fields": [
+            {
+                "key": "report.out_dir",
+                "label": "Rapor klasörü",
+                "type": "str",
+                "effect": NOW,
+                "help": "İndirilen Excel raporları buraya da yazılır.",
             },
             {
                 "key": "index.dir",
                 "label": "İndeks klasörü",
                 "type": "str",
                 "effect": REINDEX,
+                "advanced": True,
                 "help": "",
-            },
-            {
-                "key": "report.out_dir",
-                "label": "Rapor klasörü",
-                "type": "str",
-                "effect": NOW,
-                "help": "Excel raporlarının yazıldığı yer.",
             },
         ],
     },
 ]
 
 FIELDS = {f["key"]: f for sec in SECTIONS for f in sec["fields"]}
-SECRET_KEYS = [k for k, f in FIELDS.items() if f["type"] == "secret"]
 
 
 def get_path(data: dict[str, Any], key: str) -> Any:
@@ -634,10 +479,7 @@ def set_path(data: dict[str, Any], key: str, value: Any) -> None:
 
 def values_of(settings: Settings) -> dict[str, Any]:
     raw = asdict(settings)
-    out = {k: get_path(raw, k) for k in FIELDS}
-    for key in SECRET_KEYS:
-        out[key] = ""  # never sent to the browser
-    return out
+    return {k: get_path(raw, k) for k in FIELDS}
 
 
 def defaults() -> dict[str, Any]:
@@ -671,29 +513,15 @@ def coerce(key: str, value: Any) -> Any:
         if value not in allowed:
             raise ValueError(f"{label}: geçersiz seçim")
         return value
-    return str(value).strip()  # str, model, secret
+    return str(value).strip()
 
 
-def to_yaml_tree(values: dict[str, Any]) -> dict[str, Any]:
-    tree: dict[str, Any] = {}
+def to_yaml_tree(values: dict[str, Any], base: dict[str, Any] | None = None) -> dict[str, Any]:
+    """The screen's values written over ``base`` (the settings file as it is), so keys the
+    screen does not show — the model connection under ``llm:`` / ``analyst:`` — survive."""
+    tree: dict[str, Any] = copy.deepcopy(base or {})
     for key, value in values.items():
         if key == "dictionary.quality_sheet" and value == "":
             value = None
         set_path(tree, key, value)
     return tree
-
-
-# Hosted catalogs list every kind of model; the lab only wants text chat models.
-NON_CHAT = (
-    "embed", "rerank", "reward", "guard", "safety", "clip", "parse", "retriever", "-vl",
-    "vision", "vila", "neva", "kosmos", "fuyu", "paligemma", "deplot", "cosmos", "tts",
-    "asr", "whisper", "riva", "detector", "pii", "usdcode", "usdsearch", "bge", "e5-",
-    "sdxl", "flux", "stable-diffusion", "audio", "speech", "ocr", "esm", "molmim", "genmol",
-    "diffdock", "alphafold", "openfold", "proteinmpnn", "rfdiffusion", "streampetr",
-    "content-safety", "topic-control", "jailbreak", "calibration", "translate",
-)
-
-
-def is_chat_model(model_id: str) -> bool:
-    folded = fold(model_id)
-    return not any(k in folded for k in NON_CHAT)

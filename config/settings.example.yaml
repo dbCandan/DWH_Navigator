@@ -1,9 +1,9 @@
 # Kopyalayıp config/settings.yaml olarak kullanın (settings.yaml repoya girmez).
 
 dictionary:
-  path: data/DataDictionary-Final.xlsx
-  sheet: Sheet1
-  quality_sheet: Sheet2        # opsiyonel
+  path: data/VeriSozlugu.xlsx
+  sheet: Kolonlar
+  quality_sheet: ""            # opsiyonel; kalite bulguları sayfası (güncel sözlükte yok)
 
 index:
   dir: data/index
@@ -29,8 +29,6 @@ expansion:
   stopwords: config/stopwords_tr.txt
 
 scoring:
-  w_rule: 0.75                 # ADR-022
-  w_llm: 0.25
   min_candidate_score: 0.25
   min_answer_score: 0.35
   min_answer_coverage: 0.5      # en iyi obje talebin bilgi içeriğinin yarısını karşılamalı (ADR-013)
@@ -44,23 +42,28 @@ scoring:
     model_estimated: 0.85
     naming_mismatch: 0.90
 
+# Model bağlantısı: normalde Yönetim → Ayarlar → Yapay zekâ ekranından (config/llm_integrations.yaml,
+# ADR-032); o dosya varsa bu bölümün bağlantı alanları yok sayılır. OpenAI uyumlu her sunucu olur.
 llm:
   enabled: false
-  endpoint: ""                 # OpenAI uyumlu /v1/chat/completions
-  model: ""
-  temperature: 0.1
+  endpoint: ""                 # sohbet modeli, ör. http://<spark-adresi>:8000/v1
+  model: ""                    # sunucunun bildirdiği model adı
+  embedding_model: ""          # vektör indeksi (dense) için, ör. bge-m3
+  embedding_endpoint: ""       # embedding ayrı sunucudaysa (vLLM tek model sunar); boş = endpoint
+  api_key: ""                  # sunucu anahtar istiyorsa
+  temperature: 0.0
+  seed: 42                     # tekrarlanabilir cevap; -1 = gönderme
+  reasoning_effort: none       # düşünen modellerde gizli düşünmeyi kapatır; "" = gönderme
   timeout: 900                 # analist akışının 2. adımı uzun cevap yazar (ADR-029)
 
 # Analist akışı (ADR-029): LLM açıksa "ask" cevabını model yazar — önce tüm tablo kataloğundan
 # aday seçer, sonra adayların bütün kolon açıklamalarını okuyup raporu yazar. Kurallar ipucu,
 # doğrulayıcı ve yedektir (model yoksa / hata verirse kural tabanlı cevap döner).
 analyst:
-  enabled: true
   shortlist: 14                # 2. adımda kolon kolon okunan aday tablo sayısı
   confusables: 6               # uyarılar için okunan "benzer ama yanlış" tablo sayısı
   family_tables: 2             # bilgi ailesi başına terim aramasıyla eklenen tablo
   family_extra: 6              # bu yolla en fazla eklenen tablo
-  batch: false                 # toplu talep de analistle (ölçümde kuraldan geride; ADR-029)
   evidence_columns: 60         # sözlüğün geri kalanından benzer alan sayısı
   description_chars: 420       # kolon açıklaması başına karakter
   full_table_columns: 90       # daha geniş tablolarda yalnız ilgili kolonların açıklaması
@@ -71,22 +74,13 @@ analyst:
   pool_size: 40                # kıyaslanan aday havuzu
   pool_columns: 12             # havuzda tablo başına gösterilen en ilgili kolon sayısı
 
-# Bulut modelleri — YALNIZ Model laboratuvarı ölçümü için (ADR-026). Uygulamanın hakemi
-# yerelde kalır. Açıkken ölçüm, test soruları ve aday tablo/kolon açıklamalarını dışarı gönderir.
-cloud:
-  enabled: false
-  endpoint: https://integrate.api.nvidia.com/v1   # NVIDIA API kataloğu (build.nvidia.com)
-  api_key: ""        # nvapi-… ; boşsa NVIDIA_API_KEY ortam değişkeni
-  rpm: 30            # dakikadaki istek sınırı (ücretsiz katman ~40)
-  # Birden çok sağlayıcı yan yana: 'active' bir profil adı seçer; boş = yukarıdaki alanlar.
-  # Profil kendi adresini, anahtarını (boşsa GEMINI_API_KEY / NVIDIA_API_KEY) ve model adını taşır.
-  active: ''
-  profiles:
-    google:
-      endpoint: https://generativelanguage.googleapis.com/v1beta/openai
-      api_key: ''
-      model: gemma-4-31b-it
-      rpm: 15
+# Önceki cevaplar (ADR-035): analist cevapları data/cache/answers.jsonl'de saklanır; aynı
+# soru ya da aynı kavramlara çıkan soru tekrar gelince yeniden analiz yapılmaz. Sözlük,
+# model veya cevabı etkileyen bir ayar değişince eski cevaplar kullanılmaz.
+cache:
+  enabled: true
+  meaning: true        # aynı anlama gelen (terim sözlüğüne göre) sorularda da
+  max_age_days: 30     # 0 = süre sınırı yok
 
 report:
   out_dir: out

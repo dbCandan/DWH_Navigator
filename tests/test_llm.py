@@ -1,4 +1,4 @@
-"""M3/M4: LLM client parsing, judge, dense index — with a fake model, no server needed."""
+"""LLM client parsing and the dense index — with a fake model, no server needed."""
 
 from __future__ import annotations
 
@@ -11,9 +11,16 @@ import numpy as np
 import pytest
 
 from vsa.config import Settings
-from vsa.index.dense import DenseIndex, build_dense_index, column_text, load_dense_index
+from vsa.index.dense import (
+    DenseIndex,
+    build_dense_index,
+    build_object_index,
+    column_staleness,
+    column_text,
+    load_dense_index,
+    load_object_index,
+)
 from vsa.llm.client import LLMError, NullClient, client_from_settings, parse_json_reply
-from vsa.llm.judge import candidate_payload, judge
 from vsa.models import ColumnHit, DictColumn, Level, ObjectMatch
 from vsa.pipeline import Engine
 
@@ -23,6 +30,10 @@ class FakeClient:
 
     available = True
     model = "fake-llm"
+    down = ""  # health(): "" = the server answers
+
+    def health(self) -> str:
+        return self.down
 
     def __init__(self, reply: dict[str, Any] | None = None, fail_embed: bool = False) -> None:
         self.reply = reply
@@ -89,50 +100,11 @@ def test_null_client_and_factory() -> None:
     assert isinstance(client_from_settings(s.llm), NullClient)
     s.llm.enabled, s.llm.endpoint, s.llm.model = True, "http://localhost:1/v1", "m"
     assert client_from_settings(s.llm).available
-    # Chat off but dense on: embeddings still available, judge not.
+    # Chat off but dense on: embeddings still available, the analyst not.
     s.llm.enabled, s.llm.embedding_model = False, "emb"
     embed_only = client_from_settings(s.llm, embeddings=True)
     assert not embed_only.available and not isinstance(embed_only, NullClient)
     assert isinstance(client_from_settings(s.llm, embeddings=False), NullClient)
-
-
-class TestJudge:
-    def test_payload_ids_and_truncation(self) -> None:
-        long = "uzun " * 200
-        payload, ids = candidate_payload([match("DB.S.vA", col(0, "vA", "X", long))])
-        assert ids == {"t1": "DB.S.vA"}
-        rows = json.loads(payload)
-        assert rows[0]["alanlar"][0]["aciklama"].endswith("…")
-        assert len(rows[0]["alanlar"][0]["aciklama"]) < 240
-
-    def test_unknown_ids_dropped_and_counted(self) -> None:
-        reply = {
-            "matches": [
-                {
-                    "candidate_id": "t1",
-                    "confidence": 1.7,
-                    "reason": "r",
-                    "caveat": "",
-                    "usage": "u",
-                },
-                {
-                    "candidate_id": "t9",
-                    "confidence": 0.9,
-                    "reason": "x",
-                    "caveat": "-",
-                    "usage": "-",
-                },
-            ]
-        }
-        result = judge("q", [match("DB.S.vA", col(0, "vA", "X", "d"))], FakeClient(reply))
-        assert result is not None
-        assert list(result.verdicts) == ["DB.S.vA"]
-        assert result.verdicts["DB.S.vA"].confidence == 1.0  # clipped
-        assert result.verdicts["DB.S.vA"].caveat == "-"
-        assert result.unknown_ids == 1
-
-    def test_failure_returns_none(self) -> None:
-        assert judge("q", [match("DB.S.vA", col(0, "vA", "X", "d"))], FakeClient(None)) is None
 
 
 class TestDense:
@@ -145,9 +117,39 @@ class TestDense:
         again = FakeClient()
         build_dense_index(cols, again, "fake-emb", tmp_path)
         assert again.embedded == 0  # everything cached
-        loaded = load_dense_index(tmp_path, 2)
+        loaded = load_dense_index(tmp_path, cols)
         assert loaded is not None and loaded.model == "fake-emb"
-        assert load_dense_index(tmp_path, 3) is None  # dictionary changed
+        extra = [*cols, col(2, "vA", "Gamma", "ccc")]
+        assert load_dense_index(tmp_path, extra) is None  # dictionary changed
+
+    def test_rows_follow_columns_not_file_order(self, tmp_path: Path) -> None:
+        """A reordered dictionary keeps each column's own vector; a changed description
+        or an index saved without text hashes is stale, never silently misaligned."""
+        cols = [col(i, "vA", n, d) for i, (n, d) in enumerate([("Alpha", "aaa"), ("Beta", "bbb")])]
+        built = build_dense_index(cols, FakeClient(), "fake-emb", tmp_path)
+        swapped = [col(0, "vA", "Beta", "bbb"), col(1, "vA", "Alpha", "aaa")]
+        loaded = load_dense_index(tmp_path, swapped)
+        assert loaded is not None
+        assert np.allclose(loaded.vectors[0], built.vectors[1])
+        assert np.allclose(loaded.vectors[1], built.vectors[0])
+
+        edited = [col(0, "vA", "Alpha", "aaa düzeltildi"), cols[1]]
+        assert load_dense_index(tmp_path, edited) is None
+        meta_path = tmp_path / "dense_meta.json"
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        assert column_staleness(meta, edited) == 1 and column_staleness(meta, cols) == 0
+        del meta["keys"]  # index built before hashes were stored
+        meta_path.write_text(json.dumps(meta), encoding="utf-8")
+        assert load_dense_index(tmp_path, cols) is None
+        assert column_staleness(meta, cols) == 2
+
+    def test_object_vectors_checked_by_text(self, tmp_path: Path) -> None:
+        a, b = col(0, "vA", "Alpha", "aaa"), col(1, "vB", "Beta", "bbb")
+        objects = {"E.S.vA": [a], "E.S.vB": [b]}
+        build_object_index(objects, FakeClient(), "fake-emb", tmp_path)
+        assert load_object_index(tmp_path, objects) is not None
+        changed = {"E.S.vA": [a, col(2, "vA", "Gamma", "ccc")], "E.S.vB": [b]}
+        assert load_object_index(tmp_path, changed) is None  # same keys, new content
 
     def test_search_order(self) -> None:
         v = np.eye(3, dtype=np.float32)
@@ -173,41 +175,6 @@ def test_engine_degrades_when_embedding_fails(sample_dictionary_path: Path) -> N
     ranked, _ = engine.rank_objects("kart limit doluluk")
     assert ranked  # still answers, BM25 only
     assert not engine.hybrid
-
-
-def test_judge_rescoring(sample_dictionary_path: Path) -> None:
-    s = Settings()
-    s.dictionary.path = str(sample_dictionary_path)
-    s.llm.enabled = True
-    s.analyst.enabled = False  # the judge path (M4); the analyst flow is ADR-029
-    base = Engine.from_dictionary_file(s)
-    reply = {"matches": [{"candidate_id": "t1", "confidence": 0.9, "reason": "LLM gerekçe",
-                          "caveat": "LLM kısıt", "usage": "LLM kullanım"}]}  # fmt: skip
-    engine = Engine(base.dictionary, s, base.resources, llm=FakeClient(reply))
-    result = engine.analyze("kart limit doluluk oranı")
-    top = result.objects[0]
-    assert top.llm_confidence == 0.9 and top.rule_score is not None
-    w = s.scoring
-    assert abs(top.score - (w.w_rule * top.rule_score + w.w_llm * 0.9)) < 1e-9
-    assert top.reason == "LLM gerekçe" and top.caveat.startswith("LLM kısıt")
-    assert result.llm_model == "fake-llm"
-    assert any("LLM hakem" in m for m in result.method)
-
-
-def test_llm_expansion_only_widens_bm25(sample_dictionary_path: Path) -> None:
-    s = Settings()
-    s.dictionary.path = str(sample_dictionary_path)
-    s.llm.enabled, s.llm.expand_query, s.llm.judge = True, True, False
-    base = Engine.from_dictionary_file(s)
-    reply = {
-        "synonyms_tr": ["kullanım oranı"],
-        "terms_en": ["utilization"],
-        "column_name_guesses": [],
-    }
-    engine = Engine(base.dictionary, s, base.resources, llm=FakeClient(reply))
-    _, q = engine.rank_objects("kart doluluk")
-    assert q.sparse_terms.get("utilization") == s.expansion.weight
-    assert "utilization" not in {c.label for c in q.concepts}
 
 
 def test_localhost_is_pinned_to_ipv4() -> None:

@@ -8,14 +8,16 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import json
 import logging
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
 
-from vsa.models import DictColumn, Dictionary, Flag, FlagKind, RequestField, TermGroup
+from vsa.models import DictColumn, Dictionary, Flag, FlagKind, TermGroup
 from vsa.text.normalize import fold, load_stopwords
 
 log = logging.getLogger(__name__)
@@ -36,7 +38,7 @@ _REQUIRED = {
     "column": ("columnname",),
     "description": ("columndescription",),
 }
-_OPTIONAL = {"dataset_group": ("datasetgroup",)}
+_OPTIONAL = {"dataset_group": ("datasetgroup",), "synonyms": ("synonyms", "esanlamlilar")}
 
 NAMING_MISMATCH_CATEGORY = "isimlendirme/icerik uyumsuzlugu"
 
@@ -125,10 +127,30 @@ def _cell(value: object) -> str:
     return str(value).strip()
 
 
+OBJECTS_SHEET = "Objeler"
+
+
+def object_groups(objects: pd.DataFrame) -> dict[str, str]:
+    """DatasetGroup per ``DB.Schema.Object`` from the object sheet. Pure."""
+    out: dict[str, str] = {}
+    for rec in objects.to_dict("records"):
+        key = _cell(rec.get("ObjectKey")) or ".".join(
+            _cell(rec.get(c)) for c in ("DatabaseName", "SchemaName", "ObjectName")
+        )
+        group = _cell(rec.get("DatasetGroup"))
+        if key and group:
+            out[key] = group
+    return out
+
+
 def build_columns(
-    rows: pd.DataFrame, quality: pd.DataFrame | None = None
+    rows: pd.DataFrame,
+    quality: pd.DataFrame | None = None,
+    groups: Mapping[str, str] | None = None,
 ) -> tuple[list[DictColumn], list[str]]:
-    """Turn dictionary rows (+ optional quality findings) into DictColumns. Pure."""
+    """Turn dictionary rows (+ optional quality findings) into DictColumns. Pure.
+    A column's DatasetGroup comes from its own row when the column sheet has one,
+    otherwise from its object (``groups``, read from the object sheet)."""
     names = _resolve_columns(rows.columns)
     warnings: list[str] = []
 
@@ -152,9 +174,14 @@ def build_columns(
         seen.add(key)
 
         body, synonyms, flags = parse_description(raw)
+        listed = _cell(rec[names["synonyms"]]) if "synonyms" in names else ""
+        if listed:  # a Synonyms column wins over a trailing "Eş anlamlılar:" part
+            synonyms = tuple(split_synonyms(listed))
         flags = tuple(f for f in flags if not _is_account_number_note(col, f))
         extra = findings.get((fold(obj), fold(col)), [])
         group = _cell(rec[names["dataset_group"]]) if "dataset_group" in names else ""
+        if not group and groups:
+            group = groups.get(f"{db}.{schema}.{obj}", "")
         columns.append(
             DictColumn(
                 id=len(columns),
@@ -167,14 +194,14 @@ def build_columns(
                 synonyms=synonyms,
                 flags=flags + tuple(extra),
                 dataset_group=group or None,
-                has_pii=bool(_PII_MARKER.search(raw)),
+                has_pii=bool(_PII_MARKER.search(f"{raw} {listed}")),
             )
         )
     return columns, warnings
 
 
 def _quality_flags(quality: pd.DataFrame, warnings: list[str]) -> dict[tuple[str, str], list[Flag]]:
-    """Sheet2 findings keyed by folded (object, column). Sheet2 has no db/schema."""
+    """Quality findings keyed by folded (object, column); db/schema columns are not needed."""
     cols = {fold(str(c)): str(c) for c in quality.columns}
     needed = ("kategori", "objectname", "columnname")
     if not all(n in cols for n in needed):
@@ -209,11 +236,16 @@ def file_version(path: Path, row_count: int) -> str:
 
 
 def load_dictionary(
-    path: Path, sheet: str = "Sheet1", quality_sheet: str | None = "Sheet2"
+    path: Path, sheet: str = "Kolonlar", quality_sheet: str | None = None
 ) -> Dictionary:
     """Read the dictionary workbook. A missing quality sheet only yields a warning."""
     with pd.ExcelFile(path) as book:
         rows = book.parse(sheet, dtype=str)
+        groups = (
+            object_groups(book.parse(OBJECTS_SHEET, dtype=str))
+            if OBJECTS_SHEET in book.sheet_names
+            else None
+        )
         quality: pd.DataFrame | None = None
         extra_warnings: list[str] = []
         if quality_sheet:
@@ -224,7 +256,7 @@ def load_dictionary(
                     f"Kalite sayfası '{quality_sheet}' bulunamadı; bayraksız devam ediliyor"
                 )
 
-    columns, warnings = build_columns(rows, quality)
+    columns, warnings = build_columns(rows, quality, groups)
     warnings = extra_warnings + warnings
     for w in warnings:
         log.info(w)
@@ -236,6 +268,53 @@ def load_dictionary(
         version=file_version(path, len(rows)),
         warnings=warnings,
     )
+
+
+# --------------------------------------------------------------------------- object catalog
+
+
+def _names(cell: object) -> list[str]:
+    return [n.strip() for n in _cell(cell).split(",") if n.strip()]
+
+
+def build_catalog(objects: pd.DataFrame, columns: pd.DataFrame) -> list[dict[str, object]]:
+    """One record per object of the dictionary's object sheet, for the LLM's table pick:
+    profile fields plus the object's column names in dictionary order. Pure."""
+    by_object: dict[str, list[str]] = {}
+    for rec in columns.to_dict("records"):
+        key = ".".join(_cell(rec[c]) for c in ("DatabaseName", "SchemaName", "ObjectName"))
+        by_object.setdefault(key, []).append(_cell(rec["ColumnName"]))
+    out: list[dict[str, object]] = []
+    for rec in objects.to_dict("records"):
+        key = _cell(rec["ObjectKey"])
+        names = by_object.get(key)
+        if not names:
+            raise ValueError(f"Objeler sayfasındaki obje kolon sayfasında yok: {key}")
+        out.append({
+            "obj": key,
+            "aciklama": _cell(rec.get("ObjectDescription")),
+            "satir": _cell(rec.get("Grain")),
+            "anahtar": _names(rec.get("KeyColumns")),
+            "zaman": _names(rec.get("TimeColumns")),
+            "alan": _cell(rec.get("BusinessDomain")),
+            "grup": _cell(rec.get("DatasetGroup")),
+            "kolon_sayisi": len(names),
+            "kolonlar": names,
+        })  # fmt: skip
+    return out
+
+
+def write_catalog(dictionary: Path, out: Path, sheet: str = "Kolonlar") -> int:
+    """Read the dictionary's object and column sheets, write the catalog as JSON Lines."""
+    with pd.ExcelFile(dictionary) as book:
+        objects = book.parse(OBJECTS_SHEET, dtype=str)
+        columns = book.parse(sheet, dtype=str)
+    records = build_catalog(objects, columns)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", encoding="utf-8", newline="\n") as f:
+        for r in records:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    return len(records)
 
 
 def load_term_dictionary(path: Path) -> list[TermGroup]:
@@ -267,49 +346,105 @@ def load_stopword_file(path: Path) -> frozenset[str]:
     return load_stopwords(path.read_text(encoding="utf-8").splitlines())
 
 
-# --------------------------------------------------------------------------- batch input
+# --------------------------------------------------------------------------- list search input
 
-_HEADER_KEYS = {
-    "tr": ("turkce", "turkish", "tr baslik", "tr"),
-    "en": ("ingilizce", "english", "en baslik", "en"),
-    "description": ("aciklama", "description", "desc"),
-}
-
-
-def _header_role(cell: str) -> str | None:
-    text = fold(cell).strip()
-    for role, keys in _HEADER_KEYS.items():
-        if any(text == k or (len(k) > 3 and text.startswith(k)) or k in text.split() for k in keys):
-            return role
-    return None
+MAX_TERMS = 200  # one list is one sitting; a longer one is split by the user
+MAX_TERM_CHARS = 500  # longer cells are pasted paragraphs, not search terms
+_HEADER_WORDS = frozenset({
+    "terim", "terimler", "talep", "talepler", "soru", "sorular", "arama", "kavram", "kavramlar",
+    "term", "terms", "query", "queries", "request", "requests", "liste", "aranacak",
+    "aranacaklar", "ihtiyac", "konu",
+})  # fmt: skip
+TERM_FORMAT = "A sütununda, ilk satırda bir başlık (ör. “Terim”), altında her satırda bir terim"
 
 
-def parse_request_rows(rows: list[list[object]]) -> list[RequestField]:
-    """Rows of a target-table request sheet -> RequestFields (HANDOVER §4.1).
+@dataclass(slots=True)
+class TermList:
+    """A term list read by the one rule set (ADR-033): what will be searched, the header
+    that was not, and everything the reader should know about what was left out."""
 
-    The header row is found by its titles ("Türkçe Başlık", "İngilizce Başlık",
-    "Açıklamalar"); without one, the first three columns are taken in that order.
-    """
-    header_at, roles = -1, {"tr": 0, "en": 1, "description": 2}
-    for i, row in enumerate(rows[:10]):
-        found = {r: j for j, c in enumerate(row) if (r := _header_role(_cell(c)))}
-        if {"tr", "en"} <= found.keys() or {"en", "description"} <= found.keys():
-            header_at, roles = i, found
-            break
-
-    fields: list[RequestField] = []
-    for row in rows[header_at + 1 :]:
-
-        def get(role: str, row: list[object] = row) -> str:
-            j = roles.get(role)
-            return _cell(row[j]) if j is not None and j < len(row) else ""
-
-        tr, en, desc = get("tr"), get("en"), get("description")
-        if tr or en:
-            fields.append(RequestField(len(fields) + 1, tr, en, desc))
-    return fields
+    terms: list[str]
+    header: str
+    notes: list[str]
 
 
-def load_request_file(path: Path, sheet: str | int = 0) -> list[RequestField]:
-    df = pd.read_excel(path, sheet_name=sheet, header=None, dtype=str)
-    return parse_request_rows(df.values.tolist())
+def _column_letter(i: int) -> str:
+    letters = ""
+    i += 1
+    while i:
+        i, r = divmod(i - 1, 26)
+        letters = chr(65 + r) + letters
+    return letters
+
+
+def parse_term_sheet(
+    rows: Sequence[Sequence[object]], other_sheets: Sequence[str] = ()
+) -> TermList:
+    """The first sheet of a term list -> the terms, or a ValueError that says how to fix
+    the file. The format is fixed so nothing is guessed: one column (A), the first row is
+    always the header and is never searched, one term per row below it."""
+    cells = [[" ".join(_cell(c).split()) for c in row] for row in rows]
+    filled = sorted({j for row in cells for j, c in enumerate(row) if c})
+    if not filled:
+        raise ValueError(f"Dosya boş. Beklenen biçim: {TERM_FORMAT}.")
+    if filled != [0]:
+        where = ", ".join(_column_letter(j) for j in filled)
+        if 0 not in filled:
+            raise ValueError(f"Terimler A sütununda olmalı; dosyada veri {where} sütununda. "
+                             f"Beklenen biçim: {TERM_FORMAT}.")  # fmt: skip
+        raise ValueError(f"Liste tek sütunlu olmalı; dosyada {where} sütunlarında veri var. "
+                         f"Terimleri A sütununa yazıp diğer sütunları silin. Beklenen biçim: "
+                         f"{TERM_FORMAT}.")  # fmt: skip
+    column = [row[0] if row else "" for row in cells]
+    while column and not column[-1]:
+        column.pop()
+    header = column[0]
+    if not header:
+        raise ValueError(f"İlk satır başlık olmalı; A1 hücresi boş. Beklenen biçim: {TERM_FORMAT}.")
+    terms: list[str] = []
+    seen: set[str] = set()
+    blanks = repeats = 0
+    for n, text in enumerate(column[1:], 2):
+        if not text:
+            blanks += 1
+            continue
+        if len(text) > MAX_TERM_CHARS:
+            raise ValueError(f"{n}. satır çok uzun ({len(text)} karakter). Her satıra kısa bir "
+                             f"terim ya da soru yazın (en fazla {MAX_TERM_CHARS}).")  # fmt: skip
+        key = fold(text)
+        if key in seen:
+            repeats += 1
+            continue
+        seen.add(key)
+        terms.append(text)
+    if not terms:
+        raise ValueError(f"Başlığın (“{header}”) altında aranacak terim yok. "
+                         f"Beklenen biçim: {TERM_FORMAT}.")  # fmt: skip
+    if len(terms) > MAX_TERMS:
+        raise ValueError(f"Listede {len(terms)} terim var; tek seferde en fazla {MAX_TERMS}. "
+                         "Listeyi bölüp ayrı ayrı yükleyin.")  # fmt: skip
+    notes: list[str] = []
+    if fold(header).strip(" :.") not in _HEADER_WORDS:
+        notes.append(f"İlk satır (“{header}”) başlık sayıldı ve aranmadı.")
+    if blanks:
+        notes.append(f"{blanks} boş satır atlandı.")
+    if repeats:
+        notes.append(f"{repeats} tekrar eden terim atlandı (ilk geçtiği satır arandı).")
+    if other_sheets:
+        notes.append(f"Yalnız ilk sayfa okundu; şu sayfalardaki veriler alınmadı: "
+                     f"{', '.join(other_sheets)}.")  # fmt: skip
+    return TermList(terms, header, notes)
+
+
+def load_term_list(path: Path) -> TermList:
+    """A term list from an Excel file (first sheet; the other sheets are only checked)."""
+    try:
+        sheets = pd.read_excel(path, sheet_name=None, header=None, dtype=str)
+    except Exception as exc:  # not an Excel file, a damaged one, an old .xls without engine…
+        raise ValueError(f"Dosya Excel (.xlsx) olarak okunamadı. Beklenen biçim: "
+                         f"{TERM_FORMAT}.") from exc  # fmt: skip
+    if not sheets:
+        raise ValueError(f"Dosyada sayfa yok. Beklenen biçim: {TERM_FORMAT}.")
+    names = list(sheets)
+    others = [n for n in names[1:] if sheets[n].notna().to_numpy().any()]
+    return parse_term_sheet(sheets[names[0]].values.tolist(), others)

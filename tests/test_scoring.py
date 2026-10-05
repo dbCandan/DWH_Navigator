@@ -6,7 +6,7 @@ from vsa.config import FlagPenalty
 from vsa.expansion.query_expander import QueryExpander
 from vsa.features import build_features
 from vsa.models import DictColumn, Flag, FlagKind, Level
-from vsa.scoring.combine import combine, level_for
+from vsa.scoring.combine import level_for
 from vsa.scoring.rules import (
     CAVEAT_DERIVATION,
     CAVEAT_MODEL_ESTIMATED,
@@ -111,11 +111,6 @@ def test_levels() -> None:
     assert level_for(0.79) is Level.MEDIUM
     assert level_for(0.50) is Level.MEDIUM
     assert level_for(0.49) is Level.LOW
-
-
-def test_combine_without_llm_is_rule_score() -> None:
-    assert combine(0.7, None, 0.6, 0.4) == 0.7
-    assert abs(combine(1.0, 0.5, 0.6, 0.4) - 0.8) < 1e-9
 
 
 def test_level_matches_displayed_percent() -> None:
