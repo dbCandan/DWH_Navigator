@@ -434,7 +434,11 @@ class Engine:
         columns_of = {k: [f.col for f in o.features] for k, o in self.objects.items()}
         with trace.span("Aile araması") as sp:
             added = self._family_tables(short) if short.candidates else {}
-            by_search = self._searched_tables(q, {*short.candidates, *short.confusables, *added})
+            by_search = (
+                self._searched_tables(q, {*short.candidates, *short.confusables, *added})
+                if short.candidates  # "bulunamadı" from step 1 stays one call
+                else {}
+            )
             added |= by_search
             if sp is not None:
                 sp.detail = f"{len(added)} tablo eklendi"

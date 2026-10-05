@@ -124,3 +124,4 @@ def test_topic_index_reads_object_profiles() -> None:
     )
     (doc, _), *_ = index.search({"harcama": 1.0}, top_k=2)
     assert keys[doc] == "EDWDM.CUS.vB"
+
