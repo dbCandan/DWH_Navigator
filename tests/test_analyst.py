@@ -353,3 +353,17 @@ class TestSplitCatalog:
         r = engine(RoutingClient(None), chunks=2).analyze("müşterinin kredi kartı bilgisi")
         assert r.analyst  # the parts' candidates went on to step 2
         assert any("uzlaştırma yanıt vermedi" in m for m in r.method)
+
+
+def test_core_concept_missing_means_not_found() -> None:
+    """ADR-041: look-alike tables are not an answer when the core concept is missing."""
+    r = engine(ScriptedClient(SHORTLIST, analyst_reply(
+        core_concept="hane geliri", core_found=False, verdict="KISMEN VAR"))
+    ).analyze("müşterinin kredi kartı bilgisi")  # fmt: skip
+    assert r.analyst and r.verdict is Verdict.NOT_FOUND and r.objects == []
+    assert any(n.scope == "İlgili" and "hane geliri" in n.text for n in r.notes)
+    said = engine(ScriptedClient(SHORTLIST, analyst_reply(verdict="BULUNAMADI"))).analyze(
+        "müşterinin kredi kartı bilgisi"
+    )
+    assert said.verdict is Verdict.NOT_FOUND and said.objects == []  # the model's own word
+

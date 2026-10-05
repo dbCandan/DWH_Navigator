@@ -706,6 +706,19 @@ def build_answer(
             recs.append(rec)
     recs.sort(key=lambda r: -r.confidence)
     recs = recs[:top_n]
+    notes = clean.notes(reply.get("notes"))
+    design = clean.bullets(reply.get("design"))
+    # ADR-041: the request's core concept decides. When the model says the core is not in
+    # the material (or answers BULUNAMADI itself), look-alike tables are not an answer:
+    # they become one "İlgili" note and the verdict is BULUNAMADI.
+    said_not_found = str(reply.get("verdict") or "").strip() == Verdict.NOT_FOUND.value
+    if recs and (reply.get("core_found") is False or said_not_found):
+        core = clean.text(reply.get("core_concept")) or "talebin asıl bilgisi"
+        names = ", ".join(r.object_key.rsplit(".", 1)[-1] for r in recs)
+        text = f"“{core}” bu tablolarda yok; yalnız yakın bilgiler var: {names}."
+        notes.append(Note("İlgili", "Yakın ama talebi karşılamayan tablolar", text))
+        recs, design = [], []
+        reply = {**reply, "verdict": Verdict.NOT_FOUND.value}
     verdict, summary = _verdict_summary(
         reply.get("verdict"), clean.text(reply.get("summary")), bool(recs)
     )
@@ -713,8 +726,8 @@ def build_answer(
         verdict=verdict,
         summary=summary,
         recommendations=recs,
-        design=clean.bullets(reply.get("design")),
+        design=design,
         attention=[a for a in clean.bullets(reply.get("attention")) if not _is_typo_remark(a)],
-        notes=clean.notes(reply.get("notes")),
+        notes=notes,
         dropped=clean.dropped,
     )
