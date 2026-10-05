@@ -7,7 +7,6 @@ The API key never goes back to the browser; a blank key on save keeps the stored
 
 from __future__ import annotations
 
-import json
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -15,18 +14,15 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from vsa.config import integrations_path, read_integrations, write_integrations
-from vsa.index.dense import META_FILE
 from vsa.llm.client import LLMError, OpenAICompatibleClient
 from vsa.llm.integrations import (
     CHAT,
     EFFORTS,
-    EMBEDDING,
     ROLE_LABEL,
     Integration,
     conflicts,
     from_llm_settings,
     holder,
-    model_kind,
     new_id,
     normalize_endpoint,
     validate,
@@ -75,39 +71,22 @@ class LLMAdmin:
                 return i
         raise KeyError(str(iid))
 
-    def _index_meta(self) -> dict[str, Any]:
-        meta = Path(self.host.engine.settings.index.dir) / META_FILE
-        try:
-            data = json.loads(meta.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return {}
-        return data if isinstance(data, dict) else {}
-
     # ------------------------------------------------------------------ read
 
     def state(self) -> dict[str, Any]:
         items = self.items()
         engine = self.host.engine
-        roles = {}
-        for role in (CHAT, EMBEDDING):
-            h = holder(items, role)
-            roles[role] = None if h is None else {
-                "id": h.id, "name": h.name,
-                "model": h.chat_model if role == CHAT else h.embedding_model,
-            }  # fmt: skip
-        meta = self._index_meta()
+        h = holder(items, CHAT)
+        roles = {CHAT: None if h is None else {"id": h.id, "name": h.name, "model": h.chat_model}}
         return {
             "items": [i.public() for i in items],
             "roles": roles,
             "saved": self.path.exists(),
             "path": str(self.path),
-            "index": {"embedding_model": meta.get("model", ""), "dim": meta.get("dim")},
             "engine": {
                 "chat": engine.llm.available,
                 "chat_down": engine.llm.health() if engine.llm.available else "",
                 "chat_model": engine.llm.model,
-                "hybrid": engine.hybrid,
-                "dense_enabled": engine.settings.dense.enabled,
                 "analyst": engine.analyst_enabled,
             },
             "efforts": list(EFFORTS),
@@ -127,7 +106,6 @@ class LLMAdmin:
                 api_key=str(body.get("api_key") or "") or (old.api_key if old else ""),
                 enabled=old.enabled if old else False,
                 chat_model=str(body.get("chat_model") or "").strip(),
-                embedding_model=str(body.get("embedding_model") or "").strip(),
                 temperature=float(body.get("temperature", 0.0)),
                 timeout=int(body.get("timeout", 900)),
                 reasoning_effort=str(body.get("reasoning_effort", "none")),
@@ -141,9 +119,7 @@ class LLMAdmin:
         errors = validate(item, items)
         if errors:
             raise ValueError("; ".join(errors))
-        if old and (old.endpoint, old.chat_model, old.embedding_model) != (
-            item.endpoint, item.chat_model, item.embedding_model
-        ):
+        if old and (old.endpoint, old.chat_model) != (item.endpoint, item.chat_model):
             item.last_test = {}  # the old result no longer describes this connection
         if "activate" in body:  # the editor's checkbox; quick model picks leave it as it was
             item.enabled = bool(body["activate"])
@@ -163,7 +139,7 @@ class LLMAdmin:
         item = self._find(items, body.get("id"))
         on = bool(body.get("enabled"))
         if on and not item.roles:
-            raise ValueError("Önce bu entegrasyon için bir sohbet ya da embedding modeli seçin")
+            raise ValueError("Önce bu entegrasyon için bir sohbet modeli seçin")
         clash = conflicts(items, item) if on else []
         if clash and not body.get("replace"):
             return self._conflict(item, clash)
@@ -199,7 +175,7 @@ class LLMAdmin:
         items = self.items()
         old = self._find(items, body["id"]) if body.get("id") else None
         base = old.to_dict() if old else {}
-        for k in ("name", "endpoint", "chat_model", "embedding_model", "reasoning_effort"):
+        for k in ("name", "endpoint", "chat_model", "reasoning_effort"):
             if k in body:
                 base[k] = str(body[k] or "").strip()
         for k, cast in (("temperature", float), ("timeout", int), ("seed", int)):
@@ -217,7 +193,7 @@ class LLMAdmin:
     @staticmethod
     def _client(item: Integration, timeout: float = 30) -> OpenAICompatibleClient:
         return OpenAICompatibleClient(
-            item.endpoint, item.chat_model, item.embedding_model,
+            item.endpoint, item.chat_model,
             temperature=item.temperature, timeout=timeout, api_key=item.api_key,
             reasoning_effort=item.reasoning_effort, seed=item.seed,
         )  # fmt: skip
@@ -225,10 +201,7 @@ class LLMAdmin:
     def _rows(self, item: Integration, timeout: float) -> list[dict[str, Any]]:
         models = self._client(item).list_models(timeout)
         for m in models:
-            m["kind"] = model_kind(m["id"], m["type"])
-            m["in_use"] = [r for r, name in ((CHAT, item.chat_model),
-                                             (EMBEDDING, item.embedding_model))
-                           if name == m["id"] and item.enabled]  # fmt: skip
+            m["in_use"] = [CHAT] if item.enabled and m["id"] == item.chat_model else []
         return models
 
     def models(self, body: dict[str, Any]) -> dict[str, Any]:
@@ -255,7 +228,7 @@ class LLMAdmin:
             return {"servers": list(pool.map(one, items))}
 
     def test(self, body: dict[str, Any]) -> dict[str, Any]:
-        """Server, chat model, embedding model — each step timed. With ``record`` the result
+        """Server and chat model — each step timed. With ``record`` the result
         is kept on the stored integration (the card's "Test et")."""
         item = self._candidate(body)
         client = self._client(item, min(item.timeout, TEST_CHAT_TIMEOUT))
@@ -287,23 +260,9 @@ class LLMAdmin:
             answer = str(reply.get("cevap", ""))[:40]
             return True, f"Cevap verdi: “{answer}”"
 
-        def embedding() -> tuple[bool, str]:
-            vec = client.embed(["kredi kartı limit doluluk oranı"])[0]
-            meta = self._index_meta()
-            note = ""
-            if meta.get("model") and meta["model"] != item.embedding_model:
-                note = (f" — vektör indeksi “{meta['model']}” ile kuruldu; bu model kullanılacaksa "
-                        "indeks yeniden kurulmalı")  # fmt: skip
-            elif meta.get("dim") and meta["dim"] != len(vec):
-                return False, f"{len(vec)} boyutlu vektör; indeks {meta['dim']} boyutlu"
-            return True, f"{len(vec)} boyutlu vektör üretti{note}"
-
         step("Sunucu", server)
-        if steps[0]["ok"]:
-            if item.chat_model:
-                step(ROLE_LABEL[CHAT], chat)
-            if item.embedding_model:
-                step(ROLE_LABEL[EMBEDDING], embedding)
+        if steps[0]["ok"] and item.chat_model:
+            step(ROLE_LABEL[CHAT], chat)
         ok = all(s["ok"] for s in steps)
         if body.get("record") and item.id:
             items = self.items()

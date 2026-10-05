@@ -61,12 +61,12 @@ def test_fingerprint_follows_what_shapes_an_answer(engine: Engine) -> None:
     assert fp == engine.cache_fingerprint(5)
     engine.settings.llm.model = "another-model"
     assert fp != engine.cache_fingerprint(5)
-    other = answer_cache.fingerprint(engine.settings, "other-version", "", GROUPS, 5)
+    other = answer_cache.fingerprint(engine.settings, "other-version", GROUPS, 5)
     assert other != engine.cache_fingerprint(5)
 
 
 def test_encode_decode_round_trip(engine: Engine) -> None:
-    r = engine.analyze("kart limit doluluk oranı")
+    r = engine.rule_answer("kart limit doluluk oranı")
     assert r.objects
     back = answer_cache.decode(answer_cache.encode(r), engine.dictionary.by_key())
     assert back == r

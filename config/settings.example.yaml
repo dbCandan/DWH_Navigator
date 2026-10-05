@@ -48,8 +48,6 @@ llm:
   enabled: false
   endpoint: ""                 # sohbet modeli, ör. http://<spark-adresi>:8000/v1
   model: ""                    # sunucunun bildirdiği model adı
-  embedding_model: ""          # vektör indeksi (dense) için, ör. bge-m3
-  embedding_endpoint: ""       # embedding ayrı sunucudaysa (vLLM tek model sunar); boş = endpoint
   api_key: ""                  # sunucu anahtar istiyorsa
   temperature: 0.0
   seed: 42                     # tekrarlanabilir cevap; -1 = gönderme
@@ -69,7 +67,9 @@ analyst:
   full_table_columns: 90       # daha geniş tablolarda yalnız ilgili kolonların açıklaması
   min_confidence: 0.5          # bu güvenin altındaki öneri gösterilmez (ADR-006)
   max_tokens: 8000             # 2. adımın cevap bütçesi
-  catalog_chunks: 5            # 1. adım: katalog 5 parçada paralel okunur, adaylar sonra kıyaslanır (1 = tek parça)
+  catalog_chunks: 1            # 1. adım: katalog tek çağrıda okunur (N = N parçada paralel, sonra kıyaslanır)
+  detail_columns: 8            # 2. adım: tablo başına tam açıklamayla giden en ilgili kolon sayısı (diğerleri "Ad [Rol]: özet"; -1 = hepsi)
+  catalog_columns: false       # 1. adım kataloğuna kolon adları da eklensin mi
   chunk_candidates: 8          # parça başına en fazla aday
   pool_size: 40                # kıyaslanan aday havuzu
   pool_columns: 12             # havuzda tablo başına gösterilen en ilgili kolon sayısı

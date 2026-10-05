@@ -1,4 +1,4 @@
-"""OpenAI-compatible client: retries, feature adaptation, seed, chat/embedding servers."""
+"""OpenAI-compatible client: retries, feature adaptation, seed, health."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ from vsa.llm.client import (
     LLMError,
     NullClient,
     OpenAICompatibleClient,
-    SplitClient,
     client_from_settings,
     retry_delay,
 )
@@ -126,25 +125,8 @@ def test_unreachable_server_fails_fast() -> None:
     assert time.perf_counter() - t0 < 15
 
 
-def test_one_server_serves_chat_and_embeddings() -> None:
-    llm = LLMSettings(enabled=True, endpoint="http://127.0.0.1:1234/v1", model="chat",
-                      embedding_model="bge", seed=7)  # fmt: skip
-    c = client_from_settings(llm, embeddings=True)
-    assert isinstance(c, OpenAICompatibleClient) and c.available and c.embedding_model == "bge"
+def test_client_from_settings_carries_the_connection() -> None:
+    llm = LLMSettings(enabled=True, endpoint="http://127.0.0.1:1234/v1", model="chat", seed=7)
+    c = client_from_settings(llm)
+    assert isinstance(c, OpenAICompatibleClient) and c.available and c.model == "chat"
     assert c.seed == 7
-
-
-def test_embeddings_on_their_own_server() -> None:
-    """vLLM serves one model per server: chat and embeddings on different endpoints."""
-    llm = LLMSettings(enabled=True, endpoint="http://spark-1:8000/v1", model="chat",
-                      embedding_model="bge", embedding_endpoint="http://spark-1:8001/v1",
-                      api_key="k")  # fmt: skip
-    c = client_from_settings(llm, embeddings=True)
-    assert isinstance(c, SplitClient) and c.available and c.model == "chat"
-    assert isinstance(c.chat, OpenAICompatibleClient) and c.chat.endpoint == llm.endpoint
-    assert isinstance(c.embedder, OpenAICompatibleClient)
-    assert c.embedder.endpoint == llm.embedding_endpoint and c.embedder.embedding_model == "bge"
-    llm.enabled = False  # chat off: embeddings still served, the rule pipeline answers
-    off = client_from_settings(llm, embeddings=True)
-    assert isinstance(off, SplitClient) and not off.available
-    assert isinstance(off.embedder, OpenAICompatibleClient)

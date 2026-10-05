@@ -37,6 +37,8 @@ class DictColumn:
     flags: tuple[Flag, ...] = ()
     dataset_group: str | None = None
     has_pii: bool = False  # description mentions KVKK / kişisel veri (§18.5)
+    role: str = ""  # Anahtar | Kod | Ad | Zaman | Ölçü | Bayrak | Metin
+    summary: str = ""  # ≤70-char compressed meaning, what the LLM reads instead of description
 
     @property
     def object_key(self) -> str:
@@ -64,6 +66,19 @@ class TermGroup:
         return (self.term, *self.equivalents)
 
 
+@dataclass(frozen=True, slots=True)
+class ObjectProfile:
+    """One row of the dictionary's object sheet: what a table holds, for the LLM catalog."""
+
+    key: str  # DB.Schema.Object
+    description: str = ""
+    grain: str = ""  # what one row is
+    key_columns: tuple[str, ...] = ()
+    time_columns: tuple[str, ...] = ()
+    domain: str = ""
+    group: str = ""
+
+
 @dataclass(slots=True)
 class Dictionary:
     """A loaded data dictionary plus provenance."""
@@ -72,6 +87,7 @@ class Dictionary:
     source_path: str
     version: str  # "<sha256[:12]>-<row count>" (HANDOVER §3.6)
     warnings: list[str] = field(default_factory=list)
+    objects: dict[str, ObjectProfile] = field(default_factory=dict)
 
     def by_key(self) -> dict[str, DictColumn]:
         return {c.key: c for c in self.columns}

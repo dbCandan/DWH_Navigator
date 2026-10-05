@@ -49,7 +49,7 @@ def test_m1_acceptance(engine: Engine) -> None:
 
 
 def test_ask_report(engine: Engine, tmp_path: Path) -> None:
-    result = engine.analyze("Kredi kartı limit doluluk oranı", top_n=3)
+    result = engine.rule_answer("Kredi kartı limit doluluk oranı", top_n=3)
     assert result.verdict is not Verdict.NOT_FOUND
     assert 0 < len(result.objects) <= 3
     assert result.dropped_by_validation == 0
@@ -85,7 +85,7 @@ def test_list_report(engine: Engine, tmp_path: Path) -> None:
     from vsa.report.excel import write_list_report
 
     terms = ["kredi kartı limit doluluk oranı", "uzay gemisi yakıt seviyesi"]
-    items = [ListItem(i, t, engine.analyze(t)) for i, t in enumerate(terms, 1)]
+    items = [ListItem(i, t, engine.rule_answer(t)) for i, t in enumerate(terms, 1)]
     items.append(ListItem(3, "durdurulan terim"))
     result = ListResult("liste.xlsx", items, "sozluk.xlsx", "v1", "2026-10-01 10:00",
                         cancelled=True)  # fmt: skip

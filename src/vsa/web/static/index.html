@@ -1149,17 +1149,15 @@ async function loadStatus() {
     const s = STATUS;
     // One quiet indicator; the details live in its tooltip.
     const m = s.llm_state || { state: "none", reason: "" };
-    const cut = `%${Math.round((1 - (s.rule_only_factor ?? 1)) * 100)}`;
     const tip = [
       `Sözlük: ${s.columns.toLocaleString("tr-TR")} kolon · ${s.objects} tablo`,
-      `Anlamsal arama: ${s.hybrid ? s.embedding_model || "açık" : "kapalı"}`,
       m.state === "ok" ? `Analist: ${m.model}` : `Model: ${m.reason || "bağlı değil"}`,
     ].join("\n");
     const [cls, label, warn] = m.state === "ok" ? ["", "Hazır", ""]
       : m.state === "down" ? ["bad", "Modele ulaşılamıyor",
-        `${m.reason.replace(/\.?$/, ".")} Cevaplar kural motoruyla verilir: daha sınırlıdır ve güven skorları ${cut} düşürülür.`]
+        `${m.reason.replace(/\.?$/, ".")} Model çalışmadan soru analiz edilemez.`]
       : ["warn", "Model bağlı değil",
-        `Sohbet modeli bağlı değil: cevaplar kural motoruyla verilir, analist kadar isabetli değildir ve güven skorları ${cut} düşürülür.`];
+        `Sohbet modeli bağlı değil: soru analiz edilemez. Yönetim → Ayarlar → Yapay zekâ ekranından bir model bağlayın.`];
     $("#status").replaceChildren(h("span", { class: "pill " + cls, title: tip }, h("i", { class: "dot" + (cls ? "" : " on") }), label));
     const mw = $("#model-warn");
     mw.className = "model-warn" + (m.state === "down" ? " bad" : ""); mw.textContent = warn;
@@ -1614,15 +1612,13 @@ function renderAsk(r) {
 }
 
 function ruleNote(r) {
-  const cut = `%${Math.round((1 - (r.confidence_factor ?? 1)) * 100)}`;
-  const why = r.fallback ? `Analist bu soruda çalışamadı: ${r.fallback.replace(/\.?$/, ".")}` : "Sohbet modeli bağlı değil.";
-  return `${why} Bu cevabı kural motoru üretti: tabloları kelime ve anlam eşleşmesiyle sıralar, analist kadar isabetli değildir. Güven skorları ${cut} düşürülerek gösteriliyor.`;
+  const why = r.fallback ? r.fallback.replace(/\.?$/, ".") : "Sohbet modeli bağlı değil.";
+  return `Analiz yapılamadı: ${why} Cevabı yalnız analist (sohbet modeli) yazar; model çalışınca soruyu yeniden sorun.`;
 }
 
 // The same warning in one line; the full explanation stays in its tooltip.
 function ruleShort(r) {
-  const why = r.fallback ? "Analist bu soruda çalışamadı" : "Sohbet modeli bağlı değil";
-  return `${why}: cevabı kural motoru üretti, güven skorları %${Math.round((1 - (r.confidence_factor ?? 1)) * 100)} düşürüldü.`;
+  return `Analiz yapılamadı: ${r.fallback || "sohbet modeli bağlı değil"}`;
 }
 function answerView(r) {
   const concepts = h("div", { class: "chips" }, r.concepts.map(conceptChip),
@@ -1662,7 +1658,7 @@ function answerView(r) {
       h("div", { class: "answer-top" },
         h("span", { class: "vbadge" }, r.verdict),
         r.analyst ? h("span", { class: "src ai", title: "Cevabı dil modeli (analist) yazdı" }, "Analist · " + r.llm_model.split("/").pop())
-          : h("span", { class: "src rule", title: "Cevabı kural motoru üretti" }, "Kural motoru"),
+          : h("span", { class: "src rule", title: ruleNote(r) }, "Analiz yapılamadı"),
         r.reused ? h("span", { class: "src reused", title: r.reused.match === "aynı soru"
           ? `Bu soru ${r.reused.at} tarihinde analiz edildi; kayıtlı cevap gösteriliyor.`
           : `Aynı anlama gelen “${r.reused.query}” sorusu ${r.reused.at} tarihinde analiz edildi; kayıtlı cevap gösteriliyor.` },
@@ -1773,10 +1769,10 @@ const Bulk = (() => {
           job.running ? "⬇ Şimdiye kadarki rapor" : "⬇ Excel raporu") : null),
       h("div", { class: "list-bar" + (job.running ? " live" : "") }, h("i", { style: `width:${Math.max(2, frac * 100)}%` })),
       job.notes && job.notes.length ? h("div", { class: "list-notes" }, job.notes.map(n => h("div", {}, "ℹ " + n))) : null,
-      ruleCount() ? h("div", { class: "answer-fallback" }, `${ruleCount()} terimi analist değil kural motoru cevapladı (model bağlı değil ya da çalışamadı); bu terimlerin güven skorları düşürüldü. Satırlardaki KURAL etiketine bakın.`) : null,
+      ruleCount() ? h("div", { class: "answer-fallback" }, `${ruleCount()} terim analiz edilemedi (model bağlı değil ya da çalışamadı). Model çalışınca bu terimleri yeniden arayın.`) : null,
       h("ol", { class: "list-items" }, job.items.map(row)));
   }
-  const ruleCount = () => job.items.filter(i => i.state === "bitti" && (i.flow === "kural" || i.flow === "yedek")).length;
+  const ruleCount = () => job.items.filter(i => i.state === "bitti" && i.flow === "yapılamadı").length;
   function row(it) {
     const done = it.state === "bitti";
     const [word, cls] = done ? [it.verdict, ""] : STATE[it.state] || [it.state, "wait"];
@@ -1788,7 +1784,7 @@ const Bulk = (() => {
       h("span", { class: "li-n" }, it.index),
       h("span", { class: "li-term" }, it.term,
         done && it.flow === "önbellek" ? h("span", { class: "li-flow reused", title: "Bu terim daha önce analiz edilmişti; kayıtlı cevap kullanıldı" }, "ÖNCEKİ CEVAP")
-          : done && it.flow !== "analist" ? h("span", { class: "li-flow", title: "Cevabı kural motoru üretti; güven düşürüldü" }, it.flow === "yedek" ? "KURAL (YEDEK)" : "KURAL") : null,
+          : done && it.flow !== "analist" ? h("span", { class: "li-flow", title: "Bu terim analiz edilemedi (model bağlı değil ya da çalışamadı)" }, "YAPILAMADI") : null,
         best, err),
       h("span", { class: `st ${cls} ${done ? verdictClass(it.verdict) : ""}` }, word),
       h("span", { class: "li-ms" }, it.elapsed_ms ? dur(it.elapsed_ms) : ""));

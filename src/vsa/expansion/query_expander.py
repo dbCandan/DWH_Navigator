@@ -7,8 +7,8 @@ Two expansion sources in M1 (the LLM source arrives in M4):
 (b) the dictionary's own synonym sections — inverted into phrase -> column ids; a
     phrase found in the query puts those columns straight into the candidate pool.
 
-Per ADR-004 expansion only feeds the sparse (BM25) arm; ``dense_text`` stays the
-user's original wording.
+Per ADR-004 expansion only feeds the BM25 query; ``text`` keeps the user's original
+wording.
 """
 
 from __future__ import annotations
@@ -94,7 +94,6 @@ class ExpandedQuery:
     tokens: list[str]  # stemmed content tokens of the original query, in order
     raw_words: frozenset[str]  # folded original words, for exact column-name match
     sparse_terms: dict[str, float]  # BM25 query: token -> weight
-    dense_text: str  # untouched original text (ADR-004)
     concepts: list[Concept]
     term_groups: list[TermGroup]  # matched term-dictionary groups
     expansion_terms: list[str]  # display strings of added equivalents
@@ -210,7 +209,6 @@ class QueryExpander:
             tokens=tokens,
             raw_words=raw_words,
             sparse_terms=sparse,
-            dense_text=text,
             concepts=concepts,
             term_groups=[self.groups[i] for i in matched_groups],
             expansion_terms=list(dict.fromkeys(expansion_terms)),

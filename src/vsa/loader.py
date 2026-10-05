@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from vsa.models import DictColumn, Dictionary, Flag, FlagKind, TermGroup
+from vsa.models import DictColumn, Dictionary, Flag, FlagKind, ObjectProfile, TermGroup
 from vsa.text.normalize import fold, load_stopwords
 
 log = logging.getLogger(__name__)
@@ -38,7 +38,12 @@ _REQUIRED = {
     "column": ("columnname",),
     "description": ("columndescription",),
 }
-_OPTIONAL = {"dataset_group": ("datasetgroup",), "synonyms": ("synonyms", "esanlamlilar")}
+_OPTIONAL = {
+    "dataset_group": ("datasetgroup",),
+    "synonyms": ("synonyms", "esanlamlilar"),
+    "role": ("role", "rol"),
+    "summary": ("summary", "ozet"),
+}
 
 NAMING_MISMATCH_CATEGORY = "isimlendirme/icerik uyumsuzlugu"
 
@@ -130,17 +135,30 @@ def _cell(value: object) -> str:
 OBJECTS_SHEET = "Objeler"
 
 
-def object_groups(objects: pd.DataFrame) -> dict[str, str]:
-    """DatasetGroup per ``DB.Schema.Object`` from the object sheet. Pure."""
-    out: dict[str, str] = {}
+def object_profiles(objects: pd.DataFrame) -> dict[str, ObjectProfile]:
+    """The object sheet as profiles keyed by ``DB.Schema.Object``. Pure."""
+    out: dict[str, ObjectProfile] = {}
     for rec in objects.to_dict("records"):
         key = _cell(rec.get("ObjectKey")) or ".".join(
             _cell(rec.get(c)) for c in ("DatabaseName", "SchemaName", "ObjectName")
         )
-        group = _cell(rec.get("DatasetGroup"))
-        if key and group:
-            out[key] = group
+        if not key.strip("."):
+            continue
+        out[key] = ObjectProfile(
+            key=key,
+            description=_cell(rec.get("ObjectDescription")),
+            grain=_cell(rec.get("Grain")),
+            key_columns=tuple(_names(rec.get("KeyColumns"))),
+            time_columns=tuple(_names(rec.get("TimeColumns"))),
+            domain=_cell(rec.get("BusinessDomain")),
+            group=_cell(rec.get("DatasetGroup")),
+        )
     return out
+
+
+def object_groups(objects: pd.DataFrame) -> dict[str, str]:
+    """DatasetGroup per ``DB.Schema.Object`` from the object sheet. Pure."""
+    return {k: p.group for k, p in object_profiles(objects).items() if p.group}
 
 
 def build_columns(
@@ -195,6 +213,8 @@ def build_columns(
                 flags=flags + tuple(extra),
                 dataset_group=group or None,
                 has_pii=bool(_PII_MARKER.search(f"{raw} {listed}")),
+                role=_cell(rec[names["role"]]) if "role" in names else "",
+                summary=_cell(rec[names["summary"]]) if "summary" in names else "",
             )
         )
     return columns, warnings
@@ -241,11 +261,12 @@ def load_dictionary(
     """Read the dictionary workbook. A missing quality sheet only yields a warning."""
     with pd.ExcelFile(path) as book:
         rows = book.parse(sheet, dtype=str)
-        groups = (
-            object_groups(book.parse(OBJECTS_SHEET, dtype=str))
+        profiles = (
+            object_profiles(book.parse(OBJECTS_SHEET, dtype=str))
             if OBJECTS_SHEET in book.sheet_names
-            else None
+            else {}
         )
+        groups = {k: p.group for k, p in profiles.items() if p.group} or None
         quality: pd.DataFrame | None = None
         extra_warnings: list[str] = []
         if quality_sheet:
@@ -267,6 +288,7 @@ def load_dictionary(
         source_path=str(path),
         version=file_version(path, len(rows)),
         warnings=warnings,
+        objects=profiles,
     )
 
 

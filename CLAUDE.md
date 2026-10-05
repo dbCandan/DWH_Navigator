@@ -8,7 +8,7 @@ numaralarıyla (§8, ADR-005 vb.) atıf yap.
 arar ve **tablo seviyesinde**, gerekçeli, güven skorlu öneriler içeren Excel raporu üretir.
 LLM açıkken `ask` cevabını **analist akışı** yazar (ADR-029, `llm/analyst.py`): model önce tüm
 tablo kataloğundan aday seçer, sonra adayların bütün kolon açıklamalarını okuyup raporu yazar
-(öneriler, kurgu, dikkat, notlar). Kural motoru ipucu, doğrulayıcı ve yedektir. **Tek akış
+(öneriler, kurgu, dikkat, notlar). Kural motoru yalnız ipucu ve doğrulayıcıdır (ADR-038). **Tek akış
 budur** (ADR-033): toplu arama da bir Excel listesinin her terimini bu akıştan geçirip tek
 rapor üretir; hedef tablo (batch) modu, LLM hakem ve LLM sorgu genişletme kaldırıldı. Hedef: kullanıcının
 Claude chat'te elle yaptırdığı analizlerle (`out/VSA_Analiz_*.xlsx`, golden q004–q007) aynı kalite.
@@ -22,7 +22,9 @@ bulut desteği ve model laboratuvarı kaldırıldı.
   karşı doğrulanır; LLM tabloyu yalnızca aday id'siyle seçer. Analist akışında modelin yazdığı
   her metin `MentionChecker` ile taranır; sözlükte olmayan tablo/kolon adı geçen cümle silinir.
 - **"Bulunamadı" geçerli cevap** (ADR-006): eşik altı aday gösterilmez, liste doldurulmaz.
-- **LLM'siz çalışabilirlik** (ADR-008): kural tabanlı mod her zaman çalışır.
+- **Cevabı yalnız analist yazar** (ADR-038, ADR-008'in yerine): model yoksa/ulaşılamıyorsa/çalışamazsa
+  sonuç "Analiz yapılamadı" + sebep; kural cevabı kullanıcıya gösterilmez (`Engine.rule_answer`
+  yalnız ölçüm ve testler için).
 - **Kapsam filtresi koda gömülmez** (ADR-001): kapsam sözlük dosyasıyla yönetilir.
 - Sorgu genişletme yalnızca BM25 koluna uygulanır (ADR-004).
 
@@ -43,9 +45,8 @@ bulut desteği ve model laboratuvarı kaldırıldı.
   KVKK bayrağı açıklamadan türetilir; DatasetGroup Objeler'den `DB.Şema.Obje` ile gelir).
   Role ∈ {Anahtar, Kod, Ad, Zaman, Ölçü, Bayrak, Metin}; Summary ≤70 karakter sıkıştırılmış anlam
   ("Cari hesap bakiyesi · TL · son 12 ay ortalama"), LLM'e uzun açıklama yerine verilmek için. Kalite sayfası yok (`quality_sheet` boş); yükleyici isteğe bağlı olarak hâlâ okuyabilir.
-  Vektör indeksi kolonları metin özetiyle eşler; satır sırası serbesttir.
 - `vsa catalog` → `data/VeriSozlugu.objeler.jsonl` (Objeler sayfasından LLM tablo kataloğu).
-  Sözlük değişince `vsa index --dense` ve `vsa catalog`.
+  Sözlük değişince `vsa index` ve `vsa catalog`.
 - `data/`, `out/` ve tüm `.xlsx` dosyaları gitignore'da — **kurum içi veri, asla commit edilmez**.
   Testler gerçek sözlüğe ihtiyaç duyarsa sözlük yoksa `skip` etmeli.
 - Eski kaynakta kolon `DAtabaseName` yazım hatalıydı; yükleyici her iki yazımı kabul eder.
@@ -55,16 +56,21 @@ bulut desteği ve model laboratuvarı kaldırıldı.
 `docs/DECISIONS.md`: ADR-009 (müşteri no = hesap no), ADR-010 (zaman/granülerlik yalnız obje
 skorunda), ADR-011 (uygulanamayan bileşen ağırlıktan çıkar), ADR-012 (kolon skoru tabanı),
 ADR-013 (IDF ağırlıklı kapsama + cevap eşiği), ADR-014 (uzun format kırılım), ADR-015 (obje havuzu),
-ADR-016/017 (batch modu — ADR-033 ile kaldırıldı), ADR-018/019 (yerel model, hibrit arama),
+ADR-016/017 (batch modu — ADR-033 ile kaldırıldı), ADR-018/019 (yerel model, hibrit arama — vektör araması 2026-10-05'te kaldırıldı),
 ADR-020..022 (web, hakem ve ağırlıkları — hakem ADR-033 ile kaldırıldı), ADR-023 (Keşfet araması), ADR-024 (Evren arayüzü),
 ADR-025/026 (model laboratuvarı ve bulut modelleri — ADR-031 ile kaldırıldı),
 ADR-027 (tek ekran, tek görünüm: yalnız soru sorma, Evren), ADR-028 (tablo seviyesinde
-konu uyumu: tablo BM25 + tablo profil vektörleri; `vsa index --dense` kurar), ADR-029 (analist
-akışı: LLM katalogdan aday seçer, adayların kolonlarını okuyup raporu yazar; kurallar doğrular), ADR-030 (`/admin`: ayarlar + analiz izleri, bağlantısız ve korumasız), ADR-031 (modeller kurum içinde; lab ve bulut kaldırıldı), ADR-032 (LLM entegrasyonları ekranı: sunucu + sohbet/embedding rolleri, test, envanter, aktif/pasif; sade üç sayfalık ayarlar), ADR-033 (tek akış: tek soru + onu kullanan Excel listesi; batch, hakem, LLM genişletme, `--compare` kaldırıldı). ADR-034 (cevabı kim yazdı her yerde yazılır; model yok/ulaşılamıyorsa uyarı, ölü sunucu beklenmez; kural cevabında güven × `scoring.rule_only_factor` 0,80). ADR-035 (önceki cevaplar: analist cevabı `data/cache/answers.jsonl`'de saklanır; aynı soru ya da terim sözlüğüne göre aynı kavram kümesi → kayıtlı cevap; sözlük/model/ayar parmak izi değişince geçersiz; yalnız web, `vsa ask`/`eval` etkilenmez). ADR-036 (geri bildirim cevabı şekillendirir: tablo ve cevap 👍/👎 + gerekçe; kişi başı son oy, aynı soru 1,0 / aynı anlam 0,6, 180 gün yarılanma; ≈2 kişi 👎 → tablo önerilerden çıkar ama görünür kalır, güven ±%15, doğrulanan yakın aday eklenir; cevap 👎 çoğunluğu kayıtlı cevabı siler; yalnız ekranda, Excel değişmez; `feedback.assess/apply`).
+konu uyumu: tablo BM25), ADR-029 (analist
+akışı: LLM katalogdan aday seçer, adayların kolonlarını okuyup raporu yazar; kurallar doğrular), ADR-030 (`/admin`: ayarlar + analiz izleri, bağlantısız ve korumasız), ADR-031 (modeller kurum içinde; lab ve bulut kaldırıldı), ADR-032 (LLM entegrasyonları ekranı: sunucu + sohbet rolü, test, envanter, aktif/pasif; sade üç sayfalık ayarlar), ADR-033 (tek akış: tek soru + onu kullanan Excel listesi; batch, hakem, LLM genişletme, `--compare` kaldırıldı). ADR-034 (cevabı kim yazdı her yerde yazılır; ölü sunucu beklenmez; kural cevabı artık gösterilmez, ADR-038). ADR-035 (önceki cevaplar: analist cevabı `data/cache/answers.jsonl`'de saklanır; aynı soru ya da terim sözlüğüne göre aynı kavram kümesi → kayıtlı cevap; sözlük/model/ayar parmak izi değişince geçersiz; yalnız web, `vsa ask`/`eval` etkilenmez). ADR-036 (geri bildirim cevabı şekillendirir: tablo ve cevap 👍/👎 + gerekçe; kişi başı son oy, aynı soru 1,0 / aynı anlam 0,6, 180 gün yarılanma; ≈2 kişi 👎 → tablo önerilerden çıkar ama görünür kalır, güven ±%15, doğrulanan yakın aday eklenir; cevap 👎 çoğunluğu kayıtlı cevabı siler; yalnız ekranda, Excel değişmez; `feedback.assess/apply`). ADR-037..040 `docs/DECISIONS.md`'de: tek konsolide sözlük, analist
+tek yol, vektör kaldırıldı, kompakt analist malzemesi (Objeler kataloğu + `Ad [Rol]: özet`).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
 önce ve sonra `vsa eval` çalıştırılır; regresyon varsa değişiklik geri alınır.
+Büyük referans set (kurum içi veri, `data/golden/`, gitignore'da): 100 soru, Fable ve Opus'un
+bağımsız cevaplarının uzlaşması (`merge_oracles.py` → `reference.jsonl`, `reference_golden.yaml`,
+`reference_negative.yaml`). Ölçüm: `vsa eval --golden data/golden/reference_golden.yaml
+--negatives data/golden/reference_negative.yaml` (model açıkken analist akışını ölçer).
 
 ## Sözlükte dokümanda olmayan ayrıntılar
 - Yükleyici baştaki `[...]` bayraklarını hâlâ tanır (`MODEL TAHMİNİ` ×0.85, diğerleri not), ama
@@ -95,8 +101,8 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 - [x] M2 — Değerlendirme: `vsa eval` (ask + negatif grupları, kolon isabeti, tuzaklar),
       `--save` → `eval/history.jsonl`. Golden set küçük (8 ask); `mode: batch` maddesi (b001)
       dosyada kalır ama atlanır (ADR-033).
-- [x] M3 — Hibrit arama: BGE-M3 (LM Studio) + BM25, `vsa index --dense` (~45 dk CPU, devam
-      edebilir). Reranker yok (LM Studio cross-encoder sunmuyor). ADR-019.
+- [-] M3 — Hibrit arama: vektör araması kaldırıldı (2026-10-05); arama yalnız BM25.
+      Eski `settings.yaml` / `llm_integrations.yaml` içindeki `dense:` ve embedding alanları yok sayılır.
 - [x] M4 — LLM katmanı: hakem ve LLM sorgu genişletme yerini analist akışına (M8) bıraktı,
       ADR-033 ile kaldırıldı. `reasoning_effort: none` ve seed korunuyor.
 - [x] M5 — Toplu arama (ADR-033): tek sütunlu Excel listesi, her terim tek soru akışından,
@@ -122,6 +128,5 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 Modeller ekibin DGX Spark sunucularında, OpenAI uyumlu API ile (ADR-031); bu makinede model
 çalıştırılmaz, `baslat.bat` LM Studio açmaz. Bağlantı `/admin` → Ayarlar → Yapay zekâ ekranından
 (ADR-032): entegrasyonlar `config/llm_integrations.yaml` (repoda yok, API anahtarı içerir). Dosya
-yoksa `config/settings.yaml` → `llm:` geçerli. `analyst:` yalnız `settings.yaml`. Vektör indeksi
-yalnız kurulduğu embedding modeliyle sorgulanır; model değişirse `/admin` → Veri ve bakım → Vektör indeksi (arka planda, durdurulabilir) ya da `vsa index --dense`. Model
+yoksa `config/settings.yaml` → `llm:` geçerli. `analyst:` yalnız `settings.yaml`. Model
 değişikliğinden önce ve sonra `vsa eval --save`.

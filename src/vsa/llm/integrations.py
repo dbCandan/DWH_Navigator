@@ -1,12 +1,14 @@
 """LLM integrations (ADR-032): named connections to OpenAI-compatible servers.
 
-Each integration is one server (base URL + key) and may fill two roles: the **chat** model
-(the analyst) and the **embedding** model (dense search). Only active integrations are
-used, and each role is held by at most one active integration — activating a second holder
-of a role is refused unless the caller asks to replace the first.
+Each integration is one server (base URL + key) and may fill the **chat** role (the
+analyst). Only active integrations are used, and the role is held by at most one active
+integration — activating a second holder is refused unless the caller asks to replace the
+first.
 
 When the integrations file exists it is authoritative: the ``llm`` settings get their
-connection from the active integrations, and a role nobody holds is off. Without the file
+connection from the active integrations, and the chat role is off when nobody holds it.
+Entries written before vector search was removed may still carry an embedding model; it
+is ignored on load. Without the file
 the ``llm:`` section of ``settings.yaml`` works as before (CLI, eval, older setups).
 
 Pure: reading and writing the file is in ``config.py``, talking to servers in ``client.py``.
@@ -23,12 +25,10 @@ from urllib.parse import urlparse
 from vsa.text.normalize import fold
 
 CHAT = "chat"
-EMBEDDING = "embedding"
-ROLE_LABEL = {CHAT: "Sohbet modeli", EMBEDDING: "Embedding modeli"}
+ROLE_LABEL = {CHAT: "Sohbet modeli"}
 EFFORTS = ("none", "low", "medium", "high", "")
 INTERNAL_SUFFIXES = (".local", ".lan", ".internal", ".intranet", ".corp", ".localhost")
 _SHARED = ipaddress.ip_network("100.64.0.0/10")
-EMBED_HINTS = ("embed", "bge", "e5-", "gte-", "minilm", "mpnet", "nomic", "jina-emb", "retriev")
 
 
 @dataclass(slots=True)
@@ -39,7 +39,6 @@ class Integration:
     api_key: str = ""
     enabled: bool = False
     chat_model: str = ""
-    embedding_model: str = ""
     temperature: float = 0.0
     timeout: int = 900  # the analyst's second step writes a long answer (ADR-029)
     reasoning_effort: str = "none"
@@ -48,7 +47,7 @@ class Integration:
 
     @property
     def roles(self) -> list[str]:
-        return [r for r, m in ((CHAT, self.chat_model), (EMBEDDING, self.embedding_model)) if m]
+        return [CHAT] if self.chat_model else []
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -64,14 +63,19 @@ class Integration:
 
 
 def from_dict(d: dict[str, Any]) -> Integration:
+    """Unknown keys (an old file's retired fields) are dropped; an entry left without a
+    chat model cannot be active."""
     known = set(Integration.__dataclass_fields__)
-    return Integration(**{k: v for k, v in d.items() if k in known})
+    item = Integration(**{k: v for k, v in d.items() if k in known})
+    if not item.roles:
+        item.enabled = False
+    return item
 
 
 def normalize_endpoint(url: str) -> str:
     """Trim, drop a trailing slash and a pasted ``/chat/completions`` or ``/models``."""
     url = url.strip().rstrip("/")
-    for tail in ("/chat/completions", "/embeddings", "/models"):
+    for tail in ("/chat/completions", "/models"):
         if url.endswith(tail):
             url = url[: -len(tail)]
     return url
@@ -131,19 +135,9 @@ def is_internal(endpoint: str) -> bool:
     return ip.is_private or ip.is_loopback or ip.is_link_local or ip in _SHARED
 
 
-def model_kind(model_id: str, server_type: str = "") -> str:
-    """``chat`` or ``embedding``: the server's own type when it says (LM Studio), else
-    the usual embedding model names."""
-    t = fold(server_type)
-    if t:
-        return EMBEDDING if t.startswith("embed") else CHAT
-    folded = fold(model_id)
-    return EMBEDDING if any(k in folded for k in EMBED_HINTS) else CHAT
-
-
 def apply(llm: Any, items: list[Integration]) -> None:
     """Point ``llm`` (``LLMSettings``) at the active integrations; a free role is off."""
-    chat, embed = holder(items, CHAT), holder(items, EMBEDDING)
+    chat = holder(items, CHAT)
     llm.enabled = chat is not None
     llm.endpoint = chat.endpoint if chat else ""
     llm.model = chat.chat_model if chat else ""
@@ -153,31 +147,18 @@ def apply(llm: Any, items: list[Integration]) -> None:
         llm.timeout = chat.timeout
         llm.reasoning_effort = chat.reasoning_effort
         llm.seed = chat.seed
-    llm.embedding_model = embed.embedding_model if embed else ""
-    llm.embedding_endpoint = embed.endpoint if embed else ""
-    llm.embedding_api_key = embed.api_key if embed else ""
 
 
 def from_llm_settings(llm: Any) -> list[Integration]:
     """The ``llm:`` section of an existing setup as integrations — run once, when the
     integrations file is first created, so the screen starts from what already works."""
-    out: list[Integration] = []
     endpoint = str(getattr(llm, "endpoint", "") or "")
-    embed_endpoint = str(getattr(llm, "embedding_endpoint", "") or "") or endpoint
-    if endpoint:
-        same = embed_endpoint == endpoint
-        out.append(Integration(
-            id="mevcut", name="Mevcut bağlantı", endpoint=normalize_endpoint(endpoint),
-            api_key=llm.api_key, enabled=bool(llm.enabled or (same and llm.embedding_model)),
-            chat_model=llm.model if llm.enabled else "",
-            embedding_model=llm.embedding_model if same else "",
-            temperature=float(llm.temperature), timeout=int(llm.timeout),
-            reasoning_effort=str(llm.reasoning_effort), seed=int(llm.seed),
-        ))  # fmt: skip
-    if embed_endpoint and embed_endpoint != endpoint and llm.embedding_model:
-        out.append(Integration(
-            id="mevcut-embedding", name="Mevcut embedding", enabled=True,
-            endpoint=normalize_endpoint(embed_endpoint), api_key=llm.api_key,
-            embedding_model=llm.embedding_model,
-        ))  # fmt: skip
-    return out
+    if not endpoint:
+        return []
+    return [Integration(
+        id="mevcut", name="Mevcut bağlantı", endpoint=normalize_endpoint(endpoint),
+        api_key=llm.api_key, enabled=bool(llm.enabled and llm.model),
+        chat_model=llm.model if llm.enabled else "",
+        temperature=float(llm.temperature), timeout=int(llm.timeout),
+        reasoning_effort=str(llm.reasoning_effort), seed=int(llm.seed),
+    )]  # fmt: skip

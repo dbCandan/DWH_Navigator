@@ -15,7 +15,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
 import yaml
 
 from vsa import cancel, trace
@@ -29,13 +28,6 @@ from vsa.expansion.query_expander import (
 )
 from vsa.features import ColumnFeatures, build_features
 from vsa.index.bm25 import BM25Index, weighted_fields
-from vsa.index.dense import (
-    DenseIndex,
-    ObjectDenseIndex,
-    load_dense_index,
-    load_object_index,
-    normalize,
-)
 from vsa.index.store import load_index, save_index
 from vsa.llm.analyst import (
     STRUCTURAL,
@@ -56,7 +48,7 @@ from vsa.llm.analyst import (
     table_material,
     term_matcher,
 )
-from vsa.llm.client import LLMClient, LLMError, NullClient, client_from_settings
+from vsa.llm.client import LLMClient, NullClient, client_from_settings
 from vsa.loader import load_dictionary, load_stopword_file, load_term_dictionary
 from vsa.models import (
     AnalysisResult,
@@ -89,9 +81,6 @@ log = logging.getLogger(__name__)
 
 CLARIFICATIONS_PATH = Path("config/clarifications.yaml")
 NEAR_MISS_COUNT = 3
-# Tables most similar to the request by their profile vector join the candidate pool
-# even when none of their columns did (ADR-028).
-OBJECT_POOL = 15
 # Rule results shown to the analyst model as hints (ADR-029).
 ANALYST_HINT_TABLES = 15
 ANALYST_RULE_POOL = 60  # rule-ranked tables the "together" hint picks from
@@ -152,16 +141,11 @@ class Engine:
         resources: Resources,
         bm25: BM25Index | None = None,
         llm: LLMClient | None = None,
-        dense: DenseIndex | None = None,
     ) -> None:
         self.dictionary = dictionary
         self.settings = settings
         self.resources = resources
         self.llm: LLMClient = llm or NullClient()
-        self.dense = dense
-        self.object_dense: ObjectDenseIndex | None = None
-        self._qvec_cache: dict[str, np.ndarray] = {}
-        self._dense_error = ""
         self.features = _features_for(dictionary, resources.stopwords)
         if [f.col.id for f in self.features] != list(range(len(self.features))):
             raise ValueError("Kolon id'leri 0..N-1 sıralı olmalı")
@@ -201,17 +185,12 @@ class Engine:
     def from_dictionary_file(cls, settings: Settings) -> Engine:
         d = settings.dictionary
         dictionary = load_dictionary(Path(d.path), d.sheet, d.quality_sheet)
-        engine = cls(
+        return cls(
             dictionary,
             settings,
             Resources.from_settings(settings),
-            llm=client_from_settings(
-                settings.llm, embeddings=settings.dense.enabled
-            ),
-            dense=_dense_for(settings, dictionary.columns),
+            llm=client_from_settings(settings.llm),
         )
-        engine.object_dense = _object_dense_for(settings, engine.objects)
-        return engine
 
     @classmethod
     def from_index(cls, settings: Settings) -> Engine:
@@ -221,19 +200,10 @@ class Engine:
             settings,
             Resources.from_settings(settings),
             bm25=bm25,
-            llm=client_from_settings(
-                settings.llm, embeddings=settings.dense.enabled
-            ),
-            dense=_dense_for(settings, dictionary.columns),
+            llm=client_from_settings(settings.llm),
         )
-        engine.object_dense = _object_dense_for(settings, engine.objects)
         engine.index_meta = meta
         return engine
-
-    @property
-    def hybrid(self) -> bool:
-        """Dense arm active: index loaded and the embedding model reachable so far."""
-        return self.dense is not None and not self._dense_error
 
     def cache_keys(self, query: str) -> tuple[str, str]:
         """(text key, meaning key) of a question for reusing earlier answers (ADR-035)."""
@@ -244,23 +214,9 @@ class Engine:
         return fingerprint(
             self.settings,
             self.dictionary.version,
-            self.dense.model if self.dense else "",
             self.resources.term_groups,
             top_n,
         )
-
-    def _query_vector(self, text: str) -> np.ndarray | None:
-        if not self.hybrid:
-            return None
-        if text not in self._qvec_cache:
-            try:
-                vec = np.asarray(self.llm.embed([text])[0], dtype=np.float32)
-            except LLMError as exc:
-                self._dense_error = str(exc)
-                log.warning("Vektör araması devre dışı, yalnız BM25 ile devam: %s", exc)
-                return None
-            self._qvec_cache[text] = normalize(vec)
-        return self._qvec_cache[text]
 
     index_meta: dict[str, Any] = {}
 
@@ -295,33 +251,8 @@ class Engine:
         pool = {doc for doc, _ in scored[: s.search.candidate_object_columns]}
         pool |= set(q.synonym_hits)
         lap.note(f"{len(pool)} aday kolon")
-        if s.dense.enabled and self.hybrid:
-            lap("Anlamsal arama")
-
-        # M3: the dense arm uses the original wording (ADR-004) and widens the pool with
-        # semantically close columns that share no words with the request.
-        qvec = self._query_vector(q.dense_text) if s.dense.enabled else None
-        dense_lo = dense_hi = 0.0
-        if qvec is not None and self.dense is not None:
-            dense_top = self.dense.search(qvec, s.dense.top_k)
-            pool |= {i for i, _ in dense_top}
-            dense_hi, dense_lo = dense_top[0][1], dense_top[-1][1]
-
         lap("Kolon skorlama")
         candidate_objects = {self.features[i].col.object_key for i in pool}
-        object_sim: dict[str, float] | None = None
-        if qvec is not None and self.object_dense is not None:
-            object_sim = self.object_dense.similarity(qvec)
-            best = sorted(object_sim, key=lambda k: -object_sim[k])[:OBJECT_POOL]
-            candidate_objects |= set(best)
-
-        dense_sim: dict[int, float] = {}
-        if qvec is not None and self.dense is not None and dense_hi > dense_lo:
-            ids = [f.col.id for k in candidate_objects for f in self.objects[k].features]
-            span = dense_hi - dense_lo
-            raw = self.dense.similarity(qvec, ids)
-            dense_sim = {i: max(0.0, min(1.0, (v - dense_lo) / span)) for i, v in raw.items()}
-
         hits: dict[int, ColumnHit] = {}
         for key in candidate_objects:
             for f in self.objects[key].features:
@@ -331,8 +262,6 @@ class Engine:
                     max_bm25,
                     q,
                     s.scoring.flag_penalty,
-                    dense=dense_sim.get(f.col.id) if dense_sim else None,
-                    dense_weight=s.dense.weight if dense_sim else 0.0,
                 )
         lap.note(f"{len(candidate_objects)} tablonun {len(hits)} kolonu")
         lap("Tablo toplama ve konu uyumu")
@@ -342,9 +271,6 @@ class Engine:
                 self.topic_index,
                 q.sparse_terms,
                 sorted(candidate_objects),
-                {k: self.objects[k].features for k in candidate_objects},
-                dense_sim or None,
-                object_sim,
             )
             if s.scoring.object.topic > 0
             else None
@@ -388,36 +314,53 @@ class Engine:
         return self.llm.available
 
     def analyze(self, query: str, top_n: int = 5) -> AnalysisResult:
-        """The one question flow: the analyst when a chat model is connected (ADR-029);
-        the rule engine when none is, or when the model fails (ADR-008)."""
-        if self.analyst_enabled:
-            with trace.span("Model sunucusu kontrolü", self.llm.model) as s:
-                down = self.llm.health()
-                if s is not None and down:
-                    s.status, s.detail = "error", down
-            if down:  # do not wait on a dead server: answer with rules at once, and say so
-                reason = down if "ulaşılamadı" in down else f"Model sunucusu yanıt vermedi: {down}"
-                return self._rules_after_failure(query, top_n, reason)
-            with trace.span("Analist akışı", self.llm.model) as s:
-                result = self._analyze_llm(query, top_n)
-                if s is not None and result is None:
-                    s.status = "error"
-            if result is not None:
-                return result
-            cancel.check()  # a stopped analysis ends here, it does not fall back to rules
-            log.warning("Analist akışı sonuç veremedi; kural tabanlı sonuca dönülüyor")
-            return self._rules_after_failure(query, top_n)
-        with trace.span("Kural akışı"):
-            return self._analyze_rules(query, top_n)
+        """The one question flow: the analyst writes every answer (ADR-029, ADR-038). With
+        no model, a dead server or a failed analysis the result says why and lists nothing;
+        there is no rule answer to fall back to."""
+        if not self.analyst_enabled:
+            return self._unavailable(
+                query, "Sohbet modeli bağlı değil; Yönetim → Ayarlar → Yapay zekâ ekranından "
+                "bir model bağlayın.",
+            )  # fmt: skip
+        with trace.span("Model sunucusu kontrolü", self.llm.model) as s:
+            down = self.llm.health()
+            if s is not None and down:
+                s.status, s.detail = "error", down
+        if down:  # do not wait on a dead server: say so at once
+            reason = down if "ulaşılamadı" in down else f"Model sunucusu yanıt vermedi: {down}"
+            return self._unavailable(query, reason)
+        with trace.span("Analist akışı", self.llm.model) as s:
+            result = self._analyze_llm(query, top_n)
+            if s is not None and result is None:
+                s.status = "error"
+        if result is not None:
+            return result
+        cancel.check()  # a stopped analysis ends here
+        log.warning("Analist akışı sonuç veremedi")
+        return self._unavailable(
+            query, fallback_reason(str(getattr(self.llm, "last_error", "")))
+        )
 
-    def _rules_after_failure(self, query: str, top_n: int, reason: str = "") -> AnalysisResult:
-        """Rule answer that says the analyst could not run, and why (ADR-008)."""
-        reason = reason or fallback_reason(str(getattr(self.llm, "last_error", "")))
-        trace.event("Kural motoruna dönüldü", reason)
-        with trace.span("Kural akışı (yedek)"):
-            result = self._analyze_rules(query, top_n)
-        result.fallback = reason
-        return result
+    def _unavailable(self, query: str, reason: str) -> AnalysisResult:
+        """The answer when the analyst could not run: no tables, and the reason."""
+        trace.event("Analiz yapılamadı", reason)
+        return AnalysisResult(
+            query=query,
+            verdict=Verdict.NOT_FOUND,
+            summary=f"Analiz yapılamadı: {reason}",
+            objects=[],
+            near_misses=[],
+            notes=[],
+            concepts=[],
+            expansion_terms=[],
+            dictionary_source=Path(self.dictionary.source_path).name,
+            dictionary_version=self.dictionary.version,
+            dictionary_objects=len(self.objects),
+            generated_at=datetime.now().strftime("%Y-%m-%d %H:%M"),
+            method=["Analiz yapılamadı — cevabı yalnız analist (sohbet modeli) yazar (ADR-038)"],
+            llm_model=self.llm.model if self.analyst_enabled else "",
+            fallback=reason,
+        )
 
     # ------------------------------------------------------------------ analyst (ADR-029)
 
@@ -427,7 +370,9 @@ class Engine:
     def _analyst_parts(self) -> tuple[Catalog, MentionChecker]:
         if self._catalog is None or self._checker is None:
             self._catalog = build_catalog(
-                {k: [f.col for f in o.features] for k, o in self.objects.items()}
+                {k: [f.col for f in o.features] for k, o in self.objects.items()},
+                self.dictionary.objects,
+                with_columns=self.settings.analyst.catalog_columns,
             )
             self._checker = MentionChecker.build(self.dictionary.columns)
         return self._catalog, self._checker
@@ -506,6 +451,8 @@ class Engine:
                     a.full_table_columns,
                     self._concept_evidence(k, q, rel)
                     + (f"\nAile aramasıyla eklendi: {added[k]}" if k in added else ""),
+                    detail_columns=None if a.detail_columns < 0 else a.detail_columns,
+                    profile=self.dictionary.objects.get(k),
                 )  # fmt: skip
                 for k in readable
             )
@@ -649,9 +596,7 @@ class Engine:
             + (", ".join(f"{k.rsplit('.', 1)[-1]} ({f})" for k, f in added.items()) or "-"),
             f"2. adım — adayların {sum(len(columns_of[k]) for k in readable)} kolonu "
             f"sözlük açıklamalarıyla okundu, rapor yazıldı ({t3 - t2:.0f} sn)",
-            "Arama motoru (BM25"
-            + (" + anlamsal arama" if self.hybrid else "")
-            + ") sonuçları modele ipucu ve benzer alan kanıtı olarak verildi",
+            "Arama motoru (BM25) sonuçları modele ipucu ve benzer alan kanıtı olarak verildi",
             "Güven skoru: analist değerlendirmesi; kural skoru Ayrıntılar'da gösterilir",
             f"Sözlük doğrulaması: {dropped} ad/cümle düşürüldü",
         ]
@@ -758,7 +703,9 @@ class Engine:
 
     # ------------------------------------------------------------------ rules
 
-    def _analyze_rules(self, query: str, top_n: int = 5) -> AnalysisResult:
+    def rule_answer(self, query: str, top_n: int = 5) -> AnalysisResult:
+        """The rule engine's own answer. Never shown to users (ADR-038); kept to measure
+        the hints the analyst gets (`vsa eval` without a model, regression tests)."""
         started = time.perf_counter()
         s = self.settings
         ranked, q = self.rank_objects(query)
@@ -826,9 +773,6 @@ class Engine:
             "Model: kullanılmadı — cevabı kural motoru üretti",
             f"Güven skorları: kural skoru × {factor:g} (analist olmadan daha az isabetli; ADR-034)",
         ]
-        if self.hybrid:
-            method.insert(1, f"Anlamsal arama: {self.dense.model if self.dense else ''} "
-                          f"(ağırlık {s.dense.weight:g}, ilk {s.dense.top_k} kolon)")  # fmt: skip
         return AnalysisResult(
             query=query,
             verdict=verdict,
@@ -863,37 +807,6 @@ def _features_for(dictionary: Dictionary, stopwords: frozenset[str]) -> list[Col
             _FEATURES.pop(next(iter(_FEATURES)))
         _FEATURES[key] = [build_features(c, stopwords) for c in dictionary.columns]
     return _FEATURES[key]
-
-
-def _object_dense_for(
-    settings: Settings, objects: Mapping[str, ObjectColumns]
-) -> ObjectDenseIndex | None:
-    if not settings.dense.enabled:
-        return None
-    columns = {k: [f.col for f in o.features] for k, o in objects.items()}
-    index = load_object_index(Path(settings.index.dir), columns)
-    return index if index is not None and _same_embedder(settings, index.model) else None
-
-
-def _same_embedder(settings: Settings, index_model: str) -> bool:
-    """Query vectors must come from the model that built the index; another model's
-    vectors live in another space and would give silent nonsense (ADR-032)."""
-    active = settings.llm.embedding_model
-    if active == index_model:
-        return True
-    log.warning("Vektör indeksi %s ile kuruldu, aktif embedding modeli %s; anlamsal arama "
-                "kapalı. `vsa index --dense` ile yeniden kurun.", index_model, active or "yok")
-    return False
-
-
-def _dense_for(settings: Settings, columns: Sequence[DictColumn]) -> DenseIndex | None:
-    if not settings.dense.enabled:
-        return None
-    index = load_dense_index(Path(settings.index.dir), columns)
-    if index is None:
-        log.warning("Vektör indeksi bulunamadı; `vsa index --dense` ile kurun. Yalnız BM25.")
-        return None
-    return index if _same_embedder(settings, index.model) else None
 
 
 def fallback_reason(error: str) -> str:

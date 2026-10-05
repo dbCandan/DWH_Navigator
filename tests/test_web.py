@@ -21,10 +21,15 @@ from vsa.web.server import App, make_handler
 
 
 @pytest.fixture
-def base_url(sample_dictionary_path: Path, tmp_path: Path) -> Iterator[str]:
+def base_url(
+    sample_dictionary_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[str]:
     s = Settings()
     s.dictionary.path = str(sample_dictionary_path)
     engine = Engine.from_dictionary_file(s)
+    # No model in tests: the rule engine's ranking stands in for an answer, so the page,
+    # report and log plumbing can be exercised (users never see it, ADR-038).
+    monkeypatch.setattr(Engine, "analyze", Engine.rule_answer)
     app = App(engine, tmp_path / "out", tmp_path / "feedback.jsonl")
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(app))
     thread = threading.Thread(target=httpd.serve_forever, daemon=True)
@@ -67,7 +72,6 @@ def test_status(base_url: str) -> None:
     data = json.loads(body)
     assert status == 200 and data["columns"] == 3 and data["llm"] == ""
     assert data["llm_state"]["state"] == "none"  # ADR-034: the page warns
-    assert data["rule_only_factor"] == 0.8
     assert len(data["updated"]) == 10  # ISO date of the dictionary file
 
 
@@ -294,9 +298,9 @@ def test_model_connection_is_not_on_the_screen(app_with_settings: App) -> None:
     assert "gizli" not in json.dumps(got) and "spark-1" not in json.dumps(got)
     with pytest.raises(ValueError, match="Bilinmeyen"):
         app.settings_save({"values": {"llm.endpoint": "http://evil/v1"}})
-    app.settings_save({"values": {"dense.top_k": 150}})
+    app.settings_save({"values": {"search.top_k_objects": 7}})
     s = app.engine.settings
-    assert s.dense.top_k == 150 and s.analyst.shortlist == 9
+    assert s.search.top_k_objects == 7 and s.analyst.shortlist == 9
     assert (s.llm.endpoint, s.llm.model, s.llm.api_key) == ("http://spark-1:8000/v1", "m", "gizli")
 
 
@@ -331,9 +335,9 @@ def test_ask_is_logged_for_admin(base_url: str, tmp_path: Path) -> None:
     lines = (tmp_path / "logs" / "analyses.jsonl").read_text(encoding="utf-8").splitlines()
     entry = json.loads(lines[-1])
     assert entry["query"] == "kart limit doluluk oranı" and entry["ip"] == "127.0.0.1"
-    assert entry["flow"] == "kural" and entry["verdict"] and entry["ms"] >= 0
+    assert entry["flow"] == "yapılamadı" and entry["verdict"] and entry["ms"] >= 0
     names = [s["name"] for s in entry["spans"]]
-    assert {"Sırada bekleme", "Kural akışı", "BM25 arama", "Kolon skorlama"} <= set(names)
+    assert {"Sırada bekleme", "BM25 arama", "Kolon skorlama"} <= set(names)
 
     status, body, _ = get(base_url + "/api/admin/analyses")
     listed = json.loads(body)["items"][0]

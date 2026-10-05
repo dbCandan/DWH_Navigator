@@ -68,7 +68,6 @@ h1 { font-family: var(--display); font-size: 28px; margin: 4px 0 2px; letter-spa
 .eff { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
 .eff.now { background: var(--high-bg); color: var(--high); }
 .eff.reindex { background: var(--mid-bg); color: var(--mid); }
-.eff.dense { background: var(--low-bg); color: var(--low); }
 .ctl { display: flex; align-items: center; gap: 10px; justify-content: flex-end; min-width: 0; }
 .ctl input[type=text], .ctl input[type=password], .ctl select, .ctl input[type=number] {
   width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--surface-2); outline: 0; min-width: 0; }
@@ -108,7 +107,7 @@ body[data-view="analyses"] #view-settings, body[data-view="analyses"] #savebar,
 body[data-view="settings"] #view-analyses, body[data-view="analyses"] #chips { display: none; }
 
 /* ---------- admin: analyses ---------- */
-:root { --k-step: #1fa0bf; --k-llm: #8c6cf0; --k-embed: #1aa57a; }
+:root { --k-step: #1fa0bf; --k-llm: #8c6cf0; }
 #view-analyses { padding-top: 22px; }
 .a-head { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; }
 .a-head .grow { flex: 1 1 320px; }
@@ -157,7 +156,7 @@ td.detail-cell { padding: 0 !important; background: color-mix(in srgb, var(--sur
 .wf .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wf .lane { position: relative; height: 16px; border-radius: 3px; background: repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), var(--line) calc(25% - 1px) 25%); }
 .wf .seg-bar { position: absolute; top: 3px; bottom: 3px; border-radius: 0 3px 3px 0; min-width: 2px; }
-.wf .seg-bar.step { background: var(--k-step); } .wf .seg-bar.llm { background: var(--k-llm); } .wf .seg-bar.embed { background: var(--k-embed); }
+.wf .seg-bar.step { background: var(--k-step); } .wf .seg-bar.llm { background: var(--k-llm); }
 .wf .seg-bar.event { background: repeating-linear-gradient(45deg, var(--mid) 0 3px, transparent 3px 6px); box-shadow: inset 0 0 0 1px var(--mid); }
 .wf .seg-bar.error { box-shadow: 0 0 0 2px var(--low); }
 .wf .ms { font-family: var(--mono); font-size: 11.5px; color: var(--muted); text-align: right; white-space: nowrap; }
@@ -261,7 +260,7 @@ details.adv-card > summary { padding: 0; color: var(--text); font-family: var(--
 code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-2); border-radius: 6px; padding: 1px 6px; }
 
 /* LLM page */
-.roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+.roles { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-bottom: 18px; }
 .role { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; background: var(--surface); box-shadow: var(--shadow); }
 .role .what { font-size: 13px; color: var(--muted); font-weight: 700; }
 .role .who { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: 14.5px; font-weight: 700; margin: 6px 0 2px; overflow-wrap: anywhere; }
@@ -321,10 +320,7 @@ dialog.ed::backdrop { background: rgba(3,4,11,.6); backdrop-filter: blur(3px); }
 .fld input.mono { font-family: var(--mono); font-size: 13.5px; }
 .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 14px; }
 .inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.meter { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 10px 0 6px; }
-.meter > i { display: block; height: 100%; width: 0; background: var(--high); border-radius: inherit; transition: width .6s; }
-.dense-box .note b { color: var(--text); font-weight: 600; }
-.idx-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 10px; }
+.idx-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 10px; }
 .idx { border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; background: var(--surface-2); display: flex; flex-direction: column; gap: 4px; }
 .idx-h { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
 .idx-h b { font-family: var(--display); font-size: 16px; }
@@ -333,11 +329,9 @@ dialog.ed::backdrop { background: rgba(3,4,11,.6); backdrop-filter: blur(3px); }
 .badge.ok { background: var(--high-bg); color: var(--high); } .badge.warn { background: var(--mid-bg); color: var(--mid); }
 .badge.off { background: var(--surface); color: var(--muted); border: 1px solid var(--line); } .badge.run { background: var(--accent-soft); color: var(--accent); }
 .idx .kv { margin: 8px 0 4px; }
-.idx .match.ok { color: var(--high); } .idx .match.no { color: var(--low); }
 .when-note { font-size: 12.5px; color: var(--muted); margin: 4px 0 8px; }
 .when-note b { color: var(--text); font-weight: 600; }
 .idx .inline { margin-top: auto; }
-@media (max-width: 860px) { .idx-grid { grid-template-columns: 1fr; } }
 .check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); cursor: pointer; }
 .fetch-out { font-size: 13px; color: var(--muted); }
 .fetch-out.ok { color: var(--high); } .fetch-out.no { color: var(--low); }
@@ -441,7 +435,7 @@ let form = {};          // values in the form
 const FIELD = {};       // key -> field schema
 const ROW = {};         // key -> row element
 let PAGE = "llm";
-const EFFECT_NOTE = { "indeks": "Kaydedince indeks yeniden kurulmalı", "vektör": "Vektör indeksi yeniden kurulmalı" };
+const EFFECT_NOTE = { "indeks": "Kaydedince indeks yeniden kurulmalı" };
 const ICON = {
   llm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6"/><path d="M15 15l5.5 5.5"/></svg>',
@@ -463,11 +457,10 @@ function toast(title, lines, bad = false) {
 function pageStatus(id) {
   if (id === "llm") {
     if (!L) return "Yükleniyor…";
-    const c = L.roles.chat, e = L.roles.embedding;
-    if (!c && !e) return "Bağlı model yok";
-    return [c ? "Sohbet: " + short(c.model) : "Sohbet yok", e ? "Embedding: " + short(e.model) : "Embedding yok"].join(" · ");
+    const c = L.roles.chat;
+    return c ? "Sohbet: " + short(c.model) : "Bağlı model yok";
   }
-  if (id === "search") return `Cevap eşiği %${Math.round(saved["scoring.min_answer_score"] * 100)} · anlam araması ${saved["dense.enabled"] ? "açık" : "kapalı"}`;
+  if (id === "search") return `Cevap eşiği %${Math.round(saved["scoring.min_answer_score"] * 100)}`;
   return `${S.status.dictionary_version} · ${(S.status.index_built_at || "").slice(0, 10) || "indeks yok"}`;
 }
 function renderTiles() {
@@ -582,12 +575,12 @@ function renderFieldPages() {
   refresh();
 }
 
-// Two indexes, one card: what each is for, whether it is up to date, when to rebuild.
+// The search index: what it is for, whether it is up to date, when to rebuild.
 function indexCard() {
   return h("section", { class: "card", id: "sec-index" },
-    h("h2", {}, "Arama indeksleri"),
-    h("p", { class: "sec-intro" }, "Uygulama sözlükte iki indeksle arar. İkisi de sözlükten üretilir; sözlük ya da ilgili bir ayar değişince yeniden kurulmaları gerekir."),
-    h("div", { class: "idx-grid" }, wordPanel(), densePanel()));
+    h("h2", {}, "Arama indeksi"),
+    h("p", { class: "sec-intro" }, "Uygulama sözlükte bir kelime indeksiyle arar. İndeks sözlükten üretilir; sözlük ya da ilgili bir ayar değişince yeniden kurulması gerekir."),
+    h("div", { class: "idx-grid" }, wordPanel()));
 }
 function idxHead(title, what, [label, cls]) {
   return h("div", { class: "idx-h" },
@@ -611,112 +604,6 @@ function wordPanel() {
     out);
 }
 
-// ---------------------------------------------------------------- vector index (dense)
-let D = null;                  // /api/dense payload
-const denseBoxes = new Set();  // every place the build is shown (data page, embedding role)
-function densePanel() { return denseBox(true); }
-function denseBox(full) {
-  const box = h("div", { class: (full ? "idx " : "") + "dense-box" + (full ? " full" : "") });
-  denseBoxes.add(box);
-  if (D) drawDense(box); else loadDense();
-  return box;
-}
-async function loadDense() {
-  const was = D && D.job && D.job.status;
-  try { D = await api("/api/dense"); } catch (e) { return; }
-  for (const b of [...denseBoxes]) { if (b.isConnected) drawDense(b); else denseBoxes.delete(b); }
-  clearTimeout(loadDense.timer);
-  const now = D.job && D.job.status;
-  if (now === "running") loadDense.timer = setTimeout(loadDense, 1500);
-  else if (was === "running" && now === "done") {
-    toast("Anlam indeksi kuruldu", [`${D.job.model} · ${mins((D.job.finished - D.job.started) * 1000)}`, D.hybrid ? "Anlam araması açık." : "Anlam araması kapalı (Arama ve cevap ayarı)."]);
-    load(); loadLLM();
-  }
-}
-const mins = ms => ms < 60000 ? `${Math.max(1, Math.round(ms / 1000))} sn` : `${Math.round(ms / 60000)} dk`;
-// Where the meaning index stands, in one label: [text, badge class, why].
-function denseStatus() {
-  const j = D.job;
-  if (j && j.status === "running") return ["Kuruluyor", "run", ""];
-  if (!D.model) return [D.built ? "Kullanılmıyor" : "Kurulmadı", "off", "Embedding modeli bağlı değil (Yapay zekâ sayfası)."];
-  if (D.need && D.index_model && D.model !== D.index_model)
-    return ["Yeniden kurulmalı", "warn", "Embedding modeli değişti; anlam araması, indeks bu modelle yeniden kurulana kadar kapalı."];
-  if (D.need) return ["Yeniden kurulmalı", "warn", D.need + "."];
-  if (!D.dense_enabled) return ["Kapalı", "off", "Anlam araması ayardan kapatılmış (Arama ve cevap → Anlam araması)."];
-  if (D.hybrid) return ["Kullanımda", "ok", ""];
-  return ["Çalışmıyor", "warn", "İndeks güncel ama embedding sunucusu yanıt vermiyor olabilir."];
-}
-function drawDenseFull(box) {
-  const j = D.job, run = j && j.status === "running";
-  const [label, cls, why] = denseStatus();
-  const same = D.model && D.index_model && D.model === D.index_model;
-  const kids = [
-    idxHead("Anlam indeksi", "Kelimeleri farklı ama anlamı yakın kolon ve tabloları bulur (vektör araması). Embedding modeli gerekir.", [run ? `Kuruluyor %${j.total ? Math.floor(j.done / j.total * 100) : 0}` : label, cls]),
-    why && !run ? h("div", { class: cls === "warn" ? "warn" : "note" }, why) : null,
-    h("dl", { class: "kv" },
-      h("dt", {}, "İndeksin modeli"), h("dd", {}, D.index_model || "kurulmadı"),
-      h("dt", {}, "Bağlı embedding modeli"), h("dd", {}, D.model || "yok",
-        D.model && D.index_model ? h("span", { class: same ? "match ok" : "match no" }, same ? "  ✓ uyuşuyor" : "  ✗ uyuşmuyor") : null),
-      D.index_columns ? h("dt", {}, "Kapsam") : null, D.index_columns ? h("dd", {}, `${Number(D.index_columns).toLocaleString("tr-TR")} kolon`) : null),
-  ];
-  if (run) {
-    const pct = j.total ? Math.floor(j.done / j.total * 100) : 0;
-    const what = j.phase === "objects" ? "Tablo profilleri" : "Kolonlar";
-    kids.push(h("div", { class: "meter", role: "progressbar", "aria-valuenow": String(pct), "aria-valuemin": "0", "aria-valuemax": "100" }, h("i", { style: `width:${pct}%` })),
-      h("div", { class: "note" }, `${what} · ${j.done.toLocaleString("tr-TR")} / ${j.total.toLocaleString("tr-TR")}`,
-        j.eta_ms != null ? ` · ~${mins(j.eta_ms)} kaldı` : " · süre hesaplanıyor…", " · bu sırada uygulama eski indeksle çalışır"));
-  } else if (j && j.status === "cancelled") {
-    kids.push(h("p", { class: "note" }, `Son kurulum durduruldu (${j.done.toLocaleString("tr-TR")} / ${j.total.toLocaleString("tr-TR")}); yeniden başlatınca kaldığı yerden sürer.`));
-  } else if (j && j.status === "error") {
-    kids.push(h("div", { class: "err" }, "Son kurulum yarıda kaldı: " + j.error + " Yeniden başlatınca kaldığı yerden sürer."));
-  }
-  kids.push(h("p", { class: "when-note" }, h("b", {}, "Ne zaman yeniden kurulur? "), "Embedding modeli ya da sözlük değişince. Sunucuya göre dakikalar sürebilir; bu sırada uygulama çalışmaya devam eder, durdurulursa yapılan iş kaybolmaz."));
-  const out = h("div", { class: "note" });
-  kids.push(h("div", { class: "inline" }, run
-    ? h("button", { class: "btn", onclick: e => denseAction(e.currentTarget, "cancel", out) }, "Durdur")
-    : h("button", { class: "btn" + (D.need ? " primary" : ""), disabled: !D.model, onclick: e => denseAction(e.currentTarget, "start", out) },
-        D.built ? "Anlam indeksini yeniden kur" : "Anlam indeksini kur"),
-    !run && !D.model ? h("span", { class: "note", style: "margin:0" }, "Önce Yapay zekâ sayfasında embedding rolüne bir model bağlayın.") : null), out);
-  box.replaceChildren(...kids.filter(Boolean));
-}
-function drawDense(box) {
-  if (box.classList.contains("full")) { drawDenseFull(box); return; }
-  const full = false, j = D.job, run = j && j.status === "running";
-  const kids = [];
-  if (full) kids.push(h("dl", { class: "kv" },
-    h("dt", {}, "Embedding modeli"), h("dd", {}, D.model || "bağlı değil"),
-    h("dt", {}, "İndeksin modeli"), h("dd", {}, D.index_model || "—"),
-    h("dt", {}, "Anlam araması"), h("dd", {}, D.hybrid ? "açık" : "kapalı")));
-  if (!run && D.need && full) kids.push(h("div", { class: "warn" }, D.need + ". Yeniden kurulmalı."));
-  if (run) {
-    const pct = j.total ? Math.floor(j.done / j.total * 100) : 0;
-    const what = j.phase === "objects" ? "Tablo profilleri" : "Kolonlar";
-    kids.push(h("div", { class: "meter", role: "progressbar", "aria-valuenow": String(pct), "aria-valuemin": "0", "aria-valuemax": "100" }, h("i", { style: `width:${pct}%` })),
-      h("div", { class: "note" }, h("b", {}, `%${pct}`), ` · ${what} · ${j.done.toLocaleString("tr-TR")} / ${j.total.toLocaleString("tr-TR")} · ${j.model}`,
-        j.eta_ms != null ? ` · ~${mins(j.eta_ms)} kaldı` : " · süre hesaplanıyor…"));
-  } else if (j && j.status === "done") {
-    kids.push(h("p", { class: "note" }, `Son kurulum tamamlandı (${j.model}, ${mins((j.finished - j.started) * 1000)}).`));
-  } else if (j && j.status === "cancelled") {
-    kids.push(h("p", { class: "note" }, `Durduruldu: ${j.done.toLocaleString("tr-TR")} / ${j.total.toLocaleString("tr-TR")}. Yeniden başlatınca kaldığı yerden devam eder.`));
-  } else if (j && j.status === "error") {
-    kids.push(h("div", { class: "err" }, "Kurulum yarıda kaldı: " + j.error + " — yeniden başlatınca kaldığı yerden devam eder."));
-  }
-  const out = h("div", { class: "note" });
-  const btns = run
-    ? [h("button", { class: "btn", onclick: e => denseAction(e.currentTarget, "cancel", out) }, "Durdur")]
-    : [h("button", { class: "btn" + (D.need ? " primary" : ""), disabled: !D.model, onclick: e => denseAction(e.currentTarget, "start", out) },
-        D.built ? "Vektör indeksini yeniden kur" : "Vektör indeksini kur")];
-  if (!run && !D.model) out.textContent = "Önce Yapay zekâ sayfasında embedding rolüne bir model bağlayın.";
-  kids.push(h("div", { class: "inline" }, btns), out);
-  box.replaceChildren(...kids);
-}
-async function denseAction(btn, action, out) {
-  btn.disabled = true; out.textContent = action === "start" ? "Embedding sunucusuna bağlanılıyor…" : "";
-  try {
-    D = await post("/api/dense/" + action, {});
-    loadDense();
-  } catch (e) { out.textContent = "Hata: " + e.message; btn.disabled = false; }
-}
 async function reindex(btn, out) {
   btn.disabled = true; btn.textContent = "Kuruluyor…"; out.textContent = "";
   try {
@@ -733,8 +620,7 @@ async function save() {
   try {
     const r = await post("/api/settings", { values: changed });
     const lines = [`Değişen: ${r.changed.join(", ") || "—"}`];
-    if (r.reindex_needed.length) lines.push("Kelime indeksi yeniden kurulmalı: Veri ve bakım → Arama indeksleri.");
-    if (r.dense_needed.length) lines.push("Anlam indeksi yeniden kurulmalı: Veri ve bakım → Arama indeksleri.");
+    if (r.reindex_needed.length) lines.push("Kelime indeksi yeniden kurulmalı: Veri ve bakım → Arama indeksi.");
     toast("Kaydedildi ve uygulandı", lines);
     await load();
   } catch (e) { toast("Kaydedilemedi", [e.message], true); }
@@ -744,7 +630,6 @@ async function save() {
 function renderChips() {
   const st = S.status;
   $("#chips").replaceChildren(
-    h("span", { class: "pill" }, h("i", { class: "dot" + (st.hybrid ? " on" : "") }), "Anlam araması"),
     h("span", { class: "pill", title: st.llm_model }, h("i", { class: "dot" + (st.llm ? " on" : "") }), st.llm ? `Model · ${short(st.llm_model)}` : "Model yok"),
     h("span", { class: "pill", title: "Sözlük sürümü" }, st.dictionary_version));
 }
@@ -754,7 +639,7 @@ async function load() {
   catch (e) { $("#ptiles").replaceChildren(h("div", { class: "err" }, "Ayarlar okunamadı: " + e.message)); return; }
   saved = { ...S.values }; form = { ...S.values };
   renderChips(); renderFieldPages(); openPage(PAGE);
-  if (PAGE !== "llm") loadLLM();  // the tile shows who holds the roles on every page
+  if (PAGE !== "llm") loadLLM();  // the tile shows the chat model on every page
 }
 
 // ---------------------------------------------------------------- LLM integrations
@@ -763,21 +648,16 @@ async function loadLLM() {
   renderLLM(); renderTiles();
 }
 
-function roleCard(role) {
-  const r = L.roles[role], chat = role === "chat";
-  const title = chat ? "Sohbet modeli" : "Embedding modeli";
-  const what = chat ? "Talebi okuyup cevabı yazar" : "Anlam araması için metni vektöre çevirir";
+function roleCard() {
+  const r = L.roles.chat;
   const warn = [];
-  if (!chat && r && L.index.embedding_model && L.index.embedding_model !== r.model)
-    warn.push(h("div", { class: "warn" }, `Vektör indeksi “${L.index.embedding_model}” ile kuruldu; bu modelle uyuşmadığı için anlam araması kapalı. Bu modelle yeniden kurun:`, denseBox(false)));
-  if (!chat && r && !L.engine.dense_enabled) warn.push(h("p", { class: "note" }, "Anlam araması Arama ve cevap sayfasında kapalı."));
-  const down = chat && r && L.engine.chat_down;
+  const down = r && L.engine.chat_down;
   if (down) warn.push(h("div", { class: "err" }, `Sunucuya ulaşılamıyor: ${L.engine.chat_down}. Sorular şu an kural motoruyla, düşürülmüş güvenle cevaplanıyor.`));
-  if (chat && !r) warn.push(h("div", { class: "warn" }, "Sohbet modeli yokken cevapları kural motoru yazar; analist kadar isabetli değildir ve güven skorları düşürülür (Arama ve cevap → Model olmadan verilen cevapta güven çarpanı)."));
+  if (!r) warn.push(h("div", { class: "warn" }, "Sohbet modeli yokken cevapları kural motoru yazar; analist kadar isabetli değildir ve güven skorları düşürülür (Arama ve cevap → Model olmadan verilen cevapta güven çarpanı)."));
   return h("div", { class: "role" + (r && !down ? "" : " off") },
-    h("div", { class: "what" }, title),
+    h("div", { class: "what" }, "Sohbet modeli"),
     h("div", { class: "who" }, h("i", { class: "dot" + (r && !down ? " on" : "") }), r ? r.model : "Bağlı değil"),
-    h("div", { class: "via" }, r ? `${r.name} üzerinden · ${what.toLocaleLowerCase("tr")}` : (chat ? "Cevabı kural motoru yazar." : "Yalnız kelime eşleşmesiyle aranır.")),
+    h("div", { class: "via" }, r ? `${r.name} üzerinden · talebi okuyup cevabı yazar` : "Cevabı kural motoru yazar."),
     warn);
 }
 
@@ -797,10 +677,8 @@ function integCard(it) {
     h("div", { class: "ih" }, h("div", { class: "nm" }, h("b", {}, it.name), h("div", { class: "url" }, it.endpoint)),
       h("label", { class: "switch", title: it.enabled ? "Pasif yap" : "Aktif et" }, sw, h("span"))),
     h("div", { class: "tags" }, tags),
-    it.roles.length ? h("div", { class: "mrole" },
-      it.chat_model ? [h("span", {}, "Sohbet"), h("span", {}, it.chat_model)] : null,
-      it.embedding_model ? [h("span", {}, "Embedding"), h("span", {}, it.embedding_model)] : null)
-      : h("p", { class: "note" }, "Model seçilmedi — Düzenle'den sohbet ya da embedding modeli seçin."),
+    it.chat_model ? h("div", { class: "mrole" }, h("span", {}, "Sohbet"), h("span", {}, it.chat_model))
+      : h("p", { class: "note" }, "Model seçilmedi — Düzenle'den bir sohbet modeli seçin."),
     h("div", { class: "acts" },
       h("button", { class: "btn sm", onclick: e => runTest({ id: it.id, record: true }, test, e.currentTarget, true) }, "Test et"),
       h("button", { class: "btn sm", onclick: e => showModels(it, models, e.currentTarget) }, "Modeller"),
@@ -816,8 +694,8 @@ function renderLLM() {
       "OpenAI uyumlu bir model sunucusunun adresini ekleyin (vLLM, Ollama, LM Studio, llama.cpp…).",
       h("div", { style: "margin-top:12px" }, h("button", { class: "btn primary", onclick: () => openEditor(null) }, "+ Entegrasyon ekle")));
   $("#page-llm").replaceChildren(...[
-    h("p", { class: "intro-line" }, "Uygulama iki rol için model kullanır. Her rolü en fazla bir aktif entegrasyon üstlenir; değişiklikler anında uygulanır."),
-    h("div", { class: "roles" }, roleCard("chat"), roleCard("embedding")),
+    h("p", { class: "intro-line" }, "Cevabı sohbet modeli yazar. Bu rolü en fazla bir aktif entegrasyon üstlenir; değişiklikler anında uygulanır."),
+    h("div", { class: "roles" }, roleCard()),
     h("div", { class: "bar-head" }, h("h2", {}, "Entegrasyonlar"),
       h("button", { class: "btn", onclick: e => showInventory(e.currentTarget) }, "Envanter"),
       h("button", { class: "btn primary", onclick: () => openEditor(null) }, "+ Yeni entegrasyon")),
@@ -872,10 +750,9 @@ async function runTest(body, out, btn, reloadAfter = false) {
 function modelTable(rows, pick) {
   if (!rows.length) return h("p", { class: "note" }, "Sunucu hiç model bildirmedi.");
   return h("div", { class: "scroll" }, h("table", { class: "mt" },
-    h("thead", {}, h("tr", {}, ["Model", "Tür", "Bağlam", "Durum", ""].map((t, i) => h("th", { class: i === 2 ? "r" : "" }, t)))),
+    h("thead", {}, h("tr", {}, ["Model", "Bağlam", "Durum", ""].map((t, i) => h("th", { class: i === 1 ? "r" : "" }, t)))),
     h("tbody", {}, rows.map(m => h("tr", {},
       h("td", { class: "m" }, m.id),
-      h("td", {}, m.kind === "embedding" ? "Embedding" : "Sohbet"),
       h("td", { class: "r" }, m.context ? m.context.toLocaleString("tr-TR") : "–"),
       h("td", {}, m.in_use && m.in_use.length ? h("span", { class: "tag on" }, "Kullanımda") : m.loaded === true ? h("span", { class: "tag" }, "Yüklü") : m.loaded === false ? h("span", { class: "tag" }, "Yüklü değil") : ""),
       h("td", {}, pick ? pick(m) : null))))));
@@ -885,17 +762,15 @@ async function showModels(it, out, btn) {
   btn.disabled = true;
   try {
     const r = await post("/api/llm/models", { id: it.id });
-    out.replaceChildren(r.ok ? modelTable(r.models, m => {
-      const role = m.kind === "embedding" ? "embedding_model" : "chat_model";
-      if (it[role] === m.id) return null;
-      return h("button", { class: "btn sm", onclick: () => quickPick(it, role, m.id) }, m.kind === "embedding" ? "Embedding yap" : "Sohbet modeli yap");
-    }) : h("div", { class: "err" }, r.error));
+    out.replaceChildren(r.ok ? modelTable(r.models, m => it.chat_model === m.id ? null
+      : h("button", { class: "btn sm", onclick: () => quickPick(it, m.id) }, "Sohbet modeli yap"))
+      : h("div", { class: "err" }, r.error));
   } catch (e) { out.replaceChildren(h("div", { class: "err" }, e.message)); }
   btn.disabled = false;
 }
-async function quickPick(it, role, model) {
+async function quickPick(it, model) {
   try {
-    const r = await withConflict("/api/llm/save", { ...it, [role]: model });
+    const r = await withConflict("/api/llm/save", { ...it, chat_model: model });
     if (r) { L = r.state; toast("Model seçildi", [`${it.name}: ${model}`]); await load(); }
   } catch (e) { toast("Kaydedilemedi", [e.message], true); }
 }
@@ -912,12 +787,11 @@ async function showInventory(btn) {
       const q = filter.value.toLocaleLowerCase("tr");
       const shown = rows.filter(m => !q || m.id.toLocaleLowerCase("tr").includes(q));
       table.replaceChildren(h("div", { class: "scroll" }, h("table", { class: "mt" },
-        h("thead", {}, h("tr", {}, ["Model", "Entegrasyon", "Tür", "Bağlam", "Durum"].map((t, i) => h("th", { class: i === 3 ? "r" : "" }, t)))),
+        h("thead", {}, h("tr", {}, ["Model", "Entegrasyon", "Bağlam", "Durum"].map((t, i) => h("th", { class: i === 2 ? "r" : "" }, t)))),
         h("tbody", {}, shown.map(m => h("tr", {},
           h("td", { class: "m" }, m.id), h("td", {}, m.server.name, m.server.enabled ? "" : h("span", { class: "tag", style: "margin-left:6px" }, "pasif")),
-          h("td", {}, m.kind === "embedding" ? "Embedding" : "Sohbet"),
           h("td", { class: "r" }, m.context ? m.context.toLocaleString("tr-TR") : "–"),
-          h("td", {}, m.in_use.length ? h("span", { class: "tag on" }, m.in_use.map(x => x === "chat" ? "Sohbet" : "Embedding").join(" + ")) : "")))))));
+          h("td", {}, m.in_use.length ? h("span", { class: "tag on" }, "Sohbet") : "")))))));
     };
     filter.oninput = draw; draw();
     const failed = r.servers.filter(sv => !sv.ok);
@@ -936,14 +810,13 @@ function fld(label, input, help) { return h("label", { class: "fld" }, h("span",
 function openEditor(it) {
   ED.it = it; ED.models = [];
   const d = $("#editor");
-  const v = it || { name: "", endpoint: "", chat_model: "", embedding_model: "", temperature: 0, timeout: 900, reasoning_effort: "none", seed: 42, has_key: false };
+  const v = it || { name: "", endpoint: "", chat_model: "", temperature: 0, timeout: 900, reasoning_effort: "none", seed: 42, has_key: false };
   const name = h("input", { value: v.name, required: true, placeholder: "ör. DGX Spark 1", autocomplete: "off" });
   const url = h("input", { class: "mono", value: v.endpoint, required: true, placeholder: "http://10.0.0.5:8000/v1", autocomplete: "off", spellcheck: "false" });
   const key = h("input", { class: "mono", type: "password", autocomplete: "new-password", placeholder: v.has_key ? "•••••• kayıtlı — değiştirmek için yazın" : "Gerekmiyorsa boş bırakın" });
   const clearKey = h("input", { type: "checkbox" });
   const chat = h("input", { class: "mono", value: v.chat_model, list: "dl-chat", placeholder: "Kullanılmayacaksa boş", autocomplete: "off", spellcheck: "false" });
-  const emb = h("input", { class: "mono", value: v.embedding_model, list: "dl-emb", placeholder: "Kullanılmayacaksa boş", autocomplete: "off", spellcheck: "false" });
-  const dlc = h("datalist", { id: "dl-chat" }), dle = h("datalist", { id: "dl-emb" });
+  const dlc = h("datalist", { id: "dl-chat" });
   const temp = h("input", { type: "number", min: 0, max: 2, step: 0.1, value: v.temperature });
   const tout = h("input", { type: "number", min: 5, max: 3600, step: 5, value: v.timeout });
   const seed = h("input", { type: "number", min: -1, step: 1, value: v.seed });
@@ -954,7 +827,7 @@ function openEditor(it) {
   const activateBox = h("input", { type: "checkbox" });
   activateBox.checked = !it;
   const values = () => ({ id: it ? it.id : "", name: name.value, endpoint: url.value, api_key: key.value, clear_key: clearKey.checked,
-    chat_model: chat.value.trim(), embedding_model: emb.value.trim(), temperature: Number(temp.value), timeout: Number(tout.value),
+    chat_model: chat.value.trim(), temperature: Number(temp.value), timeout: Number(tout.value),
     seed: Number(seed.value), reasoning_effort: effort.value });
   async function fetchModels(btn) {
     btn.disabled = true; fetchOut.className = "fetch-out"; fetchOut.textContent = "Bağlanılıyor…";
@@ -964,13 +837,10 @@ function openEditor(it) {
       else {
         ED.models = r.models;
         const opt = m => h("option", { value: m.id }, m.context ? `bağlam ${m.context.toLocaleString("tr-TR")}` : "");
-        dlc.replaceChildren(...r.models.filter(m => m.kind === "chat").map(opt));
-        dle.replaceChildren(...r.models.filter(m => m.kind === "embedding").map(opt));
-        const nc = r.models.filter(m => m.kind === "chat").length;
+        dlc.replaceChildren(...r.models.map(opt));
         fetchOut.className = "fetch-out ok";
-        fetchOut.textContent = `✓ Bağlandı: ${nc} sohbet, ${r.models.length - nc} embedding modeli. Aşağıdaki kutulara tıklayıp seçin.`;
-        if (!chat.value && nc === 1) chat.value = r.models.find(m => m.kind === "chat").id;
-        if (!emb.value && r.models.length - nc === 1) emb.value = r.models.find(m => m.kind === "embedding").id;
+        fetchOut.textContent = `✓ Bağlandı: ${r.models.length} model. Aşağıdaki kutuya tıklayıp seçin.`;
+        if (!chat.value && r.models.length === 1) chat.value = r.models[0].id;
       }
     } catch (e) { fetchOut.className = "fetch-out no"; fetchOut.textContent = e.message; }
     btn.disabled = false;
@@ -994,12 +864,9 @@ function openEditor(it) {
       fld("API anahtarı", key, it && it.has_key ? null : "Sunucu anahtar istemiyorsa boş kalabilir."),
       it && it.has_key ? h("label", { class: "check" }, clearKey, "Kayıtlı anahtarı sil") : null,
       h("div", { class: "inline", style: "margin-top:4px" }, h("button", { type: "button", class: "btn sm", onclick: e => fetchModels(e.currentTarget) }, "Bağlan ve modelleri getir"), fetchOut),
-      h("h3", {}, h("i", {}, "2"), "Modeller"),
-      h("p", { class: "note", style: "margin-top:-4px" }, "Bu sunucunun hangi rolü üstleneceğini seçin; ikisini birden, birini ya da hiçbirini seçebilirsiniz."),
-      h("div", { class: "grid2" },
-        fld("Sohbet modeli", chat, "Talebi okuyup cevabı yazar."),
-        fld("Embedding modeli", emb, "Anlam araması; değişirse vektör indeksi yeniden kurulur.")),
-      dlc, dle,
+      h("h3", {}, h("i", {}, "2"), "Model"),
+      fld("Sohbet modeli", chat, "Talebi okuyup cevabı yazar."),
+      dlc,
       h("details", { class: "adv" }, h("summary", {}, "Gelişmiş"),
         h("div", { class: "grid2", style: "margin-top:10px" },
           fld("Sıcaklık", temp, "0 = her seferinde aynı cevap (önerilen)."),
@@ -1008,7 +875,7 @@ function openEditor(it) {
           fld("Seed", seed, "Tekrarlanabilir cevap için sabit; -1 = gönderme."))),
       h("h3", {}, h("i", {}, "3"), "Test"),
       h("div", { class: "inline" }, h("button", { type: "button", class: "btn sm", onclick: e => runTest(values(), testOut, e.currentTarget) }, "Bu ayarlarla test et"),
-        h("span", { class: "note", style: "margin:0" }, "Kaydetmeden dener: sunucu, sohbet ve embedding modeli.")),
+        h("span", { class: "note", style: "margin:0" }, "Kaydetmeden dener: sunucu ve sohbet modeli.")),
       testOut),
     h("footer", {},
       h("label", { class: "grow check" }, activateBox, it && it.enabled ? "Aktif kalsın" : "Kaydedince aktif et"),
@@ -1194,7 +1061,7 @@ const A = {
     const ordered = [];
     const walk = (pid, depth) => { for (const s of (kids[pid] || []).sort((a, b) => a.start_ms - b.start_ms || a.id - b.id)) { ordered.push([s, depth]); walk(s.id, depth + 1); } };
     walk("root", 0);
-    const KIND = { step: "adım", llm: "model çağrısı", embed: "embedding", event: "bekleme / olay" };
+    const KIND = { step: "adım", llm: "model çağrısı", event: "bekleme / olay" };
     const wf = h("div", { class: "wf", role: "table", "aria-label": "Adım zaman çizelgesi" });
     for (const [s, depth] of ordered) {
       const left = 100 * s.start_ms / total, width = Math.max(0.3, 100 * s.ms / total);
@@ -1209,7 +1076,7 @@ const A = {
         wf.append(h("div", { class: "why", style: `padding-left:${depth * 14 + (mark ? 14 : 0)}px`, title: s.detail }, s.detail));
     }
     const legend = h("div", { class: "legend" },
-      ...[["Adım", "var(--k-step)"], ["Model çağrısı", "var(--k-llm)"], ["Embedding", "var(--k-embed)"]].map(([t, c]) => h("span", {}, h("i", { style: `background:${c}` }), t)),
+      ...[["Adım", "var(--k-step)"], ["Model çağrısı", "var(--k-llm)"]].map(([t, c]) => h("span", {}, h("i", { style: `background:${c}` }), t)),
       h("span", {}, h("i", { style: "background:repeating-linear-gradient(45deg,var(--mid) 0 2px,transparent 2px 4px);box-shadow:inset 0 0 0 1px var(--mid)" }), "Bekleme"),
       h("span", {}, h("b", { style: "color:var(--low)" }, "✕ "), "hata"));
     const axis = h("div", { class: "axis" }, h("div", {}), h("div", {}, ...[0, .25, .5, .75, 1].map(f => h("span", {}, msText(total * f)))), h("div", {}));
@@ -1259,7 +1126,7 @@ const PHASES = [
   { name: "Sırada bekleme", cls: "wait", steps: ["Sırada bekleme"], note: "başka bir soru bitene kadar" },
   { name: "Önceki cevap araması", cls: "check", steps: ["Önceki cevap araması"], note: "aynı ya da aynı anlama gelen soru" },
   { name: "Model sunucusu kontrolü", cls: "check", steps: ["Model sunucusu kontrolü"] },
-  { name: "Arama (kural motoru)", cls: "rules", steps: ["Kural motoru ipuçları", "Kural akışı", "Kural akışı (yedek)"], note: "sözlükte kelime ve anlam araması" },
+  { name: "Arama (kural motoru)", cls: "rules", steps: ["Kural motoru ipuçları", "Kural akışı", "Kural akışı (yedek)"], note: "sözlükte kelime araması" },
   { name: "Analist: tablo seçimi", cls: "pick", steps: ["1. adım — aday seçimi", "Aile araması"], note: "model katalogdan aday tabloları seçer" },
   { name: "Analist: kolonları okuma ve rapor", cls: "write", steps: ["2. adım — kolon okuma ve rapor"], note: "model adayların kolonlarını okur, cevabı yazar" },
 ];

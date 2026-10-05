@@ -13,7 +13,7 @@ gönderilebilir Excel raporları üretir. Kapalı ağda, yerel modellerle çalı
 `baslat.bat` dosyasına çift tıklayın: eski sunucuyu durdurur, indeks yoksa kurar ve arayüzü
 tarayıcıda açar (http://127.0.0.1:8765). Modeller bu makinede değil, DGX Spark sunucularında
 çalışır; bağlantıyı http://127.0.0.1:8765/admin → Ayarlar → Yapay zekâ ekranından ekleyin
-(OpenAI uyumlu adres, API anahtarı, sohbet ve embedding modeli; test, envanter, aktif/pasif).
+(OpenAI uyumlu adres, API anahtarı, sohbet modeli; test, envanter, aktif/pasif).
 
 ## Kurulum
 
@@ -34,7 +34,6 @@ Aktif model yoksa uygulama kural tabanlı modda çalışmaya devam eder (ADR-008
 
 ```bash
 vsa index                   # sözlükten BM25 indeksi
-vsa index --dense           # + vektör indeksi (BGE-M3; CPU'da ~45 dk, kaldığı yerden devam eder)
 vsa serve --open            # web arayüzü
 vsa ask "kredi kartı limit doluluk oranı"   # terminalden tek soru + Excel
 vsa ask -i terimler.xlsx                    # terim listesi (ilk sütun): her terim ayrı, tek rapor
@@ -47,7 +46,7 @@ vsa feedback                                # arayüz geri bildirimleri → gold
 Tek akış (ADR-033):
 
 ```
-talep → kural motoru: Türkçe normalizasyon, kavramlar, genişletme, BM25 + vektör araması,
+talep → kural motoru: Türkçe normalizasyon, kavramlar, genişletme, BM25 araması,
         kolon skoru, tablo seviyesine toplama (ipucu ve yedek)
       → analist (sohbet modeli bağlıysa): katalogdan aday seçimi → adayların kolonlarını
         okuyup raporu yazma (ADR-029)
@@ -63,7 +62,7 @@ akışı bir Excel listesinin her terimi için sırayla çalıştırır ve tek r
 |---|---|
 | M1 LLM'siz çekirdek | ✓ |
 | M2 Değerlendirme | ✓ `vsa eval`, geçmiş `eval/history.jsonl` |
-| M3 Hibrit arama | ✓ BGE-M3 + BM25 |
+| M3 Hibrit arama | kaldırıldı (2026-10-05): vektör araması yok, yalnız BM25 |
 | M4/M8 LLM katmanı | ✓ analist akışı |
 | M5 Toplu arama | ✓ Excel listesi → tek rapor |
 | M6 Arayüz | ✓ yerel web arayüzü |

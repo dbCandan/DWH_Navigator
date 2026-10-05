@@ -20,7 +20,7 @@ from typing import Any, TypeVar
 
 T = TypeVar("T")
 
-STEP, LLM, EMBED, EVENT = "step", "llm", "embed", "event"
+STEP, LLM, EVENT = "step", "llm", "event"
 
 
 @dataclass(slots=True)

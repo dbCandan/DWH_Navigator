@@ -1,0 +1,104 @@
+"""Compact analyst material: table profiles in the catalog, ``Ad [Rol]: özet`` columns."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+import pandas as pd
+
+from vsa.index.bm25 import BM25Index
+from vsa.index.store import load_index, save_index
+from vsa.llm.analyst import build_catalog, column_line, table_material
+from vsa.loader import build_columns, load_dictionary, object_profiles
+from vsa.models import DictColumn, Dictionary, ObjectProfile
+
+
+def col(i: int, obj: str, name: str, desc: str, role: str = "", summary: str = "") -> DictColumn:
+    return DictColumn(
+        id=i, database="EDWDM", schema="CUS", object_name=obj, column=name,
+        description=desc, raw_description=desc, role=role, summary=summary,
+    )  # fmt: skip
+
+
+def test_catalog_uses_profile_and_falls_back_to_column_names() -> None:
+    a = [col(0, "vA", "Period", "Dönem.", "Zaman", "Dönem · YYYYMM")]
+    b = [col(1, "vB", "Amount", "Tutar.", "Ölçü", "Tutar · TL")]
+    profiles = {
+        "EDWDM.CUS.vA": ObjectProfile(
+            "EDWDM.CUS.vA", "Müşteri aylık bakiyeleri.", "Müşteri × Ay", (), ("Period",), "",
+            "Mevduat",
+        )
+    }
+    cat = build_catalog({"EDWDM.CUS.vA": a, "EDWDM.CUS.vB": b}, profiles)
+    assert cat.lines["EDWDM.CUS.vA"] == (
+        "T1 | EDWDM.CUS.vA | Mevduat | 1 kolon | Müşteri aylık bakiyeleri. | Satır: Müşteri × Ay"
+        " | Zaman: Period"
+    )
+    assert cat.lines["EDWDM.CUS.vB"].endswith("Kolonlar: Amount")  # no profile: names
+    with_names = build_catalog({"EDWDM.CUS.vA": a}, profiles, with_columns=True)
+    assert with_names.lines["EDWDM.CUS.vA"].endswith("Kolonlar: Period")
+
+
+def test_column_line_compact_and_detail() -> None:
+    c = col(0, "vA", "BalanceTL", "Ayın son günündeki cari hesap bakiyesi (TL).", "Ölçü",
+            "Cari hesap bakiyesi · TL · ay sonu")  # fmt: skip
+    compact = "- BalanceTL [Ölçü]: Cari hesap bakiyesi · TL · ay sonu"
+    assert column_line(c, 400, detail=False) == compact
+    assert column_line(c, 400).endswith("Ayın son günündeki cari hesap bakiyesi (TL).")
+    bare = col(1, "vA", "X", "Açıklama.")
+    assert column_line(bare, 400, detail=False) == "- X: Açıklama."  # no summary: description
+
+
+def test_table_material_details_only_the_relevant_columns() -> None:
+    cols = [
+        col(0, "vA", "CustomerPartyId", "Müşteri anahtarı.", "Anahtar", "Müşteri SKEY"),
+        col(1, "vA", "BalanceTL", "Uzun açıklama bakiye.", "Ölçü", "Bakiye · TL"),
+        col(2, "vA", "Period", "Uzun açıklama dönem.", "Zaman", "Dönem · YYYYMM"),
+    ]
+    text = table_material("EDWDM.CUS.vA", "T1", cols, {1: 1.0}, 400, 90, detail_columns=1)
+    assert "- BalanceTL [Ölçü]: Uzun açıklama bakiye." in text
+    assert "- Period [Zaman]: Dönem · YYYYMM" in text
+    full = table_material("EDWDM.CUS.vA", "T1", cols, {}, 400, 90)  # default: all detailed
+    assert "- Period [Zaman]: Uzun açıklama dönem." in full
+
+
+def test_loader_reads_role_summary_and_profiles(tmp_path: Path) -> None:
+    rows = pd.DataFrame({
+        "DatabaseName": ["EDWDM"], "SchemaName": ["CUS"], "ObjectName": ["vA"],
+        "ColumnName": ["Period"], "ColumnDescription": ["Dönem."],
+        "Role": ["Zaman"], "Summary": ["Dönem · YYYYMM"],
+    })  # fmt: skip
+    (c,), _ = build_columns(rows)
+    assert (c.role, c.summary) == ("Zaman", "Dönem · YYYYMM")
+    objects = pd.DataFrame({
+        "ObjectKey": ["EDWDM.CUS.vA"], "ObjectDescription": ["Aylık özet."],
+        "Grain": ["Müşteri × Ay"],
+        "KeyColumns": ["CustomerPartyId, Period"], "TimeColumns": ["Period"],
+        "BusinessDomain": ["Müşteri"], "DatasetGroup": ["Müşteri"],
+    })  # fmt: skip
+    prof = object_profiles(objects)["EDWDM.CUS.vA"]
+    assert prof.key_columns == ("CustomerPartyId", "Period") and prof.grain == "Müşteri × Ay"
+
+    path = tmp_path / "d.xlsx"
+    with pd.ExcelWriter(path) as xw:
+        objects.to_excel(xw, sheet_name="Objeler", index=False)
+        rows.to_excel(xw, sheet_name="Kolonlar", index=False)
+    d = load_dictionary(path)
+    assert d.objects["EDWDM.CUS.vA"].description == "Aylık özet."
+    assert d.columns[0].dataset_group == "Müşteri"
+
+    # the index keeps role, summary and profiles
+    bm25 = BM25Index.build([{"name": ["period"]}], {"name": 1.0}, 1.2, 0.75)
+    save_index(tmp_path / "idx", d, bm25, {}, {})
+    loaded, _, _ = load_index(tmp_path / "idx")
+    assert loaded.columns[0].summary == "Dönem · YYYYMM"
+    assert loaded.objects == d.objects
+
+
+def test_old_index_without_profiles_loads(tmp_path: Path) -> None:
+    d = Dictionary([col(0, "vA", "X", "Açıklama.")], "x.xlsx", "abc-1")
+    bm25 = BM25Index.build([{"name": ["x"]}], {"name": 1.0}, 1.2, 0.75)
+    save_index(tmp_path, d, bm25, {}, {})
+    (tmp_path / "objects.json").unlink()
+    loaded, _, _ = load_index(tmp_path)
+    assert loaded.objects == {} and loaded.columns[0].role == ""

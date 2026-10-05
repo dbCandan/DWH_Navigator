@@ -9,8 +9,8 @@ says the same thing in other words — gets the earlier answer back. Two keys fi
   one term-dictionary group are one concept ("müşteri no" = "hesap no", ADR-009), word
   order and stopwords do not count, numbers and negations do.
 
-An answer is only reused under the same ``fingerprint``: dictionary version, chat and
-embedding model, term dictionary and every setting that shapes an answer. Pure module;
+An answer is only reused under the same ``fingerprint``: dictionary version, chat
+model, term dictionary and every setting that shapes an answer. Pure module;
 the file store lives in ``vsa.web.answer_store``.
 """
 
@@ -44,7 +44,7 @@ NEGATIONS = frozenset({"yok", "degil", "haric", "harici", "disinda", "olmayan", 
                        "olmayanlar", "hic", "without", "except", "not", "no"})  # fmt: skip
 # Settings that do not change an answer: where files go, and this feature's own switches.
 _NEUTRAL = ("report", "cache", "index")
-_LLM_KEYS = ("model", "embedding_model", "temperature", "reasoning_effort", "seed")
+_LLM_KEYS = ("model", "temperature", "reasoning_effort", "seed")
 
 
 def text_key(query: str) -> str:
@@ -71,7 +71,6 @@ def meaning_key(q: ExpandedQuery) -> str:
 def fingerprint(
     settings: Settings,
     dictionary_version: str,
-    embedding_index_model: str,
     term_groups: list[TermGroup],
     top_n: int,
 ) -> str:
@@ -84,7 +83,6 @@ def fingerprint(
     raw["_"] = {
         "format": CACHE_FORMAT,
         "dictionary": dictionary_version,
-        "dense_index": embedding_index_model,
         "terms": [[g.term, *g.equivalents, g.domain, g.note] for g in term_groups],
         "top": top_n,
     }

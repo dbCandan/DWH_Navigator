@@ -17,14 +17,13 @@ from vsa.config import Settings
 # effect: when does a change take hold?
 NOW = "anında"  # engine is rebuilt from the index on save (seconds)
 REINDEX = "indeks"  # BM25 index must be rebuilt (button on the screen, ~10 s)
-DENSE = "vektör"  # dense index must be rebuilt (admin button or `vsa index --dense`)
 
 # Pages of the settings screen, in order. The LLM page is drawn from /api/llm, not from fields.
 PAGES: list[dict[str, Any]] = [
     {
         "id": "llm",
         "title": "Yapay zekâ",
-        "intro": "Cevabı yazan sohbet modeli ve anlam araması için embedding modeli.",
+        "intro": "Talebi okuyup cevabı yazan sohbet modeli.",
     },
     {
         "id": "search",
@@ -69,18 +68,6 @@ SECTIONS: list[dict[str, Any]] = [
                 "step": 0.05,
                 "effect": NOW,
                 "help": "Bunun altındaki tablolar hiç listelenmez.",
-            },
-            {
-                "key": "scoring.rule_only_factor",
-                "label": "Model olmadan verilen cevapta güven çarpanı",
-                "type": "float",
-                "format": "pct",
-                "min": 0.3,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "help": "Sohbet modeli bağlı değilken ya da hata verdiğinde cevabı kural motoru "
-                "yazar; gösterilen güven, kural skorunun bu oranıdır.",
             },
             {
                 "key": "scoring.min_answer_coverage",
@@ -129,45 +116,6 @@ SECTIONS: list[dict[str, Any]] = [
                 "effect": NOW,
                 "advanced": True,
                 "help": "Kullanıcının kendi yazdığı kelimeler %100 sayılır.",
-            },
-        ],
-    },
-    {
-        "id": "meaning",
-        "page": "search",
-        "title": "Anlam araması",
-        "intro": "Kelimeleri farklı ama anlamı yakın kolonları ve tabloları bulur. Aktif bir "
-        "embedding modeli ve onunla kurulmuş vektör indeksi gerekir.",
-        "fields": [
-            {
-                "key": "dense.enabled",
-                "label": "Anlam aramasını kullan",
-                "type": "bool",
-                "effect": NOW,
-                "help": "Kapalıyken yalnız kelime eşleşmesiyle aranır.",
-            },
-            {
-                "key": "dense.weight",
-                "label": "Anlam benzerliğinin payı",
-                "type": "float",
-                "format": "pct",
-                "min": 0,
-                "max": 1,
-                "step": 0.05,
-                "effect": NOW,
-                "advanced": True,
-                "help": "Kolon arama puanında anlam benzerliğinin payı; kalanı kelime eşleşmesi.",
-            },
-            {
-                "key": "dense.top_k",
-                "label": "Anlamca en yakın kaç kolon aday olsun",
-                "type": "int",
-                "min": 20,
-                "max": 1000,
-                "step": 10,
-                "effect": NOW,
-                "advanced": True,
-                "help": "",
             },
         ],
     },

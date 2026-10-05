@@ -69,7 +69,7 @@ def silent_server() -> Iterator[tuple[str, list[str]]]:
 
 def test_stop_cuts_a_hanging_llm_call(silent_server: tuple[str, list[str]]) -> None:
     endpoint, events = silent_server
-    client = OpenAICompatibleClient(endpoint, "m", "", timeout=30)
+    client = OpenAICompatibleClient(endpoint, "m", timeout=30)
     token = cancel.Token()
     outcome: list[object] = []
 
@@ -100,7 +100,7 @@ def test_parallel_parts_all_stop(silent_server: tuple[str, list[str]]) -> None:
     from concurrent.futures import ThreadPoolExecutor
 
     endpoint, events = silent_server
-    client = OpenAICompatibleClient(endpoint, "m", "", timeout=30)
+    client = OpenAICompatibleClient(endpoint, "m", timeout=30)
     token = cancel.Token()
 
     def part(_: int) -> object:

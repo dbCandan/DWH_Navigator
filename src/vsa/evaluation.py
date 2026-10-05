@@ -28,7 +28,6 @@ from typing import Any
 
 import yaml
 
-from vsa.index.dense import DenseIndex, ObjectDenseIndex
 from vsa.models import Dictionary, ObjectMatch, Verdict
 from vsa.pipeline import Engine
 
@@ -137,17 +136,7 @@ def restricted_engine(engine: Engine, exclude_object_prefix: str) -> Engine:
         source_path=engine.dictionary.source_path,
         version=f"{engine.dictionary.version}-excl-{exclude_object_prefix}",
     )
-    dense = None
-    if engine.dense is not None:
-        dense = DenseIndex(engine.dense.vectors[[c.id for c in kept]], engine.dense.model)
-    restricted = Engine(dictionary, engine.settings, engine.resources, llm=engine.llm, dense=dense)
-    if engine.object_dense is not None:
-        od = engine.object_dense
-        rows = [i for i, k in enumerate(od.keys) if k in restricted.objects]
-        restricted.object_dense = ObjectDenseIndex(
-            [od.keys[i] for i in rows], od.vectors[rows], od.model
-        )
-    return restricted
+    return Engine(dictionary, engine.settings, engine.resources, llm=engine.llm)
 
 
 # --------------------------------------------------------------------------- scoring
@@ -221,13 +210,15 @@ def evaluate(
             continue  # the target-table mode is gone (ADR-033); its items stay in the file
         eng = engine_for(item)
         q = str(item["query"])
-        # The answer people see: the analyst's recommendations with a model (ADR-029);
-        # without one, the rule ranking (before the answer threshold) as before.
+        # The answer people see: the analyst's recommendations (ADR-029). Without a model
+        # there is no answer (ADR-038); the rule ranking is measured instead — the hints
+        # the analyst would get.
         ranked = eng.analyze(q).objects if eng.analyst_enabled else eng.rank_objects(q)[0]
         report.items.append(_score_item(str(item["id"]), "ask", q, ranked, item))
 
     for neg in negatives:
-        answer = engine.analyze(str(neg["query"]))
+        query = str(neg["query"])
+        answer = engine.analyze(query) if engine.analyst_enabled else engine.rule_answer(query)
         pool = answer.objects or answer.near_misses
         report.negatives.append(
             NegativeResult(

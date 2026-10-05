@@ -16,7 +16,6 @@ from vsa.llm.integrations import (
     conflicts,
     from_llm_settings,
     is_internal,
-    model_kind,
     new_id,
     normalize_endpoint,
     validate,
@@ -27,8 +26,8 @@ from vsa.web.server import App
 SPARK = "http://10.0.0.5:8000/v1"
 
 
-def _it(iid: str, chat: str = "", emb: str = "", on: bool = True) -> Integration:
-    return Integration(iid, iid, SPARK, chat_model=chat, embedding_model=emb, enabled=on)
+def _it(iid: str, chat: str = "", on: bool = True) -> Integration:
+    return Integration(iid, iid, SPARK, chat_model=chat, enabled=on)
 
 
 def test_endpoint_and_id_helpers() -> None:
@@ -48,14 +47,6 @@ def test_internal_addresses() -> None:
     assert not is_internal("https://8.8.8.8/v1")
 
 
-def test_model_kind() -> None:
-    assert model_kind("BAAI/bge-m3") == "embedding"
-    assert model_kind("text-embedding-nomic") == "embedding"
-    assert model_kind("openai/gpt-oss-120b") == "chat"
-    assert model_kind("anything", "embeddings") == "embedding"  # the server's word wins
-    assert model_kind("bge-looking-name", "llm") == "chat"
-
-
 def test_validation_messages() -> None:
     ok = _it("a", chat="m")
     assert validate(ok, []) == []
@@ -64,41 +55,28 @@ def test_validation_messages() -> None:
     assert validate(Integration("d", " ", SPARK), [])
 
 
-def test_one_active_holder_per_role() -> None:
-    chat, emb, both = _it("chat", chat="c"), _it("emb", emb="e"), _it("both", "c2", "e2", on=False)
-    assert [c.id for c in conflicts([chat, emb, both], both)] == ["chat", "emb"]
-    assert conflicts([chat, emb], _it("other-emb", emb="x")) == [emb]
+def test_one_active_chat_holder() -> None:
+    chat, other = _it("chat", chat="c"), _it("other", "c2", on=False)
+    assert [c.id for c in conflicts([chat, other], other)] == ["chat"]
     assert conflicts([chat], _it("none")) == []  # no role, no conflict
 
 
 def test_apply_active_integrations_to_llm_settings() -> None:
-    llm = LLMSettings(enabled=True, endpoint="http://old/v1", model="old", embedding_model="old-e")
+    llm = LLMSettings(enabled=True, endpoint="http://old/v1", model="old")
     chat = Integration("c", "c", SPARK, api_key="k1", chat_model="gpt", enabled=True,
                        temperature=0.2, timeout=300)  # fmt: skip
-    emb = Integration("e", "e", "http://10.0.0.6:8001/v1", api_key="k2", embedding_model="bge",
-                      enabled=True)  # fmt: skip
-    apply(llm, [chat, emb])
+    apply(llm, [chat])
     assert (llm.enabled, llm.endpoint, llm.model, llm.api_key) == (True, SPARK, "gpt", "k1")
     assert (llm.temperature, llm.timeout) == (0.2, 300)
-    assert (llm.embedding_endpoint, llm.embedding_model, llm.embedding_api_key) == (
-        "http://10.0.0.6:8001/v1", "bge", "k2")  # fmt: skip
-    emb.enabled = False
-    apply(llm, [chat, emb])
-    assert llm.embedding_model == "" and llm.embedding_endpoint == ""  # free role is off
     chat.enabled = False
-    apply(llm, [chat, emb])
+    apply(llm, [chat])
     assert not llm.enabled and llm.model == "" and llm.endpoint == ""
 
 
 def test_existing_llm_settings_become_an_integration() -> None:
-    llm = LLMSettings(enabled=True, endpoint="http://127.0.0.1:1234/v1", model="gpt",
-                      embedding_model="bge", api_key="k")  # fmt: skip
+    llm = LLMSettings(enabled=True, endpoint="http://127.0.0.1:1234/v1", model="gpt", api_key="k")
     (it,) = from_llm_settings(llm)
-    assert it.enabled and (it.chat_model, it.embedding_model, it.api_key) == ("gpt", "bge", "k")
-    split = LLMSettings(enabled=True, endpoint=SPARK, model="gpt", embedding_model="bge",
-                        embedding_endpoint="http://10.0.0.6:8001/v1")  # fmt: skip
-    a, b = from_llm_settings(split)
-    assert (a.chat_model, a.embedding_model, b.embedding_model) == ("gpt", "", "bge")
+    assert it.enabled and (it.chat_model, it.api_key) == ("gpt", "k")
     assert from_llm_settings(LLMSettings()) == []
 
 
@@ -116,6 +94,31 @@ def test_load_settings_reads_the_integrations_file(tmp_path: Path) -> None:
     assert (llm.enabled, llm.endpoint, llm.model) == (True, SPARK, "gpt")
 
 
+def test_files_from_before_vector_search_was_removed_still_load(tmp_path: Path) -> None:
+    """Old settings carry a ``dense:`` section and embedding fields; old integrations an
+    embedding model. All of it is ignored, nothing fails."""
+    settings = tmp_path / "settings.yaml"
+    settings.write_text(
+        "llm:\n  enabled: true\n  endpoint: http://old/v1\n  model: old\n"
+        "  embedding_model: bge\n  embedding_endpoint: http://old:8001/v1\n"
+        "dense:\n  enabled: true\n  top_k: 150\n  weight: 0.35\n",
+        encoding="utf-8",
+    )
+    assert load_settings(settings).llm.model == "old"
+    integrations_path(settings).write_text(
+        "integrations:\n- id: s\n  name: S\n  endpoint: http://10.0.0.5:8000/v1\n"
+        "  enabled: true\n  chat_model: gpt\n  embedding_model: bge\n"
+        "- id: e\n  name: E\n  endpoint: http://10.0.0.6:8001/v1\n"
+        "  enabled: true\n  embedding_model: bge\n",
+        encoding="utf-8",
+    )
+    llm = load_settings(settings).llm
+    assert (llm.enabled, llm.endpoint, llm.model) == (True, SPARK, "gpt")
+    s, e = read_integrations(integrations_path(settings)) or []
+    assert s.enabled and s.roles == ["chat"]
+    assert not e.enabled and e.roles == []  # embedding-only entry: kept, never active
+
+
 # --------------------------------------------------------------------------- admin API
 
 
@@ -125,7 +128,7 @@ class FakeServer:
     blank = {"type": "", "loaded": None, "owner": "", "quant": ""}
     models = [
         {"id": "gpt-oss", "context": 131072, **blank},
-        {"id": "BAAI/bge-m3", "context": 8192, **blank},
+        {"id": "qwen3-32b", "context": 32768, **blank},
     ]
 
     def __init__(self, monkeypatch: pytest.MonkeyPatch, down: bool = False) -> None:
@@ -142,7 +145,6 @@ class FakeServer:
                             lambda c: [m["id"] for m in listed(c)])  # fmt: skip
         monkeypatch.setattr(OpenAICompatibleClient, "chat_json",
                             lambda c, *a, **k: {"cevap": "Ankara"})  # fmt: skip
-        monkeypatch.setattr(OpenAICompatibleClient, "embed", lambda c, texts: [[0.1] * 1024])
         monkeypatch.setattr(OpenAICompatibleClient, "health", lambda c: "down" if down else "")
 
 
@@ -161,7 +163,7 @@ def app(sample_dictionary_path: Path, tmp_path: Path) -> App:
 
 def _form(**kw: Any) -> dict[str, Any]:
     return {"name": "DGX Spark 1", "endpoint": SPARK + "/chat/completions", "api_key": "sk-1",
-            "chat_model": "gpt-oss", "embedding_model": "", "temperature": 0, "timeout": 900,
+            "chat_model": "gpt-oss", "temperature": 0, "timeout": 900,
             "reasoning_effort": "none", "seed": 42, **kw}  # fmt: skip
 
 
@@ -216,11 +218,11 @@ def test_validation_and_delete(app: App, monkeypatch: pytest.MonkeyPatch) -> Non
 def test_test_models_and_inventory(app: App, monkeypatch: pytest.MonkeyPatch) -> None:
     server = FakeServer(monkeypatch)
     llm = app.llm_admin
-    llm.save(_form(embedding_model="BAAI/bge-m3", activate=True))
+    llm.save(_form(activate=True))
     r = llm.test({"id": "dgx-spark-1", "record": True})
     names = [s["name"] for s in r["steps"]]
-    assert r["ok"] and names == ["Sunucu", "Sohbet modeli", "Embedding modeli"]
-    assert "Ankara" in r["steps"][1]["detail"] and "1024" in r["steps"][2]["detail"]
+    assert r["ok"] and names == ["Sunucu", "Sohbet modeli"]
+    assert "Ankara" in r["steps"][1]["detail"]
     assert server.keys[-1] == "sk-1"  # the stored key is used, the browser never had it
     assert llm.state()["items"][0]["last_test"]["ok"]
 
@@ -228,8 +230,8 @@ def test_test_models_and_inventory(app: App, monkeypatch: pytest.MonkeyPatch) ->
     assert form["ok"] and server.keys[-1] == "sk-yeni"
 
     models = llm.models({"id": "dgx-spark-1"})["models"]
-    kinds = {m["id"]: (m["kind"], m["in_use"]) for m in models}
-    assert kinds == {"gpt-oss": ("chat", ["chat"]), "BAAI/bge-m3": ("embedding", ["embedding"])}
+    in_use = {m["id"]: m["in_use"] for m in models}
+    assert in_use == {"gpt-oss": ["chat"], "qwen3-32b": []}
     inv = llm.inventory()["servers"]
     assert inv[0]["ok"] and len(inv[0]["models"]) == 2
 

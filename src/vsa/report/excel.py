@@ -147,11 +147,10 @@ def answered_by(r: AnalysisResult) -> str:
     """Who wrote the answer, said plainly (ADR-034)."""
     if r.analyst:
         return f"Analist (dil modeli: {r.llm_model})"
-    cut = f"güven skorları %{round((1 - r.confidence_factor) * 100)} düşürülerek gösteriliyor"
     if r.fallback:
-        return f"Kural motoru (yedek) — analist çalışamadı: {r.fallback} Bu yüzden {cut}."
-    return ("Kural motoru — sohbet modeli bağlı değil. Kural motoru tabloları kelime ve anlam "
-            f"eşleşmesiyle sıralar, analist kadar isabetli değildir; {cut}.")  # fmt: skip
+        return f"Analiz yapılamadı — {r.fallback}"
+    cut = f"güven skorları %{round((1 - r.confidence_factor) * 100)} düşürülerek gösteriliyor"
+    return f"Kural motoru (yalnız ölçüm amaçlı; kullanıcıya gösterilmez) — {cut}."
 
 
 def _dictionary_line(r: AnalysisResult) -> str:
@@ -356,12 +355,11 @@ def _list_summary(ws: Worksheet, r: ListResult, first_rows: dict[int, int]) -> N
         outcome += f", {len(r.items) - len(done)} cevapsız"
     if r.cancelled:
         outcome += " — liste durduruldu, rapor yarım"
-    by_rules = [d for d in done if not d.analyst]
-    method = f"{len(done) - len(by_rules)} terim analist (dil modeli)"
-    if by_rules:
-        cut = round((1 - by_rules[0].confidence_factor) * 100)
-        method += (f", {len(by_rules)} terim kural motoru — model bağlı değil ya da çalışamadı; "
-                   f"bu terimlerde güven %{cut} düşürüldü (Yöntem sütunu)")  # fmt: skip
+    failed = [d for d in done if not d.analyst]
+    method = f"{len(done) - len(failed)} terim analist (dil modeli)"
+    if failed:
+        method += (f", {len(failed)} terim analiz edilemedi — model bağlı değil ya da "
+                   "çalışamadı (Yöntem sütunu)")  # fmt: skip
     lines = [
         ("Liste", r.name),
         ("Kaynak sözlük", f"{r.dictionary_source} (sürüm {r.dictionary_version})"),
@@ -374,7 +372,7 @@ def _list_summary(ws: Worksheet, r: ListResult, first_rows: dict[int, int]) -> N
     for row, (label, value) in enumerate(lines, 3):
         ws.cell(row=row, column=1, value=label).font = BOLD
         cell = _merged(ws, row, 2, 9, value)
-        if label == "Cevabı üreten" and by_rules:
+        if label == "Cevabı üreten" and failed:
             cell.fill = WARN_FILL
     start = len(lines) + 4
     headers = [
@@ -387,7 +385,7 @@ def _list_summary(ws: Worksheet, r: ListResult, first_rows: dict[int, int]) -> N
         if res is None:
             method = "-"
         else:
-            method = "Analist" if res.analyst else "Kural (yedek)" if res.fallback else "Kural"
+            method = "Analist" if res.analyst else "Yapılamadı" if res.fallback else "Kural"
         rows.append([
             item.index, item.term, _item_state(item, r.cancelled),
             best.object_key if best else "-",

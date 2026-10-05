@@ -110,6 +110,6 @@ def list_item(item: ListItem, state: str) -> dict[str, Any]:
             "score": round(best.score, 4), "level": best.level.value,
         },
         "flow": "" if r is None else "önbellek" if r.reused_at else "analist" if r.analyst
-        else "yedek" if r.fallback else "kural",
+        else "yapılamadı" if r.fallback else "kural",
         "elapsed_ms": item.elapsed_ms,
     }  # fmt: skip

@@ -89,9 +89,6 @@ class LLMSettings:
     enabled: bool = False
     endpoint: str = ""  # OpenAI-compatible base URL, e.g. http://127.0.0.1:1234/v1
     model: str = ""  # chat model: the analyst (ADR-029)
-    embedding_model: str = ""  # for the dense index (M3)
-    embedding_endpoint: str = ""  # embeddings on a server of their own; "" = endpoint
-    embedding_api_key: str = ""  # key of that server; "" = api_key
     temperature: float = 0.1
     timeout: int = 120
     api_key: str = ""
@@ -101,8 +98,8 @@ class LLMSettings:
 
 @dataclass(slots=True)
 class AnalystSettings:
-    """The analyst flow (ADR-029). Runs whenever a chat model is connected; the rule
-    engine stays as evidence, validator and fallback (ADR-002, ADR-008)."""
+    """The analyst flow (ADR-029, ADR-040): the only way an answer is written (ADR-038).
+    The rule engine stays as evidence and validator (ADR-002)."""
 
     shortlist: int = 14  # candidate tables the model reads column by column
     confusables: int = 6  # look-alike tables it reads for the warnings
@@ -110,22 +107,19 @@ class AnalystSettings:
     family_extra: int = 6  # at most this many tables added that way
     evidence_columns: int = 60  # look-alike columns from the whole dictionary
     description_chars: int = 420  # per column description in the material
-    full_table_columns: int = 90  # wider tables: descriptions only for relevant columns
+    full_table_columns: int = 90  # wider tables: lines only for the relevant columns
+    # ADR-040: columns go as "Ad [Rol]: özet"; only this many of the most relevant ones per
+    # table carry the full description (-1 = every column, the pre-ADR-040 material).
+    detail_columns: int = 8
+    catalog_columns: bool = False  # also list column names in the step-1 catalog
     min_confidence: float = 0.5  # recommendations below this are not shown (ADR-006)
     max_tokens: int = 8000  # answer budget of the second step
     # Step 1 split (ADR-029): the catalog read in N parallel parts for recall, then the
     # pooled candidates compared side by side. 1 = the whole catalog in one call.
-    catalog_chunks: int = 5
+    catalog_chunks: int = 1
     chunk_candidates: int = 8  # candidates each part may propose
     pool_size: int = 40  # pooled candidates the reconcile step compares
     pool_columns: int = 12  # most relevant column names shown per pooled table
-
-
-@dataclass(slots=True)
-class DenseSettings:
-    enabled: bool = False
-    top_k: int = 200  # dense column candidates
-    weight: float = 0.35  # share of the dense similarity in the column search score
 
 
 @dataclass(slots=True)
@@ -151,7 +145,6 @@ class Settings:
     scoring: ScoringSettings = field(default_factory=ScoringSettings)
     llm: LLMSettings = field(default_factory=LLMSettings)
     analyst: AnalystSettings = field(default_factory=AnalystSettings)
-    dense: DenseSettings = field(default_factory=DenseSettings)
     cache: CacheSettings = field(default_factory=CacheSettings)
     report: ReportSettings = field(default_factory=ReportSettings)
 
@@ -159,11 +152,13 @@ class Settings:
 T = TypeVar("T")
 
 
-# Settings of removed features (judge, LLM query expansion, target-table mode; ADR-033):
-# older files still carry them, they are ignored instead of failing the typo guard.
+# Settings of removed features (judge, LLM query expansion, target-table mode; ADR-033;
+# vector search, 2026-10-05): older files still carry them, they are ignored instead of
+# failing the typo guard. A whole section ("dense") is skipped with everything in it.
 RETIRED = frozenset({
     "llm.judge", "llm.judge_candidates", "llm.expand_query", "llm.provider",
-    "scoring.w_rule", "scoring.w_llm", "analyst.enabled", "analyst.batch", "dense.rrf_k",
+    "scoring.w_rule", "scoring.w_llm", "analyst.enabled", "analyst.batch",
+    "dense", "llm.embedding_model", "llm.embedding_endpoint", "llm.embedding_api_key",
 })  # fmt: skip
 
 

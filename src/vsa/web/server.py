@@ -30,16 +30,13 @@ network. One engine, one lock: the tool serves a team, not the internet.
     GET  /api/settings          pages, sections and current values (search, scoring, files)
     POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
     POST /api/reindex           rebuild the BM25 index with the saved settings
-    GET  /api/dense             vector index: built with which model, rebuild needed, job
-    POST /api/dense/start       rebuild the vector index in the background (`vsa index --dense`)
-    POST /api/dense/cancel      stop that build; the embedding cache keeps what was done
-    GET  /api/llm               LLM integrations, who holds which role, index's embedding model
+    GET  /api/llm               LLM integrations, which one holds the chat role
     GET  /api/llm/inventory     every integration's models, servers asked in parallel
-    POST /api/llm/save          {id?, name, endpoint, api_key?, chat_model, embedding_model, …}
-    POST /api/llm/activate      {id, enabled, replace?} — one active holder per role
+    POST /api/llm/save          {id?, name, endpoint, api_key?, chat_model, …}
+    POST /api/llm/activate      {id, enabled, replace?} — one active chat model
     POST /api/llm/delete        {id}
     POST /api/llm/models        {id? | endpoint, api_key} model list of one server (form)
-    POST /api/llm/test          {id? + form values, record?} server / chat / embedding steps
+    POST /api/llm/test          {id? + form values, record?} server / chat steps
 """
 
 from __future__ import annotations
@@ -69,10 +66,8 @@ from vsa.report.excel import report_path, write_ask_report, write_list_report
 from vsa.text.normalize import fold
 from vsa.web import serialize
 from vsa.web.answer_store import AnswerStore
-from vsa.web.dense_admin import DenseBuilder
 from vsa.web.llm_admin import LLMAdmin
 from vsa.web.settings_schema import (
-    DENSE,
     FIELDS,
     PAGES,
     REINDEX,
@@ -178,7 +173,6 @@ class App:
         self.lists: dict[str, ListJob] = {}
         self.object_index = self._object_index()
         self.llm_admin = LLMAdmin(self)
-        self.dense_admin = DenseBuilder(self)
 
     def reload(self) -> None:
         """Rebuild the engine from the saved settings (and LLM integrations). Built
@@ -230,13 +224,10 @@ class App:
                         if source.is_file() else ""),
             "columns": len(e.dictionary.columns),
             "objects": len(e.objects),
-            "hybrid": e.hybrid,
-            "embedding_model": e.dense.model if e.dense else "",
             "llm": e.llm.model if e.analyst_enabled else "",
             "analyst": e.analyst_enabled,  # ADR-029: the model writes the answer
             # ADR-034: "ok" | "none" (no chat model) | "down" (configured, not answering)
             "llm_state": self._llm_state(),
-            "rule_only_factor": s.scoring.rule_only_factor,
             "shortlist": s.analyst.shortlist,
             "examples": [
                 "Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?",
@@ -457,7 +448,7 @@ class App:
         elif result.reused_at:
             flow = "önbellek"  # an earlier analyst answer given again (ADR-035)
         else:
-            flow = "analist" if result.analyst else ("yedek" if result.fallback else "kural")
+            flow = "analist" if result.analyst else "yapılamadı"  # ADR-038: no rule answers
         entry = {
             "id": uuid.uuid4().hex[:12],
             "at": datetime.now().isoformat(timespec="seconds"),
@@ -466,7 +457,7 @@ class App:
             "query": query[:2000],
             "origin": origin,  # "liste.xlsx #3" for a term of a list (ADR-033)
             "flow": flow,
-            "model": self.engine.llm.model if flow in ("analist", "yedek", "durduruldu") else (
+            "model": self.engine.llm.model if flow in ("analist", "yapılamadı", "durduruldu") else (
                 result.llm_model if result else ""),  # fmt: skip
             "verdict": result.verdict.value if result else "",
             "summary": result.summary[:500] if result else "",
@@ -550,8 +541,8 @@ class App:
 
         1. name — table / schema / dataset group contains the text (instant, listed first)
         2. content — the full pipeline without the LLM: Turkish normalization, term
-           dictionary, dictionary synonyms, BM25, dense (BGE-M3) and object aggregation;
-           finds tables by what their columns *mean*, not only by their names
+           dictionary, dictionary synonyms, BM25 and object aggregation;
+           finds tables by their column names and descriptions, not only by their names
         3. column name — a column name contains the text
         """
         started = time.perf_counter()
@@ -613,7 +604,6 @@ class App:
             "items": result,
             "counts": counts,
             "concepts": concepts,
-            "hybrid": self.engine.hybrid,
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
@@ -628,7 +618,6 @@ class App:
             "defaults": defaults(),
             "path": str(self.settings_path),
             "status": {
-                "hybrid": self.engine.hybrid,
                 "llm": self.engine.llm.available,
                 "llm_model": self.engine.llm.model,
                 "dictionary_version": self.engine.dictionary.version,
@@ -670,21 +659,17 @@ class App:
         self.reload()
         labels = {k: FIELDS[k]["label"] for k in changed}
         reindex = [labels[k] for k in changed if FIELDS[k]["effect"] == REINDEX]
-        dense = [labels[k] for k in changed if FIELDS[k]["effect"] == DENSE]
         self.reindex_pending = sorted(set(self.reindex_pending) | set(reindex))
         return {
             "ok": True,
             "changed": [labels[k] for k in changed],
             "reindex_needed": self.reindex_pending,
-            "dense_needed": dense,
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
             "status": self.settings_get()["status"],
         }
 
     def reindex(self) -> dict[str, Any]:
         """Rebuild the BM25 index from the dictionary with the saved settings (~10 s)."""
-        if self.dense_admin.running:
-            raise ValueError("Vektör indeksi kurulurken indeks yeniden kurulamaz")
         started = time.perf_counter()
         settings = load_settings(self.settings_path)
         with self.lock:
@@ -698,7 +683,6 @@ class App:
             "columns": meta["columns"],
             "objects": meta["objects"],
             "version": meta["dictionary_version"],
-            "dense": self.engine.hybrid,
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
@@ -876,8 +860,6 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._json(app.settings_get())
                 elif url.path == "/api/llm":
                     self._json(app.llm_admin.state())
-                elif url.path == "/api/dense":
-                    self._json(app.dense_admin.state())
                 elif url.path == "/api/llm/inventory":
                     self._json(app.llm_admin.inventory())
                 elif url.path == "/api/status":
@@ -934,10 +916,6 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._json(app.settings_save(json.loads(raw or b"{}")))
                 elif url.path == "/api/reindex":
                     self._json(app.reindex())
-                elif url.path == "/api/dense/start":
-                    self._json(app.dense_admin.start())
-                elif url.path == "/api/dense/cancel":
-                    self._json(app.dense_admin.cancel())
                 elif url.path.startswith("/api/llm/") and url.path[9:] in LLM_POSTS:
                     action = getattr(app.llm_admin, LLM_POSTS[url.path[9:]])
                     self._json(action(json.loads(raw or b"{}")))

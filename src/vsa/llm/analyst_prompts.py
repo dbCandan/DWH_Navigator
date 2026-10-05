@@ -22,8 +22,10 @@ mevduat = toplanan fon (katılma hesabı = vadeli, cari hesap = vadesiz), leasin
 
 SHORTLIST_RULES = """GÖREV (1. adım — aday tablo listesi):
 Aşağıdaki KATALOG veri ambarındaki TÜM tabloları içerir (id | tablo | veri seti grubu | kolon \
-sayısı | kolon adları). Talebi okuyup cevabın bulunabileceği tabloları seç. Bir sonraki adımda \
-bu tabloların bütün kolon açıklamaları okunacak; burada kaçırdığın tablo cevaba giremez.
+sayısı | tablonun içeriği | Satır: bir satırın neyi temsil ettiği | Zaman: dönem/tarih kolonları; \
+açıklaması olmayan tablolarda kolon adları). Talebi okuyup cevabın bulunabileceği tabloları seç. \
+Bir sonraki adımda bu tabloların bütün kolonları okunacak; burada kaçırdığın tablo cevaba \
+giremez. "Kelime eşleşmesi en güçlü kolonlar" ipucu, katalogda adı geçmeyen kolonları gösterir.
 
 Kurallar:
 - Önce talebi yorumla: hangi varlık (müşteri, kart, hesap, sözleşme, işlem…), hangi bilgi \
@@ -114,7 +116,8 @@ def shortlist_user(query: str, hints: str) -> str:
 
 CHUNK_RULES = """GÖREV (1a — katalog parçası):
 Aşağıdaki KATALOG PARÇASI veri ambarı kataloğunun yalnızca bir bölümüdür (id | tablo | veri \
-seti grubu | kolon sayısı | kolon adları); diğer bölümler aynı anda başka yerde okunuyor. Bu \
+seti grubu | kolon sayısı | tablonun içeriği | satır düzeyi | zaman kolonları); diğer \
+bölümler aynı anda başka yerde okunuyor. Bu \
 bölümdeki tablolardan talebe cevap OLABİLECEK her tabloyu seç: varlığın ana tablosu, talebin \
 bilgi ailelerini taşıyan tablolar, talebin kavramlarını birlikte taşıyan tablolar, gereken boyut \
 tabloları (sektör, segment…).
@@ -170,7 +173,8 @@ def reconcile_system(pool: str, shortlist: int) -> str:
 
 
 ANALYST_RULES ="""GÖREV (2. adım — "doğru kaynak neresi?" cevabı):
-Sana talep, talebin yorumu, ADAY TABLOLAR (kolonları ve sözlük açıklamalarıyla) ve sözlüğün \
+Sana talep, talebin yorumu, ADAY TABLOLAR (kolonları; her kolon "Ad [Rol]: özet" biçiminde, \
+talebe en ilgili olanlar tam sözlük açıklamasıyla) ve sözlüğün \
 geri kalanından KARIŞTIRILABİLİR ALANLAR verildi. Bunları bir analist gibi oku ve iş birimine \
 verilecek raporu yaz.
 
@@ -179,7 +183,9 @@ Doğruluk kuralları (pazarlıksız):
 sözlüğe karşı doğrulanır; sözlükte olmayan ad içeren cümle silinir.
 - Öneriler yalnızca ADAY TABLOLAR içinden, id ile seçilir. Diğer tabloları notlarda \
 anabilirsin; tam adıyla yaz (VeriTabanı.Şema.Obje veya VeriTabanı.Şema.Obje.Kolon).
-- Kararı kolon ADINA değil sözlük AÇIKLAMASINA göre ver. Adı yanıltıcı alanları (ör. adında \
+- Kararı kolon ADINA değil sözlük ÖZETİ ve AÇIKLAMASINA göre ver. Rol etiketi (Anahtar, Kod, \
+Ad, Zaman, Ölçü, Bayrak, Metin) kolonun türünü söyler: ölçü isteyen talebe Ölçü, dönem isteyen \
+talebe Zaman kolonu gerekir. Adı yanıltıcı alanları (ör. adında \
 Age geçip kişinin yaşını tutan alan, adında Sector geçip firma yaşını tutan alan, ek kart \
 sahibini tutan CustomerId) mutlaka uyarı olarak yaz.
 - "Bulunamadı" geçerli cevaptır. Talebi karşılamayan tabloyu listeyi doldurmak için önerme.

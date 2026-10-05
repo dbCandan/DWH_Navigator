@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 import threading
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -69,9 +69,6 @@ class ScriptedClient:
         self.systems.append(system)
         self.users.append(user)
         return self.replies.pop(0) if self.replies else None
-
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        raise AssertionError("dense arm is off in these tests")
 
 
 def engine(client: Any, chunks: int = 1) -> Engine:
@@ -269,28 +266,30 @@ class TestEngine:
         r = engine(ScriptedClient(empty)).analyze("uzay gemisi yakıtı")
         assert r.analyst and r.verdict is Verdict.NOT_FOUND and r.objects == []
 
-    def test_model_failure_falls_back_to_rules(self) -> None:
+    def test_model_failure_says_why_and_lists_nothing(self) -> None:
         client = ScriptedClient(None)
         client.last_error = "HTTP 400: request (65019 tokens) exceeds the available context size"  # type: ignore[attr-defined]
         r = engine(client).analyze("kredi kartı")
-        assert not r.analyst  # ADR-008: rule pipeline answered
-        assert "bağlam penceresi" in r.fallback  # ...and the user is told why
+        assert not r.analyst and r.objects == [] and r.near_misses == []  # ADR-038
+        assert "bağlam penceresi" in r.fallback  # the user is told why
+        assert r.summary.startswith("Analiz yapılamadı")
 
     def test_second_step_failure_falls_back(self) -> None:
         r = engine(ScriptedClient(SHORTLIST, None)).analyze("kredi kartı")
-        assert not r.analyst
+        assert not r.analyst and r.objects == []
 
     def test_unreachable_server_is_not_waited_on(self) -> None:
         """ADR-034: a dead server is found by the quick check; the model is never asked."""
         client = ScriptedClient(SHORTLIST, analyst_reply())
         client.down = "Model sunucusuna ulaşılamadı (http://spark:8000/v1): bağlantı reddedildi"
         r = engine(client).analyze("kredi kartı")
-        assert not r.analyst and client.systems == []
+        assert not r.analyst and client.systems == [] and r.objects == []
         assert r.fallback == client.down  # said once, as the check said it
 
     def test_rule_answer_confidence_is_discounted(self) -> None:
-        """ADR-034: a rule answer never looks as sure as an analyst's."""
-        r = engine(ScriptedClient(None)).analyze("kredi kartı")
+        """ADR-034: the rule engine's own answer (now only measured, ADR-038) never looks
+        as sure as an analyst's."""
+        r = engine(ScriptedClient(None)).rule_answer("kredi kartı")
         assert not r.analyst and r.confidence_factor == 0.8 and r.objects
         for m in [*r.objects, *r.near_misses]:
             assert m.rule_score is not None and abs(m.score - round(m.rule_score * 0.8, 4)) < 1e-9
@@ -325,9 +324,6 @@ class RoutingClient:
         if "GÖREV (1b" in system:
             return self.reconcile_reply
         return analyst_reply()
-
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        raise AssertionError("dense arm is off in these tests")
 
 
 class TestSplitCatalog:

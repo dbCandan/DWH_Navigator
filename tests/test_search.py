@@ -81,7 +81,7 @@ class TestExpansion:
         q = expander().expand("kredi kartı")
         assert q.sparse_terms["kart"] == 1.0
         assert q.sparse_terms["credit"] == 0.6
-        assert q.dense_text == "kredi kartı"  # ADR-004
+        assert q.text == "kredi kartı"  # ADR-004: the original wording is kept
 
     def test_stopword_in_term_phrase_does_not_fire(self) -> None:
         """ "veri tarihi" must not shrink to "tarih" and match "doğum tarihi"."""

@@ -1,7 +1,7 @@
 """OpenAI-compatible client for a local model server (HANDOVER §10.3, ADR-008).
 
 Works with LM Studio, vLLM, llama.cpp server and Ollama — anything serving
-``/v1/chat/completions`` and ``/v1/embeddings``. Standard library only (closed network:
+``/v1/chat/completions``. Standard library only (closed network:
 no extra wheels). ``NullClient`` keeps the app working when no model is configured, and
 any LLM failure degrades to rule-based results instead of stopping a search.
 """
@@ -17,7 +17,7 @@ import socket
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
 from vsa import cancel, trace
@@ -157,8 +157,6 @@ class LLMClient(Protocol):
         max_tokens: int = 1024,
     ) -> dict[str, Any] | None: ...
 
-    def embed(self, texts: Sequence[str]) -> list[list[float]]: ...
-
     def health(self) -> str:
         """"" when the chat model's server answers, else why not (Turkish, for people)."""
         ...
@@ -186,9 +184,6 @@ class NullClient:
     ) -> dict[str, Any] | None:
         return None
 
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        raise LLMError("Embedding modeli yapılandırılmadı")
-
 
 def parse_json_reply(text: str) -> dict[str, Any] | None:
     """Tolerant JSON extraction: strips <think> blocks and markdown fences."""
@@ -207,92 +202,21 @@ def parse_json_reply(text: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
-def client_from_settings(llm: Any, embeddings: bool = False) -> LLMClient:
+def client_from_settings(llm: Any) -> LLMClient:
     """``LLMSettings`` -> client (ADR-008). ``llm.enabled`` governs the chat features
-    (the analyst); with ``embeddings`` the server still serves the dense
-    index even when chat is off. Nothing configured -> NullClient.
-
-    ``llm.embedding_endpoint`` puts embeddings on a server of their own (vLLM serves one
-    model per server); empty = the chat endpoint serves both, as LM Studio and Ollama do."""
-    enabled = bool(getattr(llm, "enabled", False))
+    (the analyst). Nothing configured -> NullClient."""
     endpoint = str(getattr(llm, "endpoint", ""))
-    embed_endpoint = str(getattr(llm, "embedding_endpoint", "")) or endpoint
-    want_embed = embeddings and bool(getattr(llm, "embedding_model", "")) and bool(embed_endpoint)
-    want_chat = enabled and bool(endpoint)
-    if not (want_chat or want_embed):
+    if not (bool(getattr(llm, "enabled", False)) and endpoint):
         return NullClient()
-    if embed_endpoint == endpoint:
-        return OpenAICompatibleClient(
-            endpoint=endpoint,
-            model=llm.model if want_chat else "",
-            embedding_model=llm.embedding_model if want_embed else "",
-            temperature=llm.temperature,
-            timeout=llm.timeout,
-            api_key=llm.api_key,
-            reasoning_effort=llm.reasoning_effort,
-            seed=getattr(llm, "seed", -1),
-        )
-    chat: LLMClient = NullClient()
-    if want_chat:
-        chat = OpenAICompatibleClient(
-            endpoint=endpoint, model=llm.model, temperature=llm.temperature,
-            timeout=llm.timeout, api_key=llm.api_key, reasoning_effort=llm.reasoning_effort,
-            seed=getattr(llm, "seed", -1),
-        )  # fmt: skip
-    embedder: LLMClient = NullClient()
-    if want_embed:
-        embedder = OpenAICompatibleClient(
-            endpoint=embed_endpoint, model="", embedding_model=llm.embedding_model,
-            timeout=llm.timeout, api_key=getattr(llm, "embedding_api_key", "") or llm.api_key,
-        )  # fmt: skip
-    return SplitClient(chat, embedder)
-
-
-def embedding_client(llm: Any, timeout: float = 600.0) -> OpenAICompatibleClient:
-    """Client for building the dense index: the embedding server and model of ``llm``
-    (``LLMSettings``). Raises ``LLMError`` when no embedding model is configured."""
-    endpoint = str(getattr(llm, "embedding_endpoint", "")) or str(getattr(llm, "endpoint", ""))
-    model = str(getattr(llm, "embedding_model", ""))
-    if not (endpoint and model):
-        raise LLMError("Embedding modeli bağlı değil (Yapay zekâ → embedding rolü)")
-    key = str(getattr(llm, "embedding_api_key", "")) or str(getattr(llm, "api_key", ""))
-    return OpenAICompatibleClient(endpoint, "", model, timeout=timeout, api_key=key)
-
-
-class SplitClient:
-    """Chat from one server, embeddings from another (``llm.embedding_endpoint``)."""
-
-    def __init__(self, chat: LLMClient, embedder: LLMClient) -> None:
-        self.chat = chat
-        self.embedder = embedder
-
-    @property
-    def available(self) -> bool:
-        return self.chat.available
-
-    @property
-    def model(self) -> str:
-        return self.chat.model
-
-    @property
-    def last_error(self) -> str:
-        return str(getattr(self.chat, "last_error", ""))
-
-    def health(self) -> str:
-        return self.chat.health()
-
-    def chat_json(
-        self,
-        system: str,
-        user: str,
-        schema: Mapping[str, Any],
-        *,
-        max_tokens: int = 1024,
-    ) -> dict[str, Any] | None:
-        return self.chat.chat_json(system, user, schema, max_tokens=max_tokens)
-
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        return self.embedder.embed(texts)
+    return OpenAICompatibleClient(
+        endpoint=endpoint,
+        model=llm.model,
+        temperature=llm.temperature,
+        timeout=llm.timeout,
+        api_key=llm.api_key,
+        reasoning_effort=llm.reasoning_effort,
+        seed=getattr(llm, "seed", -1),
+    )
 
 
 class OpenAICompatibleClient:
@@ -300,7 +224,6 @@ class OpenAICompatibleClient:
         self,
         endpoint: str,
         model: str,
-        embedding_model: str = "",
         temperature: float = 0.1,
         timeout: float = 120.0,
         api_key: str = "",
@@ -312,7 +235,6 @@ class OpenAICompatibleClient:
         # (LM Studio) then cost ~2 s per request before the fallback. Use IPv4 directly.
         self.endpoint = endpoint.rstrip("/").replace("://localhost", "://127.0.0.1")
         self._model = model
-        self.embedding_model = embedding_model
         self.temperature = temperature
         self.timeout = timeout
         self.api_key = api_key
@@ -543,18 +465,3 @@ class OpenAICompatibleClient:
         log.info("Model bir özelliği desteklemiyor, onsuz yeniden deneniyor: %s", error[:160])
         trace.event("Model bir özelliği reddetti — onsuz yeniden", _error_text(error))
         return True
-
-    def embed(self, texts: Sequence[str]) -> list[list[float]]:
-        if not self.embedding_model:
-            raise LLMError("Embedding modeli yapılandırılmadı")
-        with trace.span("Embedding", f"{self.embedding_model} · {len(texts)} metin", trace.EMBED):
-            data = self._post(
-                "/embeddings",
-                {"model": self.embedding_model, "input": list(texts)},
-                max(self.timeout, 600.0),
-            )
-        rows = sorted(data.get("data", []), key=lambda d: d.get("index", 0))
-        vectors = [[float(x) for x in r["embedding"]] for r in rows]
-        if len(vectors) != len(texts):
-            raise LLMError("Embedding yanıtında eksik vektör")
-        return vectors
