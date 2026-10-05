@@ -41,7 +41,7 @@ from vsa.evaluation import (
 )
 from vsa.feedback import export_candidates, load_feedback, summarize
 from vsa.index.store import IndexMissingError
-from vsa.loader import file_version, load_term_list, write_catalog
+from vsa.loader import file_version, load_term_list
 from vsa.models import AnalysisResult, Level, ListItem, ListResult, Verdict
 from vsa.pipeline import Engine
 from vsa.report.excel import report_path, write_ask_report, write_list_report
@@ -349,25 +349,6 @@ def _print_delta(before: dict[str, float], after: dict[str, float]) -> None:
         delta = f"[{style}]{d:+.3f}[/{style}]"
         table.add_row(key, f"{before[key]:.3f}", f"{after[key]:.3f}", delta)
     console.print(table)
-
-
-@app.command()
-def catalog(
-    out: Path | None = typer.Option(
-        None, "--out", help="JSONL dosyası (varsayılan: sözlüğün yanında <ad>.objeler.jsonl)"
-    ),
-    settings_path: Path | None = SettingsOpt,
-) -> None:
-    """Sözlüğün Objeler sayfasından LLM için tablo kataloğu (JSONL) üretir."""
-    settings = _setup(settings_path)
-    source = Path(settings.dictionary.path)
-    target = out or source.with_name(f"{source.stem}.objeler.jsonl")
-    try:
-        n = write_catalog(source, target, settings.dictionary.sheet)
-    except (OSError, ValueError, KeyError) as exc:
-        console.print(f"[red]Katalog üretilemedi: {exc}[/red]")
-        raise typer.Exit(2) from exc
-    console.print(f"[green]{n} obje yazıldı:[/green] {target}")
 
 
 @app.command()

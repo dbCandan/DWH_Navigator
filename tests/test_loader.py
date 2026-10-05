@@ -179,41 +179,6 @@ def test_group_comes_from_object_sheet() -> None:
     assert [c.dataset_group for c in cols] == ["Kart", None] and not warnings
 
 
-def test_build_catalog() -> None:
-    columns = pd.DataFrame({
-        "DatabaseName": ["EDWDM", "EDWDM", "EDWDM"],
-        "SchemaName": ["CMP", "CMP", "CUS"],
-        "ObjectName": ["vCardLimitFullness", "vCardLimitFullness", "vCustomer"],
-        "ColumnName": ["CustomerPartyId", "Period", "CustomerPartyId"],
-    })  # fmt: skip
-    objects = pd.DataFrame({
-        "ObjectKey": ["EDWDM.CMP.vCardLimitFullness"],
-        "ObjectDescription": ["Kart limit doluluğu."],
-        "Grain": ["Kart × Periyot"],
-        "KeyColumns": ["CustomerPartyId, Period"],
-        "TimeColumns": [None],
-        "BusinessDomain": ["Kart ve Harcama"],
-        "DatasetGroup": ["Kart"],
-    })  # fmt: skip
-    from vsa.loader import build_catalog
-
-    (rec,) = build_catalog(objects, columns)
-    assert rec["anahtar"] == ["CustomerPartyId", "Period"] and rec["zaman"] == []
-    assert rec["kolonlar"] == ["CustomerPartyId", "Period"] and rec["kolon_sayisi"] == 2
-
-    objects.loc[0, "ObjectKey"] = "EDWDM.CMP.vMissing"
-    with pytest.raises(ValueError, match="vMissing"):
-        build_catalog(objects, columns)
-
-
-def test_real_catalog(real_dictionary_path: Path, tmp_path: Path) -> None:
-    from vsa.loader import write_catalog
-
-    out = tmp_path / "katalog.jsonl"
-    assert write_catalog(real_dictionary_path, out) == 390
-    assert len(out.read_text(encoding="utf-8").splitlines()) == 390
-
-
 def test_term_list_parsing() -> None:
     """ADR-033: one fixed format — column A, row 1 is the header, a term per row below."""
     from vsa.loader import parse_term_sheet

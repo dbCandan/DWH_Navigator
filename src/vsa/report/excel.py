@@ -1,7 +1,7 @@
 """Excel analysis reports (HANDOVER §12.1, §12.2). Does file I/O.
 
-One question: Özet · Öneriler · Alan Detayları · Notlar ve Öneriler.
-A term list (ADR-033): the same four sheets, combined, with a term column.
+One question: Özet · Öneriler.
+A term list (ADR-033): the same two sheets, combined, with a term column.
 """
 
 from __future__ import annotations
@@ -19,8 +19,6 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 from vsa.models import (
     AnalysisResult,
-    DictColumn,
-    FlagKind,
     Level,
     ListItem,
     ListResult,
@@ -52,12 +50,6 @@ VERDICT_FILL = {
     Verdict.FOUND: PatternFill("solid", fgColor="C6EFCE"),
     Verdict.PARTIAL: PatternFill("solid", fgColor="FFEB9C"),
     Verdict.NOT_FOUND: PatternFill("solid", fgColor="FFC7CE"),
-}
-
-FLAG_LABEL = {
-    FlagKind.MODEL_ESTIMATED: "Model tahmini — doğrulanmalı",
-    FlagKind.CORRECTED: "Kaynak açıklama düzeltildi",
-    FlagKind.NEEDS_VERIFICATION: "Doğrulanmalı",
 }
 
 
@@ -121,17 +113,6 @@ def _section(ws: Worksheet, row: int, title: str) -> int:
     return row + 1
 
 
-def _bullets(ws: Worksheet, row: int, title: str, items: Sequence[str]) -> int:
-    if not items:
-        return row
-    row = _section(ws, row, title)
-    for item in items:
-        _merged(ws, row, 1, 5, f"• {item}")
-        _grow(ws, row, item, 150)
-        row += 1
-    return row + 1
-
-
 def _covers(m: ObjectMatch) -> str:
     if m.covers:
         return m.covers
@@ -159,7 +140,7 @@ def _dictionary_line(r: AnalysisResult) -> str:
 
 
 def _summary(ws: Worksheet, r: AnalysisResult) -> None:
-    """Özet: request, verdict, suggestion table, design, traps, scale (HANDOVER §12.2)."""
+    """Özet: request, verdict, reading of the request, suggestion table, confidence scale."""
     ws.title = "Özet"
     ws.sheet_view.showGridLines = False
     for col, width in zip("ABCDE", (16, 46, 70, 10, 12), strict=True):
@@ -169,11 +150,15 @@ def _summary(ws: Worksheet, r: AnalysisResult) -> None:
     _merged(ws, 2, 1, 3, _dictionary_line(r)).font = SMALL_FONT
     stamp = datetime.strptime(r.generated_at, "%Y-%m-%d %H:%M").strftime("%d.%m.%Y %H:%M")
     _merged(ws, 2, 4, 5, f"Üretim: {stamp}").font = SMALL_FONT
+    by = _merged(ws, 3, 1, 5, f"Cevabı üreten: {answered_by(r)}")  # ADR-034
+    by.font = SMALL_FONT
+    if not r.analyst:
+        by.fill = WARN_FILL
 
-    row = 4
-    info = [("Talep", r.query), ("Sonuç", r.summary), ("Cevabı üreten", answered_by(r))]
+    row = 5
+    info = [("Talep", r.query), ("Sonuç", r.summary)]
     if r.interpretation:
-        info.append(("Talebin yorumu", r.interpretation))
+        info.append(("Talebin Yorumu", r.interpretation))
     for label, value in info:
         ws.cell(row=row, column=1, value=label).font = BOLD
         ws.cell(row=row, column=1).alignment = WRAP
@@ -181,8 +166,6 @@ def _summary(ws: Worksheet, r: AnalysisResult) -> None:
         _grow(ws, row, value, 120)
         if label == "Sonuç":
             cell.fill, cell.font = VERDICT_FILL[r.verdict], BOLD
-        if label == "Cevabı üreten" and not r.analyst:
-            cell.fill = WARN_FILL
         row += 1
 
     row = _section(ws, row + 1, "Öneri Özeti")
@@ -201,12 +184,9 @@ def _summary(ws: Worksheet, r: AnalysisResult) -> None:
             if ws.cell(row=i, column=5).value == lvl.value:
                 ws.cell(row=i, column=5).fill = LEVEL_FILL[lvl]
 
-    row = _bullets(ws, row + 1, "Önerilen Kurgu", r.design)
-    row = _bullets(ws, row, "Dikkat Edilmesi Gerekenler", r.attention)
-
-    row = _section(ws, row, "Güven Skoru Ölçeği")
+    row = _section(ws, row + 1, "Güven Skoru Ölçeği")
     start = row
-    row = _table(
+    _table(
         ws,
         start,
         ["Seviye", "Aralık", "Anlamı"],
@@ -218,16 +198,6 @@ def _summary(ws: Worksheet, r: AnalysisResult) -> None:
     )
     for i, lvl in enumerate(Level):
         ws.cell(row=start + 1 + i, column=1).fill = LEVEL_FILL[lvl]
-
-    row = _section(ws, row + 1, "Yöntem Notları")
-    notes = [
-        *r.method,
-        "Talep kavramları: " + (", ".join(r.concepts) or "-"),
-        f"Süre: {r.elapsed_ms / 1000:.1f} sn",
-    ]
-    for n in notes:
-        _merged(ws, row, 1, 5, n).font = SMALL_FONT
-        row += 1
 
 
 def _suggestions(ws: Worksheet, r: AnalysisResult) -> None:
@@ -268,48 +238,12 @@ def _suggestions(ws: Worksheet, r: AnalysisResult) -> None:
     _finish_sheet(ws, header_row, len(headers), len(rows))
 
 
-def _column_text(col: DictColumn) -> str:
-    text = col.description
-    if col.synonyms:
-        text += f" Eş anlamlılar/aranabilir terimler: {', '.join(col.synonyms)}."
-    return text
-
-
-def _field_details(ws: Worksheet, r: AnalysisResult) -> None:
-    ws["A1"] = "Önerilen Alanların Sözlükteki Tanımları"
-    ws["A1"].font = TITLE_FONT
-    headers = ["Sıra", "Veritabanı.Şema.Obje", "Alan Adı", "Sözlük Açıklaması", "Kalite Bayrağı"]
-    rows: list[list[CellValue]] = []
-    for i, m in enumerate(r.objects, 1):
-        for h in m.columns:
-            flags = "\n".join(
-                f"{FLAG_LABEL[f.kind]}: {f.text}"
-                if f.kind is not FlagKind.MODEL_ESTIMATED
-                else FLAG_LABEL[f.kind]
-                for f in h.col.flags
-            )
-            rows.append([i, m.object_key, h.col.column, _column_text(h.col), flags or "-"])
-    _table(ws, 2, headers, rows, [6, 42, 30, 100, 34])
-    _finish_sheet(ws, 2, len(headers), len(rows))
-
-
-def _notes(ws: Worksheet, r: AnalysisResult) -> None:
-    ws["A1"] = "Notlar ve Öneriler"
-    ws["A1"].font = TITLE_FONT
-    headers = ["Kapsam", "Başlık", "Açıklama"]
-    rows: list[list[CellValue]] = [[n.scope, n.title, n.text] for n in r.notes]
-    _table(ws, 2, headers, rows, [16, 40, 110])
-    _finish_sheet(ws, 2, len(headers), len(rows))
-
-
 def write_ask_report(result: AnalysisResult, path: Path) -> Path:
     wb = Workbook()
     ws = wb.active
     assert ws is not None
     _summary(ws, result)
     _suggestions(wb.create_sheet("Öneriler"), result)
-    _field_details(wb.create_sheet("Alan Detayları"), result)
-    _notes(wb.create_sheet("Notlar ve Öneriler"), result)
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
     return path
@@ -435,48 +369,14 @@ def _list_suggestions(ws: Worksheet, r: ListResult) -> dict[int, int]:
     return first
 
 
-def _list_fields(ws: Worksheet, r: ListResult) -> None:
-    """Suggested columns with their dictionary text, each once, with the terms it serves."""
-    seen: dict[str, tuple[str, DictColumn, list[int]]] = {}
-    for item in r.items:
-        for m in item.result.objects if item.result else []:
-            for h in m.columns:
-                entry = seen.setdefault(h.col.key, (m.object_key, h.col, []))
-                if item.index not in entry[2]:
-                    entry[2].append(item.index)
-    rows: list[list[CellValue]] = []
-    for obj, col, terms in seen.values():
-        flags = "\n".join(FLAG_LABEL[f.kind] for f in col.flags) or "-"
-        rows.append([obj, col.column, _column_text(col), flags, ", ".join(map(str, terms))])
-    headers = ["Veritabanı.Şema.Obje", "Alan Adı", "Sözlük Açıklaması", "Kalite Bayrağı", "Terim #"]
-    _table(ws, 1, headers, rows, [42, 30, 100, 30, 10])
-    _finish_sheet(ws, 1, len(headers), len(rows))
-
-
-def _list_notes(ws: Worksheet, r: ListResult) -> None:
-    rows: list[list[CellValue]] = []
-    for item in r.items:
-        res = item.result
-        if res is None:
-            continue
-        rows += [[item.index, item.term, "Önerilen kurgu", "", d] for d in res.design]
-        rows += [[item.index, item.term, "Dikkat", "", a] for a in res.attention]
-        rows += [[item.index, item.term, n.scope, n.title, n.text] for n in res.notes]
-    headers = ["#", "Terim", "Kapsam", "Başlık", "Açıklama"]
-    _table(ws, 1, headers, rows, [5, 30, 16, 36, 100])
-    _finish_sheet(ws, 1, len(headers), len(rows))
-
-
 def write_list_report(result: ListResult, path: Path) -> Path:
-    """One workbook for a whole term list: Özet (a row per term) · Öneriler · Alan
-    Detayları · Notlar — combined sheets with a term column, filterable (ADR-033)."""
+    """One workbook for a whole term list: Özet (a row per term) · Öneriler — combined
+    sheets with a term column, filterable (ADR-033)."""
     wb = Workbook()
     ws = wb.active
     assert ws is not None
     first_rows = _list_suggestions(wb.create_sheet("Öneriler"), result)
     _list_summary(ws, result, first_rows)
-    _list_fields(wb.create_sheet("Alan Detayları"), result)
-    _list_notes(wb.create_sheet("Notlar ve Öneriler"), result)
     path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(path)
     return path

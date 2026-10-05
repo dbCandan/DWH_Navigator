@@ -58,15 +58,16 @@ def test_ask_report(engine: Engine, tmp_path: Path) -> None:
 
     path = write_ask_report(result, report_path(tmp_path, "ask", result.query))
     wb = load_workbook(path)
-    assert wb.sheetnames == ["Özet", "Öneriler", "Alan Detayları", "Notlar ve Öneriler"]
+    assert wb.sheetnames == ["Özet", "Öneriler"]
     ws = wb["Öneriler"]
     assert ws["A3"].value == "Sıra"
     assert ws["A3"].font.name == "Arial"
     assert ws["I4"].number_format == "0.00"
     assert ws.freeze_panes == "A4"
     assert str(wb["Özet"]["A2"].value).startswith("Kaynak sözlük:")
-    said = {row[0].value: row[1].value for row in wb["Özet"].iter_rows(min_row=4, max_row=8)}
-    assert str(said["Cevabı üreten"]).startswith("Kural motoru")  # ADR-034, said plainly
+    assert str(wb["Özet"]["A3"].value).startswith("Cevabı üreten: Kural motoru")  # ADR-034
+    said = {row[0].value: row[1].value for row in wb["Özet"].iter_rows(min_row=5, max_row=7)}
+    assert said["Talep"] == result.query and said["Sonuç"] == result.summary
 
 
 def test_irrelevant_query_does_not_crash(engine: Engine) -> None:
@@ -90,7 +91,7 @@ def test_list_report(engine: Engine, tmp_path: Path) -> None:
     result = ListResult("liste.xlsx", items, "sozluk.xlsx", "v1", "2026-10-01 10:00",
                         cancelled=True)  # fmt: skip
     wb = load_workbook(write_list_report(result, tmp_path / "l.xlsx"))
-    assert wb.sheetnames == ["Özet", "Öneriler", "Alan Detayları", "Notlar ve Öneriler"]
+    assert wb.sheetnames == ["Özet", "Öneriler"]
     summary = [[c.value for c in row] for row in wb["Özet"].iter_rows()]
     states = {r[1]: r[2] for r in summary if r and r[0] in (1, 2, 3)}
     assert states["uzay gemisi yakıt seviyesi"] == "BULUNAMADI"

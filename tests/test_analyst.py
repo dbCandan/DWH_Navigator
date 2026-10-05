@@ -256,9 +256,10 @@ class TestEngine:
 
         path = write_ask_report(r, tmp_path / "r.xlsx")
         wb = load_workbook(path)
-        assert wb.sheetnames == ["Özet", "Öneriler", "Alan Detayları", "Notlar ve Öneriler"]
+        assert wb.sheetnames == ["Özet", "Öneriler"]
         cells = [str(c.value) for row in wb["Özet"].iter_rows() for c in row if c.value]
-        assert "Önerilen Kurgu" in cells and "Dikkat Edilmesi Gerekenler" in cells
+        assert "Öneri Özeti" in cells and "Güven Skoru Ölçeği" in cells
+        assert "Önerilen Kurgu" not in cells and "Yöntem Notları" not in cells
         assert "Kart künyesi" in cells
 
     def test_nothing_found(self) -> None:

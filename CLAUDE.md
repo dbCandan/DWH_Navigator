@@ -45,8 +45,8 @@ bulut desteği ve model laboratuvarı kaldırıldı.
   KVKK bayrağı açıklamadan türetilir; DatasetGroup Objeler'den `DB.Şema.Obje` ile gelir).
   Role ∈ {Anahtar, Kod, Ad, Zaman, Ölçü, Bayrak, Metin}; Summary ≤70 karakter sıkıştırılmış anlam
   ("Cari hesap bakiyesi · TL · son 12 ay ortalama"), LLM'e uzun açıklama yerine verilmek için. Kalite sayfası yok (`quality_sheet` boş); yükleyici isteğe bağlı olarak hâlâ okuyabilir.
-- `vsa catalog` → `data/VeriSozlugu.objeler.jsonl` (Objeler sayfasından LLM tablo kataloğu).
-  Sözlük değişince `vsa index` ve `vsa catalog`.
+- Analistin tablo kataloğu Objeler sayfasından bellekte kurulur (`llm/analyst.build_catalog`).
+  Sözlük değişince `vsa index`.
 - `data/`, `out/` ve tüm `.xlsx` dosyaları gitignore'da — **kurum içi veri, asla commit edilmez**.
   Testler gerçek sözlüğe ihtiyaç duyarsa sözlük yoksa `skip` etmeli.
 - Eski kaynakta kolon `DAtabaseName` yazım hatalıydı; yükleyici her iki yazımı kabul eder.
@@ -106,7 +106,7 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 - [x] M4 — LLM katmanı: hakem ve LLM sorgu genişletme yerini analist akışına (M8) bıraktı,
       ADR-033 ile kaldırıldı. `reasoning_effort: none` ve seed korunuyor.
 - [x] M5 — Toplu arama (ADR-033): tek sütunlu Excel listesi, her terim tek soru akışından,
-      tek birleşik rapor (Özet · Öneriler · Alan Detayları · Notlar, terim sütunlu). Arayüzde
+      tek birleşik rapor (Özet · Öneriler, terim sütunlu). Arayüzde
       arka plan işi (ilerleme, durdurma, ara rapor), CLI'da `vsa ask -i`. Eski hedef tablo modu
       (ADR-016/017) kaldırıldı.
 - [x] M6 — Arayüz: `vsa serve` / `baslat.bat` → http://127.0.0.1:8765. Tek ekran (soru sorma),

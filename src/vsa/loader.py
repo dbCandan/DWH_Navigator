@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import json
 import logging
 import re
 from collections.abc import Iterable, Mapping, Sequence
@@ -134,6 +133,10 @@ def _cell(value: object) -> str:
 OBJECTS_SHEET = "Objeler"
 
 
+def _names(cell: object) -> list[str]:
+    return [n.strip() for n in _cell(cell).split(",") if n.strip()]
+
+
 def object_profiles(objects: pd.DataFrame) -> dict[str, ObjectProfile]:
     """The object sheet as profiles keyed by ``DB.Schema.Object``. Pure."""
     out: dict[str, ObjectProfile] = {}
@@ -243,53 +246,6 @@ def load_dictionary(path: Path, sheet: str = "Kolonlar") -> Dictionary:
         warnings=warnings,
         objects=profiles,
     )
-
-
-# --------------------------------------------------------------------------- object catalog
-
-
-def _names(cell: object) -> list[str]:
-    return [n.strip() for n in _cell(cell).split(",") if n.strip()]
-
-
-def build_catalog(objects: pd.DataFrame, columns: pd.DataFrame) -> list[dict[str, object]]:
-    """One record per object of the dictionary's object sheet, for the LLM's table pick:
-    profile fields plus the object's column names in dictionary order. Pure."""
-    by_object: dict[str, list[str]] = {}
-    for rec in columns.to_dict("records"):
-        key = ".".join(_cell(rec[c]) for c in ("DatabaseName", "SchemaName", "ObjectName"))
-        by_object.setdefault(key, []).append(_cell(rec["ColumnName"]))
-    out: list[dict[str, object]] = []
-    for rec in objects.to_dict("records"):
-        key = _cell(rec["ObjectKey"])
-        names = by_object.get(key)
-        if not names:
-            raise ValueError(f"Objeler sayfasındaki obje kolon sayfasında yok: {key}")
-        out.append({
-            "obj": key,
-            "aciklama": _cell(rec.get("ObjectDescription")),
-            "satir": _cell(rec.get("Grain")),
-            "anahtar": _names(rec.get("KeyColumns")),
-            "zaman": _names(rec.get("TimeColumns")),
-            "alan": _cell(rec.get("BusinessDomain")),
-            "grup": _cell(rec.get("DatasetGroup")),
-            "kolon_sayisi": len(names),
-            "kolonlar": names,
-        })  # fmt: skip
-    return out
-
-
-def write_catalog(dictionary: Path, out: Path, sheet: str = "Kolonlar") -> int:
-    """Read the dictionary's object and column sheets, write the catalog as JSON Lines."""
-    with pd.ExcelFile(dictionary) as book:
-        objects = book.parse(OBJECTS_SHEET, dtype=str)
-        columns = book.parse(sheet, dtype=str)
-    records = build_catalog(objects, columns)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", encoding="utf-8", newline="\n") as f:
-        for r in records:
-            f.write(json.dumps(r, ensure_ascii=False) + "\n")
-    return len(records)
 
 
 def load_term_dictionary(path: Path) -> list[TermGroup]:
