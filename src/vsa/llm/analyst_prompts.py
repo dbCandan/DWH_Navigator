@@ -21,7 +21,7 @@ Katılım bankacılığı terminolojisi: kredi = fon kullandırım / finansman, 
 mevduat = toplanan fon (katılma hesabı = vadeli, cari hesap = vadesiz), leasing = icare."""
 
 SHORTLIST_RULES = """GÖREV (1. adım — aday tablo listesi):
-Aşağıdaki KATALOG veri ambarındaki TÜM tabloları içerir (id | tablo | veri seti grubu | kolon \
+Aşağıdaki KATALOG veri ambarındaki TÜM tabloları içerir (id | tablo | talep eden birim | kolon \
 sayısı | tablonun içeriği | Satır: bir satırın neyi temsil ettiği | Zaman: dönem/tarih kolonları; \
 açıklaması olmayan tablolarda kolon adları). Talebi okuyup cevabın bulunabileceği tabloları seç. \
 Bir sonraki adımda bu tabloların bütün kolonları okunacak; burada kaçırdığın tablo cevaba \
@@ -115,8 +115,8 @@ def shortlist_user(query: str, hints: str) -> str:
 # search engine's are then compared side by side (1b, reconcile) to pick the final ones.
 
 CHUNK_RULES = """GÖREV (1a — katalog parçası):
-Aşağıdaki KATALOG PARÇASI veri ambarı kataloğunun yalnızca bir bölümüdür (id | tablo | veri \
-seti grubu | kolon sayısı | tablonun içeriği | satır düzeyi | zaman kolonları); diğer \
+Aşağıdaki KATALOG PARÇASI veri ambarı kataloğunun yalnızca bir bölümüdür (id | tablo | talep \
+eden birim | kolon sayısı | tablonun içeriği | satır düzeyi | zaman kolonları); diğer \
 bölümler aynı anda başka yerde okunuyor. Bu \
 bölümdeki tablolardan talebe cevap OLABİLECEK her tabloyu seç: varlığın ana tablosu, talebin \
 bilgi ailelerini taşıyan tablolar, talebin kavramlarını birlikte taşıyan tablolar, gereken boyut \
@@ -161,7 +161,7 @@ def chunk_user(query: str) -> str:
 
 RECONCILE_HEAD = """GÖREV (1b — aday havuzunu uzlaştır):
 Kataloğun bütün bölümleri ayrı ayrı okundu; her bölümün adayları, arama motorunun önerdikleri \
-ile birlikte aşağıdaki ADAY HAVUZU'nda toplandı (id | tablo | veri seti grubu | kolon sayısı | \
+ile birlikte aşağıdaki ADAY HAVUZU'nda toplandı (id | tablo | talep eden birim | kolon sayısı | \
 talebe en ilgili kolonlar | neden aday). Bölümler birbirini görmediği için adaylar henüz \
 kıyaslanmadı: şimdi hepsini YAN YANA kıyasla ve bir sonraki adımda bütün kolonları okunacak \
 final adayları seç. Aşağıdaki kurallarda "katalog" dediğim yer bu ADAY HAVUZU'dur."""
@@ -193,7 +193,10 @@ sahibini tutan CustomerId) mutlaka uyarı olarak yaz.
 değil): ✓ kavramın hangi kolonda geçtiğini gösterir. Kavramları birlikte taşıyan tabloyu mutlaka \
 değerlendir ve kolon açıklamasıyla doğrula. "Aile aramasıyla eklendi" yazan tablolar 1. adımda \
 gözden kaçmış olabilir; talebin bir bilgi ailesini karşılıyorsa diğer adaylarla eşit şekilde öner.
-- Tablonun müşteri EVRENİNE bak (veri seti grubu, tablo adı ve açıklamalar): yalnız belirli bir \
+- Tablonun müşteri EVRENİNE bak (tablo açıklaması, satır düzeyi, tablo adı ve kolon \
+açıklamaları). "Talep eden birim" / veri seti grubu evren DEĞİLDİR: tabloyu isteyen iş \
+birimidir; "Kampanya - Hedef Kitle" birimine ait bir tablo bütün kart müşterilerini \
+kapsayabilir. Evren kısıtını yalnız açıklama söylüyorsa uygula: yalnız belirli bir \
 kitleyi kapsayan tablolar (e-ihracat, özel bankacılık, kampanya hedef kitlesi, model eğitim \
 örneklemi, personel) genel bir talepte ana kaynak olamaz; önerirsen evren kısıtını caveat'e yaz. \
 Bankanın tüm müşterilerini kapsayan genel müşteri / ürün tabloları önce gelir.

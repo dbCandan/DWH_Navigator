@@ -21,7 +21,7 @@ from enum import StrEnum
 
 from vsa.features import ColumnFeatures
 from vsa.models import TermGroup
-from vsa.text.normalize import fold, tokenize, tokenize_pairs
+from vsa.text.normalize import fold, load_stopwords, tokenize, tokenize_pairs
 
 # A single-word synonym shared by more columns than this is too generic to count
 # as the "most reliable signal" (§7.2b); it still participates in BM25.
@@ -40,6 +40,9 @@ class ConceptKind(StrEnum):
     BREAKDOWN = "kırılım"
     MEASURE = "ölçü"
 
+
+
+QUERY_ONLY_STOPWORDS = load_stopwords(["değil", "hariç", "dışında"])
 
 @dataclass(frozen=True, slots=True)
 class Concept:
@@ -179,9 +182,13 @@ class QueryExpander:
         return tuple(tokenize(text, keep_compound=False))
 
     def expand(self, text: str) -> ExpandedQuery:
-        pairs = tokenize_pairs(text, stopwords=self.stopwords, keep_compound=False)
+        # "değil" stays in the stopword-free description tokens (it marks "X bazlı değil"
+        # scope notes there) but is never a request concept: in "tüm limitler değil" it
+        # would point the analyst at exactly the unwanted column.
+        stop = self.stopwords | QUERY_ONLY_STOPWORDS
+        pairs = tokenize_pairs(text, stopwords=stop, keep_compound=False)
         tokens = [t for t, _ in pairs]
-        bm25_tokens = tokenize(text, stopwords=self.stopwords, keep_compound=True)
+        bm25_tokens = tokenize(text, stopwords=stop, keep_compound=True)
         raw_words = frozenset(fold(w).replace("_", "") for w in _WORD.findall(text))
 
         # Term dictionary off -> neither expansion nor multi-word term concepts.

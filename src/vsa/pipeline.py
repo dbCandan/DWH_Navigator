@@ -87,6 +87,7 @@ ANALYST_RULE_POOL = 60  # rule-ranked tables the "together" hint picks from
 POOL_RULE_TOGETHER = 8  # rule tables carrying most request concepts, added to the pool
 POOL_RULE_TOP = 5  # and the rule ranking's first ones
 ANALYST_HINT_COLUMNS = 25
+FAMILY_MIN_SHARE = 0.6  # a family table must score this share of the family's best table
 
 
 @dataclass(slots=True)
@@ -159,8 +160,13 @@ class Engine:
         }
         self.column_keys = frozenset(c.key for c in dictionary.columns)
         self.topic_keys, self.topic_index = build_topic_index(
-            {k: o.features for k, o in self.objects.items()}
-        )
+            {k: o.features for k, o in self.objects.items()},
+            {
+                k: tokenize(f"{p.description} {p.grain}", stopwords=resources.stopwords,
+                            keep_compound=False)
+                for k, p in dictionary.objects.items()
+            },
+        )  # fmt: skip
         self._df_cache: dict[Concept, int] = {}
 
         s = settings.search
@@ -428,6 +434,8 @@ class Engine:
         columns_of = {k: [f.col for f in o.features] for k, o in self.objects.items()}
         with trace.span("Aile araması") as sp:
             added = self._family_tables(short) if short.candidates else {}
+            by_search = self._searched_tables(q, {*short.candidates, *short.confusables, *added})
+            added |= by_search
             if sp is not None:
                 sp.detail = f"{len(added)} tablo eklendi"
         readable = [*short.candidates, *added]
@@ -449,7 +457,8 @@ class Engine:
                     a.description_chars,
                     a.full_table_columns,
                     self._concept_evidence(k, q, rel)
-                    + (f"\nAile aramasıyla eklendi: {added[k]}" if k in added else ""),
+                    + ("\nTablo aramasıyla eklendi (1. adımda seçilmedi)" if k in by_search
+                       else f"\nAile aramasıyla eklendi: {added[k]}" if k in added else ""),
                     detail_columns=None if a.detail_columns < 0 else a.detail_columns,
                     profile=self.dictionary.objects.get(k),
                 )  # fmt: skip
@@ -637,7 +646,11 @@ class Engine:
             if not query:
                 continue
             found = 0
-            for doc, _ in self.topic_index.search(query, top_k=a.family_tables * 4):
+            results = self.topic_index.search(query, top_k=a.family_tables * 4)
+            top = results[0][1] if results else 0.0
+            for doc, score in results:
+                if score < FAMILY_MIN_SHARE * top:
+                    break  # weak lexical matches only add noise (a safe-box table for card limits)
                 key = self.topic_keys[doc]
                 if key in taken or key in added:
                     continue
@@ -647,6 +660,22 @@ class Engine:
                     break
             if len(added) >= a.family_extra:
                 break
+        return added
+
+    def _searched_tables(self, q: ExpandedQuery, taken: set[str]) -> dict[str, str]:
+        """The table-level word search's best tables (profiles included) that step 1 did
+        not pick, read in step 2 as a safety net — the oracles' "search once more" habit,
+        done cheaply. Returns object key -> "arama"."""
+        n = self.settings.analyst.search_tables
+        if n <= 0:
+            return {}
+        added: dict[str, str] = {}
+        for doc, _ in self.topic_index.search(q.sparse_terms, top_k=n + len(taken)):
+            key = self.topic_keys[doc]
+            if key not in taken:
+                added[key] = "arama"
+                if len(added) >= n:
+                    break
         return added
 
     def _concept_evidence(self, key: str, q: ExpandedQuery, relevance: Mapping[int, float]) -> str:

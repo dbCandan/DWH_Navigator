@@ -5,8 +5,9 @@ inputs, reports with 200 columns — mention almost everything, so coverage and 
 column saturate and stop telling tables apart. Topic fit asks instead "is this table
 *about* the request?":
 
-each object is one BM25 document — its own name weighted highest, then its column
-names, synonyms and descriptions. BM25 length normalization is the point: a term in a
+each object is one BM25 document — its own name weighted highest, then its profile (the
+object sheet's description and grain, ADR-040), its column names, synonyms and
+descriptions. BM25 length normalization is the point: a term in a
 20-column table weighs more than the same term in a 200-column one. Scores are scaled
 to 0..1 across the candidates of the same request.
 """
@@ -24,14 +25,20 @@ OBJECT_FIELD_WEIGHTS: Mapping[str, float] = {
     "name": 1.0,
     "synonyms": 1.0,
     "description": 0.3,
+    # ×3 measured on the 83 answerable reference questions: acceptable table in the top 5
+    # 0.84 -> 0.89, MRR of the primary table 0.40 -> 0.45 (column summaries did not help).
+    "profile": 3.0,
 }
 
 
 def build_topic_index(
     objects: Mapping[str, Sequence[ColumnFeatures]],
+    profiles: Mapping[str, Sequence[str]] | None = None,
 ) -> tuple[list[str], BM25Index]:
-    """One BM25 document per object; returns (object keys in doc order, index)."""
+    """One BM25 document per object; returns (object keys in doc order, index).
+    ``profiles``: tokenized object description + grain per object key."""
     keys = sorted(objects)
+    profiles = profiles or {}
     docs = []
     for key in keys:
         feats = objects[key]
@@ -41,6 +48,7 @@ def build_topic_index(
                 "name": [t for f in feats for t in f.name],
                 "synonyms": [t for f in feats for t in f.synonym_tokens],
                 "description": [t for f in feats for t in f.description],
+                "profile": list(profiles.get(key, ())),
             }
         )
     return keys, BM25Index.build(docs, OBJECT_FIELD_WEIGHTS)

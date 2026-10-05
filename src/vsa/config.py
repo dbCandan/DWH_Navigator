@@ -96,6 +96,9 @@ class AnalystSettings:
     confusables: int = 6  # look-alike tables it reads for the warnings
     family_tables: int = 2  # tables added per information family by term search
     family_extra: int = 6  # at most this many tables added that way
+    # Safety net: the table-level word search's best tables (object profiles included)
+    # that step 1 did not pick are read in step 2 as well. 0 = off.
+    search_tables: int = 3
     evidence_columns: int = 60  # look-alike columns from the whole dictionary
     description_chars: int = 420  # per column description in the material
     full_table_columns: int = 90  # wider tables: lines only for the relevant columns

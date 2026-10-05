@@ -102,3 +102,25 @@ def test_old_index_without_profiles_loads(tmp_path: Path) -> None:
     (tmp_path / "objects.json").unlink()
     loaded, _, _ = load_index(tmp_path)
     assert loaded.objects == {} and loaded.columns[0].role == ""
+
+
+def test_negation_word_is_not_a_request_concept() -> None:
+    """"tüm limitler değil" must not make "değil" a concept that points at the trap."""
+    from vsa.expansion.query_expander import QueryExpander
+
+    q = QueryExpander([], [], frozenset()).expand("kart limiti, toplam limit değil")
+    assert "değil" not in [c.label for c in q.content_concepts]
+
+
+def test_topic_index_reads_object_profiles() -> None:
+    """A table whose profile is about the request wins the table-level search (ADR-040)."""
+    from vsa.features import build_features
+    from vsa.scoring.topic import build_topic_index
+
+    a = [build_features(col(0, "vA", "Amount", "Tutar."), frozenset())]
+    b = [build_features(col(1, "vB", "Amount", "Tutar."), frozenset())]
+    keys, index = build_topic_index(
+        {"EDWDM.CUS.vA": a, "EDWDM.CUS.vB": b}, {"EDWDM.CUS.vB": ["harcama", "analitik"]}
+    )
+    (doc, _), *_ = index.search({"harcama": 1.0}, top_k=2)
+    assert keys[doc] == "EDWDM.CUS.vB"

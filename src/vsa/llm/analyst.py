@@ -330,7 +330,7 @@ def table_material(
     heading (which request concepts the table carries, why it was added).
     ``detail_columns``: None = every line carries the description; N = only the N most
     relevant columns do, the others are compact (``Ad [Rol]: özet``)."""
-    head = f"### {tid} · {key} · Veri seti: {_group(columns)} · {len(columns)} kolon"
+    head = f"### {tid} · {key} · Talep eden birim: {_group(columns)} · {len(columns)} kolon"
     if profile and profile.grain:
         head += f" · Satır: {profile.grain}"
     if evidence:
