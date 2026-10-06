@@ -622,6 +622,24 @@ class Cleaner:
                 cols.append(col)
         return cols
 
+    def core_columns(self, value: object) -> list[DictColumn] | None:
+        """The columns the model names as carrying the core concept ("T12.Kolon"), checked
+        against the candidates; None when the reply has no such field (older replies)."""
+        if not isinstance(value, list):
+            return None
+        out: list[DictColumn] = []
+        for raw in value:
+            table, _, name = str(raw or "").strip().rpartition(".")
+            key = self.key(table) if table else None
+            table_cols = {c.column: c for c in self.columns_of[key]} if key else {}
+            col = _resolve_column(name, table_cols) if key else None
+            if col is None:
+                self.dropped += key is not None
+                log.warning("Doğrulama: asıl kavram kolonu sözlükte yok: %s", raw)
+            elif col not in out:
+                out.append(col)
+        return out
+
     def recommendation(
         self, item: Mapping[str, object], min_confidence: float
     ) -> Recommendation | None:
@@ -710,9 +728,12 @@ def build_answer(
     design = clean.bullets(reply.get("design"))
     # ADR-041: the request's core concept decides. When the model says the core is not in
     # the material (or answers BULUNAMADI itself), look-alike tables are not an answer:
-    # they become one "İlgili" note and the verdict is BULUNAMADI.
+    # they become one "İlgili" note and the verdict is BULUNAMADI. ADR-042: the model must
+    # also name the column that carries the core; none that exists among the candidates
+    # means the same.
     said_not_found = str(reply.get("verdict") or "").strip() == Verdict.NOT_FOUND.value
-    if recs and (reply.get("core_found") is False or said_not_found):
+    core_cols = clean.core_columns(reply.get("core_columns"))
+    if recs and (reply.get("core_found") is False or said_not_found or core_cols == []):
         core = clean.text(reply.get("core_concept")) or "talebin asıl bilgisi"
         names = ", ".join(r.object_key.rsplit(".", 1)[-1] for r in recs)
         text = f"“{core}” bu tablolarda yok; yalnız yakın bilgiler var: {names}."

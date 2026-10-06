@@ -367,3 +367,17 @@ def test_core_concept_missing_means_not_found() -> None:
     )
     assert said.verdict is Verdict.NOT_FOUND and said.objects == []  # the model's own word
 
+
+def test_core_concept_needs_a_real_column() -> None:
+    """ADR-042: the core concept must be carried by a named candidate column."""
+    named = engine(ScriptedClient(SHORTLIST, analyst_reply(
+        core_concept="asıl kart sahibi", core_columns=["T2.MainCustomerId"], core_found=True))
+    ).analyze("müşterinin kredi kartı bilgisi")  # fmt: skip
+    assert named.verdict is Verdict.FOUND and named.objects
+    for bad in ([], ["T2.HaneGeliri"], ["T99.MainCustomerId"]):
+        r = engine(ScriptedClient(SHORTLIST, analyst_reply(
+            core_concept="hane geliri", core_columns=bad, core_found=True))
+        ).analyze("müşterinin kredi kartı bilgisi")  # fmt: skip
+        assert r.verdict is Verdict.NOT_FOUND and r.objects == [], bad
+        assert any(n.scope == "İlgili" and "hane geliri" in n.text for n in r.notes)
+
