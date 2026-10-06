@@ -44,6 +44,9 @@ cevap olmaz: tek bir "İlgili" notuna dönüşür, sonuç BULUNAMADI olur. Gerek
 Model asıl bilgiyi taşıyan 1-3 kolonu (`core_columns`, "T12.Kolon") adıyla yazar; kod bunları
 aday tablolarda doğrular. Geçerli kolon yoksa cevap ADR-041'deki gibi BULUNAMADI olur. Talep bir
 varlığın niteliğini istiyorsa (oran, tutar, bakiye, süre) asıl bilgi o niteliktir; varlığın
-türü, bayrağı ya da kaydı yetmez. Gerekçe: 294 soruluk ölçümde negatif hataların hepsi (9) bu
+türü, bayrağı ya da kaydı yetmez. Bilgi birden çok aday tabloya dağılmış ve birleştirilerek elde
+ediliyorsa bu BULUNAMADI değil KISMEN VAR'dır (ilk sürüm birleştirme sorularını "tek tabloda yok"
+diye BULUNAMADI'ya çeviriyordu; açıklık eklendi). Gerekçe: 294 soruluk ölçümde negatif hataların hepsi (9) bu
 kalıptı — varlık var, istenen nitelik yok. Alanı olmayan eski cevaplarda kontrol uygulanmaz.
-Ölçüm: önce hatalı sorular + negatifler, sonra 294 sorunun tamamı (`data/golden/run_eval.py`).
+Ön kontrol (101 soru: akşam hatalı/negatif + 30 doğru koruma sorusu): koruma 30/30, hedef
+negatifler 0/9 → 2/9, birleştirme kaybı yok. Tam 294 ölçümü bekliyor.

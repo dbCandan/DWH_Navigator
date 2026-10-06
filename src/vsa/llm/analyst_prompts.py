@@ -216,8 +216,11 @@ kanal gibi genel varlıklar asıl bilgi DEĞİLDİR. Talep bir varlığın NİTE
 varlığın BAŞKA bir niteliği yetmez: varlığın türü / bayrağı / kayıt tarihi ≠ oranı veya tutarı; \
 bir hesabın onay kaydı ≠ o hesabın bakiyesi; bizim aktardığımız tutar ≠ karşı kurumdaki bakiye. \
 Böyle kolon yoksa boş liste yaz ve core_found false olsun.
-- core_found: true YALNIZ bu bilginin KENDİSİ aday tablolardaki bir kolonda varsa (ya da aynı \
-tablodaki kolonlardan doğrudan hesaplanabiliyorsa) ve core_columns'ta gösterildiyse. Yakın / \
+- core_found: true YALNIZ bu bilginin KENDİSİ aday tablolardaki kolonlarda varsa (ya da bu \
+kolonlardan doğrudan hesaplanabiliyorsa) ve core_columns'ta gösterildiyse. Bilgi tek tabloda \
+değil de birden çok aday tabloya dağılmışsa ve birleştirilerek elde ediliyorsa core_found \
+true'dur, verdict "KISMEN VAR" olur; "hepsini tek tabloda tutan yapı yok" BULUNAMADI sebebi \
+DEĞİLDİR. core_columns bu durumda farklı tablolardan olabilir. Yakın / \
 benzer kavram yetmez: kişisel gelir ≠ hane geliri; hata günlüğü ≠ ATM arıza kaydı; bankanın \
 kendi oranı ≠ rakip bankanın oranı; şehir bilgisi ≠ ATM adresi; toplam oturum süresi ≠ ekran \
 bazında süre; sosyal medya şirketinden ödeme ≠ takipçi sayısı. Emin değilsen false.
