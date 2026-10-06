@@ -33,3 +33,17 @@ artık model yapıyor. Eş anlamlılar ve Summary kelime aramasını besler.
   kolon tam açıklamasıyla.
 - Hedef: aynı isabetle daha az okunan token, daha kısa süre. Ölçüm: `data/golden/` altındaki
   67 soruluk set, Fable ve Opus'un bağımsız cevaplarıyla (doğru cevap kabul edilir).
+
+## ADR-041 — Talebin asıl kavramı cevabı belirler (2026-10-06)
+Model talebin asıl bilgisini (`core_concept`) ve bunun aday tablolarda olup olmadığını
+(`core_found`) yazar. Asıl bilgi yoksa ya da model BULUNAMADI derse, önerdiği yakın tablolar
+cevap olmaz: tek bir "İlgili" notuna dönüşür, sonuç BULUNAMADI olur. Gerekçe: negatif sorularda
+"KISMEN VAR" ile teselli tablosu önermek kullanıcıyı yanlış yönlendiriyordu.
+
+## ADR-042 — Asıl kavram bir kolonla gösterilmeli (2026-10-06)
+Model asıl bilgiyi taşıyan 1-3 kolonu (`core_columns`, "T12.Kolon") adıyla yazar; kod bunları
+aday tablolarda doğrular. Geçerli kolon yoksa cevap ADR-041'deki gibi BULUNAMADI olur. Talep bir
+varlığın niteliğini istiyorsa (oran, tutar, bakiye, süre) asıl bilgi o niteliktir; varlığın
+türü, bayrağı ya da kaydı yetmez. Gerekçe: 294 soruluk ölçümde negatif hataların hepsi (9) bu
+kalıptı — varlık var, istenen nitelik yok. Alanı olmayan eski cevaplarda kontrol uygulanmaz.
+Ölçüm: önce hatalı sorular + negatifler, sonra 294 sorunun tamamı (`data/golden/run_eval.py`).

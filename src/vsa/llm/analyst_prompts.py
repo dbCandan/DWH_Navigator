@@ -207,8 +207,24 @@ tamamlayıcıdır ve daha düşük güven alır ("… içermez; birleştirme ger
 alanları önerirsen bunu caveat içinde belirt.
 
 Rapor içeriği:
-- verdict: "VAR" (hazır alanlarla karşılanıyor), "KISMEN VAR" (birleştirme / türetme gerekiyor \
-veya bir parçası eksik), "BULUNAMADI".
+- core_concept: talebin ASIL istediği bilgi, 2-6 kelime (ölçü, olay ya da nitelik): "hane \
+geliri", "takipçi sayısı", "ATM arıza kaydı", "kart limit doluluk oranı". Müşteri, hesap, işlem, \
+kanal gibi genel varlıklar asıl bilgi DEĞİLDİR. Talep bir varlığın NİTELİĞİNİ istiyorsa \
+(oranı, tutarı, bakiyesi, süresi, nedeni) asıl bilgi o niteliktir, varlığın kendisi değil.
+- core_columns: asıl bilgiyi (ya da doğrudan hesaplandığı girdileri) taşıyan 1-3 kolon, \
+"T12.KolonAdı" biçiminde, aday tablolardan. Kolonun açıklaması asıl bilgiyi söylemeli; aynı \
+varlığın BAŞKA bir niteliği yetmez: varlığın türü / bayrağı / kayıt tarihi ≠ oranı veya tutarı; \
+bir hesabın onay kaydı ≠ o hesabın bakiyesi; bizim aktardığımız tutar ≠ karşı kurumdaki bakiye. \
+Böyle kolon yoksa boş liste yaz ve core_found false olsun.
+- core_found: true YALNIZ bu bilginin KENDİSİ aday tablolardaki bir kolonda varsa (ya da aynı \
+tablodaki kolonlardan doğrudan hesaplanabiliyorsa) ve core_columns'ta gösterildiyse. Yakın / \
+benzer kavram yetmez: kişisel gelir ≠ hane geliri; hata günlüğü ≠ ATM arıza kaydı; bankanın \
+kendi oranı ≠ rakip bankanın oranı; şehir bilgisi ≠ ATM adresi; toplam oturum süresi ≠ ekran \
+bazında süre; sosyal medya şirketinden ödeme ≠ takipçi sayısı. Emin değilsen false.
+- verdict: "VAR" (asıl bilgi hazır alanlarla karşılanıyor), "KISMEN VAR" (asıl bilgi VAR ama \
+birleştirme / türetme gerekiyor veya talebin yan bir parçası eksik), "BULUNAMADI" (asıl bilgi \
+yok). core_found false ise verdict "BULUNAMADI" olmalı ve recommendations BOŞ kalmalı; yakın \
+ama talebi karşılamayan tabloları scope "İlgili" olan bir notta anabilirsin.
 - summary: verdict ile başlayan 2-4 cümle ("VAR. …"). Talep birden çok bilgi ailesine karşılık \
 geliyorsa bunu söyle ve her aile için ana kaynağı tam adıyla belirt.
 - recommendations: en fazla {top_n} tablo, güvene göre azalan. Her biri için:
@@ -245,6 +261,9 @@ notes…) id KULLANMA; tabloyu adıyla yaz (vCreditCardList veya tam adı).
 ANALYST_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
+        "core_concept": {"type": "string"},
+        "core_columns": {"type": "array", "items": {"type": "string"}},
+        "core_found": {"type": "boolean"},
         "verdict": {"type": "string", "enum": ["VAR", "KISMEN VAR", "BULUNAMADI"]},
         "summary": {"type": "string"},
         "recommendations": {
@@ -280,7 +299,11 @@ ANALYST_SCHEMA: dict[str, Any] = {
             },
         },
     },
-    "required": ["verdict", "summary", "recommendations", "design", "attention", "notes"],
+    "required": [
+        "core_concept", "core_columns", "core_found", "verdict", "summary", "recommendations",
+        "design",
+        "attention", "notes",
+    ],
     "additionalProperties": False,
 }
 
@@ -297,7 +320,8 @@ def analyst_user(query: str, interpretation: str, material: str, confusables: st
         "KARIŞTIRILABİLİR ALANLAR (sözlüğün geri kalanı; öneri değil, uyarı ve not malzemesi):\n"
         f"{confusables or '-'}\n\n"
         "Şu şemada JSON üret:\n"
-        '{"verdict": "VAR|KISMEN VAR|BULUNAMADI", "summary": "VAR. …", '
+        '{"core_concept": "…", "core_columns": ["T12.Kolon1"], "core_found": true, '
+        '"verdict": "VAR|KISMEN VAR|BULUNAMADI", "summary": "VAR. …", '
         '"recommendations": [{"id": "T12", "covers": "…", "columns": ["Kolon1", "Kolon2"], '
         '"reason": "…", "caveat": "… veya -", "usage": "…", "confidence": 0.85}], '
         '"design": ["…"], "attention": ["…"], '

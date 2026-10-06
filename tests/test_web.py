@@ -131,6 +131,51 @@ def test_term_list_end_to_end(base_url: str) -> None:
     assert get(f"{base_url}/api/list/yok")[0] == 404
 
 
+def test_term_list_resumes_after_stop(
+    sample_dictionary_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Durdur, then Devam et: answered terms are kept, the rest are asked, none twice."""
+    s = Settings()
+    s.dictionary.path = str(sample_dictionary_path)
+    engine = Engine.from_dictionary_file(s)
+    gate, asked = threading.Event(), []
+
+    def analyze(self: Engine, query: str, top_n: int = 5) -> Any:
+        asked.append(query)
+        gate.wait(10)  # the first term is still running when the list is stopped
+        return Engine.rule_answer(self, query, top_n)
+
+    monkeypatch.setattr(Engine, "analyze", analyze)
+    app = App(engine, tmp_path / "out", tmp_path / "feedback.jsonl")
+
+    def finish(jid: str) -> dict[str, Any]:
+        for _ in range(400):
+            snap = app.list_job(jid).snapshot()
+            if not snap["running"]:
+                return snap
+            time.sleep(0.05)
+        raise AssertionError("liste bitmedi")
+
+    job = app.list_start(_xlsx(["Terim", "kart limit", "müşteri yaşı", "uzay yakıtı"]), "t.xlsx")
+    for _ in range(100):
+        if asked:
+            break
+        time.sleep(0.02)
+    app.list_cancel(job["id"])
+    gate.set()
+    snap = finish(job["id"])
+    assert snap["cancelled"] and snap["done"] == 1
+    assert [i["state"] for i in snap["items"]] == ["bitti", "durduruldu", "durduruldu"]
+
+    snap = app.list_resume(job["id"])
+    assert snap["running"] and not snap["cancelled"]
+    snap = finish(job["id"])
+    assert snap["done"] == 3 and not snap["cancelled"]
+    assert asked == ["kart limit", "müşteri yaşı", "uzay yakıtı"]  # the first was not asked again
+    with pytest.raises(ValueError, match="devam edecek terim yok"):
+        app.list_resume(job["id"])
+
+
 def test_term_list_rejects_bad_files(base_url: str) -> None:
     def upload(body: bytes) -> tuple[int, dict[str, Any]]:
         req = urllib.request.Request(base_url + "/api/list", data=body)

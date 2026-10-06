@@ -1704,8 +1704,9 @@ function answerView(r) {
 // An Excel list: every term of the first column goes through the question flow on the
 // server, one after the other; the page follows the progress and offers one report.
 const Bulk = (() => {
-  let job = null, timer = null, view = null;
+  let job = null, timer = null, view = null, top = null, items = null;
   const open = new Map();  // term index -> its opened answer (kept across redraws)
+  const rows = new Map();  // term index -> { sig, li }: only a row whose state changed is redrawn
   const file = $("#xl-file");
   const STATE = { "sırada": ["SIRADA", "wait"], "çalışıyor": ["ARANIYOR", "run"], "hata": ["HATA", "err"], "durduruldu": ["DURDU", "wait"] };
   const dur = ms => ms >= 60000 ? `${Math.round(ms / 60000)} dk` : `${Math.max(1, Math.round(ms / 1000))} sn`;
@@ -1734,7 +1735,6 @@ const Bulk = (() => {
     try {
       job = await api("/api/list", { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name) }, body: f });
     } catch (e) { put($("#ask-out"), formatHelp(f.name, e.message)); return; }
-    try { sessionStorage.setItem("vsa-list", job.id); } catch {}
     show(); poll();
   }
   // A rejected file: what was wrong, and the one layout that is accepted, as a picture.
@@ -1763,9 +1763,19 @@ const Bulk = (() => {
     render(); poll();
   }
 
+  async function resume(btn) {
+    btn.disabled = true;
+    try { job = await api(`/api/list/${job.id}/resume`, { method: "POST" }); }
+    catch (e) { btn.disabled = false; alert(e.message); return; }
+    render(); pill(); poll();
+  }
+
   function show() {
     foldSearch();  // the list heads the page like an answer does
-    view = h("section", { class: "list" });
+    top = h("div");
+    items = h("ol", { class: "list-items" });
+    view = h("section", { class: "list" }, top, items);
+    rows.clear();
     put($("#ask-out"), view);
     document.documentElement.classList.add("has-results");
     render(); pill();
@@ -1776,17 +1786,28 @@ const Bulk = (() => {
     const progress = job.running
       ? `${job.done}/${job.total} terim tamamlandı` + (job.eta_ms ? ` · kalan ≈ ${dur(job.eta_ms)}` : "")
       : job.cancelled ? `Durduruldu · ${job.done}/${job.total} terim cevaplandı` : `Tamamlandı · ${job.total} terim, ${dur(job.elapsed_ms)}`;
-    put(view,
+    put(top,
       h("div", { class: "list-head" },
         h("div", { class: "ttl" }, h("h2", {}, job.name), h("div", { class: "sub" }, progress,
           job.header ? h("span", { class: "faint" }, ` · başlık: “${job.header}”`) : null)),
         job.running ? h("button", { class: "ghost", onclick: e => stop(e.currentTarget) }, "■ Durdur") : null,
+        !job.running && job.cancelled && job.done < job.total
+          ? h("button", { class: "ghost", title: "Cevaplanan terimler korunur; kalan terimler sırayla aranır",
+              onclick: e => resume(e.currentTarget) }, "▶ Devam et") : null,
         job.done ? h("a", { class: "ghost", href: `/api/list/${job.id}/report`, download: "" },
           job.running ? "⬇ Şimdiye kadarki rapor" : "⬇ Excel raporu") : null),
       h("div", { class: "list-bar" + (job.running ? " live" : "") }, h("i", { style: `width:${Math.max(2, frac * 100)}%` })),
       job.notes && job.notes.length ? h("div", { class: "list-notes" }, job.notes.map(n => h("div", {}, "ℹ " + n))) : null,
-      ruleCount() ? h("div", { class: "answer-fallback" }, `${ruleCount()} terim analiz edilemedi (model bağlı değil ya da çalışamadı). Model çalışınca bu terimleri yeniden arayın.`) : null,
-      h("ol", { class: "list-items" }, job.items.map(row)));
+      ruleCount() ? h("div", { class: "answer-fallback" }, `${ruleCount()} terim analiz edilemedi (model bağlı değil ya da çalışamadı). Model çalışınca bu terimleri yeniden arayın.`) : null);
+    // An opened answer must stay put while the list runs: unchanged rows are not touched.
+    for (const it of job.items) {
+      const sig = JSON.stringify([it.state, it.verdict, it.flow, it.elapsed_ms, it.best, it.summary]);
+      const seen = rows.get(it.index);
+      if (seen && seen.sig === sig) continue;
+      const li = row(it);
+      if (seen) seen.li.replaceWith(li); else items.append(li);
+      rows.set(it.index, { sig, li });
+    }
   }
   const ruleCount = () => job.items.filter(i => i.state === "bitti" && i.flow === "yapılamadı").length;
   function row(it) {
@@ -1825,13 +1846,10 @@ const Bulk = (() => {
     p.replaceChildren(h("i", { class: "dot" + (job.running ? " on" : "") }), text);
     if (!el) $(".tools").prepend(p);
   }
-  // After a page reload: pick up the list this tab started.
-  (async () => {
-    let id = null; try { id = sessionStorage.getItem("vsa-list"); } catch {}
-    if (!id) return;
-    try { job = await api("/api/list/" + id); } catch { return; }
-    pill(); poll();
-  })();
+  // Leaving or reloading the page ends a running list: the page is the job's only owner.
+  addEventListener("pagehide", () => {
+    if (job && job.running) navigator.sendBeacon(`/api/list/${job.id}/cancel`);
+  });
   return { pill };
 })();
 
