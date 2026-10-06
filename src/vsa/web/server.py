@@ -13,6 +13,7 @@ network. One engine, one lock: the tool serves a team, not the internet.
     GET  /api/list/<id>         progress: every term's state and short answer
     GET  /api/list/<id>/item/<n>  one term's full answer (as /api/ask returns it)
     POST /api/list/<id>/cancel  stop the list (the running term's LLM calls too)
+    POST /api/list/<id>/resume  go on with a stopped list; answered terms are kept
     GET  /api/list/<id>/report  one Excel report for the whole list (also while running)
     GET  /api/report/<id>       Excel report of an earlier question
     GET  /api/objects?q=...     dictionary explorer: objects matching a name
@@ -365,6 +366,9 @@ class App:
             for item in job.result.items:
                 if job.token.cancelled:
                     break
+                if item.result is not None:  # answered before a stop: resuming skips it
+                    continue
+                item.error = ""
                 job.current = item.index
                 t0 = time.perf_counter()
                 origin = f"{job.result.name} #{item.index}"
@@ -402,6 +406,23 @@ class App:
     def list_cancel(self, jid: str) -> dict[str, Any]:
         job = self.list_job(jid)
         job.token.cancel()
+        return job.snapshot()
+
+    def list_resume(self, jid: str, client: str = "") -> dict[str, Any]:
+        """Go on with a stopped list from where it stopped: answered terms are kept, the
+        rest (and any that failed) are asked again. The pause does not count as run time."""
+        job = self.list_job(jid)
+        if job.running:
+            return job.snapshot()
+        if any(j.running for j in self.lists.values()):
+            raise ValueError("Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun.")
+        if all(i.result is not None for i in job.result.items):
+            raise ValueError("Bu listenin bütün terimleri cevaplandı; devam edecek terim yok.")
+        if job.finished is not None:
+            job.started += time.perf_counter() - job.finished
+        job.token, job.running, job.finished = cancel.Token(), True, None
+        job.result.cancelled = False
+        threading.Thread(target=self._run_list, args=(job, client), daemon=True).start()
         return job.snapshot()
 
     def list_report(self, jid: str) -> Path:
@@ -912,6 +933,8 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._json(app.list_start(raw, name, self.client_address[0]))
                 elif url.path.startswith("/api/list/") and url.path.endswith("/cancel"):
                     self._json(app.list_cancel(url.path.split("/")[3]))
+                elif url.path.startswith("/api/list/") and url.path.endswith("/resume"):
+                    self._json(app.list_resume(url.path.split("/")[3], self.client_address[0]))
                 elif url.path == "/api/settings":
                     self._json(app.settings_save(json.loads(raw or b"{}")))
                 elif url.path == "/api/reindex":
