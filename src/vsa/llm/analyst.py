@@ -21,9 +21,9 @@ from __future__ import annotations
 import logging
 import re
 from collections import Counter, defaultdict
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from vsa import trace
 from vsa.llm.analyst_prompts import (
@@ -666,6 +666,18 @@ class Cleaner:
 
 _TYPO = ("yazim hata", "yazim yanlis", "typo")
 
+# ADR-043: words in a table description saying it covers a narrow population or is a
+# derived analytics set; such a table goes behind a general one on a ranking tie.
+NARROW_MARKERS = ("model girdisi", "modeli girdisi", "egitim verisi", "egitim seti",
+                  "akilli hedefleme", "ozel bankacilik musterileri", "segmentasyonu girdisi")
+
+
+def narrow_tables(descriptions: Mapping[str, str]) -> frozenset[str]:
+    """Tables whose description marks them as a narrow-population / derived set."""
+    return frozenset(
+        k for k, d in descriptions.items() if any(m in fold(d) for m in NARROW_MARKERS)
+    )
+
 
 def _is_typo_remark(text: str) -> bool:
     """A remark about misspelt column names (Dept/Debt): true but it changes no answer;
@@ -703,6 +715,26 @@ def with_verdict(verdict: Verdict, summary: str) -> str:
     return f"{verdict.value}. {body}".strip()
 
 
+def core_first(
+    recs: list[Recommendation], core: Sequence[DictColumn], narrow: Collection[str] = ()
+) -> list[Recommendation]:
+    """ADR-043: the table that holds the request's core concept leads. Order by how many of
+    the model's core columns a table holds; on a tie a general table goes before a
+    narrow-population one (``narrow``: model inputs, targeting aggregates…), then by
+    confidence. A table moved up is shown with at least the confidence of the one it
+    passed. No core columns: order unchanged."""
+    held = Counter(c.object_key for c in core)
+    if not recs or not any(held[r.object_key] for r in recs):
+        return recs
+    ranked = sorted(
+        recs, key=lambda r: (-held[r.object_key], r.object_key in narrow, -r.confidence)
+    )
+    top = max(r.confidence for r in recs)
+    if ranked[0].confidence < top:
+        ranked[0] = replace(ranked[0], confidence=top)
+    return ranked
+
+
 def build_answer(
     reply: Mapping[str, object],
     ids: Mapping[str, str],
@@ -711,6 +743,7 @@ def build_answer(
     top_n: int,
     min_confidence: float,
     catalog_ids: Mapping[str, str] | None = None,
+    narrow: Collection[str] = (),
 ) -> AnalystAnswer:
     """The model's report with everything checked against the dictionary."""
     clean = Cleaner(checker, ids, columns_of, catalog_ids)
@@ -740,6 +773,7 @@ def build_answer(
         notes.append(Note("İlgili", "Yakın ama talebi karşılamayan tablolar", text))
         recs, design = [], []
         reply = {**reply, "verdict": Verdict.NOT_FOUND.value}
+    recs = core_first(recs, core_cols or [], narrow)
     verdict, summary = _verdict_summary(
         reply.get("verdict"), clean.text(reply.get("summary")), bool(recs)
     )

@@ -42,6 +42,7 @@ from vsa.llm.analyst import (
     chunk_catalog,
     column_caveats,
     confusable_material,
+    narrow_tables,
     read_chunks,
     reconcile,
     shortlist,
@@ -543,6 +544,15 @@ class Engine:
         short.search_terms = short.search_terms or read.search_terms
         return short
 
+    _narrow_keys: frozenset[str] | None = None
+
+    def _narrow(self) -> frozenset[str]:
+        if self._narrow_keys is None:
+            self._narrow_keys = narrow_tables(
+                {k: p.description for k, p in self.dictionary.objects.items()}
+            )
+        return self._narrow_keys
+
     def _analyze_llm(self, query: str, top_n: int) -> AnalysisResult | None:
         started = time.perf_counter()
         a = self.settings.analyst
@@ -565,7 +575,8 @@ class Engine:
             if reply is None:
                 return None
             answer = build_answer(
-                reply, reading.ids, columns_of, checker, top_n, a.min_confidence, catalog.ids
+                reply, reading.ids, columns_of, checker, top_n, a.min_confidence, catalog.ids,
+                self._narrow(),
             )
         else:
             answer = AnalystAnswer(

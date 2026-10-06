@@ -50,3 +50,13 @@ diye BULUNAMADI'ya çeviriyordu; açıklık eklendi). Gerekçe: 294 soruluk öl�
 kalıptı — varlık var, istenen nitelik yok. Alanı olmayan eski cevaplarda kontrol uygulanmaz.
 Ön kontrol (101 soru: akşam hatalı/negatif + 30 doğru koruma sorusu): koruma 30/30, hedef
 negatifler 0/9 → 2/9, birleştirme kaybı yok. Tam 294 ölçümü bekliyor.
+
+## ADR-043 — Sırayı asıl kavram belirler (2026-10-07)
+Önerilerin sırasını model güveni değil kod verir: modelin gösterdiği asıl kavram kolonlarını
+(ADR-042) en çok taşıyan tablo öne geçer; eşitlikte genel tablo, dar kitleli / türetilmiş
+tablonun (açıklamasında model girdisi, eğitim verisi, akıllı hedefleme, özel bankacılık
+müşterileri, segmentasyon girdisi geçen) önüne geçer; sonra güven. Öne geçen tablo, geçtiği
+tablonun güveninden düşük gösterilmez. Kolon gösterilmemişse modelin sırası kalır.
+Gerekçe: 294 soruda cevaplanabilir 23 hatanın 17'sinde doğru tablo ilk 3'teydi ama 1.
+sırada değildi. Ölçüm (31 soru, seri sunucu): sıralama hatalarının 7/19'u düzeldi, koruma
+sorularının 7/8'i korundu.

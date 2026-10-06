@@ -368,6 +368,33 @@ def test_core_concept_missing_means_not_found() -> None:
     assert said.verdict is Verdict.NOT_FOUND and said.objects == []  # the model's own word
 
 
+def test_core_holder_leads() -> None:
+    """ADR-043: the table holding the core columns goes first, shown with the top confidence."""
+    from types import SimpleNamespace
+
+    from vsa.llm.analyst import Recommendation, core_first
+
+    def rec(key: str, conf: float) -> Recommendation:
+        return Recommendation(key, [], "-", "-", "-", "-", conf)
+
+    recs = [rec("DB.S.vSummary", 0.9), rec("DB.S.vSpending", 0.7), rec("DB.S.vOther", 0.6)]
+    spending, other = (SimpleNamespace(object_key=f"DB.S.{n}") for n in ("vSpending", "vOther"))
+    core = [spending, spending, other]
+    ranked = core_first(recs, core)  # type: ignore[arg-type]
+    assert [r.object_key for r in ranked] == ["DB.S.vSpending", "DB.S.vOther", "DB.S.vSummary"]
+    assert ranked[0].confidence == 0.9 and ranked[1].confidence == 0.6
+    assert core_first(recs, []) == recs  # no core columns: the model's order stands
+    # a tie on core columns: the general table before the narrow-population one
+    tie = [rec("DB.S.vPrivateBanking", 0.9), rec("DB.S.vBalanceDaily", 0.8)]
+    both = [SimpleNamespace(object_key=k) for k in ("DB.S.vPrivateBanking", "DB.S.vBalanceDaily")]
+    first = core_first(tie, both, {"DB.S.vPrivateBanking"})  # type: ignore[arg-type]
+    assert [r.object_key for r in first] == ["DB.S.vBalanceDaily", "DB.S.vPrivateBanking"]
+    alone = core_first(tie, both[:1], {"DB.S.vPrivateBanking"})  # type: ignore[arg-type]
+    assert alone[0].object_key == "DB.S.vPrivateBanking"  # it alone holds the core: it leads
+    outside = [SimpleNamespace(object_key="DB.S.vElsewhere")]
+    assert core_first(recs, outside) == recs  # type: ignore[arg-type]
+
+
 def test_core_concept_needs_a_real_column() -> None:
     """ADR-042: the core concept must be carried by a named candidate column."""
     named = engine(ScriptedClient(SHORTLIST, analyst_reply(
