@@ -1,22 +1,25 @@
-"""Data dictionary, term dictionary and stopword loading (HANDOVER §3).
+"""Parsing the dictionary template, term dictionary and stopwords.
 
-This is one of the few modules allowed to do I/O. Parsing helpers are pure and
-tested on their own. Workbooks are read with openpyxl (read-only, values only).
+This is one of the few modules allowed to do I/O. Parsing helpers are pure and tested
+on their own. Workbooks are read with openpyxl (read-only, values only); the app's
+dictionary itself is ``dictionary_store`` (ADR-050), which imports workbooks with these.
 """
 
 from __future__ import annotations
 
-import csv
 import hashlib
+import json
 import logging
+import os
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from openpyxl import load_workbook
 
-from vsa.models import DictColumn, Dictionary, ObjectProfile, TermGroup
+from vsa.models import DictColumn, ObjectProfile, TermGroup
 from vsa.text.normalize import fold, load_stopwords
 
 log = logging.getLogger(__name__)
@@ -214,56 +217,142 @@ def read_workbook(
         book.close()
 
 
-def load_dictionary(path: Path, sheet: str = "Kolonlar") -> Dictionary:
-    """Read the dictionary workbook: the column sheet, plus the object sheet if present."""
-    sheets = read_workbook(path)
-    if sheet not in sheets:
-        raise ValueError(f"Sözlükte “{sheet}” sayfası yok (mevcut: {', '.join(sheets)})")
-    rows = list(records(sheets[sheet]))
-    profiles = object_profiles(records(sheets.get(OBJECTS_SHEET, [])))
-    groups = {k: p.group for k, p in profiles.items() if p.group}
+def _jsonl(path: Path) -> Iterator[dict[str, object]]:
+    """The records of a jsonl file; blank lines are skipped, a broken line is an error."""
+    with path.open(encoding="utf-8-sig") as fh:
+        for n, line in enumerate(fh, 1):
+            if not line.strip():
+                continue
+            try:
+                rec = json.loads(line)
+            except ValueError as exc:
+                raise ValueError(f"{path.name} satır {n}: geçerli JSON değil ({exc})") from exc
+            if not isinstance(rec, dict):
+                raise ValueError(f"{path.name} satır {n}: kayıt bir JSON nesnesi olmalı")
+            yield rec
 
-    columns, warnings = build_columns(rows, groups)
-    for w in warnings:
-        log.info(w)
-    if warnings:
-        log.warning("Sözlük yüklenirken %d uyarı oluştu (ayrıntı: --verbose)", len(warnings))
-    return Dictionary(
-        columns=columns,
-        source_path=str(path),
-        version=file_version(path, len(rows)),
-        warnings=warnings,
-        objects=profiles,
-    )
+
+def _text(value: object) -> str:
+    return value.strip() if isinstance(value, str) else ""
 
 
 def load_term_dictionary(path: Path) -> list[TermGroup]:
-    """Read ``term,equivalents,domain,note``; missing trailing fields are tolerated."""
+    """One group per line: ``{"term", "equivalents": [...], "domain", "note"}`` (ADR-052)."""
     groups: list[TermGroup] = []
-    with path.open(encoding="utf-8-sig", newline="") as fh:
-        for rec in csv.DictReader(fh):
-            term = (rec.get("term") or "").strip()
-            if not term:
-                continue
-            equivalents = tuple(
-                e.strip() for e in (rec.get("equivalents") or "").split("|") if e.strip()
+    for rec in _jsonl(path):
+        term = _text(rec.get("term"))
+        if not term:
+            continue
+        raw = rec.get("equivalents")
+        items = raw if isinstance(raw, list) else []
+        groups.append(
+            TermGroup(
+                term=term,
+                equivalents=tuple(e for e in map(_text, items) if e),
+                domain=_text(rec.get("domain")),
+                note=_text(rec.get("note")),
             )
-            groups.append(
-                TermGroup(
-                    term=term,
-                    equivalents=equivalents,
-                    domain=(rec.get("domain") or "").strip(),
-                    note=(rec.get("note") or "").strip(),
-                )
-            )
+        )
     return groups
 
 
 def load_stopword_file(path: Path) -> frozenset[str]:
+    """One word per line: ``{"word", "group"}``; the group only documents why (ADR-052)."""
     if not path.exists():
         log.warning("Durak kelime dosyası bulunamadı: %s", path)
         return frozenset()
-    return load_stopwords(path.read_text(encoding="utf-8").splitlines())
+    return load_stopwords(_text(rec.get("word")) for rec in _jsonl(path))
+
+
+# ---------------------------------------------------------------- word lists on the admin screen
+# The term dictionary and stopwords are edited on the admin screen (ADR-052): records as
+# the screen shows them, checked and written whole (atomic, previous file kept as .bak).
+
+MAX_LIST_ITEMS = 5000
+
+
+def read_terms(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    return [
+        {"term": g.term, "equivalents": list(g.equivalents), "domain": g.domain, "note": g.note}
+        for g in load_term_dictionary(path)
+    ]
+
+
+def read_stopwords(path: Path) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    rows = []
+    for rec in _jsonl(path):
+        if word := _text(rec.get("word")):
+            rows.append({"word": word, "group": _text(rec.get("group"))})
+    return rows
+
+
+def _items(items: object) -> list[dict[str, Any]]:
+    if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
+        raise ValueError("Liste bekleniyordu")
+    if len(items) > MAX_LIST_ITEMS:
+        raise ValueError(f"En fazla {MAX_LIST_ITEMS} kayıt")
+    return items
+
+
+def check_terms(items: object) -> list[dict[str, Any]]:
+    """Clean term groups; an empty term, a group without equivalents or a term given
+    twice (Turkish case-folded) is an error naming the row."""
+    out: list[dict[str, Any]] = []
+    seen: dict[str, int] = {}
+    for n, rec in enumerate(_items(items), 1):
+        term = _text(rec.get("term"))
+        raw = rec.get("equivalents")
+        equivalents = list(
+            dict.fromkeys(e for e in map(_text, raw if isinstance(raw, list) else []) if e)
+        )
+        if not term:
+            raise ValueError(f"Satır {n}: terim boş")
+        if not equivalents:
+            raise ValueError(f"“{term}”: en az bir eşdeğer gerekli")
+        if (key := fold(term)) in seen:
+            raise ValueError(f"“{term}” iki kez var (satır {seen[key]} ve {n})")
+        seen[key] = n
+        out.append(
+            {
+                "term": term,
+                "equivalents": equivalents,
+                "domain": _text(rec.get("domain")),
+                "note": _text(rec.get("note")),
+            }
+        )
+    return out
+
+
+def check_stopwords(items: object) -> list[dict[str, str]]:
+    """Clean stopwords: one word each (they are dropped token by token), no repeats."""
+    out: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for rec in _items(items):
+        word = _text(rec.get("word"))
+        if not word:
+            continue
+        if len(word.split()) > 1:
+            raise ValueError(f"“{word}”: durak kelime tek kelime olmalı")
+        if (key := fold(word)) in seen:
+            continue
+        seen.add(key)
+        out.append({"word": word, "group": _text(rec.get("group"))})
+    return out
+
+
+def write_jsonl(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8", newline="\n") as fh:
+        for r in rows:
+            fh.write(json.dumps(r, ensure_ascii=False) + "\n")
+    if path.exists():
+        os.replace(path, path.with_suffix(path.suffix + ".bak"))
+    os.replace(tmp, path)
 
 
 # --------------------------------------------------------------------------- list search input

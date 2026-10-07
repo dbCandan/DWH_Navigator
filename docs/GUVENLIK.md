@@ -18,7 +18,7 @@ komutlarla tekrarlanabilir; her sürümde ve taban imaj güncellendiğinde yenid
 | Çalışan uygulama — pasif DAST | OWASP ZAP baseline (stable) | **0 FAIL**, 65 PASS; 1 bilgi uyarısı (aşağıda) |
 | Çalışan uygulama — şablon taraması | Nuclei 3.11.0 (10.532 şablon çalıştı; dos/fuzz/intrusive hariç) | **0** zafiyet; 5 bilgi eşleşmesi (aşağıda) |
 | Lint / tip | ruff, mypy --strict | temiz |
-| Testler | pytest | 231 test geçti |
+| Testler | pytest | 241 test geçti |
 
 Nuclei'nin 5 eşleşmesi bilgi düzeyindedir: teknoloji tespitleri (`addEventListener`, `/healthz`),
 dosya yükleme formunun varlığı (Excel listesi; sınırları bulgu 5'te), eksik

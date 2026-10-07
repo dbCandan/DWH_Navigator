@@ -1,10 +1,9 @@
-# Kopyalayıp config/settings.yaml olarak kullanın (settings.yaml repoya girmez).
+# Kopyalayıp data/settings.yaml olarak kullanın; data/ repoya girmez (ADR-052).
 # Değerler 2026-10-07 ölçümünün (294 soru, ~%89,8) yapıldığı ayarlardır; Docker kurulumu
 # aynılarını docker/settings.yaml'dan alır. Yönetim → Ayarlar ekranı da bu dosyayı yazar.
 
 dictionary:
-  path: data/VeriSozlugu.xlsx
-  sheet: Kolonlar
+  store: data/dictionary.jsonl  # uygulamanın tek sözlüğü; Yönetim → Sözlük'ten Excel şablonuyla içe/dışa aktarılır (ADR-050)
 
 index:
   dir: data/index
@@ -25,8 +24,8 @@ expansion:
   enabled: true                # kurumsal terim sözlüğü
   synonyms: true               # sözlüğün Synonyms kolonu
   weight: 0.6                  # genişletme terimlerinin ağırlığı
-  term_dictionary: config/term_dictionary.csv
-  stopwords: config/stopwords_tr.txt
+  term_dictionary: data/terms.jsonl  # satır başına bir grup: term, equivalents, domain, note
+  stopwords: data/stopwords.jsonl  # satır başına bir kelime: word, group
 
 # Kural motoru modele ipucu verir ve doğrular; cevabı yazmaz (ADR-038).
 scoring:
@@ -41,7 +40,7 @@ scoring:
     granularity: 0.07
     topic: 0.30   # tablonun bütün olarak konuyla uyumu (ADR-028)
 
-# Model bağlantısı: normalde Yönetim → Ayarlar → Yapay zekâ ekranından (config/llm_integrations.yaml,
+# Model bağlantısı: normalde Yönetim → Yapay zekâ sayfasından (data/llm_integrations.yaml,
 # ADR-032); o dosya varsa bu bölümün bağlantı alanları yok sayılır. OpenAI uyumlu her sunucu olur.
 llm:
   enabled: false

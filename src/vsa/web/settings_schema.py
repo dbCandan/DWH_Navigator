@@ -44,8 +44,8 @@ SECTIONS: list[dict[str, Any]] = [
         "id": "analyst",
         "page": "search",
         "title": "Analist",
-        "intro": "Cevabı sohbet modeli yazar (ADR-038). Önce bütün tablo kataloğundan aday "
-        "seçer, sonra adayların kolonlarını okur. Okunan malzeme büyüdükçe cevap yavaşlar.",
+        "intro": "Cevabı sohbet modeli yazar: katalogdan aday seçer, sonra adayların kolonlarını "
+        "okur; malzeme büyüdükçe yavaşlar.",
         "fields": [
             {
                 "key": "analyst.shortlist",
@@ -65,8 +65,8 @@ SECTIONS: list[dict[str, Any]] = [
                 "max": 60,
                 "step": 1,
                 "effect": NOW,
-                "help": "Talebe en ilgili bu kadar kolon tam sözlük açıklamasıyla, diğerleri "
-                "“Ad [Rol]: özet” olarak gider. -1: hepsi tam açıklamayla (yavaş).",
+                "help": "En ilgili bu kadar kolon tam açıklamayla, kalanı “Ad [Rol]: özet” olarak "
+                "gider; -1: hepsi tam (yavaş).",
             },
             {
                 "key": "analyst.min_confidence",
@@ -88,8 +88,8 @@ SECTIONS: list[dict[str, Any]] = [
                 "step": 1,
                 "effect": NOW,
                 "advanced": True,
-                "help": "1: tek çağrı (hızlı, önek önbelleğine uygun). N: N parça paralel okunur, "
-                "adaylar sonra yan yana kıyaslanır.",
+                "help": "1: tek çağrı (hızlı, önbelleğe uygun); N: N parça paralel okunur, adaylar "
+                "sonra kıyaslanır.",
             },
             {
                 "key": "analyst.catalog_columns",
@@ -97,8 +97,8 @@ SECTIONS: list[dict[str, Any]] = [
                 "type": "bool",
                 "effect": NOW,
                 "advanced": True,
-                "help": "Kapalıyken katalog tablo açıklaması, satır düzeyi ve zaman kolonlarından "
-                "oluşur (~43 bin token); açıkken kolon adları da eklenir (çok daha uzun).",
+                "help": "Kapalı: tablo açıklaması, satır düzeyi, zaman kolonları (~43 bin token); "
+                "açık: kolon adları da (çok daha uzun).",
             },
             {
                 "key": "analyst.max_tokens",
@@ -117,15 +117,15 @@ SECTIONS: list[dict[str, Any]] = [
         "id": "terms",
         "page": "search",
         "title": "Eş anlamlılar ve terimler",
-        "intro": "İş biriminin kelimeleriyle sözlüğün kelimeleri arasında köprü kurar: “kredi” "
-        "arayan “fon kullandırım”ı da bulur.",
+        "intro": "İş biriminin kelimelerini sözlüğe bağlar: “kredi” arayan “fon kullandırım”ı da "
+        "bulur.",
         "fields": [
             {
                 "key": "expansion.enabled",
                 "label": "Kurumsal terim sözlüğünü kullan",
                 "type": "bool",
                 "effect": NOW,
-                "help": "Katılım bankacılığı terimleri ve kısaltmalar (config/term_dictionary.csv).",
+                "help": "Katılım bankacılığı terimleri ve kısaltmalar (data/terms.jsonl).",
             },
             {
                 "key": "expansion.synonyms",
@@ -153,9 +153,8 @@ SECTIONS: list[dict[str, Any]] = [
         "page": "search",
         "advanced": True,
         "title": "Kural ipuçları (tablo sıralaması)",
-        "intro": "Kural motoru cevap yazmaz; modele “kural skoru en yüksek tablolar” ipucunu "
-        "hazırlar. Bir tablonun kural puanı beş parçadan oluşur. Değiştirmeden önce ve sonra "
-        "`vsa eval --save` ile ölçün.",
+        "intro": "Kural puanı (beş parça) modele ipucu olur, cevap yazmaz; değiştirmeden önce ve "
+        "sonra `vsa eval --save` ile ölçün.",
         "fields": [
             {
                 "key": "scoring.object.best_column",
@@ -235,8 +234,8 @@ SECTIONS: list[dict[str, Any]] = [
         "page": "search",
         "advanced": True,
         "title": "Kelime araması",
-        "intro": "Kolon adları, eş anlamlılar ve açıklamalar üzerinde BM25 araması. Alan "
-        "ağırlıkları ve BM25 değerleri indekse gömülüdür; değişince indeks yeniden kurulur.",
+        "intro": "Kolon adı, eş anlamlı ve açıklamalarda BM25 araması; değerler indekse gömülü, "
+        "değişince indeks yeniden kurulur.",
         "fields": [
             {
                 "key": "search.field_weights.name",
@@ -311,41 +310,41 @@ SECTIONS: list[dict[str, Any]] = [
         ],
     },
     {
+        # Shown on the admin screen's Sözlük and Kelimeler views (ADR-049/052), each next to
+        # what it locates, not on a settings page: "dictionary" and "words" are not PAGES.
         "id": "dictionary",
-        "page": "data",
-        "title": "Veri sözlüğü",
-        "intro": "Uygulamanın aradığı kaynak. Dosya değişirse indeks yeniden kurulmalı.",
+        "page": "dictionary",
+        "title": "Dosya ayarları",
+        "intro": "Sözlük dosyasının yeri; değişirse indeks yeniden kurulmalı.",
         "fields": [
             {
-                "key": "dictionary.path",
+                "key": "dictionary.store",
                 "label": "Sözlük dosyası",
                 "type": "str",
                 "effect": REINDEX,
-                "help": "Excel dosyası (data/VeriSozlugu.xlsx); kolonlar Kolonlar sayfasında.",
+                "help": "İçe aktarılan sözlüğün saklandığı yer (data/dictionary.jsonl).",
             },
-            {
-                "key": "dictionary.sheet",
-                "label": "Kolon sayfası",
-                "type": "str",
-                "effect": REINDEX,
-                "advanced": True,
-                "help": "",
-            },
+        ],
+    },
+    {
+        "id": "words",
+        "page": "words",
+        "title": "Dosya ayarları",
+        "intro": "Kelime listelerinin yerleri; değişirse indeks yeniden kurulmalı.",
+        "fields": [
             {
                 "key": "expansion.term_dictionary",
                 "label": "Terim sözlüğü dosyası",
                 "type": "str",
-                "effect": NOW,
-                "advanced": True,
-                "help": "CSV: term, equivalents, domain, note.",
+                "effect": REINDEX,
+                "help": "jsonl, satır başına bir grup: term, equivalents, domain, note.",
             },
             {
                 "key": "expansion.stopwords",
                 "label": "Durak kelimeler dosyası",
                 "type": "str",
                 "effect": REINDEX,
-                "advanced": True,
-                "help": "Aramada yok sayılan kelimeler, satır başına bir tane.",
+                "help": "jsonl, satır başına bir kelime: word, group.",
             },
         ],
     },
@@ -353,9 +352,8 @@ SECTIONS: list[dict[str, Any]] = [
         "id": "cache",
         "page": "data",
         "title": "Önceki cevaplar",
-        "intro": "Analistin yazdığı cevaplar saklanır. Aynı soru ya da terim sözlüğüne göre aynı "
-        "anlama gelen bir soru yeniden sorulunca dakikalarca analiz yerine kayıtlı cevap gelir. "
-        "Sözlük, model veya cevabı etkileyen bir ayar değişince eski cevaplar kullanılmaz.",
+        "intro": "Aynı ya da aynı anlamdaki soru analiz yerine kayıtlı cevabı alır; sözlük, model "
+        "ya da ayar değişince eskiler kullanılmaz.",
         "fields": [
             {
                 "key": "cache.enabled",
@@ -369,8 +367,8 @@ SECTIONS: list[dict[str, Any]] = [
                 "label": "Aynı anlama gelen sorularda da kullan",
                 "type": "bool",
                 "effect": NOW,
-                "help": "Kelimeleri farklı ama kavramları aynı soru (ör. “müşteri no” / “hesap "
-                "no”). Kapalıyken yalnız aynı kelimelerle sorulan soru.",
+                "help": "Kelimesi farklı, kavramı aynı soru (ör. “müşteri no” / “hesap no”); "
+                "kapalıyken yalnız aynı kelimeler.",
             },
             {
                 "key": "cache.max_age_days",

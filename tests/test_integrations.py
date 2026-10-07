@@ -149,10 +149,10 @@ class FakeServer:
 
 
 @pytest.fixture
-def app(sample_dictionary_path: Path, tmp_path: Path) -> App:
+def app(sample_store_path: Path, tmp_path: Path) -> App:
     settings_file = tmp_path / "settings.yaml"
     settings_file.write_text(
-        f"dictionary:\n  path: {sample_dictionary_path.as_posix()}\n"
+        f"dictionary:\n  store: {sample_store_path.as_posix()}\n"
         f"index:\n  dir: {(tmp_path / 'idx').as_posix()}\n",
         encoding="utf-8",
     )

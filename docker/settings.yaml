@@ -1,11 +1,10 @@
 # DWH Navigator — konteyner ayarları. İlk çalıştırmada /app/data/settings.yaml olarak
-# kopyalanır; sonra Yönetim → Ayarlar ekranından ya da bu dosyadan değiştirilir.
-# Anlamları: config/settings.example.yaml (repoda). Yollar /app'e göredir.
+# kopyalanır; sonra yönetim ekranından ya da bu dosyadan değiştirilir.
+# Anlamları: docs/settings.example.yaml (repoda). Yollar /app'e göredir.
 # Değerler, 2026-10-07 ölçümünün (294 soru, ~%89,8) yapıldığı ayarlardır.
 
 dictionary:
-  path: data/VeriSozlugu.xlsx
-  sheet: Kolonlar
+  store: data/dictionary.jsonl  # uygulamanın tek sözlüğü; Yönetim → Sözlük'ten Excel şablonuyla içe/dışa aktarılır (ADR-050)
 
 index:
   dir: data/index
@@ -29,8 +28,8 @@ expansion:
   enabled: true
   synonyms: true
   weight: 0.6
-  term_dictionary: config/term_dictionary.csv
-  stopwords: config/stopwords_tr.txt
+  term_dictionary: data/terms.jsonl
+  stopwords: data/stopwords.jsonl
 
 scoring:
   min_candidate_score: 0.5
@@ -44,7 +43,7 @@ scoring:
     granularity: 0.07
     topic: 0.3
 
-# Model bağlantısı Yönetim → Ayarlar → Yapay zekâ ekranından yapılır
+# Model bağlantısı Yönetim → Yapay zekâ sayfasından yapılır
 # (/app/data/llm_integrations.yaml). Ekran kullanılmayacaksa buradan da verilebilir.
 llm:
   enabled: false

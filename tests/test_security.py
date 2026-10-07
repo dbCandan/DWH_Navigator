@@ -113,9 +113,9 @@ def test_pages_set_no_style_attributes() -> None:
 
 
 @pytest.fixture
-def server(sample_dictionary_path: Path, tmp_path: Path) -> Iterator[str]:
+def server(sample_store_path: Path, tmp_path: Path) -> Iterator[str]:
     s = Settings()
-    s.dictionary.path = str(sample_dictionary_path)
+    s.dictionary.store = str(sample_store_path)
     app = App(Engine.from_dictionary_file(s), tmp_path / "out", tmp_path / "feedback.jsonl",
               tmp_path / "settings.yaml")  # fmt: skip
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(app, AdminGuard("gizli")))

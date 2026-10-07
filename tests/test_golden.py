@@ -18,14 +18,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture(scope="module")
-def engine() -> Engine:
-    from .conftest import REAL_DICTIONARY
+def engine(tmp_path_factory: pytest.TempPathFactory) -> Engine:
+    from .conftest import REAL_DICTIONARY, import_workbook
 
     if not REAL_DICTIONARY.exists():
         pytest.skip("Gerçek sözlük yok (data/ gitignore'da)")
     logging.disable(logging.WARNING)
     settings = Settings()
-    settings.dictionary.path = str(REAL_DICTIONARY)
+    store = tmp_path_factory.mktemp("sozluk") / "dictionary.jsonl"
+    settings.dictionary.store = str(import_workbook(REAL_DICTIONARY, store))
     return Engine.from_dictionary_file(settings)
 
 

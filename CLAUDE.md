@@ -33,7 +33,7 @@ bulut desteği ve model laboratuvarı kaldırıldı.
 - Python 3.11+, tip ipuçları zorunlu, `ruff` + `mypy --strict` temiz.
 - **Hiçbir modülde doğrudan `.lower()` / `.upper()` / `.casefold()` çağrılmaz** —
   `vsa.text.normalize` kullanılır (Türkçe İ/ı sorunu).
-- I/O yalnızca `loader.py`, `index/store.py`, `report/`, `cli.py`, `web/` içinde (+ `Engine.from_*`
+- I/O yalnızca `loader.py`, `dictionary_store.py`, `index/store.py`, `report/`, `cli.py`, `web/` içinde (+ `Engine.from_*`
   kurucuları); diğer modüller saf fonksiyon. Excel okuma openpyxl ile (pandas yok, ADR-046).
 - Web: yönetim yolları `AdminGuard`'dan, POST'lar CSRF denetiminden geçer; her yanıt güvenlik
   başlıklarıyla (`web/security.py`, ADR-047). Yeni yönetim API'si `is_admin_path`'e uymalı.
@@ -42,8 +42,12 @@ bulut desteği ve model laboratuvarı kaldırıldı.
 - Kullanıcıya dönük metin (rapor, gerekçe) **Türkçe**; kod, değişken adı, commit **İngilizce**.
 
 ## Veri
-- Sözlük: `data/VeriSozlugu.xlsx` — tek kaynak (2026-10-05'te DataDictionary-Final + ObjectNameList
-  birleştirildi, eskiler kaldırıldı). Yalnız iki sayfa: `Objeler` (ObjectKey, ad, ObjectDescription,
+- Uygulamanın tek sözlüğü `data/dictionary.jsonl` (`dictionary.store`, `dictionary_store.py`; ADR-049/050).
+  Excel yalnız aktarım: şablondaki Excel Yönetim → Sözlük ya da `vsa dictionary import` ile içe aktarılır
+  (sözlüğün yerini alır, indeks kurulur), aynı şablona dışa aktarılır. Hiçbir Excel sözlük olarak okunmaz;
+  sözlük yoksa uygulama boş açılır ve "içe aktarın" der.
+- Şablon / kaynak Excel: `data/VeriSozlugu.xlsx` (2026-10-05'te DataDictionary-Final + ObjectNameList
+  birleştirildi, eskiler kaldırıldı); testler gerçek sözlüğü bundan içe aktararak kurar. Yalnız iki sayfa: `Objeler` (ObjectKey, ad, ObjectDescription,
   Grain, KeyColumns, TimeColumns, BusinessDomain, DatasetGroup) ve `Kolonlar`
   (DatabaseName, SchemaName, ObjectName, ColumnName, ColumnDescription, Synonyms, Role, Summary;
   KVKK bayrağı açıklamadan türetilir; DatasetGroup Objeler'den `DB.Şema.Obje` ile gelir).
@@ -52,7 +56,13 @@ bulut desteği ve model laboratuvarı kaldırıldı.
   Eş anlamlılar yalnız `Synonyms` kolonundan, grup yalnız `Objeler`'den okunur (ADR-046).
 - Analistin tablo kataloğu Objeler sayfasından bellekte kurulur (`llm/analyst.build_catalog`).
   Sözlük değişince `vsa index`.
-- `data/`, `out/` ve tüm `.xlsx` dosyaları gitignore'da — **kurum içi veri, asla commit edilmez**.
+- **Tek klasör `data/`** (ADR-052): sözlük, `terms.jsonl` (terim sözlüğü), `stopwords.jsonl`
+  (durak kelimeler), `settings.yaml`, `llm_integrations.yaml`, indeks, önbellek, kayıtlar. Terim
+  sözlüğü ve durak kelimeler jsonl'dir, `/admin` → Kelimeler'den düzenlenir (kayıt indeksi kurar).
+  `config/` klasörü yok (eski `config/settings.yaml` taşınana kadar okunur; eski `.csv`/`.txt`
+  yolları jsonl varsayılanına çevrilir). Ayar örneği `docs/settings.example.yaml`.
+- `data/`, `out/` ve tüm `.xlsx` dosyaları gitignore'da — **kurum içi veri, asla commit edilmez**;
+  istisna `data/terms.jsonl` ve `data/stopwords.jsonl` (kurum verisi değil, kodla gelişir).
   Testler gerçek sözlüğe ihtiyaç duyarsa sözlük yoksa `skip` etmeli.
 - Eski kaynakta kolon `DAtabaseName` yazım hatalıydı; yükleyici her iki yazımı kabul eder.
 - Obje/kolon adları kırpılmış (ambarda 55 kolonun adında sonda boşluk var; SQL'de dikkat). Yükleyici yine `strip` eder.
@@ -76,7 +86,11 @@ tablo öne; eşitlikte genel tablo dar kitleli/türetilmiş tablonun — model g
 denetim çağrısı reddedildi), ADR-045 (ölçüm sorusundan türeyen prompt örneği yok; "eksik bilgi"),
 ADR-046 (MVP temizliği: bayraklar, açıklama içi eş anlamlılar, pandas, netleştirme notları
 kaldırıldı; davranış 129 soruda bayt bayt aynı), ADR-047 (yönetim ekranı parolalı, CSRF, CSP;
-ADR-030'un "korumasız" kısmının yerine), ADR-048 (Alpine Docker imajı, 0 bilinen zafiyet).
+ADR-030'un "korumasız" kısmının yerine), ADR-048 (Alpine Docker imajı, 0 bilinen zafiyet), ADR-049 (uygulamanın kendi sözlüğü: jsonl
+depo; Yönetim → Sözlük'ten içe/dışa aktarma; aynı içerik aynı sürüm), ADR-050 (Excel'den okuma
+kaldırıldı: tek sözlük jsonl, Excel yalnız aktarım; sözlüksüz açılış), ADR-051 (yönetim ekranı
+baştan: 7 sayfa, Ctrl K, çekmeceler), ADR-052 (her şey `data/`'da; terim sözlüğü ve durak
+kelimeler jsonl, Kelimeler sayfasından düzenlenir).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -113,13 +127,16 @@ vsa ask "kredi kartı limit doluluk oranı"
 vsa ask -i terimler.xlsx               # ilk sütundaki her terim ayrı aranır, tek rapor
 vsa eval --save --label "ne değişti"   # ağırlık değişikliğinden önce/sonra
 vsa serve --auto-index                 # indeks yoksa / sözlük değiştiyse önce kurar
+vsa dictionary import data/VeriSozlugu.xlsx   # sözlüğün yerini alır, indeks kurulur
+vsa dictionary export sozluk.xlsx [--template]
 
 docker build -t dwh-navigator:0.1.0 .  # üretim imajı (docs/KURULUM.md)
-docker compose up -d                   # .env: VSA_ADMIN_PASSWORD; data/VeriSozlugu.xlsx
+docker compose up -d                   # .env: VSA_ADMIN_PASSWORD; sonra /admin → Sözlük → içe aktar
 ```
 Bağımlılık eklenirse `requirements.lock` Linux konteynerinde hash'lerle yeniden üretilir ve
 `docs/GUVENLIK.md`'deki taramalar (trivy, pip-audit, bandit) tekrarlanır.
-Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılmalı (BM25 indekse gömülü).
+Stopword veya terim sözlüğü dosyada elle değişirse `vsa index` yeniden çalıştırılmalı (BM25 indekse
+gömülü); Kelimeler sayfasından kaydetmek indeksi kendisi kurar.
 
 ## Yol haritası durumu
 - [x] M1 — LLM'siz çekirdek (normalize, loader, BM25, genişletme, kural skoru, toplama, ask Excel)
@@ -138,7 +155,8 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 - [x] M6 — Arayüz: `vsa serve` / `baslat.bat` → http://127.0.0.1:8765. Tek ekran (soru sorma),
       tek görünüm: Evren (galaksi, ADR-024/027). Arama çubuğunda Excel'den toplu arama. Stdlib sunucu +
       `src/vsa/web/static/index.html` (tek dosya, dış kaynak yok). Ayarlar ve analiz izleri yalnız `/admin`
-      (`admin.html`, ADR-030/032: Yapay zekâ · Arama ve cevap · Veri ve bakım); uygulamadan bağlantı yok;
+      (`admin.html`, ADR-051: Genel bakış · Analizler · Sözlük · Kelimeler · Yapay zekâ · Arama ve cevap · Bakım;
+      Ctrl K komut paleti, `#/sayfa/öğe` derin bağlantılar, ayrıntılar çekmecede); uygulamadan bağlantı yok;
       parola `VSA_ADMIN_PASSWORD`, yoksa yalnız sunucunun kendisinden (ADR-047). **Tasarım kararları
       Claude'da** (kullanıcı "beni şaşırt" dedi); seçenek menüsü sunma.
 - [~] M7 — Geri bildirim: 👍/👎 → `data/feedback.jsonl` → `vsa feedback` golden adayları.
@@ -155,8 +173,8 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 
 ## Model ortamı
 Modeller ekibin DGX Spark sunucularında, OpenAI uyumlu API ile (ADR-031); bu makinede model
-çalıştırılmaz, `baslat.bat` LM Studio açmaz. Bağlantı `/admin` → Ayarlar → Yapay zekâ ekranından
-(ADR-032): entegrasyonlar `config/llm_integrations.yaml` (repoda yok, API anahtarı içerir). Dosya
-yoksa `config/settings.yaml` → `llm:` geçerli. Analist okuma ayarları (aday sayısı, `detail_columns`,
+çalıştırılmaz, `baslat.bat` LM Studio açmaz. Bağlantı `/admin` → Yapay zekâ sayfasından
+(ADR-032): entegrasyonlar `data/llm_integrations.yaml` (repoda yok, API anahtarı içerir). Dosya
+yoksa `data/settings.yaml` → `llm:` geçerli. Analist okuma ayarları (aday sayısı, `detail_columns`,
 `catalog_chunks`, `catalog_columns`) `/admin` → Arama ve cevap → Analist'te. Model
 değişikliğinden önce ve sonra `vsa eval --save`.

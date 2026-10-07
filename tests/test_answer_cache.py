@@ -9,7 +9,7 @@ import pytest
 
 from vsa import answer_cache
 from vsa.config import Settings
-from vsa.loader import load_dictionary
+from vsa.dictionary_store import load_dictionary
 from vsa.models import AnalysisResult, TermGroup
 from vsa.pipeline import Engine, Resources
 from vsa.web.answer_store import AnswerStore
@@ -19,10 +19,10 @@ GROUPS = [TermGroup("müşteri no", ("hesap no", "customer id"))]
 
 
 @pytest.fixture
-def engine(sample_dictionary_path: Path) -> Engine:
+def engine(sample_store_path: Path) -> Engine:
     s = Settings()
-    s.dictionary.path = str(sample_dictionary_path)
-    d = load_dictionary(sample_dictionary_path)
+    s.dictionary.store = str(sample_store_path)
+    d = load_dictionary(sample_store_path)
     return Engine(d, s, Resources(GROUPS, frozenset({"ve", "ile", "bir"})))
 
 
@@ -63,6 +63,13 @@ def test_fingerprint_follows_what_shapes_an_answer(engine: Engine) -> None:
     assert fp != engine.cache_fingerprint(5)
     other = answer_cache.fingerprint(engine.settings, "other-version", GROUPS, 5)
     assert other != engine.cache_fingerprint(5)
+    # the word lists count by content, not by where they are kept (ADR-052)
+    fp = engine.cache_fingerprint(5)
+    engine.settings.expansion.stopwords = "somewhere/else.jsonl"
+    engine.settings.expansion.term_dictionary = "somewhere/terms.jsonl"
+    assert fp == engine.cache_fingerprint(5)
+    engine.resources.stopwords = engine.resources.stopwords | {"yeni"}
+    assert fp != engine.cache_fingerprint(5)
 
 
 def test_fingerprint_follows_the_prompt(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:

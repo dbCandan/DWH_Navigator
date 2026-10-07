@@ -1,12 +1,14 @@
-# Kurum içi veri — repoya girmez
-data/
+# Kurum içi veri — repoya girmez. data/ uygulamanın tek klasörü (ADR-052); yalnız terim
+# sözlüğü ve durak kelimeler repodadır (kurum verisi değil, kodla birlikte gelişir).
+data/*
+!data/terms.jsonl
+!data/stopwords.jsonl
 out/
 *.xlsx
 *.xls
 
-# Yerel ayarlar ve sırlar
-config/settings.yaml
-config/llm_integrations.yaml
+# Sırlar (eski konum config/ dahil)
+config/
 .env
 
 # Dağıtım çıktıları (docker save)

@@ -4,10 +4,12 @@ from pathlib import Path
 
 import pytest
 
-from tests.conftest import write_xlsx
+from tests.conftest import import_workbook, write_xlsx
+from vsa.config import load_settings
+from vsa.dictionary_store import load_dictionary
 from vsa.loader import (
     build_columns,
-    load_dictionary,
+    load_stopword_file,
     load_term_dictionary,
     load_term_list,
     object_profiles,
@@ -25,8 +27,8 @@ def test_commas_inside_parentheses() -> None:
 
 
 class TestBuildColumns:
-    def test_sample_file(self, sample_dictionary_path: Path) -> None:
-        d = load_dictionary(sample_dictionary_path)
+    def test_sample_file(self, sample_store_path: Path) -> None:
+        d = load_dictionary(sample_store_path)
         keys = [c.key for c in d.columns]
         # whitespace trimmed, duplicate dropped
         assert keys == [
@@ -65,11 +67,11 @@ class TestBuildColumns:
     def test_missing_sheet_is_named(self, tmp_path: Path) -> None:
         path = write_xlsx(tmp_path / "d.xlsx", {"Sayfa1": [{"a": 1}]})
         with pytest.raises(ValueError, match="Kolonlar"):
-            load_dictionary(path)
+            import_workbook(path, tmp_path / "d.jsonl")
 
 
 def test_term_dictionary_seed() -> None:
-    groups = load_term_dictionary(ROOT / "config" / "term_dictionary.csv")
+    groups = load_term_dictionary(ROOT / "data" / "terms.jsonl")
     by_term = {g.term: g for g in groups}
     assert "kredi" in by_term["fon kullandırım"].equivalents
     assert by_term["fon kullandırım"].domain == "katılım"
@@ -77,8 +79,45 @@ def test_term_dictionary_seed() -> None:
     assert len(groups) >= 45
 
 
-def test_real_dictionary(real_dictionary_path: Path) -> None:
-    d = load_dictionary(real_dictionary_path)
+def test_stopwords_seed() -> None:
+    stop = load_stopword_file(ROOT / "data" / "stopwords.jsonl")
+    assert {"ve", "icin", "nerede"} <= stop  # folded
+    assert len(stop) >= 100
+
+
+def test_jsonl_lists(tmp_path: Path) -> None:
+    terms = tmp_path / "t.jsonl"
+    terms.write_text(
+        '{"term": " müşteri no ", "equivalents": ["hesap no", " ", 5], "domain": "genel"}\n\n'
+        '{"term": "", "equivalents": ["boş"]}\n',
+        encoding="utf-8",
+    )
+    (group,) = load_term_dictionary(terms)
+    assert group.term == "müşteri no" and group.equivalents == ("hesap no",)
+    assert group.domain == "genel" and group.note == ""
+    words = tmp_path / "s.jsonl"
+    words.write_text('{"word": "Için", "group": "x"}\n{"group": "boş"}\n', encoding="utf-8")
+    assert load_stopword_file(words) == frozenset({"icin"})
+    assert load_stopword_file(tmp_path / "yok.jsonl") == frozenset()
+    words.write_text('{"word": "ve"}\nve\n', encoding="utf-8")
+    with pytest.raises(ValueError, match="s.jsonl satır 2"):
+        load_stopword_file(words)
+
+
+def test_old_list_paths_mean_the_jsonl_files(tmp_path: Path) -> None:
+    path = tmp_path / "settings.yaml"
+    path.write_text(
+        "expansion:\n  term_dictionary: config/term_dictionary.csv\n"
+        "  stopwords: config/stopwords_tr.txt\n",
+        encoding="utf-8",
+    )
+    s = load_settings(path)
+    assert s.expansion.term_dictionary == "data/terms.jsonl"
+    assert s.expansion.stopwords == "data/stopwords.jsonl"
+
+
+def test_real_dictionary(real_dictionary_path: Path, tmp_path: Path) -> None:
+    d = load_dictionary(import_workbook(real_dictionary_path, tmp_path / "d.jsonl"))
     assert d.version.endswith("-11136")
     assert len(d.columns) == 11_136 and not d.warnings  # consolidated: no duplicate rows left
     assert len(d.object_keys) == 390
@@ -122,7 +161,7 @@ def test_number_cells_read_as_text(tmp_path: Path) -> None:
         {"DatabaseName": "DB", "SchemaName": "S", "ObjectName": "T", "ColumnName": 2024,
          "ColumnDescription": 1.0},
     ]})  # fmt: skip
-    (c,) = load_dictionary(path).columns
+    (c,) = load_dictionary(import_workbook(path, tmp_path / "d.jsonl")).columns
     assert (c.column, c.description) == ("2024", "1")
 
 

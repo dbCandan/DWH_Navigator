@@ -14,8 +14,9 @@ from vsa.llm.integrations import apply as apply_integrations
 
 @dataclass(slots=True)
 class DictionarySettings:
-    path: str = "data/VeriSozlugu.xlsx"
-    sheet: str = "Kolonlar"
+    # ADR-050: the app's one dictionary. Workbooks in the dictionary template only come in
+    # (import) and go out (export); the app never reads a workbook as its dictionary.
+    store: str = "data/dictionary.jsonl"
 
 
 @dataclass(slots=True)
@@ -46,8 +47,8 @@ class ExpansionSettings:
     enabled: bool = True  # corporate term dictionary (§7.2a)
     synonyms: bool = True  # dictionary's own synonym sections (§7.2b)
     weight: float = 0.6
-    term_dictionary: str = "config/term_dictionary.csv"
-    stopwords: str = "config/stopwords_tr.txt"
+    term_dictionary: str = "data/terms.jsonl"
+    stopwords: str = "data/stopwords.jsonl"
 
 
 @dataclass(slots=True)
@@ -74,7 +75,7 @@ class ScoringSettings:
 
 @dataclass(slots=True)
 class LLMSettings:
-    """Model connection. With ``config/llm_integrations.yaml`` (the admin screen's LLM page,
+    """Model connection. With ``data/llm_integrations.yaml`` (the admin screen's LLM page,
     ADR-032) the connection fields come from the active integrations; without it, from here."""
 
     enabled: bool = False
@@ -154,6 +155,7 @@ RETIRED = frozenset({
     "scoring.w_rule", "scoring.w_llm", "analyst.enabled", "analyst.batch",
     "dense", "llm.embedding_model", "llm.embedding_endpoint", "llm.embedding_api_key",
     "dictionary.quality_sheet", "search.top_k_columns", "scoring.flag_penalty",
+    "dictionary.source", "dictionary.path", "dictionary.sheet",  # ADR-050: no workbook source
 })  # fmt: skip
 
 
@@ -175,12 +177,26 @@ def _merge(obj: T, data: dict[str, Any], path: str = "") -> T:
     return obj
 
 
-DEFAULT_SETTINGS_PATH = Path("config/settings.yaml")
+# Everything the app reads and writes lives in data/ (ADR-052), as in the container.
+DEFAULT_SETTINGS_PATH = Path("data/settings.yaml")
+LEGACY_SETTINGS_PATH = Path("config/settings.yaml")  # before ADR-052
 INTEGRATIONS_FILE = "llm_integrations.yaml"  # next to settings.yaml; holds API keys
+# Term dictionary and stopwords became jsonl (ADR-052); an old path means the default file.
+_OLD_FORMATS = {"term_dictionary": ".csv", "stopwords": ".txt"}
 
 
-def integrations_path(settings_path: Path | None = None) -> Path:
-    return (settings_path or DEFAULT_SETTINGS_PATH).parent / INTEGRATIONS_FILE
+def settings_path(path: Path | None = None) -> Path:
+    """The settings file to use: the given one, else data/settings.yaml (or an old
+    config/settings.yaml while it has not been moved)."""
+    if path is not None:
+        return path
+    if not DEFAULT_SETTINGS_PATH.exists() and LEGACY_SETTINGS_PATH.exists():
+        return LEGACY_SETTINGS_PATH
+    return DEFAULT_SETTINGS_PATH
+
+
+def integrations_path(path: Path | None = None) -> Path:
+    return settings_path(path).parent / INTEGRATIONS_FILE
 
 
 def read_integrations(path: Path) -> list[Integration] | None:
@@ -194,7 +210,7 @@ def read_integrations(path: Path) -> list[Integration] | None:
 def write_integrations(path: Path, items: list[Integration]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     header = (
-        "# LLM entegrasyonları — Yönetim → Ayarlar → Yapay zekâ ekranından yazılır (ADR-032).\n"
+        "# LLM entegrasyonları — Yönetim → Yapay zekâ sayfasından yazılır (ADR-032).\n"
         "# API anahtarları içerir: repoya girmez, paylaşmayın.\n"
     )
     body = yaml.safe_dump(
@@ -203,14 +219,20 @@ def write_integrations(path: Path, items: list[Integration]) -> None:
     path.write_text(header + body, encoding="utf-8")
 
 
+
+
 def load_settings(path: Path | None = None) -> Settings:
     """Load settings; missing file -> defaults. Unknown keys are an error (typo guard).
     Active LLM integrations, when their file exists, set the model connection (ADR-032)."""
     settings = Settings()
-    target = path or DEFAULT_SETTINGS_PATH
+    target = settings_path(path)
     if target.exists():
         raw = yaml.safe_load(target.read_text(encoding="utf-8")) or {}
         _merge(settings, raw)
+    defaults = ExpansionSettings()
+    for key, suffix in _OLD_FORMATS.items():
+        if getattr(settings.expansion, key).endswith(suffix):
+            setattr(settings.expansion, key, getattr(defaults, key))
     items = read_integrations(integrations_path(target))
     if items is not None:
         apply_integrations(settings.llm, items)

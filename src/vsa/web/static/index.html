@@ -185,7 +185,11 @@ table.notes td:first-child { white-space: nowrap; color: var(--muted); font-size
   animation: rise .3s ease both; animation-delay: calc(var(--i, 0) * 50ms);
 }
 .res h2 { margin: 0; font: 600 17px/1.3 var(--display); overflow-wrap: anywhere; }
-.res-path { font-size: 12.5px; color: var(--faint); margin-top: 2px; }
+.res-path { font-size: 12.5px; color: var(--faint); margin-top: 2px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.res-cols { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--accent);
+  font: 600 12.5px/1 var(--sans); padding: 6px 11px; border-radius: 999px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.res-cols:hover, .res-cols:focus-visible { border-color: var(--accent); box-shadow: 0 0 16px rgba(124, 244, 255, .25); transform: translateY(-1px); outline: 0; }
+.res-cols svg { width: 14px; height: 14px; }
 .res-path code { font-family: var(--mono); font-size: 12px; }
 .score { flex: none; text-align: right; line-height: 1.1; }
 .score b { display: block; font: 700 22px var(--display); color: var(--lc); }
@@ -1115,7 +1119,7 @@ async function loadStatus() {
       : m.state === "down" ? ["bad", "Modele ulaşılamıyor",
         `${m.reason.replace(/\.?$/, ".")} Model çalışmadan soru analiz edilemez.`]
       : ["warn", "Model bağlı değil",
-        `Sohbet modeli bağlı değil: soru analiz edilemez. Yönetim → Ayarlar → Yapay zekâ ekranından bir model bağlayın.`];
+        `Sohbet modeli bağlı değil: soru analiz edilemez. Yönetim → Yapay zekâ sayfasından bir model bağlayın.`];
     $("#status").replaceChildren(h("span", { class: "pill " + cls, title: tip }, h("i", { class: "dot" + (cls ? "" : " on") }), label));
     const mw = $("#model-warn");
     mw.className = "model-warn" + (m.state === "down" ? " bad" : ""); mw.textContent = warn;
@@ -1391,6 +1395,12 @@ function clamp(el) {
 // A suggestion is one row: rank, table name, confidence. A click opens what used to be
 // its card (why, warnings, columns, details, vote) under the row; one row open at a time,
 // so the first five suggestions stay on one screen.
+// Opens the table's every column in the same panel the universe uses for a star.
+function colsButton(m) {
+  const ic = svg('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h16M4 20h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>');
+  return h("button", { class: "res-cols", type: "button", title: `${m.key} — sözlükteki tüm kolonlarını aç`,
+    onclick: e => { e.stopPropagation(); Dossier.open(m.key); } }, ic, "Kolonlar");
+}
 function resultCard(m, r, opts = {}) {
   const rich = opts.rich || richOf(r);
   const covered = new Set(m.covered), longv = new Set(m.long_format);
@@ -1402,7 +1412,8 @@ function resultCard(m, r, opts = {}) {
     : v && v.status === "approved" ? h("i", { class: "pk-mark up", title: `${people(v.up)} doğruladı` }, "✓")
     : v && (v.status === "rejected" || v.status === "doubted") ? h("i", { class: "pk-mark down", title: `${people(v.down)} uygun bulmadı` }, "!") : null;
   const body = h("div", { class: "pick-body", id: opts.aside ? null : cardId(m) + "-body" },
-    h("div", { class: "res-path" }, h("code", {}, `${m.database}.${m.schema}`), m.groups.length ? " · " + m.groups.join(", ") : null, " ", voteBadge(m)),
+    h("div", { class: "res-path" }, h("code", {}, `${m.database}.${m.schema}`), m.groups.length ? " · " + m.groups.join(", ") : null, " ", voteBadge(m),
+      colsButton(m)),
     m.covers ? h("div", { class: "res-covers" }, m.covers) : null,
     clamp(h("p", { class: "res-reason" }, rich(m.reason))),
     m.caveat.length ? h("div", { class: "res-warn" }, m.caveat.map(c => clamp(h("div", {}, h("span", { class: "res-warn-i", "aria-hidden": "true" }, "⚠ "), rich(c))))) : null,

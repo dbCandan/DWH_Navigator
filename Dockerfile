@@ -33,8 +33,8 @@ RUN set -eux; \
 COPY --from=build /opt/venv /opt/venv
 WORKDIR /app
 COPY src/vsa /app/src/vsa
-COPY config/term_dictionary.csv config/stopwords_tr.txt /app/config/
-COPY docker/settings.yaml /app/docker/settings.yaml
+# data/ bir birimdir (volume): ilk açılışta varsayılanlar /app/defaults'tan kopyalanır (ADR-052).
+COPY data/terms.jsonl data/stopwords.jsonl docker/settings.yaml /app/defaults/
 COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/vsa-entrypoint
 
 ENV PATH=/opt/venv/bin:$PATH \
