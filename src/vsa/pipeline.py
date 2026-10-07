@@ -645,6 +645,7 @@ class Engine:
             design=answer.design,
             attention=answer.attention,
             analyst=True,
+            missing=answer.missing,
         )
 
     def _family_tables(self, short: Shortlist) -> dict[str, str]:

@@ -68,3 +68,14 @@ gece ölçümü tabanına göre): negatifler 40/48 → 43/48, ama doğru cevapla
 3'ü BULUNAMADI'ya döndü (%7,5). Tam sette ~230 doğru cevaba yayılan kayıp, birkaç negatif
 kazancını aşar. Uygulanmadı. Negatif hatalar için yol: modelin "nitelik yok" ayrımını daha güçlü
 yapan bir model ya da sözlükte kolon düzeyinde daha net açıklamalar.
+
+## ADR-045 — Ölçüm sorularından türeyen prompt örnekleri kaldırıldı; "eksik bilgi" gösterilir (2026-10-07)
+ADR-041/042 promptundaki somut örneklerin bir kısmı (hane geliri, ATM arıza kaydı, takipçi sayısı,
+rakip banka oranı, ekran bazında süre, onay kaydı ≠ bakiye, aktarılan tutar ≠ karşı kurumdaki
+bakiye) ölçüm setindeki hatalı sorulardan türemişti; bu, o sorulardaki skoru şişirebilir. Somut
+örnekler kaldırıldı, yalnız genel kural kaldı ("farklı düzey / taraf / nesne aynı bilgi değildir").
+Ölçüm (seri, 160 soru, gece sürümüne göre): negatifler 40/48 → 39/48 (z091, z093 ipucu olmadan
+yanlış), cevaplanabilir 103 → 102; 294 için dürüst tahmin ~%89,8 (sızıntılı %90,5). Kör set (50,
+sızıntısız) %90,0. Ayrıca rapora `missing` alanı eklendi: KISMEN VAR cevabında talebin
+karşılanmayan parçaları (≤3) ekranda etiketin yanında ve Excel'de "Eksik Bilgi" olarak gösterilir;
+model eksik olanı özetinde yazsa da hızlı okuyan kullanıcı kaçırmasın diye. Hızlı test 9/10.

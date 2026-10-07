@@ -505,6 +505,7 @@ class AnalystAnswer:
     attention: list[str]
     notes: list[Note]
     dropped: int = 0  # unknown ids, columns and sentences removed by validation
+    missing: list[str] = field(default_factory=list)  # parts of the request not met
 
 
 def analyse(
@@ -785,4 +786,5 @@ def build_answer(
         attention=[a for a in clean.bullets(reply.get("attention")) if not _is_typo_remark(a)],
         notes=notes,
         dropped=clean.dropped,
+        missing=clean.bullets(reply.get("missing"))[:3] if verdict is Verdict.PARTIAL else [],
     )

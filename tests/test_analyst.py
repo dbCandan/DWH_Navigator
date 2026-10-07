@@ -408,3 +408,15 @@ def test_core_concept_needs_a_real_column() -> None:
         assert r.verdict is Verdict.NOT_FOUND and r.objects == [], bad
         assert any(n.scope == "İlgili" and "hane geliri" in n.text for n in r.notes)
 
+
+
+def test_partial_answer_names_what_is_missing() -> None:
+    """A KISMEN VAR answer carries the missing parts to show by the verdict; VAR none."""
+    partial = engine(ScriptedClient(SHORTLIST, analyst_reply(
+        verdict="KISMEN VAR", missing=["kart rengi geçmişi", ""], core_found=True))
+    ).analyze("müşterinin kredi kartı bilgisi")  # fmt: skip
+    assert partial.verdict is Verdict.PARTIAL and partial.missing == ["kart rengi geçmişi"]
+    full = engine(ScriptedClient(SHORTLIST, analyst_reply(missing=["gereksiz"]))).analyze(
+        "müşterinin kredi kartı bilgisi"
+    )
+    assert full.verdict is Verdict.FOUND and full.missing == []

@@ -942,6 +942,9 @@ button.tn:hover, button.tn:focus-visible { background: rgba(124, 244, 255, .16);
 .av-icon { font-size: 24px; line-height: 1; color: var(--vc); }
 .av-word { font: 700 30px/1.1 var(--display); letter-spacing: -.6px; color: var(--vc); }
 .av-for { font-size: 14px; color: var(--muted); }
+.av-miss, .li-miss { color: #ffb86b; }
+.av-miss { font-size: 14px; font-weight: 600; }
+.li-miss { display: block; font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
 .ans-best {
   display: flex; align-items: center; gap: 16px; width: 100%; margin-top: 14px; padding: 14px 18px; text-align: left; cursor: pointer;
   border-radius: 16px; border: 1px solid color-mix(in srgb, var(--lc) 35%, transparent);
@@ -1521,6 +1524,7 @@ function foundBlock(r) {
   const objs = r.objects, best = objs[0];
   const verdict = h("div", { class: "ans-verdict" },
     h("span", { class: "av-icon", "aria-hidden": "true" }, icon), h("span", { class: "av-word" }, word),
+    r.missing && r.missing.length ? h("span", { class: "av-miss", title: "Talebin bu cevapta karşılanmayan kısmı" }, "eksik: " + r.missing.join(", ")) : null,
     h("span", { class: "av-for" }, objs.length ? `${objs.length} tablo önerildi` : "eşik üstünde tablo yok"));
   if (!best) return [verdict];
   const ok = m => m.votes && m.votes.status === "approved" ? h("i", { class: "ov-ok", title: "Kullanıcılar doğruladı" }, "✓") : m.promoted ? h("i", { class: "ov-ok", title: "Kullanıcı onayıyla eklendi" }, "↑") : null;
@@ -1822,7 +1826,7 @@ const Bulk = (() => {
       h("span", { class: "li-term" }, it.term,
         done && it.flow === "önbellek" ? h("span", { class: "li-flow reused", title: "Bu terim daha önce analiz edilmişti; kayıtlı cevap kullanıldı" }, "ÖNCEKİ CEVAP")
           : done && it.flow !== "analist" ? h("span", { class: "li-flow", title: "Bu terim analiz edilemedi (model bağlı değil ya da çalışamadı)" }, "YAPILAMADI") : null,
-        best, err),
+        best, done && it.missing && it.missing.length ? h("span", { class: "li-miss" }, "eksik: " + it.missing.join(", ")) : null, err),
       h("span", { class: `st ${cls} ${done ? verdictClass(it.verdict) : ""}` }, word),
       h("span", { class: "li-ms" }, it.elapsed_ms ? dur(it.elapsed_ms) : ""));
     const li = h("li", {}, btn, open.get(it.index) || null);

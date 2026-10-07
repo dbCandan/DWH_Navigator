@@ -79,8 +79,9 @@ yalnız son kontrol). Ölçüm: `python data/golden/run_eval.py <full|blind|smok
 (repo kökünden; `smoke` = 10 soruluk hızlı set), özet `data/golden/final_report.py`.
 DGX'teki LM Studio seri çalışır (paralel istek kapalı): ölçümler 1 işçiyle; paralel istek sonucu
 koşudan koşuya ~±2 puan oynatıyordu, seri modda aynı koşu aynı sonucu veriyor. Soru başına ~45 sn.
-Uyarı: ADR-041 promptundaki "hane geliri / ATM arıza / ekran bazında süre" örnekleri ilk 100'deki
-üç negatif sorudan türedi (sızıntı); yeni örnek eklerken ölçüm sorularından türetme.
+Prompt örnekleri ölçüm sorularından TÜRETİLMEZ (2026-10-07: ADR-041/042'deki soru kaynaklı
+örnekler kaldırıldı; sızıntılı sürüm 294'te %90,5, temiz sürüm tahmini ~%89,8 — fark negatiflerde).
+Kör set (50) sızıntıdan etkilenmedi: %90,0.
 
 ## Sözlükte dokümanda olmayan ayrıntılar
 - Yükleyici baştaki `[...]` bayraklarını hâlâ tanır (`MODEL TAHMİNİ` ×0.85, diğerleri not), ama

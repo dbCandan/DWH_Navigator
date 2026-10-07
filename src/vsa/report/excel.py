@@ -157,6 +157,8 @@ def _summary(ws: Worksheet, r: AnalysisResult) -> None:
 
     row = 5
     info = [("Talep", r.query), ("Sonuç", r.summary)]
+    if r.missing:
+        info.append(("Eksik Bilgi", ", ".join(r.missing)))
     if r.interpretation:
         info.append(("Talebin Yorumu", r.interpretation))
     for label, value in info:
@@ -309,6 +311,7 @@ def _list_summary(ws: Worksheet, r: ListResult, first_rows: dict[int, int]) -> N
     start = len(lines) + 4
     headers = [
         "#", "Terim", "Sonuç", "En İyi Tablo", "Güven", "Seviye", "Özet", "Yöntem", "Süre (sn)",
+        "Eksik Bilgi",
     ]  # fmt: skip
     rows: list[list[CellValue]] = []
     for item in r.items:
@@ -325,8 +328,9 @@ def _list_summary(ws: Worksheet, r: ListResult, first_rows: dict[int, int]) -> N
             best.level.value if best else "-",
             res.summary if res else item.error or "-",
             method, round(item.elapsed_ms / 1000, 1) if item.elapsed_ms else None,
+            ", ".join(res.missing) if res and res.missing else "-",
         ])  # fmt: skip
-    _table(ws, start, headers, rows, [5, 34, 14, 44, 8, 9, 80, 13, 9])
+    _table(ws, start, headers, rows, [5, 34, 14, 44, 8, 9, 80, 13, 9, 30])
     for n, item in enumerate(r.items):
         row = start + 1 + n
         ws.cell(row=row, column=5).number_format = "0.00"

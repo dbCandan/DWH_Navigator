@@ -85,6 +85,7 @@ def analysis(r: AnalysisResult) -> dict[str, Any]:
         "design": r.design,
         "attention": r.attention,
         "reused": reused(r),
+        "missing": r.missing,
     }
 
 
@@ -105,6 +106,7 @@ def list_item(item: ListItem, state: str) -> dict[str, Any]:
         "state": state,  # sırada / çalışıyor / bitti / hata / durduruldu
         "verdict": r.verdict.value if r else "",
         "summary": r.summary if r else item.error,
+        "missing": r.missing if r else [],
         "best": None if best is None else {
             "key": best.object_key, "name": best.object_name,
             "score": round(best.score, 4), "level": best.level.value,
