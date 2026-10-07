@@ -63,14 +63,24 @@ ADR-027 (tek ekran, tek görünüm: yalnız soru sorma, Evren), ADR-028 (tablo s
 konu uyumu: tablo BM25), ADR-029 (analist
 akışı: LLM katalogdan aday seçer, adayların kolonlarını okuyup raporu yazar; kurallar doğrular), ADR-030 (`/admin`: ayarlar + analiz izleri, bağlantısız ve korumasız), ADR-031 (modeller kurum içinde; lab ve bulut kaldırıldı), ADR-032 (LLM entegrasyonları ekranı: sunucu + sohbet rolü, test, envanter, aktif/pasif; sade üç sayfalık ayarlar), ADR-033 (tek akış: tek soru + onu kullanan Excel listesi; batch, hakem, LLM genişletme, `--compare` kaldırıldı). ADR-034 (cevabı kim yazdı her yerde yazılır; ölü sunucu beklenmez; kural cevabı artık gösterilmez, ADR-038). ADR-035 (önceki cevaplar: analist cevabı `data/cache/answers.jsonl`'de saklanır; aynı soru ya da terim sözlüğüne göre aynı kavram kümesi → kayıtlı cevap; sözlük/model/ayar parmak izi değişince geçersiz; yalnız web, `vsa ask`/`eval` etkilenmez). ADR-036 (geri bildirim cevabı şekillendirir: tablo ve cevap 👍/👎 + gerekçe; kişi başı son oy, aynı soru 1,0 / aynı anlam 0,6, 180 gün yarılanma; ≈2 kişi 👎 → tablo önerilerden çıkar ama görünür kalır, güven ±%15, doğrulanan yakın aday eklenir; cevap 👎 çoğunluğu kayıtlı cevabı siler; yalnız ekranda, Excel değişmez; `feedback.assess/apply`). ADR-037..040 `docs/DECISIONS.md`'de: tek konsolide sözlük, analist
 tek yol, vektör kaldırıldı, kompakt analist malzemesi (Objeler kataloğu + `Ad [Rol]: özet`).
+ADR-041 (talebin asıl kavramı yoksa yakın tablolar cevap değil, "İlgili" notu; BULUNAMADI),
+ADR-042 (model asıl kavramı taşıyan kolonları `core_columns` ile adlandırır, kod doğrular; birden
+çok tabloya dağılmışsa KISMEN VAR), ADR-043 (sırayı kod verir: asıl kavram kolonlarını taşıyan
+tablo öne; eşitlikte genel tablo dar kitleli/türetilmiş tablonun — model girdisi, akıllı hedefleme,
+özel bankacılık — önüne; öne geçen güveni geçtiğininkinden düşük gösterilmez).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
 önce ve sonra `vsa eval` çalıştırılır; regresyon varsa değişiklik geri alınır.
-Büyük referans set (kurum içi veri, `data/golden/`, gitignore'da): 100 soru, Fable ve Opus'un
-bağımsız cevaplarının uzlaşması (`merge_oracles.py` → `reference.jsonl`, `reference_golden.yaml`,
-`reference_negative.yaml`). Ölçüm: `vsa eval --golden data/golden/reference_golden.yaml
---negatives data/golden/reference_negative.yaml` (model açıkken analist akışını ölçer).
+Büyük referans set (kurum içi veri, `data/golden/`, gitignore'da), Fable ve Opus'un bağımsız
+cevaplarının uzlaşması: `reference.jsonl` (100), `reference_extra.jsonl` (95), `reference_hard.jsonl`
+(99, zor), `reference_blind.jsonl` (50, kod dondurulduktan sonra yazıldı — ayar için KULLANILMAZ,
+yalnız son kontrol). Ölçüm: `python data/golden/run_eval.py <full|blind|smoke|ids:…> <etiket> 1`
+(repo kökünden; `smoke` = 10 soruluk hızlı set), özet `data/golden/final_report.py`.
+DGX'teki LM Studio seri çalışır (paralel istek kapalı): ölçümler 1 işçiyle; paralel istek sonucu
+koşudan koşuya ~±2 puan oynatıyordu, seri modda aynı koşu aynı sonucu veriyor. Soru başına ~45 sn.
+Uyarı: ADR-041 promptundaki "hane geliri / ATM arıza / ekran bazında süre" örnekleri ilk 100'deki
+üç negatif sorudan türedi (sızıntı); yeni örnek eklerken ölçüm sorularından türetme.
 
 ## Sözlükte dokümanda olmayan ayrıntılar
 - Yükleyici baştaki `[...]` bayraklarını hâlâ tanır (`MODEL TAHMİNİ` ×0.85, diğerleri not), ama
