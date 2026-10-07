@@ -1015,6 +1015,12 @@ const A = {
       const r = await post("/api/admin/analyses/clear", all ? { all: true } : { ids: rows.map(e => e.id) });
       this.open = null; this.cache = {};
       toast("Analizler temizlendi", [`${num(r.removed)} analiz silindi; ${num(r.kept)} analiz kaldı.`]);
+      // The log and the kept answers (ADR-035) are separate: without this the same question
+      // keeps coming back from an earlier answer.
+      if (confirm("Kayıtlı cevaplar da silinsin mi?\n\nSilinmezse aynı ya da aynı anlamdaki sorular yeniden analiz edilmeden kayıtlı cevaptan gelir.")) {
+        const a = await post("/api/admin/answers/clear", {});
+        toast("Önceki cevaplar silindi", [`${num(a.removed)} cevap silindi.`]);
+      }
       await this.load();
     } catch (e) { toast("Temizlenemedi", [e.message], true); btn.disabled = false; }
   },

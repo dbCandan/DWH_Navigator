@@ -24,6 +24,7 @@ from typing import Any
 
 from vsa.config import Settings
 from vsa.expansion.query_expander import ExpandedQuery
+from vsa.llm import analyst_prompts
 from vsa.models import (
     AnalysisResult,
     ColumnHit,
@@ -36,7 +37,7 @@ from vsa.models import (
 )
 from vsa.text.normalize import fold
 
-CACHE_FORMAT = 1  # bump when the stored form or the answer's meaning changes
+CACHE_FORMAT = 2  # bump when the stored form or the answer's meaning changes (2: `missing`)
 _WORD = re.compile(r"[^\W_]+", re.UNICODE)
 # Words that turn a request around; they are stopwords or vanish in stemming, so the
 # meaning key carries them explicitly ("kartı olan" ≠ "kartı olmayan").
@@ -68,6 +69,15 @@ def meaning_key(q: ExpandedQuery) -> str:
     return "|".join(sorted(parts))
 
 
+def prompts_digest() -> str:
+    """The analyst's instructions and output schemas: a prompt change changes the answer,
+    so answers written under an older prompt are not given again."""
+    parts = [v for k, v in sorted(vars(analyst_prompts).items())
+             if k.isupper() and isinstance(v, (str, dict))]  # fmt: skip
+    blob = json.dumps(parts, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:12]
+
+
 def fingerprint(
     settings: Settings,
     dictionary_version: str,
@@ -85,6 +95,7 @@ def fingerprint(
         "dictionary": dictionary_version,
         "terms": [[g.term, *g.equivalents, g.domain, g.note] for g in term_groups],
         "top": top_n,
+        "prompts": prompts_digest(),
     }
     blob = json.dumps(raw, ensure_ascii=False, sort_keys=True, default=str)
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()[:16]
