@@ -60,3 +60,11 @@ tablonun güveninden düşük gösterilmez. Kolon gösterilmemişse modelin sır
 Gerekçe: 294 soruda cevaplanabilir 23 hatanın 17'sinde doğru tablo ilk 3'teydi ama 1.
 sırada değildi. Ölçüm (31 soru, seri sunucu): sıralama hatalarının 7/19'u düzeldi, koruma
 sorularının 7/8'i korundu.
+
+## ADR-044 — Asıl kavram için ikinci denetim çağrısı: REDDEDİLDİ (2026-10-07)
+Denendi: analist cevabından sonra kısa bir çağrı, gösterilen asıl kavram kolonlarının talebin
+asıl bilgisini "birebir" taşıyıp taşımadığını sorar; "hayır" → BULUNAMADI. Ölçüm (seri sunucu,
+gece ölçümü tabanına göre): negatifler 40/48 → 43/48, ama doğru cevaplanmış 40 koruma sorusundan
+3'ü BULUNAMADI'ya döndü (%7,5). Tam sette ~230 doğru cevaba yayılan kayıp, birkaç negatif
+kazancını aşar. Uygulanmadı. Negatif hatalar için yol: modelin "nitelik yok" ayrımını daha güçlü
+yapan bir model ya da sözlükte kolon düzeyinde daha net açıklamalar.
