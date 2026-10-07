@@ -69,6 +69,9 @@ Docker secret kullanılacaksa `VSA_ADMIN_PASSWORD_FILE=/run/secrets/vsa_admin` v
 Tarayıcı kullanıcı adı da sorar; herhangi bir ad yazılabilir (ör. `admin`). Aynı adresten 5
 hatalı denemeden sonra 5 dakika beklenir.
 
+Uygulama klasörü varsayılan olarak `./data`'dır; başka bir yer için `.env`'e
+`VSA_DATA_DIR=./baska-klasor` yazılır (geliştirme makinesinde yerel `data/` ile karışmasın diye).
+
 ## 4. Başlatma
 
 ```bash

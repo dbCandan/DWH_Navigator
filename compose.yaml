@@ -12,7 +12,9 @@ services:
     environment:
       VSA_ADMIN_PASSWORD: ${VSA_ADMIN_PASSWORD:?VSA_ADMIN_PASSWORD .env dosyasında tanımlanmalı}
     volumes:
-      - ./data:/app/data       # sözlük, indeks, ayarlar, model bağlantıları, kayıtlar, raporlar
+      # sözlük, kelime listeleri, indeks, ayarlar, model bağlantıları, kayıtlar, raporlar (ADR-052);
+      # .env'de VSA_DATA_DIR ile başka bir klasör verilebilir
+      - ${VSA_DATA_DIR:-./data}:/app/data
     read_only: true            # yalnız /app/data ve /tmp yazılabilir
     tmpfs:
       - /tmp:size=64m,mode=1777
