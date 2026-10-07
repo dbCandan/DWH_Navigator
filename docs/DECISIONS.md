@@ -156,6 +156,10 @@ derin bağlantıdır (`#/analizler/<id>`, `#/sozluk/<DB.Şema.Obje>`). Sözlük 
 bir yerine bırakılarak da içe aktarılır. Sunucu API'si değişmedi; ekran tek dosya, dış kaynak yok,
 CSP satır içi stil özniteliğine izin vermez (stiller CSSOM ile). Ayrıca JSON istek gövdesi UTF-8
 değilse "İstek gövdesi UTF-8 değil" (400) döner.
+Ek (2026-10-08): masaüstünde her sayfa tek ekrandır — başlık ve özetler sabit, uzun listeler
+(analizler, tablolar, terimler, durak kelimeler, son sorular, entegrasyonlar) kendi içinde kayar;
+ayar sayfaları monitör genişliğine göre 2–3 sütuna dizilir; sayfa genişlik sınırı yok. Açıklamalar
+tek satırdır (tamamı ipucunda). Telefonda ve 600 px'ten alçak ekranda normal akış sürer.
 
 ## ADR-052 — Uygulamanın her dosyası `data/`'da; terim sözlüğü ve durak kelimeler jsonl, ekrandan düzenlenir (2026-10-08)
 Yapılandırma verisi iki klasöre dağılmıştı (`config/`: ayarlar, model bağlantıları, terim sözlüğü

@@ -75,7 +75,7 @@ nav.menu .lbl { flex: 1; }
 .back:hover { color: var(--text); background: var(--surface-2); }
 
 main { min-width: 0; padding: 22px 28px 90px; }
-.page { display: none; max-width: 1240px; margin: 0 auto; }
+.page { display: none; }
 .page.on { display: block; animation: rise .25s ease both; }
 .ph { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
 .ph .t { flex: 1 1 360px; min-width: 0; }
@@ -350,6 +350,32 @@ td.desc { color: var(--muted); font-size: 12.5px; }
 .pi.on svg { color: var(--accent); }
 .palette-foot { display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; }
 
+/* One screen per page (desktop): headers and summaries stay put, long lists and setting
+   columns scroll inside; the page uses the monitor's whole width. */
+body > svg[width="0"] { position: absolute; }
+@media (min-width: 921px) and (min-height: 600px) {
+  main:has(.page.on) { padding-bottom: var(--pad-b, 16px); }
+  body.unsaved { --pad-b: 84px; }
+  .page.on { display: flex; flex-direction: column; height: calc(100vh - 22px - var(--pad-b, 16px)); }
+  .page.on > * { flex: none; }
+  .page.on > .grow, .page.on > .fill { flex: 1 1 0; min-height: 0; margin-bottom: 0; }
+  .page.on > .card.grow { display: flex; flex-direction: column; }
+  .card.grow > .list-box, .card.grow > .w-scroll { flex: 1 1 0; min-height: 0; max-height: none; overflow: auto; }
+  .fill.scroll { overflow: auto; }
+  .fill.grid { grid-auto-rows: minmax(0, 1fr); }
+  .fill.grid > .card { display: flex; flex-direction: column; min-height: 0; overflow: auto; margin: 0; }
+  .fill.grid .scroll { flex: 1 1 0; min-height: 0; overflow: auto; }
+  .cols { columns: 460px; column-gap: 14px; }
+  .cols > * { break-inside: avoid; margin: 0 0 14px; container-type: inline-size; }
+  .cols > .expert { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 18px; background: var(--surface); }
+  #p-kelimeler .w-terms { flex: 3 1 0; }
+  #p-kelimeler .w-stops { flex: 2 1 0; }
+}
+@container (max-width: 700px) {
+  .row { grid-template-columns: minmax(0, 1fr) minmax(0, 230px); }
+}
+.w-scroll { margin: 0 -18px; padding: 0 18px; }
+#p-kelimeler .w-terms { margin-bottom: 12px; }
 .chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .chip { display: inline-flex; align-items: center; font-size: 12.5px; border-radius: 7px; padding: 1px 2px 1px 8px; background: var(--surface-3); }
 .chip-x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 1px 5px; border-radius: 5px; }
@@ -380,6 +406,7 @@ input.chip-in { width: 110px; padding: 2px 8px; font-size: 12.5px; border-style:
   .hero .acts { grid-column: 1 / -1; }
   .f2 { grid-template-columns: 1fr; }
   .list-box { max-height: none; }
+  #p-kelimeler .w-scroll, #p-kelimeler .list-box, .recent.scroll { max-height: 60vh; overflow: auto; }
   .ph p, .card > .intro, .row .help, .card > .note, .fold > .note { white-space: normal; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -721,6 +748,7 @@ const Settings = {
   bar() {
     const keys = this.changedKeys();
     $("#savebar").classList.toggle("on", keys.length > 0);
+    document.body.classList.toggle("unsaved", keys.length > 0);
     $("#save-msg").textContent = `${keys.length} değişiklik kaydedilmedi`;
     const pages = [...new Set(keys.map(k => this.fields[k].page))].map(p => (NAV.find(n => n.id === p) || {}).label || p);
     $("#save-where").textContent = pages.join(" · ");
@@ -842,8 +870,8 @@ PAGES.genel = {
           i % 2 === 1 ? sv("text", { x: xx + w / 2, y: H - 4, "text-anchor": "middle" }, label) : null);
       }),
       sv("line", { class: "base", x1: 0, x2: W, y1: H - 18, y2: H - 18 }));
-    const recent = items.slice(0, 6);
-    return h("div", { class: "grid g2" },
+    const recent = items.slice(0, 100);
+    return h("div", { class: "grid g2 fill" },
       h("section", { class: "card" },
         h("div", { class: "card-h" }, h("h2", {}, "Son 7 gün"), h("a", { class: "btn sm ghost", href: "#/analizler" }, "Tüm analizler", icon("arrow"))),
         h("div", { class: "kpis" }, k.map(x => h("div", { class: "kpi", title: x.s }, h("div", { class: "k" }, x.k), h("div", { class: "v" }, x.v), h("div", { class: "s" }, x.s)))),
@@ -851,7 +879,7 @@ PAGES.genel = {
         h("div", { class: "legend" }, h("span", {}, h("i", { style: "background:linear-gradient(0deg,#8b5cff,#7cf4ff)" }), "tablo önerildi"), h("span", {}, h("i", { style: "background:rgba(255,107,147,.55)" }), "önerilmedi / cevaplanamadı"), h("span", {}, "son 14 gün"))),
       h("section", { class: "card" },
         h("div", { class: "card-h" }, h("h2", {}, "Son sorular")),
-        recent.length ? h("ul", { class: "recent" }, recent.map(e => h("li", {}, h("a", { href: "#/analizler/" + encodeURIComponent(e.id) },
+        recent.length ? h("ul", { class: "recent scroll" }, recent.map(e => h("li", {}, h("a", { href: "#/analizler/" + encodeURIComponent(e.id) },
           h("span", { class: "w" }, when(e.at).replace("bugün ", "")), h("span", { class: "q", title: e.query }, verdictBadge(e.verdict, e.flow), e.query), flowChip(e.flow)))))
           : h("p", { class: "empty" }, "Henüz soru sorulmadı.")));
   },
@@ -915,7 +943,7 @@ const Analyses = PAGES.analizler = {
         h("button", { class: "btn danger", type: "button", onclick: e => this.clear(e.currentTarget) }, "Temizle…")),
       h("div", { class: "toolbar" }, seg, flow, user, text, h("label", { class: "live", title: "15 sn'de bir yenilenir (ayrıntı açıkken durur)" }, h("span", { class: "switch" }, live, h("span")), "Canlı")),
       h("div", { class: "kpis a", id: "a-kpis" }),
-      h("section", { class: "card" }, h("div", { class: "card-h" }, h("h2", { id: "a-title" }, "Sorular")), h("div", { class: "list-box", id: "a-list" }, skeleton())));
+      h("section", { class: "card grow" }, h("div", { class: "card-h" }, h("h2", { id: "a-title" }, "Sorular")), h("div", { class: "list-box", id: "a-list" }, skeleton())));
     this.built = true;
   },
   async show(arg) {
@@ -1110,7 +1138,7 @@ const Dict = PAGES.sozluk = {
         h("div", { class: "grow" }),
         ix.state === "ok" ? h("span", { class: "pill ok" }, "✓ İndeks güncel") : h("button", { class: "btn sm primary", type: "button", onclick: e => reindex(e.currentTarget) }, icon("refresh"), "İndeksi kur")),
         m.warnings ? h("div", { class: "msg warn" }, `İçe aktarmada ${m.warnings} uyarı vardı (ör. tekrarlanan ya da eksik satırlar atlandı).`) : null),
-      h("section", { class: "card" },
+      h("section", { class: "card grow" },
         h("div", { class: "card-h" }, h("h2", { id: "d-title" }, "Tablolar"), groupSel, search),
         h("div", { class: "list-box", id: "d-list" })),
       settingsCard);
@@ -1208,12 +1236,12 @@ const Words = PAGES.kelimeler = {
   dirtyStops() { return !!this.saved && JSON.stringify(this.stops) !== JSON.stringify(this.saved.stopwords.items); },
   dirty() { return this.dirtyTerms() || this.dirtyStops(); },
   render() {
-    const scroll = scrollY;
+    const top = id => ($(id) || {}).scrollTop || 0, at = [scrollY, top("#w-terms"), top("#w-stops")];
     put($("#p-kelimeler"),
       pageHead("Kelimeler", "Terim sözlüğü sorguyu iş biriminin kelimeleriyle genişletir; durak kelimeler aramada yok sayılır."),
       this.termCard(), this.stopCard());
     this.termList();
-    scrollTo(0, scroll);
+    scrollTo(0, at[0]); $("#w-terms").scrollTop = at[1]; $("#w-stops").scrollTop = at[2];
     Shell.refresh();
   },
   pending(kind) {
@@ -1239,7 +1267,7 @@ const Words = PAGES.kelimeler = {
   termCard() {
     const search = h("input", { type: "search", value: this.q, placeholder: "Terim ya da eşdeğer ara…", "aria-label": "Terim ara", oninput: e => { this.q = e.target.value.trim(); this.termList(); } });
     const intro = `Bir gruptaki her kelime ötekileri de aratır: “kredi” arayan “fon kullandırım”ı da bulur. Dosya: ${this.saved.terms.path}`;
-    return h("section", { class: "card" },
+    return h("section", { class: "card grow w-terms" },
       h("div", { class: "card-h" }, h("h2", { id: "w-title" }, "Terim sözlüğü"), search,
         h("button", { class: "btn sm primary", type: "button", onclick: () => this.editTerm(-1) }, icon("plus"), "Yeni terim")),
       h("p", { class: "intro", title: intro }, intro),
@@ -1317,11 +1345,11 @@ const Words = PAGES.kelimeler = {
     const addGroup = () => { if (!ng.value.trim() || !nw.value.trim()) { toast("Grup adı ve en az bir kelime gerekli", [], true); return; } this.addStops(ng.value.trim(), nw); };
     nw.onkeydown = e => { if (e.key === "Enter") addGroup(); };
     const intro = `Aramada yok sayılan tek kelimeler; talep cümlesinin dolgusu kavram sanılmasın diye. Dosya: ${this.saved.stopwords.path}`;
-    return h("section", { class: "card" },
+    return h("section", { class: "card grow w-stops" },
       h("div", { class: "card-h" }, h("h2", {}, `Durak kelimeler · ${num(this.stops.length)}`)),
       h("p", { class: "intro", title: intro }, intro),
       this.pending("stopwords"),
-      [...groups].map(([g, items]) => block(g, items)),
+      h("div", { class: "w-scroll", id: "w-stops" }, [...groups].map(([g, items]) => block(g, items))),
       h("div", { class: "sw-new" }, ng, nw, h("button", { class: "btn sm", type: "button", onclick: addGroup }, icon("plus"), "Grup ekle")));
   },
 };
@@ -1344,7 +1372,7 @@ const AI = PAGES["yapay-zeka"] = {
         h("div", { class: "muted" }, m.state === "ok" ? `${m.role.name} üzerinden · yanıt veriyor` : m.state === "down" ? `${m.role.name} — yanıt vermiyor: ${m.detail}` : "Model bağlanana kadar sorular “Analiz yapılamadı” cevabını alır.")),
       h("div", { class: "acts" }, m.role ? h("button", { class: "btn", type: "button", onclick: e => this.test({ id: m.role.id, record: true }, e.currentTarget) }, icon("bolt"), "Test et") : null,
         h("button", { class: "btn primary", type: "button", onclick: () => this.editor(null) }, icon("plus"), "Yeni entegrasyon"))));
-    const list = L.items.length ? h("div", { class: "integs" }, L.items.map(it => this.card(it)))
+    const list = L.items.length ? h("div", { class: "fill scroll" }, h("div", { class: "integs" }, L.items.map(it => this.card(it))))
       : h("section", { class: "card" }, h("p", { class: "empty" }, "Henüz entegrasyon yok; OpenAI uyumlu bir model sunucusu ekleyin (vLLM, Ollama, LM Studio, llama.cpp…)."),
         h("div", { class: "more" }, h("button", { class: "btn primary", type: "button", onclick: () => this.editor(null) }, icon("plus"), "Entegrasyon ekle")));
     put($("#p-yapay-zeka"),
@@ -1529,11 +1557,11 @@ PAGES.arama = {
     const secs = Settings.sections("arama"), plain = secs.filter(s => !s.advanced), expert = secs.filter(s => s.advanced);
     put($("#p-arama"),
       pageHead("Arama ve cevap", "Analistin okuyacağı malzeme ve arama ipuçları; değişiklikler “Kaydet ve uygula” ile geçerli olur."),
-      plain.map(s => Settings.card(s)),
+      h("div", { class: "fill scroll" }, h("div", { class: "cols" }, plain.map(s => Settings.card(s)),
       expert.length ? h("div", { class: "expert" }, h("h3", {}, "Uzman ayarları"),
         h("p", { class: "note" }, "Çoğu durumda değiştirmek gerekmez; önce ve sonra ", h("code", { class: "mono" }, "vsa eval --save"), " ile ölçün."),
         expert.map(s => h("details", { class: "fold" }, h("summary", {}, s.title, h("span", { class: "tag" }, `${s.fields.length} ayar`)),
-          s.intro ? h("p", { class: "note", title: s.intro }, s.intro) : null, s.fields.map(f => Settings.row(Settings.fields[f.key]))))) : null);
+          s.intro ? h("p", { class: "note", title: s.intro }, s.intro) : null, s.fields.map(f => Settings.row(Settings.fields[f.key]))))) : null)));
   },
 };
 PAGES.bakim = {
@@ -1566,8 +1594,9 @@ PAGES.bakim = {
     const secs = Settings.sections("bakim");
     put($("#p-bakim"),
       pageHead("Bakım", "Arama indeksi, önceki cevaplar ve klasörler.", h("a", { class: "btn ghost", href: "#/sozluk" }, icon("book"), d.state === "none" ? "Sözlüğü içe aktar" : "Sözlük")),
-      index,
-      secs.map(s => { const c = Settings.card(s); if (s.id === "cache") c.append(answers); return c; }));
+      h("div", { class: "fill scroll" }, h("div", { class: "cols" }, index,
+        // the long kept-answers card last: the columns then pack without a gap
+        [...secs].sort((x, y) => (x.id === "cache") - (y.id === "cache")).map(s => { const c = Settings.card(s); if (s.id === "cache") c.append(answers); return c; }))));
   },
 };
 
