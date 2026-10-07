@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.conftest import write_xlsx
+from tests.conftest import import_workbook, write_xlsx
+from vsa.dictionary_store import load_dictionary
 from vsa.index.bm25 import BM25Index
 from vsa.index.store import load_index, save_index
 from vsa.llm.analyst import build_catalog, column_line, table_material
-from vsa.loader import build_columns, load_dictionary, object_profiles
+from vsa.loader import build_columns, object_profiles
 from vsa.models import DictColumn, Dictionary, ObjectProfile
 
 
@@ -79,7 +80,7 @@ def test_loader_reads_role_summary_and_profiles(tmp_path: Path) -> None:
     assert prof.key_columns == ("CustomerPartyId", "Period") and prof.grain == "Müşteri × Ay"
 
     path = write_xlsx(tmp_path / "d.xlsx", {"Objeler": objects, "Kolonlar": rows})
-    d = load_dictionary(path)
+    d = load_dictionary(import_workbook(path, tmp_path / "d.jsonl"))
     assert d.objects["EDWDM.CUS.vA"].description == "Aylık özet."
     assert d.columns[0].dataset_group == "Müşteri"
 

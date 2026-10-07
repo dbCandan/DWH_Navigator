@@ -32,6 +32,12 @@ screen, CSRF and response headers: ``vsa.web.security``. TLS is the reverse prox
                                 for good (no backup)
     POST /api/admin/answers/clear  forget every kept answer (ADR-035)
     GET  /api/admin/analysis/<id>  one analysis with its full step timeline (trace spans)
+    GET  /api/admin/dictionary  the dictionary (ADR-049/050): meta and every table
+    GET  /api/admin/dictionary/table/<key>  one table of the store: object + column records
+    GET  /api/admin/dictionary/export    the store as a workbook in the dictionary template
+    GET  /api/admin/dictionary/template  the empty template
+    POST /api/admin/dictionary/import    raw .xlsx body (X-Filename) in the template becomes
+                                the dictionary; the index is rebuilt
     GET  /api/settings          pages, sections and current values (search, scoring, files)
     POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
     POST /api/reindex           rebuild the BM25 index with the saved settings
@@ -62,7 +68,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import yaml
 
-from vsa import answer_cache, cancel, trace
+from vsa import answer_cache, cancel, dictionary_store, trace
 from vsa import feedback as fb
 from vsa.config import DEFAULT_SETTINGS_PATH, load_settings
 from vsa.loader import load_term_list
@@ -682,18 +688,7 @@ class App:
             raise ValueError("; ".join(errors))
         changed = [k for k in FIELDS if new[k] != current[k]]
 
-        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
-        header = (
-            "# DWH Navigator ayarları — Ayarlar ekranından kaydedildi "
-            f"({datetime.now().isoformat(timespec='seconds')}).\n"
-            "# Elle de düzenlenebilir; anlamları için: config/settings.example.yaml\n"
-        )
-        base = (yaml.safe_load(self.settings_path.read_text(encoding="utf-8")) or {}
-                if self.settings_path.exists() else {})  # fmt: skip
-        self.settings_path.write_text(
-            header + yaml.safe_dump(to_yaml_tree(new, base), allow_unicode=True, sort_keys=False),
-            encoding="utf-8",
-        )
+        self._write_settings(to_yaml_tree(new, self._settings_tree()))
         self.reload()
         labels = {k: FIELDS[k]["label"] for k in changed}
         reindex = [labels[k] for k in changed if FIELDS[k]["effect"] == REINDEX]
@@ -705,6 +700,75 @@ class App:
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
             "status": self.settings_get()["status"],
         }
+
+    def _settings_tree(self) -> dict[str, Any]:
+        """The settings file as it is (keys the screens do not show survive a save)."""
+        if not self.settings_path.exists():
+            return {}
+        data = yaml.safe_load(self.settings_path.read_text(encoding="utf-8")) or {}
+        return data if isinstance(data, dict) else {}
+
+    def _write_settings(self, tree: dict[str, Any]) -> None:
+        self.settings_path.parent.mkdir(parents=True, exist_ok=True)
+        header = (
+            "# DWH Navigator ayarları — Yönetim ekranından kaydedildi "
+            f"({datetime.now().isoformat(timespec='seconds')}).\n"
+            "# Elle de düzenlenebilir; anlamları için: config/settings.example.yaml\n"
+        )
+        self.settings_path.write_text(
+            header + yaml.safe_dump(tree, allow_unicode=True, sort_keys=False), encoding="utf-8"
+        )
+
+    # ------------------------------------------------------------------ dictionary (ADR-049)
+
+    def _store_path(self) -> Path:
+        return Path(self.engine.settings.dictionary.store)
+
+    def dictionary_state(self) -> dict[str, Any]:
+        store = self._store_path()
+        state: dict[str, Any] = {
+            "store": {"path": self.engine.settings.dictionary.store, "exists": store.is_file()},
+            "active_version": self.engine.dictionary.version,
+            "summary": None,
+            "error": "",
+        }
+        if store.is_file():
+            try:
+                state["summary"] = dictionary_store.summary(store)
+            except (OSError, ValueError) as exc:
+                state["error"] = str(exc)
+        return state
+
+    def dictionary_table(self, key: str) -> dict[str, Any]:
+        return dictionary_store.table(self._store_path(), key)
+
+    def dictionary_import(self, raw: bytes, filename: str) -> dict[str, Any]:
+        """A workbook in the template becomes the dictionary; the index is rebuilt at once."""
+        started = time.perf_counter()
+        if not raw:
+            raise ValueError("Dosya boş")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "sozluk.xlsx"
+            path.write_bytes(raw)
+            store = dictionary_store.from_workbook(path, Path(filename).name or "sozluk.xlsx")
+        dictionary_store.save(store, self._store_path())
+        self.reindex()
+        return {
+            "ok": True,
+            "meta": store.meta,
+            "warnings": store.warnings[:20],
+            "elapsed_ms": round((time.perf_counter() - started) * 1000),
+            "state": self.dictionary_state(),
+        }
+
+    def dictionary_export(self, template: bool = False) -> tuple[str, bytes]:
+        """(file name, workbook bytes): the store, or the empty template."""
+        store = None if template else dictionary_store.read(self._store_path())
+        stamp = datetime.now().strftime("%Y%m%d_%H%M")
+        name = "VeriSozlugu_sablon.xlsx" if template else f"VeriSozlugu_{stamp}.xlsx"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = dictionary_store.export(store, Path(tmp) / name)
+            return name, path.read_bytes()
 
     def reindex(self) -> dict[str, Any]:
         """Rebuild the BM25 index from the dictionary with the saved settings (~10 s)."""
@@ -842,7 +906,11 @@ class _Refused(Exception):
 
 
 def _json_body(raw: bytes) -> dict[str, Any]:
-    data = json.loads(raw or b"{}")
+    try:
+        text = (raw or b"{}").decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("İstek gövdesi UTF-8 değil") from exc
+    data = json.loads(text)
     if not isinstance(data, dict):
         raise ValueError("JSON nesnesi bekleniyor")
     return data
@@ -884,11 +952,14 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
             self._send(status, body, "application/json; charset=utf-8")
 
         def _xlsx(self, path: Path) -> None:
+            self._xlsx_bytes(path.name, path.read_bytes())
+
+        def _xlsx_bytes(self, name: str, data: bytes) -> None:
             self._send(
                 200,
-                path.read_bytes(),
+                data,
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                {"Content-Disposition": f'attachment; filename="{path.name}"'},
+                {"Content-Disposition": f'attachment; filename="{name}"'},
             )
 
         def _error(self, status: int, message: str, extra: dict[str, str] | None = None) -> None:
@@ -942,6 +1013,12 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                     self._json({"ok": True})
                 elif url.path == "/api/admin/analyses":
                     self._json(app.analyses())
+                elif url.path == "/api/admin/dictionary":
+                    self._json(app.dictionary_state())
+                elif url.path.startswith("/api/admin/dictionary/table/"):
+                    self._json(app.dictionary_table(unquote(url.path.rsplit("/", 1)[-1])))
+                elif url.path in ("/api/admin/dictionary/export", "/api/admin/dictionary/template"):
+                    self._xlsx_bytes(*app.dictionary_export(url.path.endswith("template")))
                 elif url.path.startswith("/api/admin/analysis/"):
                     self._json(app.analysis(url.path.rsplit("/", 1)[-1]))
                 elif url.path == "/api/settings":
@@ -980,6 +1057,10 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                 self._error(exc.status, exc.message, exc.headers)
             except KeyError:
                 self._error(404, "Kayıt bulunamadı")
+            except FileNotFoundError as exc:  # e.g. the dictionary store before an import
+                self._error(404, str(exc))
+            except ValueError as exc:
+                self._error(400, str(exc))
             except Exception:  # pragma: no cover - last-resort guard
                 log.exception("GET %s", self.path)
                 self._error(500, "Sunucu hatası (ayrıntı sunucu kaydında)")
@@ -988,8 +1069,10 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
             url = urlparse(self.path)
             started = time.perf_counter()
             try:
-                self._guard(url.path, post=True)
+                # The body first (size-checked): answering before reading it would cut the
+                # connection under a client still sending, and it would see an abort, not 401.
                 raw = self._body()
+                self._guard(url.path, post=True)
                 if url.path == "/api/ask":
                     self._json(app.ask(_json_body(raw), self.client_address[0]))
                 elif url.path == "/api/ask/cancel":
@@ -998,6 +1081,9 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                     self._json(app.clear_analyses(_json_body(raw)))
                 elif url.path == "/api/admin/answers/clear":
                     self._json(app.clear_answers())
+                elif url.path == "/api/admin/dictionary/import":
+                    name = unquote(self.headers.get("X-Filename", "sozluk.xlsx"))
+                    self._json(app.dictionary_import(raw, name))
                 elif url.path == "/api/list":
                     name = unquote(self.headers.get("X-Filename", "liste.xlsx"))
                     self._json(app.list_start(raw, name, self.client_address[0]))
@@ -1020,6 +1106,8 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                 self._error(exc.status, exc.message, exc.headers)
             except KeyError:
                 self._error(404, "Kayıt bulunamadı")
+            except FileNotFoundError as exc:
+                self._error(404, str(exc))
             except json.JSONDecodeError:
                 self._error(400, "Geçersiz JSON")
             except ValueError as exc:

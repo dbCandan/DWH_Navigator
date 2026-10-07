@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from vsa import cancel, trace
+from vsa import cancel, dictionary_store, trace
 from vsa.answer_cache import fingerprint, meaning_key, text_key
 from vsa.config import Settings
 from vsa.expansion.query_expander import Concept, ExpandedQuery, QueryExpander
@@ -43,7 +43,7 @@ from vsa.llm.analyst import (
     term_matcher,
 )
 from vsa.llm.client import LLMClient, NullClient, client_from_settings
-from vsa.loader import load_dictionary, load_stopword_file, load_term_dictionary
+from vsa.loader import load_stopword_file, load_term_dictionary
 from vsa.models import (
     AnalysisResult,
     ColumnHit,
@@ -166,8 +166,11 @@ class Engine:
 
     @classmethod
     def from_dictionary_file(cls, settings: Settings) -> Engine:
-        d = settings.dictionary
-        dictionary = load_dictionary(Path(d.path), d.sheet)
+        path = Path(settings.dictionary.store)
+        dictionary = (
+            dictionary_store.load_dictionary(path) if path.is_file()
+            else dictionary_store.empty(path)
+        )  # fmt: skip
         return cls(
             dictionary,
             settings,
@@ -298,9 +301,14 @@ class Engine:
         """The one question flow: the analyst writes every answer (ADR-029, ADR-038). With
         no model, a dead server or a failed analysis the result says why and lists nothing;
         there is no rule answer to fall back to."""
+        if not self.dictionary.columns:
+            return self._unavailable(
+                query, "Sözlük henüz içe aktarılmadı; Yönetim → Sözlük ekranından şablondaki "
+                "Excel'i içe aktarın.",
+            )  # fmt: skip
         if not self.analyst_enabled:
             return self._unavailable(
-                query, "Sohbet modeli bağlı değil; Yönetim → Ayarlar → Yapay zekâ ekranından "
+                query, "Sohbet modeli bağlı değil; Yönetim → Yapay zekâ sayfasından "
                 "bir model bağlayın.",
             )  # fmt: skip
         with trace.span("Model sunucusu kontrolü", self.llm.model) as s:
@@ -828,7 +836,7 @@ def fallback_reason(error: str) -> str:
     if "context" in text and ("exceed" in text or "size" in text or "length" in text):
         return (
             "Modelin bağlam penceresi tablo kataloğu için küçük (~70k token gerekir). Model "
-            "sunucusunda daha geniş bağlam açın (vLLM: --max-model-len) veya Yönetim → Ayarlar → "
+            "sunucusunda daha geniş bağlam açın (vLLM: --max-model-len) veya Yönetim → "
             "Yapay zekâ'dan daha geniş bağlamlı bir sohbet modeli seçin."
         )
     if "timed out" in text or "timeout" in text or "504" in text:

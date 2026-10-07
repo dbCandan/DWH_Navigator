@@ -1,7 +1,8 @@
-"""Data dictionary, term dictionary and stopword loading (HANDOVER §3).
+"""Parsing the dictionary template, term dictionary and stopwords (HANDOVER §3).
 
-This is one of the few modules allowed to do I/O. Parsing helpers are pure and
-tested on their own. Workbooks are read with openpyxl (read-only, values only).
+This is one of the few modules allowed to do I/O. Parsing helpers are pure and tested
+on their own. Workbooks are read with openpyxl (read-only, values only); the app's
+dictionary itself is ``dictionary_store`` (ADR-050), which imports workbooks with these.
 """
 
 from __future__ import annotations
@@ -16,7 +17,7 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
-from vsa.models import DictColumn, Dictionary, ObjectProfile, TermGroup
+from vsa.models import DictColumn, ObjectProfile, TermGroup
 from vsa.text.normalize import fold, load_stopwords
 
 log = logging.getLogger(__name__)
@@ -212,29 +213,6 @@ def read_workbook(
         }
     finally:
         book.close()
-
-
-def load_dictionary(path: Path, sheet: str = "Kolonlar") -> Dictionary:
-    """Read the dictionary workbook: the column sheet, plus the object sheet if present."""
-    sheets = read_workbook(path)
-    if sheet not in sheets:
-        raise ValueError(f"Sözlükte “{sheet}” sayfası yok (mevcut: {', '.join(sheets)})")
-    rows = list(records(sheets[sheet]))
-    profiles = object_profiles(records(sheets.get(OBJECTS_SHEET, [])))
-    groups = {k: p.group for k, p in profiles.items() if p.group}
-
-    columns, warnings = build_columns(rows, groups)
-    for w in warnings:
-        log.info(w)
-    if warnings:
-        log.warning("Sözlük yüklenirken %d uyarı oluştu (ayrıntı: --verbose)", len(warnings))
-    return Dictionary(
-        columns=columns,
-        source_path=str(path),
-        version=file_version(path, len(rows)),
-        warnings=warnings,
-        objects=profiles,
-    )
 
 
 def load_term_dictionary(path: Path) -> list[TermGroup]:

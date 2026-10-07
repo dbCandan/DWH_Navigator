@@ -6,6 +6,8 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook
 
+from vsa import dictionary_store
+
 ROOT = Path(__file__).resolve().parents[1]
 REAL_DICTIONARY = ROOT / "data" / "VeriSozlugu.xlsx"
 
@@ -70,6 +72,17 @@ def sample_dictionary_path(tmp_path: Path) -> Path:
     return write_xlsx(
         tmp_path / "dictionary.xlsx", {"Objeler": SAMPLE_OBJECTS, "Kolonlar": SAMPLE_ROWS}
     )
+
+
+def import_workbook(workbook: Path, target: Path) -> Path:
+    """A workbook in the dictionary template imported as the app's dictionary (ADR-050)."""
+    dictionary_store.save(dictionary_store.from_workbook(workbook), target)
+    return target
+
+
+@pytest.fixture
+def sample_store_path(sample_dictionary_path: Path, tmp_path: Path) -> Path:
+    return import_workbook(sample_dictionary_path, tmp_path / "dictionary.jsonl")
 
 
 @pytest.fixture

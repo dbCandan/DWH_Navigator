@@ -111,3 +111,48 @@ yine yoktur. Ayrıntı ve tarama sonuçları: `docs/GUVENLIK.md`.
 sabit, pip çalışma imajında yok, kullanıcı uid 10001, kök dosya sistemi salt-okunur, tüm veri
 `/app/data` biriminde. `serve --auto-index` indeks yoksa ya da sözlük değiştiyse açılışta kurar.
 Windows yerel geliştirme (`baslat.bat`, `scripts/`) repoda kalır, imaja girmez.
+
+## ADR-049 — Uygulamanın kendi sözlüğü (jsonl), Excel seçenek olarak kalır (2026-10-07)
+Sözlük iki kaynaktan okunabilir: `dictionary.source: excel` (varsayılan; `dictionary.path`'teki
+.xlsx) ya da `store` (`dictionary.store`, varsayılan `data/dictionary.jsonl`). Depo yalnız sözlük
+şablonundaki (Objeler · Kolonlar) bir Excel'in içe aktarılmasıyla yazılır: ilk satır meta (sürüm,
+kaynak dosya, zaman, içerik özeti), sonra şablon alan adlarıyla `object` ve `column` kayıtları.
+Başlıkların farklı yazımları (eski `DAtabaseName`, `Rol`, `Ozet`) şablon adlarına çevrilir, her kayıt
+tüm şablon alanlarını taşır. Depo Excel'i okuyan aynı kodla ayrıştırılır; gerçek sözlükte çıktı
+(kolonlar, tablolar, uyarılar, sürüm) Excel'le birebir aynı, yükleme ~4 kat hızlı. Sürüm içe
+aktarılan Excel'in sürümüdür; aynı içerik yeniden aktarılırsa (ör. dışa aktarılıp geri yüklenen)
+eski sürüm korunur; elle değiştirilen dosya içerik özetinden yeni sürüm alır. Böylece kaynak
+değiştirmek kayıtlı cevapları ve indeksi boşuna geçersiz kılmaz. İçe aktarma eski dosyayı `.bak`
+olarak saklar, yazma atomiktir. Yönetim ekranında "Sözlük" sekmesi: etkin kaynak seçimi (indeks
+yeniden kurulur), içe aktarma (isteğe bağlı etkinleştirme), şablona uygun dışa aktarma, boş
+şablon, tablo/kolon gezgini ve sözlük dosyalarının ayarları (Excel ve uygulama sözlüğü yolu,
+kolon sayfası, terim sözlüğü, durak kelimeler; Ayarlar → Veri ve bakım'daki "Veri sözlüğü"
+bölümü buraya taşındı). Komut satırı: `vsa dictionary import|export`. Gerekçe: kurulumda
+dışarıdan konan dosyaya bağımlılığı kaldırmak.
+
+## ADR-050 — Tek sözlük jsonl; Excel'den okuma kaldırıldı (ADR-049'un "Excel seçenek" kısmının yerine) (2026-10-07)
+Uygulamanın tek sözlüğü `dictionary.store` (`data/dictionary.jsonl`). `dictionary.source`,
+`dictionary.path`, `dictionary.sheet` ve kaynak seçimi kaldırıldı (eski ayar dosyalarında yok
+sayılır); hiçbir Excel sözlük olarak okunmaz. Excel yalnız aktarım içindir: şablondaki Excel içe
+aktarılınca sözlüğün yerini alır ve indeks hemen kurulur; sözlük aynı şablona dışa aktarılır.
+Sözlük yokken uygulama boş açılır (boş indeks), soru "Sözlük henüz içe aktarılmadı" cevabını alır,
+yönetim ekranı içe aktarmayı gösterir — kurulum dışarıdan dosya gerektirmez. `vsa index`'in
+`--dictionary` ve `vsa dictionary import`'un `--activate` seçenekleri kaldırıldı. Önbellek parmak
+izinin sözlük bölümü eski hâliyle sabitlendi (kayıtlı cevaplar geçerli kalır). Doğrulama: içe
+aktarılmış sözlükle 129 soruda sıralama, promptlar ve cevaplar önceki anlık görüntüyle aynı.
+
+## ADR-051 — Yönetim ekranı baştan tasarlandı (ADR-030/032'nin ekran düzeninin yerine) (2026-10-07)
+Sekmeler ve iç içe ayar sayfaları kullanımı zorlaştırmıştı. Yeni düzen: sol kenar çubuğunda altı
+sayfa — **Genel bakış** (sistem sağlığı kartları: sohbet modeli, sözlük, indeks, kayıtlı cevaplar;
+ilk kurulumda üç adımlı yol: sözlüğü içe aktar → modeli bağla → ilk soru; son 7 gün göstergeleri,
+14 günlük grafik, son sorular), **Analizler** (süzgeçler, liste, ayrıntı çekmecesi, ↑/↓ ile gezinme,
+canlı yenileme, temizleme), **Sözlük** (boşken sürükle-bırak içe aktarma; tablo gezgini, tablo
+ayrıntısı çekmecede; dosya ayarları), **Yapay zekâ** (entegrasyon kartları, düzenleyici çekmece:
+model listesi, test, kaydet), **Arama ve cevap**, **Bakım** (indeks, kayıtlı cevaplar). Ayarlar
+kendi konusunun sayfasında; kaydedilmemiş değişiklikler sayfalar arasında korunur, alttaki çubuk
+sayısını ve sayfasını gösterir ("Kaydet ve uygula" / "Geri al"). Her şeye `Ctrl K` komut
+paletinden gidilir (sayfalar, işlemler, tüm ayar alanları, tablolar, son sorular). Adresler
+derin bağlantıdır (`#/analizler/<id>`, `#/sozluk/<DB.Şema.Obje>`). Sözlük Excel'i sayfanın herhangi
+bir yerine bırakılarak da içe aktarılır. Sunucu API'si değişmedi; ekran tek dosya, dış kaynak yok,
+CSP satır içi stil özniteliğine izin vermez (stiller CSSOM ile). Ayrıca JSON istek gövdesi UTF-8
+değilse "İstek gövdesi UTF-8 değil" (400) döner.

@@ -311,25 +311,19 @@ SECTIONS: list[dict[str, Any]] = [
         ],
     },
     {
+        # Shown on the admin screen's Sözlük view, next to the source switch (ADR-049), not
+        # on a settings page: "dictionary" is not one of PAGES.
         "id": "dictionary",
-        "page": "data",
-        "title": "Veri sözlüğü",
-        "intro": "Uygulamanın aradığı kaynak. Dosya değişirse indeks yeniden kurulmalı.",
+        "page": "dictionary",
+        "title": "Dosya ayarları",
+        "intro": "Sözlük dosyalarının yerleri. Bir dosya değişirse indeks yeniden kurulmalı.",
         "fields": [
             {
-                "key": "dictionary.path",
+                "key": "dictionary.store",
                 "label": "Sözlük dosyası",
                 "type": "str",
                 "effect": REINDEX,
-                "help": "Excel dosyası (data/VeriSozlugu.xlsx); kolonlar Kolonlar sayfasında.",
-            },
-            {
-                "key": "dictionary.sheet",
-                "label": "Kolon sayfası",
-                "type": "str",
-                "effect": REINDEX,
-                "advanced": True,
-                "help": "",
+                "help": "İçe aktarılan sözlüğün saklandığı yer (data/dictionary.jsonl).",
             },
             {
                 "key": "expansion.term_dictionary",

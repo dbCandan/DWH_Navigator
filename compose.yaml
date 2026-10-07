@@ -1,6 +1,6 @@
 # DWH Navigator — tek komutla kurulum:  docker compose up -d
-# Önce: data/VeriSozlugu.xlsx yerinde olsun, .env dosyasında VSA_ADMIN_PASSWORD tanımlı olsun
-# (ayrıntı: docs/KURULUM.md).
+# Önce .env dosyasında VSA_ADMIN_PASSWORD tanımlı olsun; sözlük ilk açılışta /admin → Sözlük'ten
+# içe aktarılır (ayrıntı: docs/KURULUM.md).
 services:
   vsa:
     image: dwh-navigator:0.1.0

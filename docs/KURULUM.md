@@ -32,15 +32,16 @@ indirilir; paketlerin sürümü ve SHA-256 özeti `requirements.lock` dosyasınd
 
 ## 2. Veri klasörü
 
-Sunucuda bir klasör hazırlayın ve sözlüğü içine koyun:
+Sunucuda bir klasör hazırlayın:
 
 ```
 dwh-navigator/
 ├── compose.yaml          (repodan)
 ├── .env                  (.env.example'dan kopyalayın)
-└── data/
-    └── VeriSozlugu.xlsx  (Objeler + Kolonlar sayfaları)
+└── data/                 (boş; uygulama doldurur)
 ```
+
+Sözlük dosya olarak konmaz; ilk açılıştan sonra yönetim ekranından içe aktarılır (§7).
 
 Konteyner `uid 10001` ile çalışır; Linux'ta klasörün sahibini ayarlayın:
 
@@ -86,7 +87,7 @@ docker run -d --name dwh-navigator --restart unless-stopped -p 8765:8765 \
 
 ## 5. Model bağlantısı
 
-`http://<sunucu>:8765/admin` → **Ayarlar → Yapay zekâ → Yeni entegrasyon**:
+`http://<sunucu>:8765/admin` → **Yapay zekâ → Yeni entegrasyon**:
 API adresi (ör. `http://dgx-spark:8000/v1`), gerekiyorsa API anahtarı, sohbet modeli.
 **Test et** ile doğrulayıp **aktif** yapın; değişiklik anında geçerli olur.
 Model bağlı değilken uygulama açılır ama soru cevaplamaz ("Analiz yapılamadı" + sebep).
@@ -112,11 +113,27 @@ location / {
 
 Konteyner portunu yalnız vekile açın (ör. `ports: ["127.0.0.1:8765:8765"]`).
 
-## 7. Sözlük güncelleme
+## 7. Sözlük
 
-Yeni `VeriSozlugu.xlsx` dosyasını `data/` altına koyup konteyneri yeniden başlatın:
-açılışta sözlüğün değiştiği görülür ve indeks yeniden kurulur (~10 sn).
-Ya da yönetim ekranında **Veri ve bakım → İndeksi yeniden kur**.
+Uygulamanın tek sözlüğü `data/dictionary.jsonl`'dir (ADR-050). Excel yalnız aktarım içindir;
+uygulama hiçbir Excel dosyasını sözlük olarak okumaz.
+
+- **İlk kurulum:** konteyner sözlüksüz açılır; sorular "Sözlük henüz içe aktarılmadı" der.
+  `/admin` → **Sözlük** → "Excel'den içe aktar…" ile şablondaki (Objeler · Kolonlar) Excel'i
+  yükleyin; indeks kurulur (~10 sn) ve sözlük hemen kullanılır.
+- **Güncelleme:** yeni Excel'i aynı yoldan içe aktarın; mevcut sözlüğün yerini alır, önceki sürüm
+  `dictionary.jsonl.bak` olarak saklanır.
+- **Dışa aktarma:** "Excel olarak dışa aktar" sözlüğü aynı şablonla verir (düzeltip geri yüklemek
+  için); "Boş şablon" yeni bir sözlük için başlangıçtır.
+
+Aynı işlemler komut satırından (dosya `data/` altında olmalı):
+
+```bash
+docker compose exec vsa vsa-entrypoint dictionary import data/VeriSozlugu.xlsx
+docker compose exec vsa vsa-entrypoint dictionary export data/sozluk_yedek.xlsx
+```
+
+İçe aktarıldıktan sonra Excel dosyasına gerek yoktur; silinebilir.
 
 ## 8. Komut satırı (isteğe bağlı)
 
@@ -138,7 +155,7 @@ imajı yeniden derleyip `docs/GUVENLIK.md`'deki taramaları tekrarlayın.
 
 | Belirti | Neden / çözüm |
 |---|---|
-| Konteyner hemen kapanıyor, "Sözlük dosyası bulunamadı" | `data/VeriSozlugu.xlsx` yok ya da birim yanlış bağlandı |
+| Sorular "Sözlük henüz içe aktarılmadı" diyor | `/admin` → Sözlük'ten şablondaki Excel'i içe aktarın; birim (`data/`) doğru bağlı mı? |
 | "Permission denied" (data/) | Klasör sahibi `10001` değil: `chown -R 10001:10001 data` |
 | `/admin` 403 | `VSA_ADMIN_PASSWORD` tanımlı değil |
 | `/admin` 401 | Parola yanlış (tarayıcıyı kapatıp yeniden deneyin) |

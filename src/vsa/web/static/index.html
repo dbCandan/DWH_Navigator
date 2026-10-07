@@ -1115,7 +1115,7 @@ async function loadStatus() {
       : m.state === "down" ? ["bad", "Modele ulaşılamıyor",
         `${m.reason.replace(/\.?$/, ".")} Model çalışmadan soru analiz edilemez.`]
       : ["warn", "Model bağlı değil",
-        `Sohbet modeli bağlı değil: soru analiz edilemez. Yönetim → Ayarlar → Yapay zekâ ekranından bir model bağlayın.`];
+        `Sohbet modeli bağlı değil: soru analiz edilemez. Yönetim → Yapay zekâ sayfasından bir model bağlayın.`];
     $("#status").replaceChildren(h("span", { class: "pill " + cls, title: tip }, h("i", { class: "dot" + (cls ? "" : " on") }), label));
     const mw = $("#model-warn");
     mw.className = "model-warn" + (m.state === "down" ? " bad" : ""); mw.textContent = warn;

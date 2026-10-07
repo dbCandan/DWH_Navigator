@@ -9,7 +9,7 @@ import pytest
 
 from vsa import answer_cache
 from vsa.config import Settings
-from vsa.loader import load_dictionary
+from vsa.dictionary_store import load_dictionary
 from vsa.models import AnalysisResult, TermGroup
 from vsa.pipeline import Engine, Resources
 from vsa.web.answer_store import AnswerStore
@@ -19,10 +19,10 @@ GROUPS = [TermGroup("müşteri no", ("hesap no", "customer id"))]
 
 
 @pytest.fixture
-def engine(sample_dictionary_path: Path) -> Engine:
+def engine(sample_store_path: Path) -> Engine:
     s = Settings()
-    s.dictionary.path = str(sample_dictionary_path)
-    d = load_dictionary(sample_dictionary_path)
+    s.dictionary.store = str(sample_store_path)
+    d = load_dictionary(sample_store_path)
     return Engine(d, s, Resources(GROUPS, frozenset({"ve", "ile", "bir"})))
 
 

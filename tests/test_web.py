@@ -22,10 +22,10 @@ from vsa.web.server import App, make_handler
 
 @pytest.fixture
 def base_url(
-    sample_dictionary_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    sample_store_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[str]:
     s = Settings()
-    s.dictionary.path = str(sample_dictionary_path)
+    s.dictionary.store = str(sample_store_path)
     engine = Engine.from_dictionary_file(s)
     # No model in tests: the rule engine's ranking stands in for an answer, so the page,
     # report and log plumbing can be exercised (users never see it, ADR-038).
@@ -89,6 +89,19 @@ def test_ask_validation(base_url: str) -> None:
     assert status == 400 and "boş" in data["error"]
 
 
+def test_body_must_be_utf8(base_url: str) -> None:
+    # A Windows console may send Latin-5 bytes; the answer says why instead of a codec error.
+    req = urllib.request.Request(
+        base_url + "/api/ask", data='{"query": "göre"}'.encode("cp1254"),
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=60)
+        raise AssertionError("expected 400")
+    except urllib.error.HTTPError as e:
+        assert e.code == 400 and "UTF-8" in json.loads(e.read())["error"]
+
+
 def _xlsx(cells: list[str]) -> bytes:
     import io
 
@@ -132,11 +145,11 @@ def test_term_list_end_to_end(base_url: str) -> None:
 
 
 def test_term_list_resumes_after_stop(
-    sample_dictionary_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    sample_store_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Durdur, then Devam et: answered terms are kept, the rest are asked, none twice."""
     s = Settings()
-    s.dictionary.path = str(sample_dictionary_path)
+    s.dictionary.store = str(sample_store_path)
     engine = Engine.from_dictionary_file(s)
     gate, asked = threading.Event(), []
 
@@ -288,11 +301,11 @@ def test_galaxy(base_url: str) -> None:
 
 
 def test_explorer_not_blocked_by_a_running_question(
-    sample_dictionary_path: Path, tmp_path: Path
+    sample_store_path: Path, tmp_path: Path
 ) -> None:
     """The explorer must answer while an analyst question holds the engine lock."""
     s = Settings()
-    s.dictionary.path = str(sample_dictionary_path)
+    s.dictionary.store = str(sample_store_path)
     app = App(Engine.from_dictionary_file(s), tmp_path / "out", tmp_path / "fb.jsonl")
     with app.lock:  # a long question in progress
         result = app.objects("doluluk oranı")
@@ -300,10 +313,10 @@ def test_explorer_not_blocked_by_a_running_question(
 
 
 @pytest.fixture
-def app_with_settings(sample_dictionary_path: Path, tmp_path: Path) -> App:
+def app_with_settings(sample_store_path: Path, tmp_path: Path) -> App:
     settings_file = tmp_path / "settings.yaml"
     settings_file.write_text(
-        f"dictionary:\n  path: {sample_dictionary_path.as_posix()}\n"
+        f"dictionary:\n  store: {sample_store_path.as_posix()}\n"
         f"index:\n  dir: {(tmp_path / 'idx').as_posix()}\n",
         encoding="utf-8",
     )
@@ -318,12 +331,16 @@ def test_settings_roundtrip(app_with_settings: App) -> None:
     app = app_with_settings
     got = app.settings_get()
     assert [p["id"] for p in got["pages"]] == ["llm", "search", "data"]
-    pages = {p["id"] for p in got["pages"]}
+    pages = {p["id"] for p in got["pages"]} | {"dictionary"}  # the Sözlük view (ADR-049)
     assert all(s["page"] in pages for s in got["sections"])
+    on_view = [f["key"] for s in got["sections"] if s["page"] == "dictionary" for f in s["fields"]]
+    assert on_view[0] == "dictionary.store"
     res = app.settings_save({"values": {"expansion.weight": 0.4}})
     assert res["ok"] and res["changed"] == ["Eş anlamlı terimlerin ağırlığı"]
     assert app.engine.settings.expansion.weight == 0.4  # engine reloaded
     assert "weight: 0.4" in app.settings_path.read_text(encoding="utf-8")
+    app.settings_save({"values": {"dictionary.store": "data/baska.jsonl"}})
+    assert app.engine.settings.dictionary.store == "data/baska.jsonl"
 
 
 def test_model_connection_is_not_on_the_screen(app_with_settings: App) -> None:

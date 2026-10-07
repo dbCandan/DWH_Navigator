@@ -89,6 +89,9 @@ def fingerprint(
     raw = asdict(settings)
     for key in _NEUTRAL:
         raw.pop(key, None)
+    # Where the dictionary is read from does not shape an answer; its version (below) does.
+    # The section is fixed as it was before ADR-050 so answers kept until then stay valid.
+    raw["dictionary"] = {"path": "data/VeriSozlugu.xlsx", "sheet": "Kolonlar"}
     raw["llm"] = {k: raw["llm"][k] for k in _LLM_KEYS}
     raw["_"] = {
         "format": CACHE_FORMAT,

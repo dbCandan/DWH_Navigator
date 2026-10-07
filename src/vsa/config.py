@@ -14,8 +14,9 @@ from vsa.llm.integrations import apply as apply_integrations
 
 @dataclass(slots=True)
 class DictionarySettings:
-    path: str = "data/VeriSozlugu.xlsx"
-    sheet: str = "Kolonlar"
+    # ADR-050: the app's one dictionary. Workbooks in the dictionary template only come in
+    # (import) and go out (export); the app never reads a workbook as its dictionary.
+    store: str = "data/dictionary.jsonl"
 
 
 @dataclass(slots=True)
@@ -154,6 +155,7 @@ RETIRED = frozenset({
     "scoring.w_rule", "scoring.w_llm", "analyst.enabled", "analyst.batch",
     "dense", "llm.embedding_model", "llm.embedding_endpoint", "llm.embedding_api_key",
     "dictionary.quality_sheet", "search.top_k_columns", "scoring.flag_penalty",
+    "dictionary.source", "dictionary.path", "dictionary.sheet",  # ADR-050: no workbook source
 })  # fmt: skip
 
 
@@ -194,13 +196,15 @@ def read_integrations(path: Path) -> list[Integration] | None:
 def write_integrations(path: Path, items: list[Integration]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     header = (
-        "# LLM entegrasyonları — Yönetim → Ayarlar → Yapay zekâ ekranından yazılır (ADR-032).\n"
+        "# LLM entegrasyonları — Yönetim → Yapay zekâ sayfasından yazılır (ADR-032).\n"
         "# API anahtarları içerir: repoya girmez, paylaşmayın.\n"
     )
     body = yaml.safe_dump(
         {"integrations": [i.to_dict() for i in items]}, allow_unicode=True, sort_keys=False
     )
     path.write_text(header + body, encoding="utf-8")
+
+
 
 
 def load_settings(path: Path | None = None) -> Settings:

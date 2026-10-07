@@ -6,6 +6,8 @@ vsa ask -i terimler.xlsx       a term list, each term through the question flow 
 vsa serve [--open] [--auto-index]  web UI (--auto-index: build a missing / stale index first)
 vsa eval [--save]              golden-set metrics
 vsa feedback                   golden-set candidates from the UI's thumbs
+vsa dictionary import X.xlsx   a workbook in the template becomes the dictionary (ADR-050)
+vsa dictionary export Y.xlsx [--template]  the store (or the empty template) as a workbook
 """
 
 from __future__ import annotations
@@ -31,6 +33,7 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from vsa import dictionary_store
 from vsa.config import Settings, load_settings
 from vsa.evaluation import (
     KS,
@@ -42,7 +45,7 @@ from vsa.evaluation import (
 )
 from vsa.feedback import export_candidates, load_feedback, summarize
 from vsa.index.store import INDEX_FORMAT, IndexMissingError
-from vsa.loader import file_version, load_term_list
+from vsa.loader import load_term_list
 from vsa.models import AnalysisResult, Level, ListItem, ListResult, Verdict
 from vsa.pipeline import Engine
 from vsa.report.excel import report_path, write_ask_report, write_list_report
@@ -53,6 +56,8 @@ FEEDBACK_PATH = Path("data/feedback.jsonl")
 NL = "\n"
 
 app = typer.Typer(add_completion=False, help="Veri Sözlüğü Asistanı (VSA)")
+dictionary_app = typer.Typer(help="Sözlük: Excel şablonundan içe / şablona dışa aktarma")
+app.add_typer(dictionary_app, name="dictionary")
 console = Console()
 
 LEVEL_STYLE = {Level.HIGH: "green", Level.MEDIUM: "yellow", Level.LOW: "red"}
@@ -87,11 +92,10 @@ def _index_problem(settings: Settings) -> str:
         return "indeks okunamadı"
     if meta.get("format") != INDEX_FORMAT:
         return "indeks formatı eski"
-    source = Path(settings.dictionary.path)
-    indexed = str(meta.get("dictionary_version", ""))
-    rows = indexed.rsplit("-", 1)[-1]
-    if source.is_file() and rows.isdigit() and file_version(source, int(rows)) != indexed:
-        return "sözlük dosyası indeks kurulduktan sonra değişmiş"
+    store = Path(settings.dictionary.store)
+    current = dictionary_store.load_dictionary(store).version if store.is_file() else ""
+    if str(meta.get("dictionary_version", "")) != current:
+        return "sözlük indeks kurulduktan sonra değişmiş"
     return ""
 
 
@@ -108,9 +112,10 @@ def _load_engine(settings: Settings) -> Engine:
 
 
 def _build_index(settings: Settings) -> None:
-    if not Path(settings.dictionary.path).is_file():
-        console.print(f"[red]Sözlük dosyası bulunamadı: {settings.dictionary.path}[/red]")
-        raise typer.Exit(2)
+    if not Path(settings.dictionary.store).is_file():
+        console.print(f"[yellow]Sözlük yok ({settings.dictionary.store}): boş indeks kuruluyor. "
+                      "Yönetim → Sözlük ya da `vsa dictionary import` ile içe aktarın."
+                      "[/yellow]")  # fmt: skip
     with console.status("Sözlük okunuyor ve indeks kuruluyor…"):
         engine = Engine.from_dictionary_file(settings)
         meta = engine.save()
@@ -128,15 +133,49 @@ def _build_index(settings: Settings) -> None:
 
 @app.command()
 def index(
-    dictionary: Path | None = typer.Option(None, "--dictionary", "-d", help="Sözlük .xlsx"),
     settings_path: Path | None = SettingsOpt,
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Sözlükten arama indeksini kurar."""
-    settings = _setup(settings_path, verbose)
-    if dictionary:
-        settings.dictionary.path = str(dictionary)
+    _build_index(_setup(settings_path, verbose))
+
+
+@dictionary_app.command("import")
+def dictionary_import(
+    workbook: Path = typer.Argument(..., help="Sözlük şablonundaki .xlsx (Objeler · Kolonlar)"),
+    settings_path: Path | None = SettingsOpt,
+) -> None:
+    """Şablondaki Excel'i içe aktarır: uygulamanın sözlüğü olur, indeks yeniden kurulur."""
+    settings = _setup(settings_path)
+    try:
+        store = dictionary_store.from_workbook(workbook)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+    target = Path(settings.dictionary.store)
+    dictionary_store.save(store, target)
+    m = store.meta
+    console.print(f"[green]Aktarıldı:[/green] {m['columns']:,} kolon · {m['objects']} tablo → "
+                  f"{target} (sürüm {m['version']})")  # fmt: skip
+    for w in store.warnings[:10]:
+        console.print(f"[yellow]• {w}[/yellow]")
     _build_index(settings)
+
+
+@dictionary_app.command("export")
+def dictionary_export(
+    out: Path = typer.Argument(..., help="Yazılacak .xlsx"),
+    template: bool = typer.Option(False, "--template", help="Yalnız boş şablonu yaz"),
+    settings_path: Path | None = SettingsOpt,
+) -> None:
+    """Sözlüğü (ya da boş şablonu) Excel şablonu olarak yazar."""
+    settings = _setup(settings_path)
+    try:
+        store = None if template else dictionary_store.read(Path(settings.dictionary.store))
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+    console.print(f"[green]Yazıldı:[/green] {dictionary_store.export(store, out)}")
 
 
 @app.command()

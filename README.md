@@ -14,11 +14,11 @@ cevabı kurum içi sunucudaki sohbet modeli (DGX Spark, OpenAI uyumlu API) yazar
 ```bash
 docker build -t dwh-navigator:0.1.0 .
 cp .env.example .env            # VSA_ADMIN_PASSWORD'ü doldurun
-mkdir -p data && cp /yol/VeriSozlugu.xlsx data/
 docker compose up -d            # http://<sunucu>:8765 · yönetim: /admin
 ```
 
-Model bağlantısı: `/admin` → Ayarlar → Yapay zekâ (adres, anahtar, model; test; aktif).
+Sonra `/admin` → **Sözlük** → "Excel'den içe aktar…" ile şablondaki sözlüğü yükleyin ve
+Yapay zekâ sayfasından model bağlantısını ekleyin (adres, anahtar, model; test; aktif).
 
 ## Nasıl çalışır
 
@@ -54,7 +54,11 @@ vsa eval --save --label "ne değişti"   # ağırlık / model değişikliğinden
 ```
 
 Komutlar: `vsa index`, `vsa serve [--auto-index]`, `vsa ask "…"`, `vsa ask -i liste.xlsx`,
-`vsa eval`, `vsa feedback`.
+`vsa eval`, `vsa feedback`, `vsa dictionary import|export`.
+
+Uygulamanın tek sözlüğü `data/dictionary.jsonl`'dir. Excel yalnız aktarım içindir: şablondaki
+Excel yönetim ekranının **Sözlük** sekmesinden (ya da `vsa dictionary import`) içe aktarılınca
+sözlüğün yerini alır; sözlük aynı şablonla dışa aktarılır (ADR-049, ADR-050).
 
 `data/`, `out/`, `*.xlsx`, `config/settings.yaml`, `config/llm_integrations.yaml` ve `.env`
 repoya girmez (kurum içi veri ve API anahtarları).

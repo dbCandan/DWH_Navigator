@@ -5,6 +5,7 @@
 #   index            indeksi yeniden kur
 #   ask "…" | ask -i data/liste.xlsx   komut satırından analiz (rapor: data/out)
 #   feedback         geri bildirim özetleri
+#   dictionary import data/X.xlsx | dictionary export data/Y.xlsx   sözlük aktarımı
 set -eu
 cd /app
 SETTINGS=data/settings.yaml
@@ -23,6 +24,11 @@ case "$cmd" in
     ;;
   index | ask)
     exec python -m vsa.cli "$cmd" --settings "$SETTINGS" "$@"
+    ;;
+  dictionary)
+    sub=${1:-}
+    [ "$#" -gt 0 ] && shift
+    exec python -m vsa.cli dictionary "$sub" "$@" --settings "$SETTINGS"
     ;;
   feedback)
     exec python -m vsa.cli feedback --export data/golden_candidates.yaml "$@"
