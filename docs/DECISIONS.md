@@ -44,6 +44,38 @@ cevap olmaz: tek bir "İlgili" notuna dönüşür, sonuç BULUNAMADI olur. Gerek
 Model asıl bilgiyi taşıyan 1-3 kolonu (`core_columns`, "T12.Kolon") adıyla yazar; kod bunları
 aday tablolarda doğrular. Geçerli kolon yoksa cevap ADR-041'deki gibi BULUNAMADI olur. Talep bir
 varlığın niteliğini istiyorsa (oran, tutar, bakiye, süre) asıl bilgi o niteliktir; varlığın
-türü, bayrağı ya da kaydı yetmez. Gerekçe: 294 soruluk ölçümde negatif hataların hepsi (9) bu
+türü, bayrağı ya da kaydı yetmez. Bilgi birden çok aday tabloya dağılmış ve birleştirilerek elde
+ediliyorsa bu BULUNAMADI değil KISMEN VAR'dır (ilk sürüm birleştirme sorularını "tek tabloda yok"
+diye BULUNAMADI'ya çeviriyordu; açıklık eklendi). Gerekçe: 294 soruluk ölçümde negatif hataların hepsi (9) bu
 kalıptı — varlık var, istenen nitelik yok. Alanı olmayan eski cevaplarda kontrol uygulanmaz.
-Ölçüm: önce hatalı sorular + negatifler, sonra 294 sorunun tamamı (`data/golden/run_eval.py`).
+Ön kontrol (101 soru: akşam hatalı/negatif + 30 doğru koruma sorusu): koruma 30/30, hedef
+negatifler 0/9 → 2/9, birleştirme kaybı yok. Tam 294 ölçümü bekliyor.
+
+## ADR-043 — Sırayı asıl kavram belirler (2026-10-07)
+Önerilerin sırasını model güveni değil kod verir: modelin gösterdiği asıl kavram kolonlarını
+(ADR-042) en çok taşıyan tablo öne geçer; eşitlikte genel tablo, dar kitleli / türetilmiş
+tablonun (açıklamasında model girdisi, eğitim verisi, akıllı hedefleme, özel bankacılık
+müşterileri, segmentasyon girdisi geçen) önüne geçer; sonra güven. Öne geçen tablo, geçtiği
+tablonun güveninden düşük gösterilmez. Kolon gösterilmemişse modelin sırası kalır.
+Gerekçe: 294 soruda cevaplanabilir 23 hatanın 17'sinde doğru tablo ilk 3'teydi ama 1.
+sırada değildi. Ölçüm (31 soru, seri sunucu): sıralama hatalarının 7/19'u düzeldi, koruma
+sorularının 7/8'i korundu.
+
+## ADR-044 — Asıl kavram için ikinci denetim çağrısı: REDDEDİLDİ (2026-10-07)
+Denendi: analist cevabından sonra kısa bir çağrı, gösterilen asıl kavram kolonlarının talebin
+asıl bilgisini "birebir" taşıyıp taşımadığını sorar; "hayır" → BULUNAMADI. Ölçüm (seri sunucu,
+gece ölçümü tabanına göre): negatifler 40/48 → 43/48, ama doğru cevaplanmış 40 koruma sorusundan
+3'ü BULUNAMADI'ya döndü (%7,5). Tam sette ~230 doğru cevaba yayılan kayıp, birkaç negatif
+kazancını aşar. Uygulanmadı. Negatif hatalar için yol: modelin "nitelik yok" ayrımını daha güçlü
+yapan bir model ya da sözlükte kolon düzeyinde daha net açıklamalar.
+
+## ADR-045 — Ölçüm sorularından türeyen prompt örnekleri kaldırıldı; "eksik bilgi" gösterilir (2026-10-07)
+ADR-041/042 promptundaki somut örneklerin bir kısmı (hane geliri, ATM arıza kaydı, takipçi sayısı,
+rakip banka oranı, ekran bazında süre, onay kaydı ≠ bakiye, aktarılan tutar ≠ karşı kurumdaki
+bakiye) ölçüm setindeki hatalı sorulardan türemişti; bu, o sorulardaki skoru şişirebilir. Somut
+örnekler kaldırıldı, yalnız genel kural kaldı ("farklı düzey / taraf / nesne aynı bilgi değildir").
+Ölçüm (seri, 160 soru, gece sürümüne göre): negatifler 40/48 → 39/48 (z091, z093 ipucu olmadan
+yanlış), cevaplanabilir 103 → 102; 294 için dürüst tahmin ~%89,8 (sızıntılı %90,5). Kör set (50,
+sızıntısız) %90,0. Ayrıca rapora `missing` alanı eklendi: KISMEN VAR cevabında talebin
+karşılanmayan parçaları (≤3) ekranda etiketin yanında ve Excel'de "Eksik Bilgi" olarak gösterilir;
+model eksik olanı özetinde yazsa da hızlı okuyan kullanıcı kaçırmasın diye. Hızlı test 9/10.

@@ -188,6 +188,8 @@ class AnalysisResult:
     reused_at: str = ""
     reused_query: str = ""
     reused_match: str = ""
+    # What the request asked for and a "KISMEN VAR" answer does not give, shown by the verdict.
+    missing: list[str] = field(default_factory=list)
 
 
 # --------------------------------------------------------------------------- list search
