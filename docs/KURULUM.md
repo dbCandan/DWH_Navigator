@@ -49,7 +49,9 @@ Konteyner `uid 10001` ile çalışır; Linux'ta klasörün sahibini ayarlayın:
 sudo chown -R 10001:10001 data
 ```
 
-İlk açılışta `data/` altına şunlar oluşur: `settings.yaml` (ayarlar), `index/` (arama
+İlk açılışta `data/` altına şunlar oluşur: `settings.yaml` (ayarlar), `terms.jsonl` (terim
+sözlüğü) ve `stopwords.jsonl` (durak kelimeler; ikisi de `/admin` → **Kelimeler**'den
+düzenlenir, var olan dosyaya dokunulmaz), `index/` (arama
 indeksi), `llm_integrations.yaml` (model bağlantıları, **API anahtarı içerir**), `cache/`
 (kayıtlı cevaplar), `logs/` (analiz kayıtları), `feedback.jsonl` (👍/👎), `out/` (Excel raporları).
 **Yedeklenecek tek klasör `data/`'dır.**

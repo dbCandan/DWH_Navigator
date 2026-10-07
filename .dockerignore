@@ -1,12 +1,12 @@
 # Beyaz liste: imaja yalnız aşağıdakiler girer. Sözlük ve tüm kurum içi veri (data/, out/,
-# *.xlsx), ayarlar ve API anahtarları (config/*.yaml), testler, belgeler, Windows betikleri
+# *.xlsx), ayarlar ve API anahtarları, testler, belgeler, Windows betikleri
 # (baslat.bat, scripts/) ve geliştirme ortamı (.venv, .git) imaja girmez.
 *
 !Dockerfile
 !requirements.lock
 !src/vsa/**
-!config/term_dictionary.csv
-!config/stopwords_tr.txt
+!data/terms.jsonl
+!data/stopwords.jsonl
 !docker/entrypoint.sh
 !docker/settings.yaml
 **/__pycache__

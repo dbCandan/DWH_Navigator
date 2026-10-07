@@ -41,7 +41,7 @@ verilir (ADR-035); 👍/👎 sonraki cevapları şekillendirir (ADR-036).
 ```bash
 python -m venv .venv
 .venv\Scripts\pip install -e ".[dev]"
-copy config\settings.example.yaml config\settings.yaml
+copy docs\settings.example.yaml data\settings.yaml
 .venv\Scripts\vsa index
 .venv\Scripts\vsa serve --open      # ya da baslat.bat
 ```
@@ -60,5 +60,8 @@ Uygulamanın tek sözlüğü `data/dictionary.jsonl`'dir. Excel yalnız aktarım
 Excel yönetim ekranının **Sözlük** sekmesinden (ya da `vsa dictionary import`) içe aktarılınca
 sözlüğün yerini alır; sözlük aynı şablonla dışa aktarılır (ADR-049, ADR-050).
 
-`data/`, `out/`, `*.xlsx`, `config/settings.yaml`, `config/llm_integrations.yaml` ve `.env`
-repoya girmez (kurum içi veri ve API anahtarları).
+Uygulamanın okuduğu ve yazdığı her şey `data/` klasöründedir (ADR-052): sözlük, terim sözlüğü
+(`terms.jsonl`), durak kelimeler (`stopwords.jsonl`), ayarlar, model bağlantıları, indeks,
+kayıtlar. Terim sözlüğü ve durak kelimeler yönetim ekranının **Kelimeler** sayfasından
+düzenlenir. `data/` repoya girmez (kurum içi veri ve API anahtarları); yalnız `terms.jsonl` ve
+`stopwords.jsonl` repodadır. `out/`, `*.xlsx` ve `.env` de repoya girmez.

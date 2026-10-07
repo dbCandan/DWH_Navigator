@@ -1,5 +1,5 @@
 #!/bin/sh
-# Konteyner girişi. İlk çalıştırmada /app/data/settings.yaml varsayılanlarla oluşturulur;
+# Konteyner girişi. İlk çalıştırmada ayarlar, terim sözlüğü ve durak kelimeler data/'ya yazılır;
 # "serve" indeksi gerekirse kurar (yoksa ya da sözlük dosyası değiştiyse) ve arayüzü açar.
 #   serve            arayüz (varsayılan)
 #   index            indeksi yeniden kur
@@ -10,10 +10,14 @@ set -eu
 cd /app
 SETTINGS=data/settings.yaml
 
-if [ ! -f "$SETTINGS" ]; then
-  cp docker/settings.yaml "$SETTINGS"
-  echo "İlk çalıştırma: varsayılan ayarlar $SETTINGS dosyasına yazıldı."
-fi
+# Uygulamanın her dosyası data/ altında (ADR-052); eksik olan varsayılanla başlar, var olana
+# dokunulmaz (ekipte düzenlenen terim sözlüğü ve durak kelimeler korunur).
+for f in settings.yaml terms.jsonl stopwords.jsonl; do
+  if [ ! -f "data/$f" ]; then
+    cp "defaults/$f" "data/$f"
+    echo "İlk çalıştırma: varsayılan data/$f yazıldı."
+  fi
+done
 
 cmd=${1:-serve}
 [ "$#" -gt 0 ] && shift

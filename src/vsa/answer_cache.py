@@ -45,6 +45,13 @@ NEGATIONS = frozenset({"yok", "degil", "haric", "harici", "disinda", "olmayan", 
                        "olmayanlar", "hic", "without", "except", "not", "no"})  # fmt: skip
 # Settings that do not change an answer: where files go, and this feature's own switches.
 _NEUTRAL = ("report", "cache", "index")
+# The stopword list as it shipped until ADR-052 (sorted, folded words); it stands for the old
+# file path, so answers kept until then stay valid. Any other list is its own digest.
+_SHIPPED_STOPWORDS = "250c0f8481b93f85"
+_OLD_LIST_PATHS = {
+    "term_dictionary": "config/term_dictionary.csv",
+    "stopwords": "config/stopwords_tr.txt",
+}
 _LLM_KEYS = ("model", "temperature", "reasoning_effort", "seed")
 
 
@@ -83,6 +90,7 @@ def fingerprint(
     dictionary_version: str,
     term_groups: list[TermGroup],
     top_n: int,
+    stopwords: frozenset[str] = frozenset(),
 ) -> str:
     """What an answer depends on besides the question; any change makes old answers
     unusable (they stay on disk until cleared)."""
@@ -92,6 +100,14 @@ def fingerprint(
     # Where the dictionary is read from does not shape an answer; its version (below) does.
     # The section is fixed as it was before ADR-050 so answers kept until then stay valid.
     raw["dictionary"] = {"path": "data/VeriSozlugu.xlsx", "sheet": "Kolonlar"}
+    # Likewise the word lists (ADR-052): their content counts, not where they are. Term groups
+    # are in "_" below; the stopwords take the old path's place while they are the shipped list.
+    words = json.dumps(sorted(stopwords), ensure_ascii=False)
+    digest = hashlib.sha256(words.encode("utf-8")).hexdigest()[:16]
+    raw["expansion"]["term_dictionary"] = _OLD_LIST_PATHS["term_dictionary"]
+    raw["expansion"]["stopwords"] = (
+        _OLD_LIST_PATHS["stopwords"] if digest == _SHIPPED_STOPWORDS else digest
+    )
     raw["llm"] = {k: raw["llm"][k] for k in _LLM_KEYS}
     raw["_"] = {
         "format": CACHE_FORMAT,

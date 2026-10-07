@@ -38,8 +38,11 @@ screen, CSRF and response headers: ``vsa.web.security``. TLS is the reverse prox
     GET  /api/admin/dictionary/template  the empty template
     POST /api/admin/dictionary/import    raw .xlsx body (X-Filename) in the template becomes
                                 the dictionary; the index is rebuilt
+    GET  /api/admin/words       term dictionary and stopwords as the screen edits them
+    POST /api/admin/words/terms     {"items": [{term, equivalents, domain, note}]} replaces
+    POST /api/admin/words/stopwords {"items": [{word, group}]} the list; index rebuilt (ADR-052)
     GET  /api/settings          pages, sections and current values (search, scoring, files)
-    POST /api/settings          {"values": {...}} validate, write config/settings.yaml, reload
+    POST /api/settings          {"values": {...}} validate, write data/settings.yaml, reload
     POST /api/reindex           rebuild the BM25 index with the saved settings
     GET  /api/llm               LLM integrations, which one holds the chat role
     GET  /api/llm/inventory     every integration's models, servers asked in parallel
@@ -70,8 +73,16 @@ import yaml
 
 from vsa import answer_cache, cancel, dictionary_store, trace
 from vsa import feedback as fb
-from vsa.config import DEFAULT_SETTINGS_PATH, load_settings
-from vsa.loader import load_term_list
+from vsa.config import load_settings
+from vsa.config import settings_path as resolve_settings_path
+from vsa.loader import (
+    check_stopwords,
+    check_terms,
+    load_term_list,
+    read_stopwords,
+    read_terms,
+    write_jsonl,
+)
 from vsa.models import AnalysisResult, ListItem, ListResult
 from vsa.pipeline import Engine
 from vsa.report.excel import report_path, write_ask_report, write_list_report
@@ -189,7 +200,7 @@ class App:
         self._log_lock = threading.Lock()
         self._hosts: dict[str, str] = {}
         self._running: dict[str, cancel.Token] = {}  # ask_id -> token of a running question
-        self.settings_path = settings_path or DEFAULT_SETTINGS_PATH
+        self.settings_path = resolve_settings_path(settings_path)
         self.reindex_pending: list[str] = []
         self.lock = threading.Lock()
         self.results: dict[str, AnalysisResult] = {}
@@ -713,7 +724,7 @@ class App:
         header = (
             "# DWH Navigator ayarları — Yönetim ekranından kaydedildi "
             f"({datetime.now().isoformat(timespec='seconds')}).\n"
-            "# Elle de düzenlenebilir; anlamları için: config/settings.example.yaml\n"
+            "# Elle de düzenlenebilir; anlamları için: docs/settings.example.yaml\n"
         )
         self.settings_path.write_text(
             header + yaml.safe_dump(tree, allow_unicode=True, sort_keys=False), encoding="utf-8"
@@ -769,6 +780,34 @@ class App:
         with tempfile.TemporaryDirectory() as tmp:
             path = dictionary_store.export(store, Path(tmp) / name)
             return name, path.read_bytes()
+
+    def _word_paths(self) -> dict[str, Path]:
+        e = self.engine.settings.expansion
+        return {"terms": Path(e.term_dictionary), "stopwords": Path(e.stopwords)}
+
+    def words_state(self) -> dict[str, Any]:
+        paths = self._word_paths()
+        return {
+            "terms": {"path": paths["terms"].as_posix(), "items": read_terms(paths["terms"])},
+            "stopwords": {
+                "path": paths["stopwords"].as_posix(),
+                "items": read_stopwords(paths["stopwords"]),
+            },
+        }
+
+    def words_save(self, kind: str, body: dict[str, Any]) -> dict[str, Any]:
+        """Replace one word list; both are in the index (BM25), so it is rebuilt at once.
+        Answers kept under the old term dictionary stop matching by themselves (ADR-035)."""
+        started = time.perf_counter()
+        rows = (check_terms if kind == "terms" else check_stopwords)(body.get("items"))
+        write_jsonl(self._word_paths()[kind], rows)
+        self.reindex()
+        return {
+            "ok": True,
+            "count": len(rows),
+            "elapsed_ms": round((time.perf_counter() - started) * 1000),
+            "state": self.words_state(),
+        }
 
     def reindex(self) -> dict[str, Any]:
         """Rebuild the BM25 index from the dictionary with the saved settings (~10 s)."""
@@ -1015,6 +1054,8 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                     self._json(app.analyses())
                 elif url.path == "/api/admin/dictionary":
                     self._json(app.dictionary_state())
+                elif url.path == "/api/admin/words":
+                    self._json(app.words_state())
                 elif url.path.startswith("/api/admin/dictionary/table/"):
                     self._json(app.dictionary_table(unquote(url.path.rsplit("/", 1)[-1])))
                 elif url.path in ("/api/admin/dictionary/export", "/api/admin/dictionary/template"):
@@ -1084,6 +1125,8 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                 elif url.path == "/api/admin/dictionary/import":
                     name = unquote(self.headers.get("X-Filename", "sozluk.xlsx"))
                     self._json(app.dictionary_import(raw, name))
+                elif url.path in ("/api/admin/words/terms", "/api/admin/words/stopwords"):
+                    self._json(app.words_save(url.path.rsplit("/", 1)[-1], _json_body(raw)))
                 elif url.path == "/api/list":
                     name = unquote(self.headers.get("X-Filename", "liste.xlsx"))
                     self._json(app.list_start(raw, name, self.client_address[0]))

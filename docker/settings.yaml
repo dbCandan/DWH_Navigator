@@ -1,6 +1,6 @@
 # DWH Navigator — konteyner ayarları. İlk çalıştırmada /app/data/settings.yaml olarak
-# kopyalanır; sonra Yönetim → Ayarlar ekranından ya da bu dosyadan değiştirilir.
-# Anlamları: config/settings.example.yaml (repoda). Yollar /app'e göredir.
+# kopyalanır; sonra yönetim ekranından ya da bu dosyadan değiştirilir.
+# Anlamları: docs/settings.example.yaml (repoda). Yollar /app'e göredir.
 # Değerler, 2026-10-07 ölçümünün (294 soru, ~%89,8) yapıldığı ayarlardır.
 
 dictionary:
@@ -28,8 +28,8 @@ expansion:
   enabled: true
   synonyms: true
   weight: 0.6
-  term_dictionary: config/term_dictionary.csv
-  stopwords: config/stopwords_tr.txt
+  term_dictionary: data/terms.jsonl
+  stopwords: data/stopwords.jsonl
 
 scoring:
   min_candidate_score: 0.5

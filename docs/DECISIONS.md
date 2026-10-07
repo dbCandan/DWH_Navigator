@@ -156,3 +156,23 @@ derin bağlantıdır (`#/analizler/<id>`, `#/sozluk/<DB.Şema.Obje>`). Sözlük 
 bir yerine bırakılarak da içe aktarılır. Sunucu API'si değişmedi; ekran tek dosya, dış kaynak yok,
 CSP satır içi stil özniteliğine izin vermez (stiller CSSOM ile). Ayrıca JSON istek gövdesi UTF-8
 değilse "İstek gövdesi UTF-8 değil" (400) döner.
+
+## ADR-052 — Uygulamanın her dosyası `data/`'da; terim sözlüğü ve durak kelimeler jsonl, ekrandan düzenlenir (2026-10-08)
+Yapılandırma verisi iki klasöre dağılmıştı (`config/`: ayarlar, model bağlantıları, terim sözlüğü
+CSV'si, durak kelime TXT'si; `data/`: sözlük ve çalışma dosyaları) ve konteynerde terim sözlüğü ile
+durak kelimeler imajın içinde, değiştirilemezdi. Artık tek klasör `data/` (konteynerde birim):
+`dictionary.jsonl`, `terms.jsonl` (satır başına bir grup: `term`, `equivalents` listesi, `domain`,
+`note`), `stopwords.jsonl` (satır başına bir kelime: `word`, `group` — eski dosyadaki bölüm
+başlıkları), `settings.yaml`, `llm_integrations.yaml`, `index/`, `cache/`, `logs/`. Dönüşümde içerik
+aynı kaldı (45 grup ve 124 katlanmış durak kelime birebir aynı; kayıtlı cevapların parmak izi
+değişmedi). Yönetim ekranına **Kelimeler** sayfası eklendi: terim tablosu (arama, yan panelde
+ekle/düzenle/sil) ve gruplu durak kelime etiketleri (ekle/çıkar, yeni grup); değişiklikler kartta
+birikir, "Kaydet ve indeksi kur" listeyi doğrular (boş terim, eşdeğersiz grup, iki kez geçen terim,
+çok kelimeli durak kelime reddedilir; Türkçe katlamada aynı olan durak kelimeler birleşir), atomik
+yazar, eskisini `.bak` olarak saklar ve indeksi kurar (ikisi de BM25'e gömülü). API:
+`GET /api/admin/words`, `POST /api/admin/words/terms|stopwords`. Repoda `data/` yine yok sayılır;
+yalnız `terms.jsonl` ve `stopwords.jsonl` izlenir (kurum verisi değil, kodla birlikte gelişir).
+İmaj ikisini ve varsayılan ayarları `/app/defaults`'a koyar; giriş betiği eksik olanı `data/`'ya
+kopyalar, var olana dokunmaz. Geçiş: `config/` kaldırıldı; `config/settings.yaml` taşınana kadar
+okunur, eski `.csv`/`.txt` yolları jsonl varsayılanına çevrilir; ayar örneği
+`docs/settings.example.yaml`.

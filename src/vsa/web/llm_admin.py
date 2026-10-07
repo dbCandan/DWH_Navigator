@@ -1,5 +1,5 @@
 """LLM integrations page of the admin screen (ADR-032): list, save, test, inventory,
-activate / deactivate. Integrations live in ``config/llm_integrations.yaml`` next to the
+activate / deactivate. Integrations live in ``data/llm_integrations.yaml`` next to the
 settings file; every change rewrites it and rebuilds the engine with the new connection.
 
 The API key never goes back to the browser; a blank key on save keeps the stored one.

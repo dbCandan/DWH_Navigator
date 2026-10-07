@@ -64,7 +64,7 @@ LEVEL_STYLE = {Level.HIGH: "green", Level.MEDIUM: "yellow", Level.LOW: "red"}
 VERDICT_STYLE = {Verdict.FOUND: "green", Verdict.PARTIAL: "yellow", Verdict.NOT_FOUND: "red"}
 
 SettingsOpt = typer.Option(
-    None, "--settings", help="Ayar dosyası (varsayılan config/settings.yaml)"
+    None, "--settings", help="Ayar dosyası (varsayılan data/settings.yaml)"
 )
 
 

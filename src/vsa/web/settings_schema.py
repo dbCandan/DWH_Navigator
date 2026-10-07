@@ -125,7 +125,7 @@ SECTIONS: list[dict[str, Any]] = [
                 "label": "Kurumsal terim sözlüğünü kullan",
                 "type": "bool",
                 "effect": NOW,
-                "help": "Katılım bankacılığı terimleri ve kısaltmalar (config/term_dictionary.csv).",
+                "help": "Katılım bankacılığı terimleri ve kısaltmalar (data/terms.jsonl).",
             },
             {
                 "key": "expansion.synonyms",
@@ -310,8 +310,8 @@ SECTIONS: list[dict[str, Any]] = [
         ],
     },
     {
-        # Shown on the admin screen's Sözlük view, next to the source switch (ADR-049), not
-        # on a settings page: "dictionary" is not one of PAGES.
+        # Shown on the admin screen's Sözlük view (ADR-049/052), not on a settings page:
+        # "dictionary" is not one of PAGES.
         "id": "dictionary",
         "page": "dictionary",
         "title": "Dosya ayarları",
@@ -330,7 +330,7 @@ SECTIONS: list[dict[str, Any]] = [
                 "type": "str",
                 "effect": NOW,
                 "advanced": True,
-                "help": "CSV: term, equivalents, domain, note.",
+                "help": "jsonl, satır başına bir grup: term, equivalents, domain, note.",
             },
             {
                 "key": "expansion.stopwords",
@@ -338,7 +338,7 @@ SECTIONS: list[dict[str, Any]] = [
                 "type": "str",
                 "effect": REINDEX,
                 "advanced": True,
-                "help": "Aramada yok sayılan kelimeler, satır başına bir tane.",
+                "help": "jsonl, satır başına bir kelime: word, group.",
             },
         ],
     },

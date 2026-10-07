@@ -63,6 +63,13 @@ def test_fingerprint_follows_what_shapes_an_answer(engine: Engine) -> None:
     assert fp != engine.cache_fingerprint(5)
     other = answer_cache.fingerprint(engine.settings, "other-version", GROUPS, 5)
     assert other != engine.cache_fingerprint(5)
+    # the word lists count by content, not by where they are kept (ADR-052)
+    fp = engine.cache_fingerprint(5)
+    engine.settings.expansion.stopwords = "somewhere/else.jsonl"
+    engine.settings.expansion.term_dictionary = "somewhere/terms.jsonl"
+    assert fp == engine.cache_fingerprint(5)
+    engine.resources.stopwords = engine.resources.stopwords | {"yeni"}
+    assert fp != engine.cache_fingerprint(5)
 
 
 def test_fingerprint_follows_the_prompt(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:

@@ -202,6 +202,7 @@ class Engine:
             self.dictionary.version,
             self.resources.term_groups,
             top_n,
+            self.resources.stopwords,
         )
 
     index_meta: dict[str, Any] = {}

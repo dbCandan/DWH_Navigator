@@ -350,6 +350,19 @@ td.desc { color: var(--muted); font-size: 12.5px; }
 .pi.on svg { color: var(--accent); }
 .palette-foot { display: flex; gap: 14px; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; }
 
+.chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.chip { display: inline-flex; align-items: center; font-size: 12.5px; border-radius: 7px; padding: 1px 2px 1px 8px; background: var(--surface-3); }
+.chip-x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1; padding: 1px 5px; border-radius: 5px; }
+.chip-x:hover { color: var(--bad); background: var(--bad-bg); }
+input.chip-in { width: 110px; padding: 2px 8px; font-size: 12.5px; border-style: dashed; }
+.sw-group { padding: 9px 0; border-top: 1px solid var(--line); }
+.sw-h { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; font-size: 13px; }
+.sw-new { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--line); }
+.sw-new input:nth-child(2) { flex: 1; min-width: 200px; }
+.wbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wbar .grow { flex: 1; }
+.fld textarea { width: 100%; border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; background: rgba(3, 5, 14, .5); color: inherit; font: inherit; font-size: 13px; outline: 0; resize: vertical; }
+.fld textarea:focus { border-color: var(--accent); }
 @media (max-width: 920px) {
   .app { grid-template-columns: minmax(0, 1fr); }
   .side { position: sticky; z-index: 20; height: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-right: 0; border-bottom: 1px solid var(--line); }
@@ -390,6 +403,7 @@ td.desc { color: var(--muted); font-size: 12.5px; }
     <section class="page" id="p-genel" aria-label="Genel bakış"></section>
     <section class="page" id="p-analizler" aria-label="Analizler"></section>
     <section class="page" id="p-sozluk" aria-label="Sözlük"></section>
+    <section class="page" id="p-kelimeler" aria-label="Kelimeler"></section>
     <section class="page" id="p-yapay-zeka" aria-label="Yapay zekâ"></section>
     <section class="page" id="p-arama" aria-label="Arama ve cevap"></section>
     <section class="page" id="p-bakim" aria-label="Bakım"></section>
@@ -549,6 +563,7 @@ const NAV = [
   { id: "analizler", label: "Analizler", icon: "chart", desc: "Sorulan sorular, cevaplar ve adım adım süreler" },
   { group: "Veri ve model" },
   { id: "sozluk", label: "Sözlük", icon: "book", desc: "Veri sözlüğü: içe/dışa aktarma ve tablolar" },
+  { id: "kelimeler", label: "Kelimeler", icon: "list", desc: "Terim sözlüğü ve durak kelimeler" },
   { id: "yapay-zeka", label: "Yapay zekâ", icon: "spark", desc: "Cevabı yazan sohbet modeli ve bağlantıları" },
   { group: "Ayarlar" },
   { id: "arama", label: "Arama ve cevap", icon: "sliders", desc: "Analistin okuduğu malzeme ve arama ipuçları" },
@@ -1176,6 +1191,141 @@ addEventListener("drop", e => {
   e.preventDefault(); dragDepth = 0; $("#dropzone").hidden = true;
   importDictionary(e.dataTransfer.files[0]);
 });
+
+// ======================================================================= page: words (term dictionary, stopwords; ADR-052)
+// Edits gather in each card and are written with one press; the index is rebuilt then.
+const copyTerms = items => items.map(t => ({ ...t, equivalents: [...t.equivalents] }));
+const Words = PAGES.kelimeler = {
+  saved: null, terms: [], stops: [], q: "",
+  async show() {
+    const p = $("#p-kelimeler");
+    if (!p.childElementCount) put(p, pageHead("Kelimeler", ""), skeleton());
+    if (!this.saved || !this.dirty()) this.adopt(await api("/api/admin/words"));
+    if (CURRENT === "kelimeler") this.render();
+  },
+  adopt(r) { this.saved = r; this.terms = copyTerms(r.terms.items); this.stops = r.stopwords.items.map(s => ({ ...s })); },
+  dirtyTerms() { return !!this.saved && JSON.stringify(this.terms) !== JSON.stringify(this.saved.terms.items); },
+  dirtyStops() { return !!this.saved && JSON.stringify(this.stops) !== JSON.stringify(this.saved.stopwords.items); },
+  dirty() { return this.dirtyTerms() || this.dirtyStops(); },
+  render() {
+    const scroll = scrollY;
+    put($("#p-kelimeler"),
+      pageHead("Kelimeler", "Terim sözlüğü sorguyu iş biriminin kelimeleriyle genişletir; durak kelimeler aramada yok sayılır."),
+      this.termCard(), this.stopCard());
+    this.termList();
+    scrollTo(0, scroll);
+    Shell.refresh();
+  },
+  pending(kind) {
+    if (!(kind === "terms" ? this.dirtyTerms() : this.dirtyStops())) return null;
+    const save = h("button", { class: "btn sm primary", type: "button" }, "Kaydet ve indeksi kur");
+    save.onclick = () => this.save(kind, save);
+    const undo = () => { if (kind === "terms") this.terms = copyTerms(this.saved.terms.items); else this.stops = this.saved.stopwords.items.map(s => ({ ...s })); this.render(); };
+    return h("div", { class: "msg warn wbar" }, h("span", {}, "Kaydedilmemiş değişiklik var; kaydedince arama indeksi yeniden kurulur (~10 sn)."),
+      h("span", { class: "grow" }), h("button", { class: "btn sm ghost", type: "button", onclick: undo }, "Geri al"), save);
+  },
+  async save(kind, btn) {
+    const done = busy(btn, "Kaydediliyor…");
+    try {
+      const r = await post("/api/admin/words/" + kind, { items: kind === "terms" ? this.terms : this.stops });
+      const terms = this.terms, stops = this.stops;  // the other list keeps its own edits
+      this.adopt(r.state);
+      if (kind === "terms") this.stops = stops; else this.terms = terms;
+      toast(kind === "terms" ? "Terim sözlüğü kaydedildi" : "Durak kelimeler kaydedildi", [`${num(r.count)} kayıt; indeks yeniden kuruldu (${msText(r.elapsed_ms)}).`]);
+      LOAD.settings().catch(() => {}); LOAD.dict().catch(() => {});
+      if (CURRENT === "kelimeler") this.render();
+    } catch (e) { toast("Kaydedilemedi", [e.message], true); done(); }
+  },
+  termCard() {
+    const search = h("input", { type: "search", value: this.q, placeholder: "Terim ya da eşdeğer ara…", "aria-label": "Terim ara", oninput: e => { this.q = e.target.value.trim(); this.termList(); } });
+    const intro = `Bir gruptaki her kelime ötekileri de aratır: “kredi” arayan “fon kullandırım”ı da bulur. Dosya: ${this.saved.terms.path}`;
+    return h("section", { class: "card" },
+      h("div", { class: "card-h" }, h("h2", { id: "w-title" }, "Terim sözlüğü"), search,
+        h("button", { class: "btn sm primary", type: "button", onclick: () => this.editTerm(-1) }, icon("plus"), "Yeni terim")),
+      h("p", { class: "intro", title: intro }, intro),
+      this.pending("terms"),
+      h("div", { class: "list-box", id: "w-terms" }));
+  },
+  termList() {
+    const box = $("#w-terms"); if (!box) return;
+    const needle = fold(this.q);
+    const rows = this.terms.map((t, i) => [t, i]).filter(([t]) => !needle || fold([t.term, ...t.equivalents, t.domain, t.note].join(" ")).includes(needle));
+    $("#w-title").textContent = rows.length === this.terms.length ? `Terim sözlüğü · ${num(rows.length)}` : `Terim sözlüğü · ${num(rows.length)} / ${num(this.terms.length)}`;
+    if (!rows.length) { put(box, h("p", { class: "empty" }, this.terms.length ? "Aramaya uyan terim yok." : "Terim yok; “Yeni terim” ile ekleyin.")); return; }
+    put(box, h("table", { class: "t" },
+      h("thead", {}, h("tr", {}, ["Terim", "Eşdeğerler", "Alan", "Not"].map(x => h("th", {}, x)))),
+      h("tbody", {}, rows.map(([t, i]) => {
+        const tr = h("tr", { class: "click", tabindex: "0" },
+          h("td", { class: "nm" }, t.term),
+          h("td", {}, h("div", { class: "chips" }, t.equivalents.map(e => h("span", { class: "tag" }, e)))),
+          h("td", {}, t.domain || "—"),
+          h("td", { class: "desc", title: t.note }, h("div", { class: "clamp" }, t.note || "—")));
+        tr.onclick = () => this.editTerm(i); tr.onkeydown = ev => { if (ev.key === "Enter") this.editTerm(i); };
+        return tr;
+      }))));
+  },
+  editTerm(i) {
+    const t = i >= 0 ? this.terms[i] : { term: "", equivalents: [], domain: "", note: "" };
+    const fld = (label, input, help) => h("label", { class: "fld" }, h("span", {}, label), input, help ? h("small", {}, help) : null);
+    const term = h("input", { type: "text", value: t.term, placeholder: "ör. fon kullandırım", autocomplete: "off" });
+    const eqs = h("textarea", { rows: 6, placeholder: "kredi\nfinansman\nloan", spellcheck: "false" });
+    eqs.value = t.equivalents.join("\n");
+    const domains = [...new Set(this.terms.map(x => x.domain).filter(Boolean))].sort((a, b) => a.localeCompare(b, "tr"));
+    const domain = h("input", { type: "text", value: t.domain, list: "dl-domain", placeholder: "ör. katılım", autocomplete: "off" });
+    const note = h("input", { type: "text", value: t.note, autocomplete: "off" });
+    const apply = h("button", { class: "btn primary", type: "button" }, i >= 0 ? "Uygula" : "Ekle");
+    apply.onclick = () => {
+      const rec = { term: term.value.trim(), equivalents: [...new Set(eqs.value.split(/[\n,|]/).map(s => s.trim()).filter(Boolean))], domain: domain.value.trim(), note: note.value.trim() };
+      if (!rec.term || !rec.equivalents.length) { toast("Eksik bilgi", ["Terim ve en az bir eşdeğer gerekli."], true); return; }
+      const clash = this.terms.findIndex((x, j) => j !== i && fold(x.term) === fold(rec.term));
+      if (clash >= 0) { toast("Bu terim zaten var", [`“${this.terms[clash].term}” — onu düzenleyin.`], true); return; }
+      if (i >= 0) this.terms[i] = rec; else this.terms.unshift(rec);
+      Drawer.close(); this.render();
+    };
+    const del = i >= 0 ? h("button", { class: "btn danger", type: "button", onclick: () => { this.terms.splice(i, 1); Drawer.close(); this.render(); } }, "Sil") : null;
+    Drawer.open({
+      title: i >= 0 ? t.term : "Yeni terim", sub: "Değişiklik kartta birikir; “Kaydet ve indeksi kur” ile geçerli olur.",
+      body: h("div", { class: "form" }, fld("Terim", term),
+        fld("Eşdeğerler", eqs, "Satır başına (ya da virgülle) bir kelime veya ifade; gruptaki her biri ötekileri de aratır."),
+        fld("Alan", domain, "Gruplamak için; ör. katılım, genel."), h("datalist", { id: "dl-domain" }, domains.map(d => h("option", { value: d }))),
+        fld("Not", note, "İsteğe bağlı açıklama.")),
+      foot: [del, h("div", { class: "grow" }), h("button", { class: "btn ghost", type: "button", onclick: () => Drawer.close() }, "Vazgeç"), apply],
+    });
+  },
+  addStops(group, input) {
+    const words = input.value.split(/[\s,]+/).map(w => w.trim()).filter(Boolean);
+    if (!words.length) return;
+    const have = new Set(this.stops.map(s => fold(s.word)));
+    const fresh = words.filter(w => !have.has(fold(w)) && have.add(fold(w)));
+    if (!fresh.length) { toast("Zaten listede", [words.join(", ")]); return; }
+    this.stops.push(...fresh.map(word => ({ word, group })));
+    this.render();
+    const again = $$("#p-kelimeler input[data-group]").find(x => x.dataset.group === group);
+    if (again) again.focus();
+  },
+  stopCard() {
+    const groups = new Map();
+    this.stops.forEach((s, i) => { if (!groups.has(s.group)) groups.set(s.group, []); groups.get(s.group).push([s, i]); });
+    const block = (g, items) => h("div", { class: "sw-group" },
+      h("div", { class: "sw-h" }, h("b", {}, g || "Grupsuz"), h("span", { class: "tag" }, num(items.length))),
+      h("div", { class: "chips" }, items.map(([s, i]) => h("span", { class: "chip" }, s.word,
+        h("button", { type: "button", class: "chip-x", title: "Çıkar", "aria-label": `“${s.word}” çıkar`, onclick: () => { this.stops.splice(i, 1); this.render(); } }, "×"))),
+        h("input", { type: "text", class: "chip-in", placeholder: "+ kelime", "aria-label": `${g || "Grupsuz"} grubuna kelime ekle`, "data-group": g,
+          onkeydown: e => { if (e.key === "Enter") { e.preventDefault(); this.addStops(g, e.target); } } })));
+    const ng = h("input", { type: "text", placeholder: "Yeni grup adı", "aria-label": "Yeni grup adı" });
+    const nw = h("input", { type: "text", placeholder: "kelimeler (boşluk ya da virgülle)", "aria-label": "Yeni grubun kelimeleri" });
+    const addGroup = () => { if (!ng.value.trim() || !nw.value.trim()) { toast("Grup adı ve en az bir kelime gerekli", [], true); return; } this.addStops(ng.value.trim(), nw); };
+    nw.onkeydown = e => { if (e.key === "Enter") addGroup(); };
+    const intro = `Aramada yok sayılan tek kelimeler; talep cümlesinin dolgusu kavram sanılmasın diye. Dosya: ${this.saved.stopwords.path}`;
+    return h("section", { class: "card" },
+      h("div", { class: "card-h" }, h("h2", {}, `Durak kelimeler · ${num(this.stops.length)}`)),
+      h("p", { class: "intro", title: intro }, intro),
+      this.pending("stopwords"),
+      [...groups].map(([g, items]) => block(g, items)),
+      h("div", { class: "sw-new" }, ng, nw, h("button", { class: "btn sm", type: "button", onclick: addGroup }, icon("plus"), "Grup ekle")));
+  },
+};
+addEventListener("beforeunload", e => { if (Words.dirty()) e.preventDefault(); });
 
 // ======================================================================= page: AI (LLM integrations)
 const AI = PAGES["yapay-zeka"] = {
