@@ -1,19 +1,18 @@
-"""Rule-based Turkish report texts: reason, caveat, usage, notes (HANDOVER §9.6).
+"""Rule-based Turkish report texts: reason, caveat, usage (HANDOVER §9.6).
 
-The rule engine's answer (no model, or the model failed); the analyst writes its own.
+Only for the rule engine's own answer (``Engine.rule_answer``), which is measured but
+never shown (ADR-038); the analyst writes its own texts.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 
 from vsa.expansion.query_expander import ExpandedQuery
-from vsa.features import contains_sequence
-from vsa.models import FlagKind, Level, Note, ObjectMatch, Verdict
+from vsa.models import Level, ObjectMatch, Verdict
 from vsa.scoring.aggregate import CUSTOMER_KEYS
 from vsa.scoring.rules import CAVEAT_DERIVATION
-from vsa.text.normalize import fold, tokenize
+from vsa.text.normalize import fold
 
 USAGE = {
     Level.HIGH: "Talebin doğrudan karşılığı; öncelikli kaynak olarak kullanılabilir.",
@@ -23,39 +22,6 @@ USAGE = {
     ),
     Level.LOW: "Yalnızca yardımcı kaynak veya türetme için değerlendirin.",
 }
-
-
-@dataclass(frozen=True, slots=True)
-class Clarification:
-    when: tuple[tuple[str, ...], ...]
-    unless: tuple[tuple[str, ...], ...]
-    question: str
-
-
-def compile_clarifications(
-    raw: Sequence[dict[str, object]], stopwords: frozenset[str]
-) -> list[Clarification]:
-    def phrases(key: str, item: dict[str, object]) -> tuple[tuple[str, ...], ...]:
-        values = item.get(key) or []
-        assert isinstance(values, list)
-        out = (tuple(tokenize(str(v), stopwords=stopwords, keep_compound=False)) for v in values)
-        return tuple(p for p in out if p)
-
-    return [
-        Clarification(phrases("when", it), phrases("unless", it), str(it["question"]).strip())
-        for it in raw
-    ]
-
-
-def clarification_notes(q: ExpandedQuery, rules: Sequence[Clarification]) -> list[Note]:
-    toks = tuple(q.tokens)
-    notes = []
-    for r in rules:
-        if any(contains_sequence(toks, p) for p in r.when) and not any(
-            contains_sequence(toks, p) for p in r.unless
-        ):
-            notes.append(Note("Netleştirme", "Talep netleştirilmeli", r.question))
-    return notes
 
 
 def explain(m: ObjectMatch, q: ExpandedQuery) -> None:
@@ -111,47 +77,6 @@ def explain(m: ObjectMatch, q: ExpandedQuery) -> None:
         caveats.append(f"{', '.join(cols)}: {text}" + ("" if text.endswith(".") else "."))
     m.caveat = "\n".join(caveats) if caveats else "-"
     m.usage = USAGE[m.level]
-
-
-def join_suggestions(
-    objects: Sequence[ObjectMatch],
-    q: ExpandedQuery,
-    keys_by_object: Mapping[str, Sequence[str]],
-) -> list[Note]:
-    """Two objects that together cover every concept and share a key (§8.3, early form)."""
-    content = [c.label for c in q.content_concepts]
-    if not content or not objects or not objects[0].missing:
-        return []
-    notes: list[Note] = []
-    for i, a in enumerate(objects[:5]):
-        for b in objects[i + 1 : 5]:
-            if set(a.covered) | set(b.covered) < set(content):
-                continue
-            b_keys = set(keys_by_object.get(b.object_key, ()))
-            keys = [k for k in keys_by_object.get(a.object_key, ()) if k in b_keys]
-            if not any(fold(k) in CUSTOMER_KEYS for k in keys):
-                continue
-            notes.append(
-                Note(
-                    "Kapsam",
-                    "Tablo birleştirme önerisi",
-                    f"{a.object_name} + {b.object_name} birlikte tüm kavramları karşılıyor; "
-                    f"{' + '.join(keys)} üzerinden birleştirilebilir. "
-                    "Ortak anahtarın aynı anlamı taşıdığı doğrulanmalıdır.",
-                )
-            )
-            return notes
-    return notes
-
-
-def quality_notes(objects: Sequence[ObjectMatch]) -> list[Note]:
-    notes: list[Note] = []
-    for m in objects:
-        for h in m.columns:
-            for f in h.col.flags:
-                if f.kind is FlagKind.CORRECTED:
-                    notes.append(Note("Veri kalitesi", f"{m.object_name}.{h.col.column}", f.text))
-    return notes
 
 
 def summary_sentence(verdict: Verdict, objects: Sequence[ObjectMatch]) -> str:

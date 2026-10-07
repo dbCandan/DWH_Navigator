@@ -2,62 +2,26 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
 import pytest
 
+from tests.conftest import write_xlsx
 from vsa.loader import (
     build_columns,
     load_dictionary,
     load_term_dictionary,
-    parse_description,
+    load_term_list,
+    object_profiles,
     split_synonyms,
 )
-from vsa.models import FlagKind
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class TestParseDescription:
-    def test_synonyms_extracted(self) -> None:
-        body, syn, flags = parse_description(
-            "Tekil müşteri numarası (CIF). "
-            "Eş anlamlılar/aranabilir terimler: müşteri no, CIF, customer id."
-        )
-        assert body == "Tekil müşteri numarası (CIF)."
-        assert syn == ("müşteri no", "CIF", "customer id")
-        assert flags == ()
-
-    @pytest.mark.parametrize("marker", ["Eş anlamlılar:", "aranabilir terimler:"])
-    def test_marker_variants(self, marker: str) -> None:
-        _, syn, _ = parse_description(f"Açıklama. {marker} a1, b2")
-        assert syn == ("a1", "b2")
-
-    def test_commas_inside_parentheses(self) -> None:
-        assert split_synonyms("aylık ciro (müşteri, kart bazlı), harcama.") == [
-            "aylık ciro (müşteri, kart bazlı)",
-            "harcama",
-        ]
-
-    def test_model_estimated_flag(self) -> None:
-        body, _, flags = parse_description("[MODEL TAHMİNİ — DOĞRULANMALI] Bayrak alanı.")
-        assert body == "Bayrak alanı."
-        assert [f.kind for f in flags] == [FlagKind.MODEL_ESTIMATED]
-
-    def test_corrected_flag_keeps_note(self) -> None:
-        _, _, flags = parse_description(
-            "[ORİJİNAL AÇIKLAMA HATALIYDI — DÜZELTİLDİ. Kaynakta 'X' yazıyordu.] Metin."
-        )
-        assert flags[0].kind is FlagKind.CORRECTED
-        assert "Kaynakta 'X'" in flags[0].text
-
-    def test_other_bracket_needs_verification(self) -> None:
-        _, _, flags = parse_description("[BU OBJEDE FARKLI ANLAMDA — DOĞRULANMALI] Metin.")
-        assert flags[0].kind is FlagKind.NEEDS_VERIFICATION
-
-    def test_mid_text_brackets_are_not_flags(self) -> None:
-        body, _, flags = parse_description("Oran = [(A − B) / B] olarak hesaplanır.")
-        assert flags == ()
-        assert "[(A − B) / B]" in body
+def test_commas_inside_parentheses() -> None:
+    assert split_synonyms("aylık ciro (müşteri, kart bazlı), harcama.") == [
+        "aylık ciro (müşteri, kart bazlı)",
+        "harcama",
+    ]
 
 
 class TestBuildColumns:
@@ -73,52 +37,35 @@ class TestBuildColumns:
         assert any("Tekrarlanan" in w for w in d.warnings)
         assert d.version.endswith("-4")
         assert len(d.version.split("-")[0]) == 12
-
-    def test_leading_flags(self, sample_dictionary_path: Path) -> None:
-        """Old-style leading [...] flags still parse (the current dictionary has none)."""
-        cols = {c.column: c for c in load_dictionary(sample_dictionary_path).columns}
-        assert cols["CustomerPartyId"].has_flag(FlagKind.MODEL_ESTIMATED)
-        assert cols["CustomerPartyId"].dataset_group is None
-        ratio = cols["CardLimitRatio"]
-        assert ratio.has_flag(FlagKind.CORRECTED)
-        assert ratio.has_pii
+        first = d.columns[0]
+        assert first.synonyms == (
+            "limit doluluk", "kart kullanım oranı", "utilization (kart bazlı)", "fullness",
+        )  # fmt: skip
+        assert first.dataset_group == "Kart"  # from the object sheet
+        assert d.columns[2].has_pii
 
     def test_correct_spelling_also_accepted(self) -> None:
-        df = pd.DataFrame(
-            [
-                {
-                    "DatabaseName": "DB",
-                    "SchemaName": "S",
-                    "ObjectName": "T",
-                    "ColumnName": "C",
-                    "ColumnDescription": "d",
-                }
-            ]
-        )
-        cols, _ = build_columns(df)
+        rows = [{"DatabaseName": "DB", "SchemaName": "S", "ObjectName": "T",
+                 "ColumnName": "C", "ColumnDescription": "d"}]  # fmt: skip
+        cols, _ = build_columns(rows)
         assert cols[0].key == "DB.S.T.C"
+        assert cols[0].synonyms == () and cols[0].dataset_group is None
 
-    def test_account_number_meaning_note_dropped(self) -> None:
-        """ADR-009: customer no == account no, so this note is noise."""
-        base = {"DatabaseName": "DB", "SchemaName": "S", "ObjectName": "T"}
-        df = pd.DataFrame(
-            [
-                {**base, "ColumnName": "AccountNumber",
-                 "ColumnDescription": "[BU OBJEDE FARKLI ANLAMDA — DOĞRULANMALI] Hesap no."},
-                {**base, "ColumnName": "BranchId",
-                 "ColumnDescription": "[BU OBJEDE FARKLI ANLAMDA — DOĞRULANMALI] Şube."},
-                {**base, "ColumnName": "DocumentApprovalAccountNumber",
-                 "ColumnDescription": "[BU OBJEDE HESAP NUMARASI ANLAMINDA] Hesap no."},
-            ]
-        )  # fmt: skip
-        cols, _ = build_columns(df)
-        assert cols[0].flags == ()
-        assert cols[1].has_flag(FlagKind.NEEDS_VERIFICATION)
-        assert cols[2].flags == ()
+    def test_description_is_kept_as_written(self) -> None:
+        """Every description counts as verified (ADR-037): brackets are text, not flags."""
+        rows = [{"DatabaseName": "DB", "SchemaName": "S", "ObjectName": "T", "ColumnName": "C",
+                 "ColumnDescription": " Oran = [(A − B) / B] olarak hesaplanır. "}]  # fmt: skip
+        (c,), _ = build_columns(rows)
+        assert c.description == "Oran = [(A − B) / B] olarak hesaplanır."
 
     def test_missing_required_column_raises(self) -> None:
         with pytest.raises(ValueError, match="zorunlu kolon"):
-            build_columns(pd.DataFrame([{"SchemaName": "S"}]))
+            build_columns([{"SchemaName": "S"}])
+
+    def test_missing_sheet_is_named(self, tmp_path: Path) -> None:
+        path = write_xlsx(tmp_path / "d.xlsx", {"Sayfa1": [{"a": 1}]})
+        with pytest.raises(ValueError, match="Kolonlar"):
+            load_dictionary(path)
 
 
 def test_term_dictionary_seed() -> None:
@@ -135,48 +82,48 @@ def test_real_dictionary(real_dictionary_path: Path) -> None:
     assert d.version.endswith("-11136")
     assert len(d.columns) == 11_136 and not d.warnings  # consolidated: no duplicate rows left
     assert len(d.object_keys) == 390
-    # every description counts as verified: no leading [...] flags in the column sheet
-    assert not any(c.raw_description.startswith("[") for c in d.columns)
-    assert not any(c.has_flag(FlagKind.MODEL_ESTIMATED) for c in d.columns)
     with_syn = sum(bool(c.synonyms) for c in d.columns)
     assert with_syn / len(d.columns) > 0.99
     assert all(c.object_name == c.object_name.strip() for c in d.columns)
     assert "EDWDM.CMP.vCardLimitFullness.CardLimitFullnessToday" in d.by_key()
 
 
-def test_synonyms_column_wins_over_trailing_part() -> None:
-    rows = pd.DataFrame({
-        "DatabaseName": ["EDWDM", "EDWDM"],
-        "SchemaName": ["CUS", "CUS"],
-        "ObjectName": ["vCustomer", "vCustomer"],
-        "ColumnName": ["CustomerName", "Period"],
-        "ColumnDescription": [
-            "Müşteri adı; KVKK kapsamında kişisel veri.",
-            "Periyot. Eş anlamlılar: dönem, ay",
-        ],
-        "Synonyms": ["müşteri adı, unvan (tüzel), name.", None],
-    })  # fmt: skip
+def test_synonyms_and_pii() -> None:
+    rows = [
+        {"DatabaseName": "EDWDM", "SchemaName": "CUS", "ObjectName": "vCustomer",
+         "ColumnName": "CustomerName",
+         "ColumnDescription": "Müşteri adı; KVKK kapsamında kişisel veri.",
+         "Synonyms": "müşteri adı, unvan (tüzel), name."},
+        {"DatabaseName": "EDWDM", "SchemaName": "CUS", "ObjectName": "vCustomer",
+         "ColumnName": "Period", "ColumnDescription": "Periyot.", "Synonyms": None},
+    ]  # fmt: skip
     cols, _ = build_columns(rows)
     assert cols[0].synonyms == ("müşteri adı", "unvan (tüzel)", "name")
     assert cols[0].description == "Müşteri adı; KVKK kapsamında kişisel veri." and cols[0].has_pii
-    assert cols[1].synonyms == ("dönem", "ay")  # empty cell: the old trailing form still works
+    assert cols[1].synonyms == () and not cols[1].has_pii
 
 
 def test_group_comes_from_object_sheet() -> None:
-    from vsa.loader import object_groups
-
-    rows = pd.DataFrame({
-        "DatabaseName": ["EDWDM", "EDWDM"],
-        "SchemaName": ["CMP", "CUS"],
-        "ObjectName": ["vCardLimitFullness", "vCustomer"],
-        "ColumnName": ["Period", "CustomerPartyId"],
-        "ColumnDescription": ["Periyot.", "Müşteri anahtarı."],
-    })  # fmt: skip
-    objects = pd.DataFrame(
-        {"ObjectKey": ["EDWDM.CMP.vCardLimitFullness"], "DatasetGroup": ["Kart"]}
-    )
-    cols, warnings = build_columns(rows, groups=object_groups(objects))
+    rows = [
+        {"DatabaseName": "EDWDM", "SchemaName": "CMP", "ObjectName": "vCardLimitFullness",
+         "ColumnName": "Period", "ColumnDescription": "Periyot."},
+        {"DatabaseName": "EDWDM", "SchemaName": "CUS", "ObjectName": "vCustomer",
+         "ColumnName": "CustomerPartyId", "ColumnDescription": "Müşteri anahtarı."},
+    ]  # fmt: skip
+    profiles = object_profiles([{"ObjectKey": "EDWDM.CMP.vCardLimitFullness",
+                                 "DatasetGroup": "Kart"}])  # fmt: skip
+    groups = {k: p.group for k, p in profiles.items()}
+    cols, warnings = build_columns(rows, groups=groups)
     assert [c.dataset_group for c in cols] == ["Kart", None] and not warnings
+
+
+def test_number_cells_read_as_text(tmp_path: Path) -> None:
+    path = write_xlsx(tmp_path / "d.xlsx", {"Kolonlar": [
+        {"DatabaseName": "DB", "SchemaName": "S", "ObjectName": "T", "ColumnName": 2024,
+         "ColumnDescription": 1.0},
+    ]})  # fmt: skip
+    (c,) = load_dictionary(path).columns
+    assert (c.column, c.description) == ("2024", "1")
 
 
 def test_term_list_parsing() -> None:
@@ -198,6 +145,20 @@ def test_term_list_parsing() -> None:
     assert r.notes == ["İlk satır (“kredi kartı”) başlık sayıldı ve aranmadı."]
     assert parse_term_sheet([["Terim"], ["x"]], ["Sayfa2"]).notes == [
         "Yalnız ilk sayfa okundu; şu sayfalardaki veriler alınmadı: Sayfa2."]  # fmt: skip
+
+
+def test_term_list_file(tmp_path: Path) -> None:
+    path = write_xlsx(tmp_path / "t.xlsx", {"Liste": [{"Terim": "kart"}, {"Terim": "mevduat"}],
+                                            "Boş": []})  # fmt: skip
+    r = load_term_list(path)
+    assert r.terms == ["kart", "mevduat"] and r.notes == []  # an empty sheet is not reported
+    bad = tmp_path / "x.xlsx"
+    bad.write_bytes(b"not a workbook")
+    with pytest.raises(ValueError, match="Excel"):
+        load_term_list(bad)
+    huge = write_xlsx(tmp_path / "h.xlsx", {"Liste": [{"Terim": f"t{i}"} for i in range(2500)]})
+    with pytest.raises(ValueError, match="çok fazla satır"):
+        load_term_list(huge)
 
 
 @pytest.mark.parametrize(

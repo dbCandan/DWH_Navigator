@@ -15,17 +15,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from vsa import cancel, trace
 from vsa.answer_cache import fingerprint, meaning_key, text_key
 from vsa.config import Settings
-from vsa.expansion.query_expander import (
-    Concept,
-    ExpandedQuery,
-    QueryExpander,
-    build_synonym_index,
-)
+from vsa.expansion.query_expander import Concept, ExpandedQuery, QueryExpander
 from vsa.features import ColumnFeatures, build_features
 from vsa.index.bm25 import BM25Index, weighted_fields
 from vsa.index.store import load_index, save_index
@@ -63,16 +56,7 @@ from vsa.models import (
 )
 from vsa.scoring.aggregate import ObjectColumns, aggregate
 from vsa.scoring.combine import level_for
-from vsa.scoring.explain import (
-    Clarification,
-    clarification_notes,
-    compile_clarifications,
-    explain,
-    join_suggestions,
-    key_columns,
-    quality_notes,
-    summary_sentence,
-)
+from vsa.scoring.explain import explain, key_columns, summary_sentence
 from vsa.scoring.rules import covers, score_column
 from vsa.scoring.topic import build_topic_index, topic_scores
 from vsa.text.normalize import fold, tokenize
@@ -80,7 +64,6 @@ from vsa.validate import validate
 
 log = logging.getLogger(__name__)
 
-CLARIFICATIONS_PATH = Path("config/clarifications.yaml")
 NEAR_MISS_COUNT = 3
 # Rule results shown to the analyst model as hints (ADR-029).
 ANALYST_HINT_TABLES = 15
@@ -97,7 +80,6 @@ class Resources:
 
     term_groups: list[TermGroup] = field(default_factory=list)
     stopwords: frozenset[str] = frozenset()
-    clarifications: list[dict[str, Any]] = field(default_factory=list)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> Resources:
@@ -105,10 +87,7 @@ class Resources:
         groups = load_term_dictionary(term_path) if term_path.exists() else []
         if not term_path.exists():
             log.warning("Terim sözlüğü bulunamadı: %s", term_path)
-        clar: list[dict[str, Any]] = []
-        if CLARIFICATIONS_PATH.exists():
-            clar = yaml.safe_load(CLARIFICATIONS_PATH.read_text(encoding="utf-8")) or []
-        return cls(groups, load_stopword_file(Path(settings.expansion.stopwords)), clar)
+        return cls(groups, load_stopword_file(Path(settings.expansion.stopwords)))
 
 
 @dataclass(slots=True)
@@ -182,9 +161,6 @@ class Engine:
             enabled=settings.expansion.enabled,
             use_synonyms=settings.expansion.synonyms,
         )
-        self.clarifications: list[Clarification] = compile_clarifications(
-            resources.clarifications, resources.stopwords
-        )
 
     # ------------------------------------------------------------------ construction
 
@@ -233,7 +209,6 @@ class Engine:
             Path(s.index.dir),
             self.dictionary,
             self.bm25,
-            build_synonym_index(self.features),
             {"field_weights": s.search.field_weights, "k1": s.search.bm25.k1, "b": s.search.bm25.b},
         )
 
@@ -411,7 +386,7 @@ class Engine:
         """Step 1 of the analyst flow and the material for step 2 (ADR-029): the model
         picks candidates from the catalog, family search adds tables it overlooked, and
         every readable table is laid out with its columns, descriptions and concept
-        evidence. None when the model fails (the caller falls back to rules)."""
+        evidence. None when the model fails (the caller reports why, ADR-038)."""
         a = self.settings.analyst
         catalog, checker = self._analyst_parts()
         with trace.span("Kural motoru ipuçları"):
@@ -591,7 +566,6 @@ class Engine:
         objects = [self.recommended_match(r, rules.get(r.object_key), relevance, warnings)
                    for r in answer.recommendations]  # fmt: skip
         notes = list(answer.notes)
-        notes += quality_notes(objects)
         dropped = answer.dropped + short.unknown_ids
         notes.append(
             Note(
@@ -640,7 +614,6 @@ class Engine:
             dropped_by_validation=dropped,
             elapsed_ms=round((time.perf_counter() - started) * 1000),
             llm_model=self.llm.model,
-            llm_unknown_ids=short.unknown_ids,
             interpretation=short.interpretation,
             design=answer.design,
             attention=answer.attention,
@@ -718,7 +691,6 @@ class Engine:
         hits = [
             ColumnHit(
                 col=c,
-                search_score=0.0,
                 rule_score=relevance.get(c.id, 0.0),
                 role="yapısal" if fold(c.column) in STRUCTURAL else "eşleşme",
                 caveats=column_caveats(c.column, [r.caveat, *warnings]),
@@ -788,8 +760,6 @@ class Engine:
                     "eklenmesi değerlendirilmeli.",
                 )
             )
-        notes += clarification_notes(q, self.clarifications)
-        notes += join_suggestions(top, q, self.join_keys)
         for m in near:
             notes.append(
                 Note(
@@ -798,7 +768,6 @@ class Engine:
                     f"Güven %{round(m.score * 100)} — {m.reason}",
                 )
             )
-        notes += quality_notes(top)
         notes.append(
             Note(
                 "Doğrulama",
@@ -844,7 +813,7 @@ _FEATURES_KEPT = 2  # the app's dictionary, and a restricted one during `vsa eva
 
 
 def _features_for(dictionary: Dictionary, stopwords: frozenset[str]) -> list[ColumnFeatures]:
-    key = hash((stopwords, tuple((c.id, c.key, c.description, c.synonyms, c.flags)
+    key = hash((stopwords, tuple((c.id, c.key, c.description, c.synonyms)
                                  for c in dictionary.columns)))  # fmt: skip
     if key not in _FEATURES:
         while len(_FEATURES) >= _FEATURES_KEPT:
@@ -867,7 +836,3 @@ def fallback_reason(error: str) -> str:
     if "connection" in text or "ulasilamadi" in text or "refused" in text:
         return "Model sunucusuna ulaşılamadı."
     return f"Model hatası: {error[:160]}" if error else "Model yanıt vermedi."
-
-
-def ranked_keys(engine: Engine, queries: Sequence[str]) -> list[list[str]]:
-    return [[m.object_key for m in engine.rank_objects(q)[0]] for q in queries]

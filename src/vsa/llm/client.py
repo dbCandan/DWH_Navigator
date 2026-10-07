@@ -1,9 +1,9 @@
-"""OpenAI-compatible client for a local model server (HANDOVER §10.3, ADR-008).
+"""OpenAI-compatible client for the in-house model servers (ADR-031).
 
-Works with LM Studio, vLLM, llama.cpp server and Ollama — anything serving
-``/v1/chat/completions``. Standard library only (closed network:
-no extra wheels). ``NullClient`` keeps the app working when no model is configured, and
-any LLM failure degrades to rule-based results instead of stopping a search.
+Works with vLLM, LM Studio, llama.cpp server and Ollama — anything serving
+``/v1/chat/completions``. Standard library only (closed network: no extra wheels).
+``NullClient`` stands in when no model is configured; a failed call returns None and
+``last_error`` says why, so the answer can name the reason (ADR-038).
 """
 
 from __future__ import annotations
@@ -28,9 +28,6 @@ _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 # Qwen emits <think>, Gemma via Google AI Studio <thought> — often with a draft JSON inside.
 _THINK = re.compile(r"<(think|thought)>.*?</\1>", re.DOTALL)
 
-
-RETRY_CODES = (429, 500, 502, 503, 504)
-_RETRY_DELAY = re.compile(r'"retryDelay"\s*:\s*"(\d+)')
 _ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 
 
@@ -107,15 +104,6 @@ class _HTTPSHandler(urllib.request.HTTPSHandler):
 _OPENER = urllib.request.build_opener(_HTTPHandler, _HTTPSHandler)
 
 
-def retry_delay(header: str | None, body: str, attempt: int) -> float:
-    """Seconds before retrying a rate-limited call: Retry-After, a ``retryDelay`` in the body,
-    else exponential backoff; capped at 90 s."""
-    for raw in (header, *_RETRY_DELAY.findall(body)[:1]):
-        if raw and str(raw).strip().isdigit():
-            return min(90.0, float(raw) + 1)
-    return float(min(90, 5 * 2**attempt))
-
-
 def _error_text(text: str) -> str:
     """The message of a JSON error body (OpenAI / Google style), else the text itself."""
     m = re.search(r'"(?:message|detail)"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
@@ -166,7 +154,7 @@ NO_MODEL = "Sohbet modeli bağlı değil"
 
 
 class NullClient:
-    """No model configured: every LLM step is skipped (ADR-008)."""
+    """No model configured: there is no analyst, so no answer (ADR-038)."""
 
     available = False
     model = ""
@@ -203,8 +191,8 @@ def parse_json_reply(text: str) -> dict[str, Any] | None:
 
 
 def client_from_settings(llm: Any) -> LLMClient:
-    """``LLMSettings`` -> client (ADR-008). ``llm.enabled`` governs the chat features
-    (the analyst). Nothing configured -> NullClient."""
+    """``LLMSettings`` -> client. ``llm.enabled`` governs the analyst; nothing
+    configured -> NullClient."""
     endpoint = str(getattr(llm, "endpoint", ""))
     if not (bool(getattr(llm, "enabled", False)) and endpoint):
         return NullClient()
@@ -228,7 +216,6 @@ class OpenAICompatibleClient:
         timeout: float = 120.0,
         api_key: str = "",
         reasoning_effort: str = "none",
-        retries: int = 0,
         seed: int | None = None,
     ) -> None:
         # "localhost" resolves to ::1 first on Windows; servers listening on IPv4 only
@@ -241,17 +228,11 @@ class OpenAICompatibleClient:
         # Reasoning models (Qwen3.x) otherwise spend the whole budget "thinking" and return
         # empty content; "none" makes them answer directly. Ignored by other models.
         self.reasoning_effort = reasoning_effort
-        # Hosted APIs (ADR-026): retry rate limits; some models (Gemma on Google AI Studio)
-        # take neither a system message nor a JSON schema — learned from the first 400.
-        self.retries = retries
         self.seed = seed if seed is not None and seed >= 0 else None
+        # Some servers take neither a system message nor a JSON schema for some models;
+        # learned from the first HTTP 400 (see ``_adapt``).
         self.system_role = True
         self.structured = True
-        self.calls = 0
-        self.failures = 0
-        self.seconds = 0.0
-        self.prompt_tokens = 0  # as reported by the server ("usage"), for hosted quotas
-        self.completion_tokens = 0
         self.last_error = ""  # why the last chat call failed, for the user (ADR-029 fallback)
 
     @property
@@ -269,29 +250,18 @@ class OpenAICompatibleClient:
         req = urllib.request.Request(
             f"{self.endpoint}{path}", data=json.dumps(body).encode("utf-8"), headers=headers
         )
-        for attempt in range(self.retries + 1):
+        cancel.check()
+        try:
+            with _OPENER.open(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
             cancel.check()
-            try:
-                with _OPENER.open(req, timeout=timeout) as resp:
-                    data = json.loads(resp.read().decode("utf-8"))
-                break
-            except urllib.error.HTTPError as exc:
-                cancel.check()
-                detail = exc.read().decode("utf-8", "replace")[:600]
-                if exc.code in RETRY_CODES and attempt < self.retries:
-                    wait = retry_delay(exc.headers.get("Retry-After"), detail, attempt)
-                    log.warning("HTTP %s, %.0f sn sonra yeniden denenecek", exc.code, wait)
-                    with trace.span(f"HTTP {exc.code} — bekleme", _error_text(detail),
-                                    trace.EVENT) as s:  # fmt: skip
-                        if s is not None:
-                            s.status = "warn"
-                        cancel.sleep(wait)
-                    continue
-                raise LLMError(f"{path}: HTTP {exc.code}: {detail}") from exc
-            except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError,
-                    http.client.HTTPException) as exc:  # fmt: skip
-                cancel.check()  # a cut connection is the stop, not a model failure
-                raise LLMError(f"{path}: {exc}") from exc
+            detail = exc.read().decode("utf-8", "replace")[:600]
+            raise LLMError(f"{path}: HTTP {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError,
+                http.client.HTTPException) as exc:  # fmt: skip
+            cancel.check()  # a cut connection is the stop, not a model failure
+            raise LLMError(f"{path}: {exc}") from exc
         if not isinstance(data, dict):
             raise LLMError(f"{path}: beklenmeyen yanıt")
         return data
@@ -402,13 +372,9 @@ class OpenAICompatibleClient:
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         attempt = adaptations = 0
         while attempt < 2:
-            started = time.perf_counter()
-            self.calls += 1
             try:
                 data = self._post("/chat/completions", build(messages), self.timeout)
                 usage = data.get("usage") or {}
-                self.prompt_tokens += int(usage.get("prompt_tokens") or 0)
-                self.completion_tokens += int(usage.get("completion_tokens") or 0)
                 trace.count(requests=1, prompt_tokens=int(usage.get("prompt_tokens") or 0),
                             completion_tokens=int(usage.get("completion_tokens") or 0))  # fmt: skip
                 content = str(data["choices"][0]["message"].get("content") or "")
@@ -416,17 +382,13 @@ class OpenAICompatibleClient:
                 if adaptations < 3 and self._adapt(str(exc)):
                     adaptations += 1
                     continue  # same attempt, without the feature the model refused
-                self.failures += 1
                 self.last_error = str(exc)
                 log.warning("LLM çağrısı başarısız: %s", exc)
                 return None
             except (KeyError, IndexError) as exc:
-                self.failures += 1
                 self.last_error = f"beklenmeyen yanıt ({exc})"
                 log.warning("LLM çağrısı başarısız: %s", exc)
                 return None
-            finally:
-                self.seconds += time.perf_counter() - started
             attempt += 1
             parsed = parse_json_reply(content)
             if parsed is not None:
@@ -441,7 +403,6 @@ class OpenAICompatibleClient:
                     "content": "Yanıtın geçerli JSON değil. SADECE şemaya uyan JSON döndür.",
                 },
             ]
-        self.failures += 1
         self.last_error = "model geçerli JSON üretmedi"
         return None
 

@@ -9,7 +9,7 @@ import pytest
 from openpyxl import load_workbook
 
 from vsa.config import Settings
-from vsa.evaluation import evaluate, load_golden
+from vsa.evaluation import evaluate, load_yaml_list
 from vsa.models import Verdict
 from vsa.pipeline import Engine
 from vsa.report.excel import report_path, slugify, write_ask_report
@@ -36,10 +36,10 @@ def test_m1_acceptance(engine: Engine) -> None:
     which needs a model; the LLM-free core is held to the M1 items."""
     golden = [
         item
-        for item in load_golden(ROOT / "tests" / "golden_set.yaml")
+        for item in load_yaml_list(ROOT / "tests" / "golden_set.yaml")
         if item.get("source") != "chat-analiz-2026-09-26"
     ]
-    report = evaluate(engine, golden, load_golden(ROOT / "tests" / "negative_set.yaml"))
+    report = evaluate(engine, golden, load_yaml_list(ROOT / "tests" / "negative_set.yaml"))
     asks = report.group("ask")
     assert asks
     misses = [i.id for i in asks if not i.rank or i.rank > 5]

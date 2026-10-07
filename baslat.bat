@@ -1,7 +1,7 @@
 @echo off
 rem DWH Navigator - tek tikla baslatma (Windows)
 rem 1) calisan eski sunuculari durdurur  2) indeks yoksa kurar  3) arayuzu tarayicida acar
-rem Modeller (sohbet + embedding) bu makinede degil, DGX Spark sunucularinda calisir;
+rem Sohbet modeli bu makinede degil, DGX Spark sunucularinda calisir;
 rem baglanti Yonetim -> Ayarlar -> Yapay zeka ekranindan yapilir (ADR-032).
 setlocal
 cd /d "%~dp0"

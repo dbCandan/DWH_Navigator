@@ -1,7 +1,7 @@
 """Stopping a running analysis: the web server hands each question a ``Token``; the
-"Durdur" button cancels it. Everything the question started stops with it — waits end at
-once, every open LLM connection is cut (which also stops generation on the model
-server), and ``Cancelled`` unwinds the pipeline without falling back to rules.
+"Durdur" button cancels it. Everything the question started stops with it — every open
+LLM connection is cut (which also stops generation on the model server), and
+``Cancelled`` unwinds the pipeline.
 
 Pure apart from closing the connections registered with it. Without a token (CLI, eval)
 every function is a no-op. Worker threads inherit the token through ``trace.carry``
@@ -81,11 +81,3 @@ def check() -> None:
     if t is not None and t.cancelled:
         raise Cancelled
 
-
-def sleep(seconds: float) -> None:
-    """``time.sleep`` that ends (raising ``Cancelled``) as soon as the analysis is stopped."""
-    t = _token.get()
-    if t is None:
-        threading.Event().wait(seconds)
-    elif t.wait(seconds):
-        raise Cancelled

@@ -19,7 +19,6 @@ objects. The app itself has no filter (ADR-001); this simulates a separate file.
 from __future__ import annotations
 
 import json
-import subprocess
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -119,11 +118,10 @@ def load_yaml_list(path: Path) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or []
-    assert isinstance(data, list)
+    if not isinstance(data, list):
+        raise ValueError(f"{path}: madde listesi bekleniyor")
     return data
 
-
-load_golden = load_yaml_list
 
 
 def restricted_engine(engine: Engine, exclude_object_prefix: str) -> Engine:
@@ -235,17 +233,27 @@ def evaluate(
 # --------------------------------------------------------------------------- history
 
 
-def _git_commit(cwd: Path) -> str:
-    try:
-        return subprocess.run(
-            ["git", "rev-parse", "--short", "HEAD"],
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
+def _git_commit(start: Path) -> str:
+    """Short hash of the checked-out commit, read from ``.git`` (no git process)."""
+    for root in (start.resolve(), *start.resolve().parents):
+        git = root / ".git"
+        if not git.is_dir():
+            continue
+        try:
+            head = (git / "HEAD").read_text(encoding="utf-8").strip()
+            if not head.startswith("ref: "):
+                return head[:7]
+            ref = head[5:]
+            loose = git / ref
+            if loose.is_file():
+                return loose.read_text(encoding="utf-8").strip()[:7]
+            for line in (git / "packed-refs").read_text(encoding="utf-8").splitlines():
+                if line.endswith(f" {ref}"):
+                    return line[:7]
+        except OSError:
+            pass
         return "-"
+    return "-"
 
 
 def append_history(

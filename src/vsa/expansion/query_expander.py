@@ -1,6 +1,6 @@
 """Query processing: concepts + expansion (HANDOVER §7).
 
-Two expansion sources in M1 (the LLM source arrives in M4):
+Two expansion sources:
 
 (a) corporate term dictionary — bidirectional groups; a matched group adds its other
     members to the BM25 query at reduced weight;
@@ -41,8 +41,8 @@ class ConceptKind(StrEnum):
     MEASURE = "ölçü"
 
 
-
 QUERY_ONLY_STOPWORDS = load_stopwords(["değil", "hariç", "dışında"])
+
 
 @dataclass(frozen=True, slots=True)
 class Concept:
@@ -132,10 +132,6 @@ class ExpandedQuery:
     @property
     def breakdown_values(self) -> list[Concept]:
         return [c for c in self.concepts if c.breakdown_value]
-
-    @property
-    def wants_breakdown(self) -> bool:
-        return any(c.kind is ConceptKind.BREAKDOWN for c in self.concepts)
 
 
 @dataclass(frozen=True, slots=True)

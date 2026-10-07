@@ -6,20 +6,6 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 
 
-class FlagKind(StrEnum):
-    """Quality flags attached to a dictionary column (HANDOVER §3.3, §3.4)."""
-
-    MODEL_ESTIMATED = "model_estimated"  # [MODEL TAHMİNİ — DOĞRULANMALI] -> note only
-    CORRECTED = "corrected"  # [ORİJİNAL AÇIKLAMA HATALIYDI — DÜZELTİLDİ ...] -> note only
-    NEEDS_VERIFICATION = "needs_verification"  # other leading [...] notes -> note only
-
-
-@dataclass(frozen=True, slots=True)
-class Flag:
-    kind: FlagKind
-    text: str
-
-
 @dataclass(frozen=True, slots=True)
 class DictColumn:
     """One row of the data dictionary: a single column of a table/view."""
@@ -29,10 +15,8 @@ class DictColumn:
     schema: str
     object_name: str
     column: str
-    description: str  # body text: leading flag and synonym section removed
-    raw_description: str
+    description: str
     synonyms: tuple[str, ...] = ()
-    flags: tuple[Flag, ...] = ()
     dataset_group: str | None = None
     has_pii: bool = False  # description mentions KVKK / kişisel veri (§18.5)
     role: str = ""  # Anahtar | Kod | Ad | Zaman | Ölçü | Bayrak | Metin
@@ -45,9 +29,6 @@ class DictColumn:
     @property
     def key(self) -> str:
         return f"{self.object_key}.{self.column}"
-
-    def has_flag(self, kind: FlagKind) -> bool:
-        return any(f.kind is kind for f in self.flags)
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,7 +96,6 @@ class ColumnHit:
     """A candidate column with its rule score and the signals that produced it."""
 
     col: DictColumn
-    search_score: float  # raw BM25
     rule_score: float
     raw_score: float = 0.0  # before clipping to [0, 1]; breaks ties between perfect matches
     signals: list[str] = field(default_factory=list)  # Turkish, human-readable
@@ -151,7 +131,7 @@ class ObjectMatch:
 
 @dataclass(slots=True)
 class Note:
-    scope: str  # Kapsam / Netleştirme / Yakın aday / Veri kalitesi / Doğrulama
+    scope: str  # Genel / Uyarı / İlgili / Yakın aday / Doğrulama …
     title: str
     text: str
 
@@ -173,7 +153,6 @@ class AnalysisResult:
     dropped_by_validation: int = 0
     elapsed_ms: int = 0
     llm_model: str = ""  # the analyst's chat model; "" for a rule answer
-    llm_unknown_ids: int = 0  # candidate ids the model made up (hallucination indicator)
     # Analyst flow (ADR-029): how the request was read, how to combine the suggested
     # tables ("Önerilen Kurgu") and the traps to watch ("Dikkat Edilmesi Gerekenler").
     interpretation: str = ""

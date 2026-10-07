@@ -3,13 +3,14 @@
 vsa index                      build the index from the dictionary
 vsa ask "…" [--top 5]          one question -> Excel report
 vsa ask -i terimler.xlsx       a term list, each term through the question flow -> one report
-vsa serve [--open]             web UI
+vsa serve [--open] [--auto-index]  web UI (--auto-index: build a missing / stale index first)
 vsa eval [--save]              golden-set metrics
 vsa feedback                   golden-set candidates from the UI's thumbs
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import sys
 import time
@@ -40,7 +41,7 @@ from vsa.evaluation import (
     read_history,
 )
 from vsa.feedback import export_candidates, load_feedback, summarize
-from vsa.index.store import IndexMissingError
+from vsa.index.store import INDEX_FORMAT, IndexMissingError
 from vsa.loader import file_version, load_term_list
 from vsa.models import AnalysisResult, Level, ListItem, ListResult, Verdict
 from vsa.pipeline import Engine
@@ -75,34 +76,41 @@ def _setup(settings_path: Path | None, verbose: bool = False) -> Settings:
     return load_settings(settings_path)
 
 
+def _index_problem(settings: Settings) -> str:
+    """Why the index does not fit the dictionary file; "" when it does."""
+    meta_path = Path(settings.index.dir) / "meta.json"
+    if not meta_path.is_file():
+        return "indeks yok"
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return "indeks okunamadı"
+    if meta.get("format") != INDEX_FORMAT:
+        return "indeks formatı eski"
+    source = Path(settings.dictionary.path)
+    indexed = str(meta.get("dictionary_version", ""))
+    rows = indexed.rsplit("-", 1)[-1]
+    if source.is_file() and rows.isdigit() and file_version(source, int(rows)) != indexed:
+        return "sözlük dosyası indeks kurulduktan sonra değişmiş"
+    return ""
+
+
 def _load_engine(settings: Settings) -> Engine:
     try:
         engine = Engine.from_index(settings)
     except IndexMissingError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(2) from exc
-    source = Path(settings.dictionary.path)
-    indexed = engine.index_meta.get("dictionary_version", "")
-    if source.exists() and indexed:
-        rows = int(indexed.rsplit("-", 1)[-1])
-        if file_version(source, rows) != indexed:
-            console.print(
-                "[yellow]Uyarı: sözlük dosyası indeks kurulduktan sonra değişmiş. "
-                "`vsa index` ile yeniden kurun.[/yellow]"
-            )
+    problem = _index_problem(settings)
+    if problem:
+        console.print(f"[yellow]Uyarı: {problem}. `vsa index` ile yeniden kurun.[/yellow]")
     return engine
 
 
-@app.command()
-def index(
-    dictionary: Path | None = typer.Option(None, "--dictionary", "-d", help="Sözlük .xlsx"),
-    settings_path: Path | None = SettingsOpt,
-    verbose: bool = typer.Option(False, "--verbose", "-v"),
-) -> None:
-    """Sözlükten arama indeksini kurar."""
-    settings = _setup(settings_path, verbose)
-    if dictionary:
-        settings.dictionary.path = str(dictionary)
+def _build_index(settings: Settings) -> None:
+    if not Path(settings.dictionary.path).is_file():
+        console.print(f"[red]Sözlük dosyası bulunamadı: {settings.dictionary.path}[/red]")
+        raise typer.Exit(2)
     with console.status("Sözlük okunuyor ve indeks kuruluyor…"):
         engine = Engine.from_dictionary_file(settings)
         meta = engine.save()
@@ -119,21 +127,40 @@ def index(
 
 
 @app.command()
+def index(
+    dictionary: Path | None = typer.Option(None, "--dictionary", "-d", help="Sözlük .xlsx"),
+    settings_path: Path | None = SettingsOpt,
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+) -> None:
+    """Sözlükten arama indeksini kurar."""
+    settings = _setup(settings_path, verbose)
+    if dictionary:
+        settings.dictionary.path = str(dictionary)
+    _build_index(settings)
+
+
+@app.command()
 def serve(
     host: str = typer.Option("127.0.0.1", "--host", help="Dinlenecek adres"),
     port: int = typer.Option(8765, "--port", "-p"),
     open_browser: bool = typer.Option(False, "--open", help="Tarayıcıda aç"),
+    auto_index: bool = typer.Option(
+        False, "--auto-index", help="İndeks yoksa ya da sözlük değiştiyse önce indeksi kur"
+    ),
     settings_path: Path | None = SettingsOpt,
     verbose: bool = typer.Option(False, "--verbose", "-v"),
 ) -> None:
     """Web arayüzünü başlatır (M6)."""
     settings = _setup(settings_path, verbose)
+    if auto_index and (problem := _index_problem(settings)):
+        console.print(f"[yellow]{problem}: indeks kuruluyor[/yellow]")
+        _build_index(settings)
     engine = _load_engine(settings)
     url = f"http://{host}:{port}"
     console.print(
         Panel.fit(
             f"[bold]{url}[/bold]\n"
-            f"Model: {engine.llm.model if engine.analyst_enabled else 'yok (kural motoru)'}\n"
+            f"Model: {engine.llm.model if engine.analyst_enabled else 'bağlı değil'}\n"
             "Durdurmak için Ctrl+C",
             title="DWH Navigator",
             border_style="green",
@@ -381,9 +408,5 @@ def feedback(
     )
 
 
-def main() -> None:  # pragma: no cover
-    app()
-
-
 if __name__ == "__main__":  # pragma: no cover
-    main()
+    app()

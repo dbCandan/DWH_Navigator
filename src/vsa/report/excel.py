@@ -63,6 +63,18 @@ def report_path(out_dir: Path, mode: str, query: str, now: datetime | None = Non
     return out_dir / f"VSA_{mode}_{slugify(query)}_{stamp}.xlsx"
 
 
+def _text(cell: Cell) -> Cell:
+    """Keep a text that starts with "=" a text: openpyxl would write it as a formula, and a
+    question or a model's sentence must never run in Excel (formula injection)."""
+    if cell.data_type == "f":
+        cell.data_type = "s"
+    return cell
+
+
+def _put(ws: Worksheet, row: int, column: int, value: CellValue) -> Cell:
+    return _text(ws.cell(row=row, column=column, value=value))
+
+
 def _table(
     ws: Worksheet,
     start_row: int,
@@ -72,12 +84,12 @@ def _table(
 ) -> int:
     """Write a styled table; returns the next free row."""
     for c, h in enumerate(headers, 1):
-        cell = ws.cell(row=start_row, column=c, value=h)
+        cell = _put(ws, start_row, c, h)
         cell.fill, cell.font, cell.border = HEADER_FILL, HEADER_FONT, BORDER
         cell.alignment = Alignment(wrap_text=True, vertical="center")
     for r, row in enumerate(rows, start_row + 1):
         for c, value in enumerate(row, 1):
-            cell = ws.cell(row=r, column=c, value=value)
+            cell = _put(ws, r, c, value)
             cell.font, cell.border, cell.alignment = BODY_FONT, BORDER, WRAP
     if widths:
         for c, w in enumerate(widths, 1):
@@ -95,7 +107,7 @@ def _finish_sheet(ws: Worksheet, header_row: int, n_cols: int, n_rows: int) -> N
 
 def _merged(ws: Worksheet, row: int, first: int, last: int, value: CellValue) -> Cell:
     """Value across merged cells ``first..last`` of a row, wrapped."""
-    cell = ws.cell(row=row, column=first, value=value)
+    cell = _put(ws, row, first, value)
     cell.font, cell.alignment = BODY_FONT, WRAP
     if last > first:
         ws.merge_cells(start_row=row, start_column=first, end_row=row, end_column=last)
@@ -209,8 +221,8 @@ def _suggestions(ws: Worksheet, r: AnalysisResult) -> None:
     ]  # fmt: skip
     ws["A1"] = f"Öneriler – Güven Skoruna Göre İlk {max(len(r.objects), 1)}"
     ws["A1"].font = TITLE_FONT
-    ws["A2"], ws["B2"] = "Talep:", r.query
-    ws["A2"].font, ws["B2"].font = BOLD, BODY_FONT
+    ws["A2"] = "Talep:"
+    ws["A2"].font, _put(ws, 2, 2, r.query).font = BOLD, BODY_FONT
     rows: list[list[CellValue]] = [
         [
             i,
@@ -243,7 +255,8 @@ def _suggestions(ws: Worksheet, r: AnalysisResult) -> None:
 def write_ask_report(result: AnalysisResult, path: Path) -> Path:
     wb = Workbook()
     ws = wb.active
-    assert ws is not None
+    if not isinstance(ws, Worksheet):
+        raise TypeError("yeni çalışma kitabının sayfası yok")
     _summary(ws, result)
     _suggestions(wb.create_sheet("Öneriler"), result)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -317,10 +330,7 @@ def _list_summary(ws: Worksheet, r: ListResult, first_rows: dict[int, int]) -> N
     for item in r.items:
         res = item.result
         best = res.objects[0] if res and res.objects else None
-        if res is None:
-            method = "-"
-        else:
-            method = "Analist" if res.analyst else "Yapılamadı" if res.fallback else "Kural"
+        method = "-" if res is None else "Analist" if res.analyst else "Yapılamadı"
         rows.append([
             item.index, item.term, _item_state(item, r.cancelled),
             best.object_key if best else "-",
@@ -378,7 +388,8 @@ def write_list_report(result: ListResult, path: Path) -> Path:
     sheets with a term column, filterable (ADR-033)."""
     wb = Workbook()
     ws = wb.active
-    assert ws is not None
+    if not isinstance(ws, Worksheet):
+        raise TypeError("yeni çalışma kitabının sayfası yok")
     first_rows = _list_suggestions(wb.create_sheet("Öneriler"), result)
     _list_summary(ws, result, first_rows)
     path.parent.mkdir(parents=True, exist_ok=True)

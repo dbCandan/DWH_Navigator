@@ -1,4 +1,4 @@
-"""OpenAI-compatible client: retries, feature adaptation, seed, health."""
+"""OpenAI-compatible client: feature adaptation, seed, health."""
 
 from __future__ import annotations
 
@@ -13,17 +13,9 @@ from vsa.llm.client import (
     NullClient,
     OpenAICompatibleClient,
     client_from_settings,
-    retry_delay,
 )
 
 SCHEMA = {"type": "object", "properties": {"ok": {"type": "boolean"}}}
-
-
-def test_retry_delay_sources() -> None:
-    assert retry_delay("7", "", 0) == 8
-    assert retry_delay(None, '{"retryDelay": "31s"}', 0) == 32
-    assert retry_delay(None, "", 2) == 20  # 5 * 2^2
-    assert retry_delay(None, "", 9) == 90  # capped
 
 
 class FakeServer:
@@ -70,7 +62,6 @@ def test_client_keeps_features_the_model_accepts(monkeypatch: pytest.MonkeyPatch
     body = server.bodies[0]
     assert "response_format" in body and body["messages"][0]["role"] == "system"
     assert len(server.bodies) == 1
-    assert (c.calls, c.prompt_tokens, c.completion_tokens) == (1, 100, 7)  # usage counter
 
 
 def test_client_gives_up_on_other_errors(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -79,7 +70,7 @@ def test_client_gives_up_on_other_errors(monkeypatch: pytest.MonkeyPatch) -> Non
 
     c = OpenAICompatibleClient("https://example.test/v1", "m")
     monkeypatch.setattr(c, "_post", fail)
-    assert c.chat_json("s", "u", SCHEMA) is None and c.failures == 1
+    assert c.chat_json("s", "u", SCHEMA) is None and "401" in c.last_error
 
 
 def test_seed_is_sent_and_dropped_if_refused(monkeypatch: pytest.MonkeyPatch) -> None:

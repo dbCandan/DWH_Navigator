@@ -38,7 +38,7 @@ def test_no_breakdown_word_no_values() -> None:
 def _obj(*names: str) -> ObjectColumns:
     stop = load_stopwords([])
     feats = tuple(
-        build_features(DictColumn(i, "DB", "S", "vX", n, "Ürün adı.", "Ürün adı."), stop)
+        build_features(DictColumn(i, "DB", "S", "vX", n, "Ürün adı."), stop)
         for i, n in enumerate(names)
     )
     return ObjectColumns("DB.S.vX", feats)

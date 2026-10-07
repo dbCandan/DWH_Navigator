@@ -13,9 +13,16 @@ from vsa import cancel, trace
 from vsa.llm.client import LLMError, OpenAICompatibleClient
 
 
+def wait(seconds: float) -> None:
+    """A long step that ends (raising ``Cancelled``) as soon as the analysis is stopped."""
+    token = cancel.current()
+    if token is not None and token.wait(seconds):
+        raise cancel.Cancelled
+
+
 def test_no_token_is_a_no_op() -> None:
     cancel.check()
-    cancel.sleep(0)
+    wait(0)
     assert cancel.current() is None
 
 
@@ -28,7 +35,7 @@ def test_token_runs_hooks_and_ends_waits() -> None:
     threading.Timer(0.1, token.cancel).start()
     started = time.perf_counter()
     with cancel.using(token), pytest.raises(cancel.Cancelled):
-        cancel.sleep(10)
+        wait(10)
     assert time.perf_counter() - started < 2
     assert ran == ["a"]
     token.on_cancel(lambda: ran.append("late"))  # already stopped: runs at once

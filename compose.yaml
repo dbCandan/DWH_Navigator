@@ -1,0 +1,26 @@
+# DWH Navigator — tek komutla kurulum:  docker compose up -d
+# Önce: data/VeriSozlugu.xlsx yerinde olsun, .env dosyasında VSA_ADMIN_PASSWORD tanımlı olsun
+# (ayrıntı: docs/KURULUM.md).
+services:
+  vsa:
+    image: dwh-navigator:0.1.0
+    build: .
+    container_name: dwh-navigator
+    restart: unless-stopped
+    ports:
+      - "8765:8765"            # TLS'i önündeki ters vekil (reverse proxy) sağlar
+    environment:
+      VSA_ADMIN_PASSWORD: ${VSA_ADMIN_PASSWORD:?VSA_ADMIN_PASSWORD .env dosyasında tanımlanmalı}
+    volumes:
+      - ./data:/app/data       # sözlük, indeks, ayarlar, model bağlantıları, kayıtlar, raporlar
+    read_only: true            # yalnız /app/data ve /tmp yazılabilir
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    pids_limit: 256
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "5" }

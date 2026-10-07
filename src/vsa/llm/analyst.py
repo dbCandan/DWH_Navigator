@@ -12,8 +12,8 @@ Rules cannot tell those apart reliably, a strong model reading the catalog can. 
    Recommendations are candidate ids; columns must exist in their table; any sentence
    naming a table or column the dictionary does not have is removed and counted.
 
-The rule pipeline stays: its ranking is shown to the model as hints, and it answers
-alone when the model is off or fails (ADR-008). No file I/O here.
+The rule pipeline stays: its ranking is shown to the model as hints and its dictionary
+is the validator. Without a working model there is no answer (ADR-038). No file I/O here.
 """
 
 from __future__ import annotations
@@ -39,16 +39,11 @@ from vsa.llm.analyst_prompts import (
     shortlist_user,
 )
 from vsa.llm.client import LLMClient
-from vsa.models import DictColumn, FlagKind, Note, ObjectProfile, Verdict
+from vsa.models import DictColumn, Note, ObjectProfile, Verdict
 from vsa.text.normalize import fold
 
 log = logging.getLogger(__name__)
 
-FLAG_TAG = {
-    FlagKind.MODEL_ESTIMATED: "MODEL TAHMİNİ — DOĞRULANMALI",
-    FlagKind.CORRECTED: "ORİJİNAL AÇIKLAMA HATALIYDI — DÜZELTİLDİ",
-    FlagKind.NEEDS_VERIFICATION: "DOĞRULANMALI",
-}
 # Columns every recommendation should be able to carry: record keys and time axes.
 STRUCTURAL = frozenset(
     {
@@ -293,14 +288,12 @@ def _clip(text: str, limit: int) -> str:
 def column_line(col: DictColumn, desc_chars: int, detail: bool = True) -> str:
     """One column for the model: ``- Name [Rol]: summary`` when compact, the (clipped)
     description when ``detail`` is asked for or the dictionary has no summary."""
-    tags = [FLAG_TAG[f.kind] for f in col.flags if f.kind in FLAG_TAG]
-    tag = f" [{'; '.join(tags)}]" if tags else ""
     kvkk = " [KVKK]" if col.has_pii else ""
     role = f" [{col.role}]" if col.role else ""
     if not detail and col.summary:
-        return f"- {col.column}{role}{tag}{kvkk}: {col.summary}"
+        return f"- {col.column}{role}{kvkk}: {col.summary}"
     text = _clip(col.description, desc_chars) or col.summary or "(açıklama yok)"
-    return f"- {col.column}{role}{tag}{kvkk}: {text}"
+    return f"- {col.column}{role}{kvkk}: {text}"
 
 
 def term_matcher(terms: Iterable[str]) -> Callable[[DictColumn], int]:

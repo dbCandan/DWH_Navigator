@@ -1,7 +1,7 @@
 """Data dictionary, term dictionary and stopword loading (HANDOVER §3).
 
 This is one of the few modules allowed to do I/O. Parsing helpers are pure and
-tested on their own.
+tested on their own. Workbooks are read with openpyxl (read-only, values only).
 """
 
 from __future__ import annotations
@@ -10,26 +10,20 @@ import csv
 import hashlib
 import logging
 import re
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-import pandas as pd
+from openpyxl import load_workbook
 
-from vsa.models import DictColumn, Dictionary, Flag, FlagKind, ObjectProfile, TermGroup
+from vsa.models import DictColumn, Dictionary, ObjectProfile, TermGroup
 from vsa.text.normalize import fold, load_stopwords
 
 log = logging.getLogger(__name__)
 
-# Accepts "Eş anlamlılar/aranabilir terimler:", "Eş anlamlılar:", "aranabilir terimler:".
-_SYNONYM_MARKER = re.compile(
-    r"(?:eş\s+anlamlılar\s*/\s*aranabilir\s+terimler|eş\s+anlamlılar|aranabilir\s+terimler)\s*:",
-    re.IGNORECASE,
-)
-_LEADING_FLAG = re.compile(r"^\s*\[([^\]]*)\]\s*")
 _PII_MARKER = re.compile(r"kvkk|kişisel\s+veri", re.IGNORECASE)
 
-# Column-name aliases: the source file spells the first one "DAtabaseName".
+# Column-name aliases, matched case-insensitively (an older source spelt "DAtabaseName").
 _REQUIRED = {
     "database": ("databasename",),
     "schema": ("schemaname",),
@@ -38,12 +32,12 @@ _REQUIRED = {
     "description": ("columndescription",),
 }
 _OPTIONAL = {
-    "dataset_group": ("datasetgroup",),
     "synonyms": ("synonyms", "esanlamlilar"),
     "role": ("role", "rol"),
     "summary": ("summary", "ozet"),
 }
 
+Row = Mapping[str, object]
 
 
 # --------------------------------------------------------------------------- parsing
@@ -69,46 +63,10 @@ def split_synonyms(text: str) -> list[str]:
     return [s for s in cleaned if s]
 
 
-def classify_flag(text: str) -> FlagKind:
-    head = fold(text)
-    if head.startswith("model tahmini"):
-        return FlagKind.MODEL_ESTIMATED
-    if head.startswith("orijinal aciklama hataliydi"):
-        return FlagKind.CORRECTED
-    return FlagKind.NEEDS_VERIFICATION
-
-
-def parse_description(raw: str) -> tuple[str, tuple[str, ...], tuple[Flag, ...]]:
-    """Split a raw description into (body, synonyms, leading flags)."""
-    text = raw.strip()
-    flags: list[Flag] = []
-    while m := _LEADING_FLAG.match(text):
-        flag_text = m.group(1).strip()
-        flags.append(Flag(classify_flag(flag_text), flag_text))
-        text = text[m.end() :]
-
-    synonyms: tuple[str, ...] = ()
-    marker = _SYNONYM_MARKER.search(text)
-    if marker:
-        synonyms = tuple(split_synonyms(text[marker.end() :]))
-        text = text[: marker.start()]
-    return text.strip(), synonyms, tuple(flags)
-
-
-def _is_account_number_note(column: str, flag: Flag) -> bool:
-    """ADR-009: customer number and account number are the same concept, so the
-    "different meaning in this object" notes on AccountNumber columns are noise."""
-    if flag.kind is not FlagKind.NEEDS_VERIFICATION:
-        return False
-    if not fold(column).endswith("accountnumber"):
-        return False
-    text = fold(flag.text)
-    return "farkli anlamda" in text or "hesap numarasi" in text
-
-
-def _resolve_columns(df_columns: Iterable[str]) -> dict[str, str]:
-    """Map logical names -> actual DataFrame column names, case-insensitively."""
-    lookup = {fold(str(c)).replace(" ", ""): str(c) for c in df_columns}
+def _resolve_columns(headers: Iterable[str]) -> dict[str, str]:
+    """Map logical names -> actual header names, case-insensitively."""
+    headers = list(headers)
+    lookup = {fold(str(c)).replace(" ", ""): str(c) for c in headers}
     resolved: dict[str, str] = {}
     for logical, aliases in {**_REQUIRED, **_OPTIONAL}.items():
         for alias in aliases:
@@ -119,14 +77,16 @@ def _resolve_columns(df_columns: Iterable[str]) -> dict[str, str]:
             if logical in _REQUIRED:
                 raise ValueError(
                     f"Sözlükte zorunlu kolon bulunamadı: {aliases[0]} "
-                    f"(mevcut: {', '.join(map(str, df_columns))})"
+                    f"(mevcut: {', '.join(map(str, headers))})"
                 )
     return resolved
 
 
 def _cell(value: object) -> str:
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None or (isinstance(value, float) and value != value):  # empty / NaN
         return ""
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)  # a number cell reads "5", not "5.0"
     return str(value).strip()
 
 
@@ -137,10 +97,10 @@ def _names(cell: object) -> list[str]:
     return [n.strip() for n in _cell(cell).split(",") if n.strip()]
 
 
-def object_profiles(objects: pd.DataFrame) -> dict[str, ObjectProfile]:
+def object_profiles(objects: Iterable[Row]) -> dict[str, ObjectProfile]:
     """The object sheet as profiles keyed by ``DB.Schema.Object``. Pure."""
     out: dict[str, ObjectProfile] = {}
-    for rec in objects.to_dict("records"):
+    for rec in objects:
         key = _cell(rec.get("ObjectKey")) or ".".join(
             _cell(rec.get(c)) for c in ("DatabaseName", "SchemaName", "ObjectName")
         )
@@ -158,26 +118,21 @@ def object_profiles(objects: pd.DataFrame) -> dict[str, ObjectProfile]:
     return out
 
 
-def object_groups(objects: pd.DataFrame) -> dict[str, str]:
-    """DatasetGroup per ``DB.Schema.Object`` from the object sheet. Pure."""
-    return {k: p.group for k, p in object_profiles(objects).items() if p.group}
-
-
 def build_columns(
-    rows: pd.DataFrame, groups: Mapping[str, str] | None = None
+    rows: Sequence[Row], groups: Mapping[str, str] | None = None
 ) -> tuple[list[DictColumn], list[str]]:
     """Turn dictionary rows into DictColumns. Pure. A column's DatasetGroup comes from
-    its own row when the column sheet has one, otherwise from its object (``groups``,
-    read from the object sheet)."""
-    names = _resolve_columns(rows.columns)
+    its object (``groups``, read from the object sheet)."""
+    names = _resolve_columns(rows[0].keys() if rows else ())
+    groups = groups or {}
     warnings: list[str] = []
 
     columns: list[DictColumn] = []
     seen: set[str] = set()
-    for i, rec in enumerate(rows.to_dict("records")):
-        db, schema = _cell(rec[names["database"]]), _cell(rec[names["schema"]])
-        obj, col = _cell(rec[names["object"]]), _cell(rec[names["column"]])
-        raw = _cell(rec[names["description"]])
+    for i, rec in enumerate(rows):
+        db, schema = _cell(rec.get(names["database"])), _cell(rec.get(names["schema"]))
+        obj, col = _cell(rec.get(names["object"])), _cell(rec.get(names["column"]))
+        description = _cell(rec.get(names["description"]))
         if not (db and schema and obj and col):
             warnings.append(f"Satır {i + 2}: eksik veritabanı/şema/obje/kolon, atlandı")
             continue
@@ -187,14 +142,7 @@ def build_columns(
             continue
         seen.add(key)
 
-        body, synonyms, flags = parse_description(raw)
-        listed = _cell(rec[names["synonyms"]]) if "synonyms" in names else ""
-        if listed:  # a Synonyms column wins over a trailing "Eş anlamlılar:" part
-            synonyms = tuple(split_synonyms(listed))
-        flags = tuple(f for f in flags if not _is_account_number_note(col, f))
-        group = _cell(rec[names["dataset_group"]]) if "dataset_group" in names else ""
-        if not group and groups:
-            group = groups.get(f"{db}.{schema}.{obj}", "")
+        listed = _cell(rec.get(names["synonyms"])) if "synonyms" in names else ""
         columns.append(
             DictColumn(
                 id=len(columns),
@@ -202,14 +150,12 @@ def build_columns(
                 schema=schema,
                 object_name=obj,
                 column=col,
-                description=body,
-                raw_description=raw,
-                synonyms=synonyms,
-                flags=flags,
-                dataset_group=group or None,
-                has_pii=bool(_PII_MARKER.search(f"{raw} {listed}")),
-                role=_cell(rec[names["role"]]) if "role" in names else "",
-                summary=_cell(rec[names["summary"]]) if "summary" in names else "",
+                description=description,
+                synonyms=tuple(split_synonyms(listed)),
+                dataset_group=groups.get(f"{db}.{schema}.{obj}") or None,
+                has_pii=bool(_PII_MARKER.search(f"{description} {listed}")),
+                role=_cell(rec.get(names["role"])) if "role" in names else "",
+                summary=_cell(rec.get(names["summary"])) if "summary" in names else "",
             )
         )
     return columns, warnings
@@ -223,16 +169,59 @@ def file_version(path: Path, row_count: int) -> str:
     return f"{digest}-{row_count}"
 
 
+class TooManyRows(ValueError):
+    pass
+
+
+def _sheet_rows(
+    sheet: Iterable[Sequence[object]], max_rows: int | None = None
+) -> list[list[object]]:
+    """Every row of a sheet as a list; trailing empty rows dropped. More than ``max_rows``
+    rows raises ``TooManyRows`` before the rest is read (a crafted upload cannot make the
+    server unpack millions of rows)."""
+    rows: list[list[object]] = []
+    for r in sheet:
+        if max_rows is not None and len(rows) >= max_rows:
+            if any(_cell(c) for c in r):
+                raise TooManyRows(str(max_rows))
+            continue
+        rows.append(list(r))
+    while rows and not any(_cell(c) for c in rows[-1]):
+        rows.pop()
+    return rows
+
+
+def records(rows: Sequence[Sequence[object]]) -> Iterator[dict[str, object]]:
+    """A header row and the rows below it, as dicts keyed by the header."""
+    if not rows:
+        return
+    header = [_cell(h) for h in rows[0]]
+    for row in rows[1:]:
+        yield {h: v for h, v in zip(header, row, strict=False) if h}
+
+
+def read_workbook(
+    path: Path, max_rows: int | None = None, max_cols: int | None = None
+) -> dict[str, list[list[object]]]:
+    """Every sheet of a workbook as rows of cell values (at most ``max_cols`` wide)."""
+    book = load_workbook(path, read_only=True, data_only=True)
+    try:
+        return {
+            ws.title: _sheet_rows(ws.iter_rows(max_col=max_cols, values_only=True), max_rows)
+            for ws in book.worksheets
+        }
+    finally:
+        book.close()
+
+
 def load_dictionary(path: Path, sheet: str = "Kolonlar") -> Dictionary:
     """Read the dictionary workbook: the column sheet, plus the object sheet if present."""
-    with pd.ExcelFile(path) as book:
-        rows = book.parse(sheet, dtype=str)
-        profiles = (
-            object_profiles(book.parse(OBJECTS_SHEET, dtype=str))
-            if OBJECTS_SHEET in book.sheet_names
-            else {}
-        )
-        groups = {k: p.group for k, p in profiles.items() if p.group} or None
+    sheets = read_workbook(path)
+    if sheet not in sheets:
+        raise ValueError(f"Sözlükte “{sheet}” sayfası yok (mevcut: {', '.join(sheets)})")
+    rows = list(records(sheets[sheet]))
+    profiles = object_profiles(records(sheets.get(OBJECTS_SHEET, [])))
+    groups = {k: p.group for k, p in profiles.items() if p.group}
 
     columns, warnings = build_columns(rows, groups)
     for w in warnings:
@@ -281,6 +270,8 @@ def load_stopword_file(path: Path) -> frozenset[str]:
 
 MAX_TERMS = 200  # one list is one sitting; a longer one is split by the user
 MAX_TERM_CHARS = 500  # longer cells are pasted paragraphs, not search terms
+MAX_LIST_ROWS = MAX_TERMS * 10  # blank and repeated rows included
+MAX_LIST_COLUMNS = 50  # wide enough to see that a list is not one column
 _HEADER_WORDS = frozenset({
     "terim", "terimler", "talep", "talepler", "soru", "sorular", "arama", "kavram", "kavramlar",
     "term", "terms", "query", "queries", "request", "requests", "liste", "aranacak",
@@ -370,12 +361,14 @@ def parse_term_sheet(
 def load_term_list(path: Path) -> TermList:
     """A term list from an Excel file (first sheet; the other sheets are only checked)."""
     try:
-        sheets = pd.read_excel(path, sheet_name=None, header=None, dtype=str)
-    except Exception as exc:  # not an Excel file, a damaged one, an old .xls without engine…
+        sheets = read_workbook(path, MAX_LIST_ROWS + 1, MAX_LIST_COLUMNS)
+    except TooManyRows as exc:
+        raise ValueError(f"Dosyada çok fazla satır var (en fazla {MAX_LIST_ROWS}); listeyi "
+                         "bölüp ayrı ayrı yükleyin.") from exc  # fmt: skip
+    except Exception as exc:  # not an Excel file, a damaged one, an old .xls…
         raise ValueError(f"Dosya Excel (.xlsx) olarak okunamadı. Beklenen biçim: "
                          f"{TERM_FORMAT}.") from exc  # fmt: skip
     if not sheets:
         raise ValueError(f"Dosyada sayfa yok. Beklenen biçim: {TERM_FORMAT}.")
     names = list(sheets)
-    others = [n for n in names[1:] if sheets[n].notna().to_numpy().any()]
-    return parse_term_sheet(sheets[names[0]].values.tolist(), others)
+    return parse_term_sheet(sheets[names[0]], [n for n in names[1:] if sheets[n]])

@@ -20,7 +20,6 @@ def column(col: DictColumn) -> dict[str, Any]:
         "object": col.object_key,
         "description": col.description,
         "synonyms": list(col.synonyms),
-        "flags": [{"kind": f.kind.value, "text": f.text} for f in col.flags],
         "pii": col.has_pii,
         "group": col.dataset_group,
     }
@@ -112,6 +111,6 @@ def list_item(item: ListItem, state: str) -> dict[str, Any]:
             "score": round(best.score, 4), "level": best.level.value,
         },
         "flow": "" if r is None else "önbellek" if r.reused_at else "analist" if r.analyst
-        else "yapılamadı" if r.fallback else "kural",
+        else "yapılamadı",
         "elapsed_ms": item.elapsed_ms,
     }  # fmt: skip

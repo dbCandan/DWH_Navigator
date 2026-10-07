@@ -65,6 +65,15 @@ def test_fingerprint_follows_what_shapes_an_answer(engine: Engine) -> None:
     assert other != engine.cache_fingerprint(5)
 
 
+def test_fingerprint_follows_the_prompt(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """An answer written under an older analyst prompt is not given again."""
+    from vsa.llm import analyst_prompts
+
+    fp = engine.cache_fingerprint(5)
+    monkeypatch.setattr(analyst_prompts, "ANALYST_RULES", analyst_prompts.ANALYST_RULES + " ")
+    assert fp != engine.cache_fingerprint(5)
+
+
 def test_encode_decode_round_trip(engine: Engine) -> None:
     r = engine.rule_answer("kart limit doluluk oranı")
     assert r.objects

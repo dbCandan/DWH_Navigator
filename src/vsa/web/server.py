@@ -1,7 +1,9 @@
-"""Local web server (M6). Standard library only — nothing extra to ship into a closed
-network. One engine, one lock: the tool serves a team, not the internet.
+"""Web server (M6). Standard library only — nothing extra to ship into a closed network.
+One engine, one lock: the tool serves a team, not the internet. Who may reach the admin
+screen, CSRF and response headers: ``vsa.web.security``. TLS is the reverse proxy's job.
 
     GET  /                      single-page UI (static/index.html, no external assets)
+    GET  /healthz               liveness for the container (no model call)
     GET  /api/status            dictionary / search / LLM status
     POST /api/ask               {"query": "...", "top": 5, "ask_id": "...", "fresh": false};
                                 an earlier analyst answer to the same question (or one meaning
@@ -22,7 +24,9 @@ network. One engine, one lock: the tool serves a team, not the internet.
     POST /api/feedback          {"query", "object" | "scope": "answer", "vote": "up"|"down",
                                 "note", "voter"}: kept; later answers weigh them (ADR-036)
     GET  /admin                 admin screen (static/admin.html): analyses + settings;
-                                no link from the app, reached by typing the address
+                                no link from the app, reached by typing the address;
+                                it and every /api/admin, /api/settings, /api/reindex and
+                                /api/llm route pass ``AdminGuard`` (password or this machine)
     GET  /api/admin/analyses    recent analyses: who asked what, flow, steps' durations
     POST /api/admin/analyses/clear  {"ids": [...]} or {"all": true}: delete records
                                 for good (no backup)
@@ -50,6 +54,7 @@ import threading
 import time
 import uuid
 from datetime import datetime
+from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
@@ -68,6 +73,15 @@ from vsa.text.normalize import fold
 from vsa.web import serialize
 from vsa.web.answer_store import AnswerStore
 from vsa.web.llm_admin import LLMAdmin
+from vsa.web.security import (
+    API_CSP,
+    BASE_HEADERS,
+    REALM,
+    AdminGuard,
+    cross_site,
+    is_admin_path,
+    page_csp,
+)
 from vsa.web.settings_schema import (
     FIELDS,
     PAGES,
@@ -83,6 +97,8 @@ log = logging.getLogger(__name__)
 
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 20 * 1024 * 1024
+MAX_QUERY_CHARS = 4000  # a question, not a document; longer text only slows the model
+REQUEST_TIMEOUT = 120  # seconds a client may take to send its request (slow-client guard)
 MAX_REPORTS = 50
 EXPLORER_LIMIT = 60
 EXPLORER_CONTENT_LIMIT = 25  # objects from the content (search pipeline) layer
@@ -250,6 +266,8 @@ class App:
         query = str(body.get("query", "")).strip()
         if not query:
             raise ValueError("Talep metni boş")
+        if len(query) > MAX_QUERY_CHARS:
+            raise ValueError(f"Talep çok uzun (en fazla {MAX_QUERY_CHARS} karakter)")
         top = max(1, min(10, int(body.get("top", 5))))
         ask_id = str(body.get("ask_id") or uuid.uuid4().hex)[:64]
         token = cancel.Token()
@@ -395,10 +413,9 @@ class App:
 
     def list_item(self, jid: str, index: int, voter: str = "") -> dict[str, Any]:
         items = self.list_job(jid).result.items
-        if not 1 <= index <= len(items) or items[index - 1].result is None:
+        result = items[index - 1].result if 1 <= index <= len(items) else None
+        if result is None:
             raise KeyError(index)
-        result = items[index - 1].result
-        assert result is not None
         data = serialize.analysis(result)
         data["report_id"] = self._remember(result)
         return self._with_feedback(data, voter, result.generated_at)
@@ -816,9 +833,31 @@ class App:
 _feedback_lock = threading.Lock()  # not the engine lock: a vote must not wait for an analysis
 
 
-def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
+class _Refused(Exception):
+    """A request the policy turns away (status, Turkish message, extra headers)."""
+
+    def __init__(self, status: int, message: str, headers: dict[str, str] | None = None) -> None:
+        super().__init__(message)
+        self.status, self.message, self.headers = status, message, headers or {}
+
+
+def _json_body(raw: bytes) -> dict[str, Any]:
+    data = json.loads(raw or b"{}")
+    if not isinstance(data, dict):
+        raise ValueError("JSON nesnesi bekleniyor")
+    return data
+
+
+def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequestHandler]:
+    admin = guard or AdminGuard()
+    pages = {name: (STATIC / name).read_bytes() for name in ("index.html", "admin.html")}
+    csp = {name: page_csp(html) for name, html in pages.items()}
+
     class Handler(BaseHTTPRequestHandler):
-        server_version = "VSA/1.0"
+        timeout = REQUEST_TIMEOUT
+
+        def version_string(self) -> str:
+            return "VSA"  # no server or Python version in the Server header
 
         def log_message(self, format: str, *args: Any) -> None:  # noqa: A002
             log.info("%s %s", self.address_string(), format % args)
@@ -831,9 +870,8 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
             self.send_response(status)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-store")
-            self.send_header("X-Content-Type-Options", "nosniff")
-            for k, v in (extra or {}).items():
+            headers = {**BASE_HEADERS, "Content-Security-Policy": API_CSP, **(extra or {})}
+            for k, v in headers.items():
                 self.send_header(k, v)
             try:
                 self.end_headers()
@@ -853,26 +891,55 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                 {"Content-Disposition": f'attachment; filename="{path.name}"'},
             )
 
-        def _error(self, status: int, message: str) -> None:
-            self._json({"error": message}, status)
+        def _error(self, status: int, message: str, extra: dict[str, str] | None = None) -> None:
+            body = json.dumps({"error": message}, ensure_ascii=False).encode("utf-8")
+            self._send(status, body, "application/json; charset=utf-8", extra)
+
+        def send_error(
+            self, code: int, message: str | None = None, explain: str | None = None
+        ) -> None:
+            """``http.server``'s own errors (bad request line, unsupported method…) as JSON
+            with the same security headers as every other response."""
+            self.close_connection = True
+            self._error(code, message or HTTPStatus(code).phrase)
+
+        def _page(self, name: str) -> None:
+            extra = {"Content-Security-Policy": csp[name]}
+            self._send(200, pages[name], "text/html; charset=utf-8", extra)
 
         def _body(self) -> bytes:
-            length = int(self.headers.get("Content-Length") or 0)
+            if self.headers.get("Transfer-Encoding"):
+                raise _Refused(411, "Content-Length gerekli")
+            raw = (self.headers.get("Content-Length") or "0").strip()
+            if not raw.isdigit():
+                raise _Refused(400, "Geçersiz Content-Length")
+            length = int(raw)
             if length > MAX_UPLOAD:
-                raise ValueError("Dosya çok büyük")
+                raise _Refused(413, "Dosya çok büyük (en fazla 20 MB)")
             return self.rfile.read(length) if length else b""
+
+        def _guard(self, path: str, post: bool = False) -> None:
+            """Raise ``_Refused`` for a request the policy turns away."""
+            if post and cross_site(self.headers):
+                raise _Refused(403, "Başka bir siteden gelen istek reddedildi")
+            if is_admin_path(path):
+                d = admin.check(self.client_address[0], self.headers)
+                if not d.allowed:
+                    extra = {"WWW-Authenticate": REALM} if d.status == 401 else {}
+                    raise _Refused(d.status, d.message, extra)
 
         # -------------------------------------------------------------- routes
 
         def do_GET(self) -> None:  # noqa: N802
             url = urlparse(self.path)
             try:
+                self._guard(url.path)
                 if url.path in ("/", "/index.html"):
-                    html = (STATIC / "index.html").read_bytes()
-                    self._send(200, html, "text/html; charset=utf-8")
+                    self._page("index.html")
                 elif url.path in ("/admin", "/admin/"):
-                    html = (STATIC / "admin.html").read_bytes()
-                    self._send(200, html, "text/html; charset=utf-8")
+                    self._page("admin.html")
+                elif url.path == "/healthz":
+                    self._json({"ok": True})
                 elif url.path == "/api/admin/analyses":
                     self._json(app.analyses())
                 elif url.path.startswith("/api/admin/analysis/"):
@@ -909,23 +976,26 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                     self._json(app.object_detail(unquote(url.path.split("/api/object/", 1)[1])))
                 else:
                     self._error(404, "Bulunamadı")
+            except _Refused as exc:
+                self._error(exc.status, exc.message, exc.headers)
             except KeyError:
                 self._error(404, "Kayıt bulunamadı")
-            except Exception as exc:  # pragma: no cover - last-resort guard
+            except Exception:  # pragma: no cover - last-resort guard
                 log.exception("GET %s", self.path)
-                self._error(500, f"Sunucu hatası: {exc}")
+                self._error(500, "Sunucu hatası (ayrıntı sunucu kaydında)")
 
         def do_POST(self) -> None:  # noqa: N802
             url = urlparse(self.path)
             started = time.perf_counter()
             try:
+                self._guard(url.path, post=True)
                 raw = self._body()
                 if url.path == "/api/ask":
-                    self._json(app.ask(json.loads(raw or b"{}"), self.client_address[0]))
+                    self._json(app.ask(_json_body(raw), self.client_address[0]))
                 elif url.path == "/api/ask/cancel":
-                    self._json(app.cancel_ask(json.loads(raw or b"{}")))
+                    self._json(app.cancel_ask(_json_body(raw)))
                 elif url.path == "/api/admin/analyses/clear":
-                    self._json(app.clear_analyses(json.loads(raw or b"{}")))
+                    self._json(app.clear_analyses(_json_body(raw)))
                 elif url.path == "/api/admin/answers/clear":
                     self._json(app.clear_answers())
                 elif url.path == "/api/list":
@@ -936,23 +1006,27 @@ def make_handler(app: App) -> type[BaseHTTPRequestHandler]:
                 elif url.path.startswith("/api/list/") and url.path.endswith("/resume"):
                     self._json(app.list_resume(url.path.split("/")[3], self.client_address[0]))
                 elif url.path == "/api/settings":
-                    self._json(app.settings_save(json.loads(raw or b"{}")))
+                    self._json(app.settings_save(_json_body(raw)))
                 elif url.path == "/api/reindex":
                     self._json(app.reindex())
                 elif url.path.startswith("/api/llm/") and url.path[9:] in LLM_POSTS:
                     action = getattr(app.llm_admin, LLM_POSTS[url.path[9:]])
-                    self._json(action(json.loads(raw or b"{}")))
+                    self._json(action(_json_body(raw)))
                 elif url.path == "/api/feedback":
-                    self._json(app.feedback(json.loads(raw or b"{}"), self.client_address[0]))
+                    self._json(app.feedback(_json_body(raw), self.client_address[0]))
                 else:
                     self._error(404, "Bulunamadı")
+            except _Refused as exc:
+                self._error(exc.status, exc.message, exc.headers)
             except KeyError:
                 self._error(404, "Kayıt bulunamadı")
-            except (ValueError, json.JSONDecodeError) as exc:
+            except json.JSONDecodeError:
+                self._error(400, "Geçersiz JSON")
+            except ValueError as exc:
                 self._error(400, str(exc))
-            except Exception as exc:
+            except Exception:
                 log.exception("POST %s", self.path)
-                self._error(500, f"Sunucu hatası: {exc}")
+                self._error(500, "Sunucu hatası (ayrıntı sunucu kaydında)")
             finally:
                 log.info("POST %s %.1fs", url.path, time.perf_counter() - started)
 
@@ -968,8 +1042,11 @@ def serve(
     settings_path: Path | None = None,
 ) -> None:
     app = App(engine, out_dir, feedback_path, settings_path)
-    httpd = ThreadingHTTPServer((host, port), make_handler(app))
+    guard = AdminGuard.from_env()
+    httpd = ThreadingHTTPServer((host, port), make_handler(app, guard))
     log.warning("VSA arayüzü: http://%s:%d", host, port)
+    if not guard.protected:
+        log.warning("Yönetim ekranı parolasız: yalnız bu makineden açılır (VSA_ADMIN_PASSWORD)")
     try:
         httpd.serve_forever()
     finally:

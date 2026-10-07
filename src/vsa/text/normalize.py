@@ -17,7 +17,6 @@ import re
 from collections.abc import Iterable
 
 _TR_LOWER = str.maketrans({"I": "ı", "İ": "i"})
-_TR_UPPER = str.maketrans({"i": "İ", "ı": "I"})
 
 _ASCII_FOLD = str.maketrans(
     {
@@ -63,11 +62,6 @@ _IDENT_RE = re.compile(r"\w+", re.UNICODE)
 def tr_lower(text: str) -> str:
     """Lowercase with Turkish rules: ``I -> ı`` and ``İ -> i``."""
     return text.translate(_TR_LOWER).lower()
-
-
-def tr_upper(text: str) -> str:
-    """Uppercase with Turkish rules: ``i -> İ`` and ``ı -> I``."""
-    return text.translate(_TR_UPPER).upper()
 
 
 def ascii_fold(text: str) -> str:
@@ -196,12 +190,3 @@ def tokenize(
             text, stopwords=stopwords, do_stem=do_stem, keep_compound=keep_compound
         )
     ]
-
-
-def normalize_phrase(text: str, *, stopwords: frozenset[str] = frozenset()) -> str:
-    """Normalized, space-joined form of a phrase — for containment checks.
-
-    ``"Limit Doluluk Oranı"`` and ``CardLimitFullness`` both become comparable
-    token strings, so ``"limit doluluk" in normalize_phrase(desc)`` works.
-    """
-    return " ".join(tokenize(text, stopwords=stopwords, keep_compound=False))
