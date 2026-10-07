@@ -26,7 +26,7 @@ from vsa.report.excel import write_ask_report
 
 
 def col(i: int, obj: str, name: str, desc: str, schema: str = "CON") -> DictColumn:
-    return DictColumn(i, "EDWDM", schema, obj, name, desc, desc, dataset_group="Kart")
+    return DictColumn(i, "EDWDM", schema, obj, name, desc, dataset_group="Kart")
 
 
 COLUMNS = [
@@ -248,7 +248,7 @@ class TestEngine:
         assert by_name == {"CardRefNumber": [], "MainCustomerId": []}
         assert r.design and r.attention
         assert r.notes[-1].title == "Doğrulama"
-        assert r.llm_unknown_ids == 1  # T99 in the shortlist
+        assert r.dropped_by_validation == 3  # T99, the made-up column and table
         # step 1 sees the catalog in the system message, step 2 the full columns
         assert "T2 | EDWDM.CON.vCreditCardList" in client.systems[0]
         assert "- MainCustomerId: Asıl kart müşterisinin numarası." in client.users[1]

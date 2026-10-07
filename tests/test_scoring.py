@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from vsa.expansion.query_expander import QueryExpander
 from vsa.features import build_features
-from vsa.models import DictColumn, Flag, FlagKind, Level
+from vsa.models import DictColumn, Level
 from vsa.scoring.combine import level_for
 from vsa.scoring.rules import (
     CAVEAT_DERIVATION,
-    CAVEAT_MODEL_ESTIMATED,
     CAVEAT_PII,
     score_column,
 )
@@ -20,7 +19,7 @@ STOP = load_stopwords(["ve", "bazlı", "nerede"])
 
 
 def make(name: str, desc: str, syn: tuple[str, ...] = (), **kw: object) -> DictColumn:
-    return DictColumn(0, "DB", "S", "vObj", name, desc, desc, synonyms=syn, **kw)  # type: ignore[arg-type]
+    return DictColumn(0, "DB", "S", "vObj", name, desc, synonyms=syn, **kw)  # type: ignore[arg-type]
 
 
 def score(c: DictColumn, query: str, bm25: float = 5.0, max_bm25: float = 10.0) -> tuple:  # type: ignore[type-arg]
@@ -70,16 +69,6 @@ def test_scope_negation_penalty() -> None:
     pos, _ = score(make("TotalLimitFullness", "Toplam limit. Kart bazlıdır."), "kart limit")
     assert neg.raw_score < pos.raw_score
     assert any("Kapsam farkı" in c for c in neg.caveats)
-
-
-def test_model_estimated_flag_is_a_note_not_a_penalty() -> None:
-    """ADR-037: descriptions count as verified; an old [MODEL TAHMİNİ] flag only warns."""
-    flagged = make("Foo", "Kart limiti.", flags=(Flag(FlagKind.MODEL_ESTIMATED, "x"),))
-    a, _ = score(BASE, "kart limit")
-    b, _ = score(flagged, "kart limit")
-    assert b.raw_score == a.raw_score
-    assert CAVEAT_MODEL_ESTIMATED in b.caveats
-
 
 
 def test_pii_caveat() -> None:

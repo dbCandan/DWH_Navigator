@@ -23,7 +23,7 @@ GROUPS = [
 
 
 def col(i: int, name: str, desc: str, syn: tuple[str, ...] = (), obj: str = "vObj") -> DictColumn:
-    return DictColumn(i, "DB", "S", obj, name, desc, desc, synonyms=syn)
+    return DictColumn(i, "DB", "S", obj, name, desc, synonyms=syn)
 
 
 COLUMNS = [

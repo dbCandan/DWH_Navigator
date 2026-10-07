@@ -79,3 +79,35 @@ yanlış), cevaplanabilir 103 → 102; 294 için dürüst tahmin ~%89,8 (sızın
 sızıntısız) %90,0. Ayrıca rapora `missing` alanı eklendi: KISMEN VAR cevabında talebin
 karşılanmayan parçaları (≤3) ekranda etiketin yanında ve Excel'de "Eksik Bilgi" olarak gösterilir;
 model eksik olanı özetinde yazsa da hızlı okuyan kullanıcı kaçırmasın diye. Hızlı test 9/10.
+
+## ADR-046 — MVP temizliği: eski bayraklar, açıklama içi eş anlamlılar ve pandas kaldırıldı (2026-10-07)
+Sözlük ADR-037'den beri doğrulanmış kabul edildiği için baştaki `[...]` bayrakları
+(`MODEL TAHMİNİ`, `DÜZELTİLDİ`, `DOĞRULANMALI`), bunların uyarı/kalite notları ve arayüzdeki
+"Uyarılı" filtresi kaldırıldı; açıklama metni olduğu gibi kalır. Eş anlamlılar yalnız `Synonyms`
+kolonundan, veri seti grubu yalnız `Objeler` sayfasından okunur (açıklama içindeki
+"Eş anlamlılar:" bölümü ve satır başına DatasetGroup okunmaz). Gerçek sözlükte bunların hiçbiri
+yoktu. Yükleyici pandas yerine openpyxl'i doğrudan kullanır (pandas + numpy + dateutil + tzdata
+çıktı; çalışma bağımlılığı 11 pakete indi). Yalnız kural cevabında görünen netleştirme soruları
+(`config/clarifications.yaml`) ve tablo birleştirme notu, kullanılmayan fonksiyonlar, bulut
+API'lerinden kalan yeniden deneme kodu ve vektör aramasından kalan indeks dosyaları silindi.
+Doğrulama: 129 soruda (altın set + referans setlerinden) sözlük çıktısı, kural sıralaması,
+modele giden promptların tamamı ve (sahte modelle) analist cevabı değişiklikten önce ve sonra
+**bayt bayt aynı**; yalnız kullanıcıya gösterilmeyen kural cevabının netleştirme notları düştü.
+Eski indeks ve kayıtlı cevaplar okunmaya devam eder (emekli alanlar yok sayılır).
+
+## ADR-047 — Yönetim ekranı korunur, istekler denetlenir (ADR-030'un "korumasız" kısmının yerine) (2026-10-07)
+Şirket ağına çıkış için: `/admin` ve `/api/admin`, `/api/settings`, `/api/reindex`, `/api/llm`
+yolları `VSA_ADMIN_PASSWORD` (ya da `VSA_ADMIN_PASSWORD_FILE`) ile HTTP Basic ister; parola
+yoksa yalnız sunucunun kendisinden açılır (loopback, vekilsiz, `Host` loopback). Tüm POST'lar
+`Sec-Fetch-Site`/`Origin` ile siteler arası isteğe karşı denetlenir; her yanıt CSP (sayfa betiği
+SHA-256 özetiyle), `X-Frame-Options` vb. taşır; Excel'e yazılan metin formül olamaz; yüklenen
+listeler `defusedxml` ve satır/sütun sınırıyla okunur. Uygulamadan yönetim ekranına bağlantı
+yine yoktur. Ayrıntı ve tarama sonuçları: `docs/GUVENLIK.md`.
+
+## ADR-048 — Dağıtım: Alpine tabanlı Docker imajı (2026-10-07)
+Üretim kurulumu tek konteynerdir (`Dockerfile`, `compose.yaml`, `docs/KURULUM.md`). Taban
+`python:3.12-alpine` (özetle sabit): aynı uygulama Debian slim tabanında 165 yamasız OS zafiyeti
+(44 HIGH) verirken Alpine'de 0; imaj 119 MB. Paketler `requirements.lock` ile sürüm + hash
+sabit, pip çalışma imajında yok, kullanıcı uid 10001, kök dosya sistemi salt-okunur, tüm veri
+`/app/data` biriminde. `serve --auto-index` indeks yoksa ya da sözlük değiştiyse açılışta kurar.
+Windows yerel geliştirme (`baslat.bat`, `scripts/`) repoda kalır, imaja girmez.

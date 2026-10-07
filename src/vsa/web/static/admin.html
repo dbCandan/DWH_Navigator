@@ -166,7 +166,7 @@ td.detail-cell { padding: 0 !important; background: color-mix(in srgb, var(--sur
 .axis div:nth-child(2) { display: flex; justify-content: space-between; }
 .empty { color: var(--muted); padding: 30px 0; text-align: center; }
 .more { display: flex; justify-content: center; padding: 12px 0 0; }
-@media (max-width: 700px) { table.an .hide-s { display: none; } .wf, .axis { grid-template-columns: minmax(110px, 40%) minmax(0, 1fr) 60px; } }
+@media (max-width: 700px) { .wf, .axis { grid-template-columns: minmax(110px, 40%) minmax(0, 1fr) 60px; } }
 /* the analyses view fits the window: summary on top, the question list scrolls */
 body[data-view="analyses"] { height: 100vh; overflow: hidden; display: flex; flex-direction: column; padding-bottom: 0; }
 body[data-view="analyses"] .top { flex: none; }
@@ -412,6 +412,7 @@ function h(tag, attrs, ...kids) {
     if (v == null || v === false) continue;
     if (k === "class") e.className = v;
     else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "style") e.style.cssText = v;  // CSSOM: allowed by the page's strict CSP
     else e.setAttribute(k, v === true ? "" : v);
   }
   for (const kid of kids.flat()) { if (kid == null || kid === false) continue; e.append(kid instanceof Node ? kid : document.createTextNode(String(kid))); }
@@ -1016,7 +1017,7 @@ const A = {
       this.open = null; this.cache = {};
       toast("Analizler temizlendi", [`${num(r.removed)} analiz silindi; ${num(r.kept)} analiz kaldı.`]);
       // The log and the kept answers (ADR-035) are separate: without this the same question
-      // keeps coming back from an earlier answer.
+      // keeps coming back as an earlier answer.
       if (confirm("Kayıtlı cevaplar da silinsin mi?\n\nSilinmezse aynı ya da aynı anlamdaki sorular yeniden analiz edilmeden kayıtlı cevaptan gelir.")) {
         const a = await post("/api/admin/answers/clear", {});
         toast("Önceki cevaplar silindi", [`${num(a.removed)} cevap silindi.`]);
@@ -1164,7 +1165,6 @@ function when(iso) {
   const t = d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
   return today ? "bugün " + t : d.toLocaleDateString("tr-TR", { day: "2-digit", month: "2-digit" }) + " " + t;
 }
-function clip(t, n) { return t.length > n ? t.slice(0, n - 1) + "…" : t; }
 function flowChip(f) {
   const t = { analist: ["●", "Analist"], "önbellek": ["↻", "Önceki cevap"], yedek: ["↺", "Kural (yedek)"], kural: ["◇", "Kural motoru"], hata: ["✕", "Hata"], durduruldu: ["■", "Durduruldu"] }[f] || ["", f];
   return h("span", { class: "flow " + f }, t[0], t[1]);

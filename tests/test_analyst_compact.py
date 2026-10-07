@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pandas as pd
-
+from tests.conftest import write_xlsx
 from vsa.index.bm25 import BM25Index
 from vsa.index.store import load_index, save_index
 from vsa.llm.analyst import build_catalog, column_line, table_material
@@ -16,7 +15,7 @@ from vsa.models import DictColumn, Dictionary, ObjectProfile
 def col(i: int, obj: str, name: str, desc: str, role: str = "", summary: str = "") -> DictColumn:
     return DictColumn(
         id=i, database="EDWDM", schema="CUS", object_name=obj, column=name,
-        description=desc, raw_description=desc, role=role, summary=summary,
+        description=desc, role=role, summary=summary,
     )  # fmt: skip
 
 
@@ -63,33 +62,30 @@ def test_table_material_details_only_the_relevant_columns() -> None:
 
 
 def test_loader_reads_role_summary_and_profiles(tmp_path: Path) -> None:
-    rows = pd.DataFrame({
-        "DatabaseName": ["EDWDM"], "SchemaName": ["CUS"], "ObjectName": ["vA"],
-        "ColumnName": ["Period"], "ColumnDescription": ["Dönem."],
-        "Role": ["Zaman"], "Summary": ["Dönem · YYYYMM"],
-    })  # fmt: skip
+    rows: list[dict[str, object]] = [{
+        "DatabaseName": "EDWDM", "SchemaName": "CUS", "ObjectName": "vA",
+        "ColumnName": "Period", "ColumnDescription": "Dönem.",
+        "Role": "Zaman", "Summary": "Dönem · YYYYMM",
+    }]  # fmt: skip
     (c,), _ = build_columns(rows)
     assert (c.role, c.summary) == ("Zaman", "Dönem · YYYYMM")
-    objects = pd.DataFrame({
-        "ObjectKey": ["EDWDM.CUS.vA"], "ObjectDescription": ["Aylık özet."],
-        "Grain": ["Müşteri × Ay"],
-        "KeyColumns": ["CustomerPartyId, Period"], "TimeColumns": ["Period"],
-        "BusinessDomain": ["Müşteri"], "DatasetGroup": ["Müşteri"],
-    })  # fmt: skip
+    objects: list[dict[str, object]] = [{
+        "ObjectKey": "EDWDM.CUS.vA", "ObjectDescription": "Aylık özet.",
+        "Grain": "Müşteri × Ay",
+        "KeyColumns": "CustomerPartyId, Period", "TimeColumns": "Period",
+        "BusinessDomain": "Müşteri", "DatasetGroup": "Müşteri",
+    }]  # fmt: skip
     prof = object_profiles(objects)["EDWDM.CUS.vA"]
     assert prof.key_columns == ("CustomerPartyId", "Period") and prof.grain == "Müşteri × Ay"
 
-    path = tmp_path / "d.xlsx"
-    with pd.ExcelWriter(path) as xw:
-        objects.to_excel(xw, sheet_name="Objeler", index=False)
-        rows.to_excel(xw, sheet_name="Kolonlar", index=False)
+    path = write_xlsx(tmp_path / "d.xlsx", {"Objeler": objects, "Kolonlar": rows})
     d = load_dictionary(path)
     assert d.objects["EDWDM.CUS.vA"].description == "Aylık özet."
     assert d.columns[0].dataset_group == "Müşteri"
 
     # the index keeps role, summary and profiles
     bm25 = BM25Index.build([{"name": ["period"]}], {"name": 1.0}, 1.2, 0.75)
-    save_index(tmp_path / "idx", d, bm25, {}, {})
+    save_index(tmp_path / "idx", d, bm25, {})
     loaded, _, _ = load_index(tmp_path / "idx")
     assert loaded.columns[0].summary == "Dönem · YYYYMM"
     assert loaded.objects == d.objects
@@ -98,7 +94,7 @@ def test_loader_reads_role_summary_and_profiles(tmp_path: Path) -> None:
 def test_old_index_without_profiles_loads(tmp_path: Path) -> None:
     d = Dictionary([col(0, "vA", "X", "Açıklama.")], "x.xlsx", "abc-1")
     bm25 = BM25Index.build([{"name": ["x"]}], {"name": 1.0}, 1.2, 0.75)
-    save_index(tmp_path, d, bm25, {}, {})
+    save_index(tmp_path, d, bm25, {})
     (tmp_path / "objects.json").unlink()
     loaded, _, _ = load_index(tmp_path)
     assert loaded.objects == {} and loaded.columns[0].role == ""

@@ -22,7 +22,7 @@ def build(
     cols: list[DictColumn] = []
     for obj, fields in tables.items():
         for name, desc in fields:
-            cols.append(DictColumn(len(cols), "DB", "S", obj, name, desc, desc))
+            cols.append(DictColumn(len(cols), "DB", "S", obj, name, desc))
     feats = [build_features(c, STOP) for c in cols]
     objs: dict[str, list] = {}  # type: ignore[type-arg]
     for f in feats:
@@ -117,10 +117,10 @@ def test_levels_assigned() -> None:
 def test_validation_drops_unknown_columns() -> None:
     cols, _ = build({"vA": [("Real", "x")]})
     real = cols[0]
-    ghost = DictColumn(99, "DB", "S", "vA", "Ghost", "x", "x")
+    ghost = DictColumn(99, "DB", "S", "vA", "Ghost", "x")
     m = ObjectMatch(
         "DB.S.vA", "DB", "S", "vA", [], 0.9, Level.HIGH,
-        [ColumnHit(real, 1, 0.9), ColumnHit(ghost, 1, 0.9)], {}, [], [],
+        [ColumnHit(real, 0.9), ColumnHit(ghost, 0.9)], {}, [], [],
     )  # fmt: skip
     kept, dropped = validate([m], {real.key})
     assert dropped == 1
@@ -128,10 +128,10 @@ def test_validation_drops_unknown_columns() -> None:
 
 
 def test_validation_drops_object_without_valid_columns() -> None:
-    ghost = DictColumn(0, "DB", "S", "vGhost", "Ghost", "x", "x")
+    ghost = DictColumn(0, "DB", "S", "vGhost", "Ghost", "x")
     m = ObjectMatch(
         "DB.S.vGhost", "DB", "S", "vGhost", [], 0.9, Level.HIGH,
-        [ColumnHit(ghost, 1, 0.9)], {}, [], [],
+        [ColumnHit(ghost, 0.9)], {}, [], [],
     )  # fmt: skip
     kept, dropped = validate([m], set())
     assert kept == [] and dropped == 1

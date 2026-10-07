@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "vsa-analyst-test",
+      "name": "vsa",
       "runtimeExecutable": ".venv/Scripts/vsa.exe",
       "runtimeArgs": [
         "serve",
@@ -10,16 +10,6 @@
         "8766"
       ],
       "port": 8766
-    },
-    {
-      "name": "vsa-admin-check",
-      "runtimeExecutable": ".venv/Scripts/vsa.exe",
-      "runtimeArgs": [
-        "serve",
-        "--port",
-        "8767"
-      ],
-      "port": 8767
     }
   ]
 }

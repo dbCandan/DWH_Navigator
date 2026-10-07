@@ -9,12 +9,10 @@ from vsa.text.normalize import (
     ascii_fold,
     fold,
     load_stopwords,
-    normalize_phrase,
     split_camel,
     stem,
     tokenize,
     tr_lower,
-    tr_upper,
 )
 
 STOP = load_stopwords(["ve", "bilgisi", "verisi", "için", "tablo", "# yorum", ""])
@@ -34,9 +32,6 @@ class TestTurkishCase:
 
     def test_all_turkish_capitals(self) -> None:
         assert tr_lower("IİŞĞÜÖÇ") == "ıişğüöç"
-
-    def test_upper(self) -> None:
-        assert tr_upper("ihtiyaç ılık") == "İHTİYAÇ ILIK"
 
 
 class TestAsciiFold:
@@ -120,11 +115,7 @@ class TestTokenize:
         assert tokenize("KKB_DATE", do_stem=False) == ["kkb", "date", "kkbdate"]
 
 
-class TestPhrase:
-    def test_phrase_containment(self) -> None:
-        desc = normalize_phrase("Kredi kartı limit doluluk oranını gösterir.")
-        assert normalize_phrase("limit doluluk oranı") in desc
-
+class TestStopwords:
     def test_stopwords_file(self) -> None:
         assert "icin" in STOP  # folded
         assert "# yorum" not in STOP

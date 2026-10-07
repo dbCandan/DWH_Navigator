@@ -3,8 +3,9 @@
 columns.json         normalized column records
 bm25.json            BM25 postings and document lengths
 objects.json         object profiles (the object sheet: description, grain, keys…)
-synonym_index.json   synonym phrase -> column ids (for inspection/debug)
 meta.json            dictionary sha/version, row count, build time, settings digest
+
+Records written by older versions may carry retired fields; they are ignored on load.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from vsa.index.bm25 import BM25Index
-from vsa.models import DictColumn, Dictionary, Flag, FlagKind, ObjectProfile
+from vsa.models import DictColumn, Dictionary, ObjectProfile
 
 INDEX_FORMAT = 1
 
@@ -34,9 +35,7 @@ def _column_from_dict(d: dict[str, Any]) -> DictColumn:
         object_name=d["object_name"],
         column=d["column"],
         description=d["description"],
-        raw_description=d["raw_description"],
         synonyms=tuple(d["synonyms"]),
-        flags=tuple(Flag(FlagKind(f["kind"]), f["text"]) for f in d["flags"]),
         dataset_group=d["dataset_group"],
         has_pii=bool(d["has_pii"]),
         role=d.get("role", ""),
@@ -65,7 +64,6 @@ def save_index(
     directory: Path,
     dictionary: Dictionary,
     bm25: BM25Index,
-    synonym_index: dict[tuple[str, ...], list[int]],
     index_settings: dict[str, Any],
 ) -> dict[str, Any]:
     directory.mkdir(parents=True, exist_ok=True)
@@ -76,7 +74,7 @@ def save_index(
     dump("columns.json", [asdict(c) for c in dictionary.columns])
     dump("objects.json", [asdict(p) for p in dictionary.objects.values()])
     dump("bm25.json", bm25.to_dict())
-    dump("synonym_index.json", {" ".join(k): v for k, v in synonym_index.items()})
+    (directory / "synonym_index.json").unlink(missing_ok=True)  # retired debug file
     meta = {
         "format": INDEX_FORMAT,
         "dictionary_source": dictionary.source_path,

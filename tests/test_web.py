@@ -406,13 +406,13 @@ def test_stopped_ask_is_cancelled_and_logged(
     base_url: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The button's call: the question ends at once, as "durduruldu", without a rule answer."""
-    from vsa import cancel
+    from tests.test_cancel import wait
 
     started = threading.Event()
 
     def slow_analyze(self: Engine, query: str, top_n: int = 5) -> Any:
         started.set()
-        cancel.sleep(30)  # stands in for a long LLM call
+        wait(30)  # stands in for a long LLM call
         raise AssertionError("not stopped")
 
     monkeypatch.setattr(Engine, "analyze", slow_analyze)

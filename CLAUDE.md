@@ -1,7 +1,8 @@
 # CLAUDE.md — Veri Sözlüğü Asistanı (VSA)
 
-Tam spesifikasyon: `docs/HANDOVER.md`. Tasarım sorularında önce orayı oku; bölüm
-numaralarıyla (§8, ADR-005 vb.) atıf yap.
+Kararlar: `docs/DECISIONS.md` (ADR-037 ve sonrası; ADR-001…036'nın özetleri aşağıda). Koddaki
+"HANDOVER §x" atıfları kaldırılmış eski spesifikasyona aittir; tasarım sorularında ADR'lere
+atıf yap. Kurulum: `docs/KURULUM.md` (Docker), güvenlik ve tarama: `docs/GUVENLIK.md`.
 
 ## Ne yapar
 İş biriminin doğal dildeki veri talebini, veri sözlüğüne (11.158 kolon, 389 obje) karşı
@@ -32,8 +33,11 @@ bulut desteği ve model laboratuvarı kaldırıldı.
 - Python 3.11+, tip ipuçları zorunlu, `ruff` + `mypy --strict` temiz.
 - **Hiçbir modülde doğrudan `.lower()` / `.upper()` / `.casefold()` çağrılmaz** —
   `vsa.text.normalize` kullanılır (Türkçe İ/ı sorunu).
-- I/O yalnızca `loader.py`, `index/store.py`, `report/`, `cli.py` içinde (+ `Engine.from_*`
-  kurucuları); diğer modüller saf fonksiyon.
+- I/O yalnızca `loader.py`, `index/store.py`, `report/`, `cli.py`, `web/` içinde (+ `Engine.from_*`
+  kurucuları); diğer modüller saf fonksiyon. Excel okuma openpyxl ile (pandas yok, ADR-046).
+- Web: yönetim yolları `AdminGuard`'dan, POST'lar CSRF denetiminden geçer; her yanıt güvenlik
+  başlıklarıyla (`web/security.py`, ADR-047). Yeni yönetim API'si `is_admin_path`'e uymalı.
+- Excel'e metin `report/excel.py::_put`/`_text` ile yazılır ("=" ile başlayan metin formül olmaz).
 - Her yeni skorlama kuralı bir testle gelir.
 - Kullanıcıya dönük metin (rapor, gerekçe) **Türkçe**; kod, değişken adı, commit **İngilizce**.
 
@@ -44,7 +48,8 @@ bulut desteği ve model laboratuvarı kaldırıldı.
   (DatabaseName, SchemaName, ObjectName, ColumnName, ColumnDescription, Synonyms, Role, Summary;
   KVKK bayrağı açıklamadan türetilir; DatasetGroup Objeler'den `DB.Şema.Obje` ile gelir).
   Role ∈ {Anahtar, Kod, Ad, Zaman, Ölçü, Bayrak, Metin}; Summary ≤70 karakter sıkıştırılmış anlam
-  ("Cari hesap bakiyesi · TL · son 12 ay ortalama"), LLM'e uzun açıklama yerine verilmek için. Kalite sayfası yok (`quality_sheet` boş); yükleyici isteğe bağlı olarak hâlâ okuyabilir.
+  ("Cari hesap bakiyesi · TL · son 12 ay ortalama"), LLM'e uzun açıklama yerine verilmek için.
+  Eş anlamlılar yalnız `Synonyms` kolonundan, grup yalnız `Objeler`'den okunur (ADR-046).
 - Analistin tablo kataloğu Objeler sayfasından bellekte kurulur (`llm/analyst.build_catalog`).
   Sözlük değişince `vsa index`.
 - `data/`, `out/` ve tüm `.xlsx` dosyaları gitignore'da — **kurum içi veri, asla commit edilmez**.
@@ -61,13 +66,17 @@ ADR-020..022 (web, hakem ve ağırlıkları — hakem ADR-033 ile kaldırıldı)
 ADR-025/026 (model laboratuvarı ve bulut modelleri — ADR-031 ile kaldırıldı),
 ADR-027 (tek ekran, tek görünüm: yalnız soru sorma, Evren), ADR-028 (tablo seviyesinde
 konu uyumu: tablo BM25), ADR-029 (analist
-akışı: LLM katalogdan aday seçer, adayların kolonlarını okuyup raporu yazar; kurallar doğrular), ADR-030 (`/admin`: ayarlar + analiz izleri, bağlantısız ve korumasız), ADR-031 (modeller kurum içinde; lab ve bulut kaldırıldı), ADR-032 (LLM entegrasyonları ekranı: sunucu + sohbet rolü, test, envanter, aktif/pasif; sade üç sayfalık ayarlar), ADR-033 (tek akış: tek soru + onu kullanan Excel listesi; batch, hakem, LLM genişletme, `--compare` kaldırıldı). ADR-034 (cevabı kim yazdı her yerde yazılır; ölü sunucu beklenmez; kural cevabı artık gösterilmez, ADR-038). ADR-035 (önceki cevaplar: analist cevabı `data/cache/answers.jsonl`'de saklanır; aynı soru ya da terim sözlüğüne göre aynı kavram kümesi → kayıtlı cevap; sözlük/model/ayar parmak izi değişince geçersiz; yalnız web, `vsa ask`/`eval` etkilenmez). ADR-036 (geri bildirim cevabı şekillendirir: tablo ve cevap 👍/👎 + gerekçe; kişi başı son oy, aynı soru 1,0 / aynı anlam 0,6, 180 gün yarılanma; ≈2 kişi 👎 → tablo önerilerden çıkar ama görünür kalır, güven ±%15, doğrulanan yakın aday eklenir; cevap 👎 çoğunluğu kayıtlı cevabı siler; yalnız ekranda, Excel değişmez; `feedback.assess/apply`). ADR-037..040 `docs/DECISIONS.md`'de: tek konsolide sözlük, analist
+akışı: LLM katalogdan aday seçer, adayların kolonlarını okuyup raporu yazar; kurallar doğrular), ADR-030 (`/admin`: ayarlar + analiz izleri, uygulamadan bağlantısız; koruması ADR-047), ADR-031 (modeller kurum içinde; lab ve bulut kaldırıldı), ADR-032 (LLM entegrasyonları ekranı: sunucu + sohbet rolü, test, envanter, aktif/pasif; sade üç sayfalık ayarlar), ADR-033 (tek akış: tek soru + onu kullanan Excel listesi; batch, hakem, LLM genişletme, `--compare` kaldırıldı). ADR-034 (cevabı kim yazdı her yerde yazılır; ölü sunucu beklenmez; kural cevabı artık gösterilmez, ADR-038). ADR-035 (önceki cevaplar: analist cevabı `data/cache/answers.jsonl`'de saklanır; aynı soru ya da terim sözlüğüne göre aynı kavram kümesi → kayıtlı cevap; sözlük/model/ayar parmak izi değişince geçersiz; yalnız web, `vsa ask`/`eval` etkilenmez). ADR-036 (geri bildirim cevabı şekillendirir: tablo ve cevap 👍/👎 + gerekçe; kişi başı son oy, aynı soru 1,0 / aynı anlam 0,6, 180 gün yarılanma; ≈2 kişi 👎 → tablo önerilerden çıkar ama görünür kalır, güven ±%15, doğrulanan yakın aday eklenir; cevap 👎 çoğunluğu kayıtlı cevabı siler; yalnız ekranda, Excel değişmez; `feedback.assess/apply`). ADR-037..040 `docs/DECISIONS.md`'de: tek konsolide sözlük, analist
 tek yol, vektör kaldırıldı, kompakt analist malzemesi (Objeler kataloğu + `Ad [Rol]: özet`).
 ADR-041 (talebin asıl kavramı yoksa yakın tablolar cevap değil, "İlgili" notu; BULUNAMADI),
 ADR-042 (model asıl kavramı taşıyan kolonları `core_columns` ile adlandırır, kod doğrular; birden
 çok tabloya dağılmışsa KISMEN VAR), ADR-043 (sırayı kod verir: asıl kavram kolonlarını taşıyan
 tablo öne; eşitlikte genel tablo dar kitleli/türetilmiş tablonun — model girdisi, akıllı hedefleme,
-özel bankacılık — önüne; öne geçen güveni geçtiğininkinden düşük gösterilmez).
+özel bankacılık — önüne; öne geçen güveni geçtiğininkinden düşük gösterilmez). ADR-044 (ikinci
+denetim çağrısı reddedildi), ADR-045 (ölçüm sorusundan türeyen prompt örneği yok; "eksik bilgi"),
+ADR-046 (MVP temizliği: bayraklar, açıklama içi eş anlamlılar, pandas, netleştirme notları
+kaldırıldı; davranış 129 soruda bayt bayt aynı), ADR-047 (yönetim ekranı parolalı, CSRF, CSP;
+ADR-030'un "korumasız" kısmının yerine), ADR-048 (Alpine Docker imajı, 0 bilinen zafiyet).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -84,8 +93,8 @@ Prompt örnekleri ölçüm sorularından TÜRETİLMEZ (2026-10-07: ADR-041/042'd
 Kör set (50) sızıntıdan etkilenmedi: %90,0.
 
 ## Sözlükte dokümanda olmayan ayrıntılar
-- Yükleyici baştaki `[...]` bayraklarını hâlâ tanır (`MODEL TAHMİNİ` ×0.85, diğerleri not), ama
-  güncel sözlükte bayrak yoktur. Metin ortasındaki `[...]` formül olabilir, bayrak değildir.
+- Baştaki `[...]` bayrakları artık tanınmaz (ADR-046); açıklama olduğu gibi okunur. Metin
+  içindeki `[...]` formül olabilir.
 - `vCampaign` iki şemada (CFM, CMP) var → obje anahtarı her zaman `DB.Şema.Obje`.
 - Tekrar kolon yok (yükleme 0 uyarı, 0 bayrak).
 - Kolonlar sayfasındaki tüm açıklamalar doğrulanmış kabul edilir (2026-10-05 kararı): baştaki
@@ -103,7 +112,13 @@ vsa index
 vsa ask "kredi kartı limit doluluk oranı"
 vsa ask -i terimler.xlsx               # ilk sütundaki her terim ayrı aranır, tek rapor
 vsa eval --save --label "ne değişti"   # ağırlık değişikliğinden önce/sonra
+vsa serve --auto-index                 # indeks yoksa / sözlük değiştiyse önce kurar
+
+docker build -t dwh-navigator:0.1.0 .  # üretim imajı (docs/KURULUM.md)
+docker compose up -d                   # .env: VSA_ADMIN_PASSWORD; data/VeriSozlugu.xlsx
 ```
+Bağımlılık eklenirse `requirements.lock` Linux konteynerinde hash'lerle yeniden üretilir ve
+`docs/GUVENLIK.md`'deki taramalar (trivy, pip-audit, bandit) tekrarlanır.
 Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılmalı (BM25 indekse gömülü).
 
 ## Yol haritası durumu
@@ -123,7 +138,8 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
 - [x] M6 — Arayüz: `vsa serve` / `baslat.bat` → http://127.0.0.1:8765. Tek ekran (soru sorma),
       tek görünüm: Evren (galaksi, ADR-024/027). Arama çubuğunda Excel'den toplu arama. Stdlib sunucu +
       `src/vsa/web/static/index.html` (tek dosya, dış kaynak yok). Ayarlar ve analiz izleri yalnız `/admin`
-      (`admin.html`, ADR-030/032: Yapay zekâ · Arama ve cevap · Veri ve bakım); uygulamadan bağlantı yok. **Tasarım kararları
+      (`admin.html`, ADR-030/032: Yapay zekâ · Arama ve cevap · Veri ve bakım); uygulamadan bağlantı yok;
+      parola `VSA_ADMIN_PASSWORD`, yoksa yalnız sunucunun kendisinden (ADR-047). **Tasarım kararları
       Claude'da** (kullanıcı "beni şaşırt" dedi); seçenek menüsü sunma.
 - [~] M7 — Geri bildirim: 👍/👎 → `data/feedback.jsonl` → `vsa feedback` golden adayları.
       Oylar sonraki cevaplara yansır (ADR-036); arayüzde "Bir bakışta" panosu ve kapsama matrisi.
@@ -134,6 +150,8 @@ Stopword veya terim sözlüğü değişirse `vsa index` yeniden çalıştırılm
       Soru başına ~2-4 dk bulutta ölçüldü (katalog ~70k token); üretimde DGX Spark + vLLM önek önbelleği.
       `vsa eval` model açıkken analist cevabını ölçer. Aile araması + kavram kanıtı (v2).
       Sıradaki: deterministik skor, yapılandırılmış ayrıştırma (METODOLOJI_KARSILASTIRMASI.md).
+- [x] M9 — MVP teslimi (2026-10-07): ölü kod temizliği (ADR-046), güvenlik sertleştirmesi
+      (ADR-047), Docker imajı + kurulum kılavuzu (ADR-048). Trivy/pip-audit/bandit: 0 bulgu.
 
 ## Model ortamı
 Modeller ekibin DGX Spark sunucularında, OpenAI uyumlu API ile (ADR-031); bu makinede model

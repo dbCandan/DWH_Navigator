@@ -2,7 +2,7 @@
 
     base  = 0.35 × search + 0.25 × column_concept_coverage (IDF-weighted)
     search = relative BM25
-    score = (base + bonuses − penalties) × flag multipliers, clipped to [0, 1]
+    score = base + bonuses − penalties, clipped to [0, 1]
 
 Time and granularity are NOT scored here — they are object properties (ADR-010).
 """
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from vsa.expansion.query_expander import Concept, ConceptKind, ExpandedQuery
 from vsa.features import ColumnFeatures, contains_sequence
-from vsa.models import ColumnHit, FlagKind
+from vsa.models import ColumnHit
 
 W_BASE_RELATIVE = 0.35
 W_BASE_COVERAGE = 0.25
@@ -24,7 +24,6 @@ PENALTY_DERIVATION = 0.15
 PENALTY_SCOPE = 0.10
 NEGATION_WINDOW = 1  # "bazlı" is a stopword, so "Kart bazlı değil" -> (kart, değil)
 
-CAVEAT_MODEL_ESTIMATED = "Açıklama model tahmini; iş birimiyle doğrulanmalı"
 CAVEAT_DERIVATION = "Hazır oran değil; oran pay/payda alanlarından türetilmeli"
 CAVEAT_PII = "Kişisel veri (KVKK) içerir; maskelenmiş alternatif tercih edilmeli"
 
@@ -93,17 +92,11 @@ def score_column(
         if c.scope_note:
             caveats.append(c.scope_note)
 
-    if f.col.has_flag(FlagKind.MODEL_ESTIMATED):
-        caveats.append(CAVEAT_MODEL_ESTIMATED)
-    for flag in f.col.flags:
-        if flag.kind is FlagKind.NEEDS_VERIFICATION:
-            caveats.append(flag.text)
     if f.col.has_pii:
         caveats.append(CAVEAT_PII)
 
     return ColumnHit(
         col=f.col,
-        search_score=bm25,
         rule_score=max(0.0, min(1.0, score)),
         raw_score=score,
         signals=signals,

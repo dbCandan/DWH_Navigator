@@ -1,48 +1,39 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-import pandas as pd
 import pytest
+from openpyxl import Workbook
 
 ROOT = Path(__file__).resolve().parents[1]
 REAL_DICTIONARY = ROOT / "data" / "VeriSozlugu.xlsx"
 
 SAMPLE_ROWS = [
-    # DAtabaseName is misspelled on purpose — matches the real source file.
+    # DAtabaseName is misspelled on purpose — an older source file spelt it so.
     {
         "DAtabaseName": "EDWDM",
         "SchemaName": "CMP",
         "ObjectName": "vCardLimitFullness ",
         "ColumnName": "CardLimitFullnessToday",
-        "ColumnDescription": (
-            "Kartın bugünkü limit doluluk oranıdır. "
-            "Eş anlamlılar/aranabilir terimler: limit doluluk, kart kullanım oranı, "
-            "utilization (kart bazlı), fullness."
-        ),
-        "DatasetGroup": "Kart",
+        "ColumnDescription": "Kartın bugünkü limit doluluk oranıdır.",
+        "Synonyms": "limit doluluk, kart kullanım oranı, utilization (kart bazlı), fullness.",
     },
     {
         "DAtabaseName": "EDWDM",
         "SchemaName": "CMP",
         "ObjectName": "vCardLimitFullness",
         "ColumnName": "CustomerPartyId ",
-        "ColumnDescription": (
-            "[MODEL TAHMİNİ — DOĞRULANMALI] Müşterinin DWH anahtarı. "
-            "Eş anlamlılar/aranabilir terimler: müşteri SKEY, party id."
-        ),
-        "DatasetGroup": None,
+        "ColumnDescription": "Müşterinin DWH anahtarı.",
+        "Synonyms": "müşteri SKEY, party id.",
     },
     {
         "DAtabaseName": "EDWDM",
         "SchemaName": "CON",
         "ObjectName": "vCreditCardLimit",
         "ColumnName": "CardLimitRatio",
-        "ColumnDescription": (
-            "[ORİJİNAL AÇIKLAMA HATALIYDI — DÜZELTİLDİ. Kaynakta 'oran' yazıyordu.] "
-            "Kart limitinin referans değere oranı. KVKK kapsamında değildir."
-        ),
-        "DatasetGroup": "Kart",
+        "ColumnDescription": "Kart limitinin referans değere oranı. KVKK kapsamında değildir.",
+        "Synonyms": None,
     },
     # Exact duplicate key -> dropped with a warning.
     {
@@ -51,16 +42,34 @@ SAMPLE_ROWS = [
         "ObjectName": "vCardLimitFullness",
         "ColumnName": "CardLimitFullnessToday",
         "ColumnDescription": "Tekrar.",
-        "DatasetGroup": "Kart",
+        "Synonyms": None,
     },
 ]
+SAMPLE_OBJECTS = [
+    {"ObjectKey": "EDWDM.CMP.vCardLimitFullness", "DatasetGroup": "Kart"},
+    {"ObjectKey": "EDWDM.CON.vCreditCardLimit", "DatasetGroup": "Kart"},
+]
+
+
+def write_xlsx(path: Path, sheets: Mapping[str, Sequence[Mapping[str, object]]]) -> Path:
+    """A workbook with one sheet per entry: a header row, then the records."""
+    wb = Workbook()
+    wb.remove(wb.active)  # type: ignore[arg-type]
+    for name, rows in sheets.items():
+        ws = wb.create_sheet(name)
+        header = list(dict.fromkeys(k for r in rows for k in r))
+        ws.append(header)
+        for r in rows:
+            ws.append([r.get(h) for h in header])
+    wb.save(path)
+    return path
+
 
 @pytest.fixture
 def sample_dictionary_path(tmp_path: Path) -> Path:
-    path = tmp_path / "dictionary.xlsx"
-    with pd.ExcelWriter(path) as writer:
-        pd.DataFrame(SAMPLE_ROWS).to_excel(writer, sheet_name="Kolonlar", index=False)
-    return path
+    return write_xlsx(
+        tmp_path / "dictionary.xlsx", {"Objeler": SAMPLE_OBJECTS, "Kolonlar": SAMPLE_ROWS}
+    )
 
 
 @pytest.fixture

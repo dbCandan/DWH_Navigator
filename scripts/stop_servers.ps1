@@ -1,6 +1,6 @@
 # Stops every running DWH Navigator web server (`vsa serve`) of this folder, and whatever
 # still listens on the app's port, so baslat.bat always starts the current code.
-# Other vsa commands (index, batch, lab) are left alone.
+# Other vsa commands (index, ask, eval) are left alone.
 param([int]$Port = 8765)
 
 $ErrorActionPreference = "SilentlyContinue"

@@ -457,11 +457,6 @@ def coerce(key: str, value: Any) -> Any:
         if (lo is not None and num < lo) or (hi is not None and num > hi):
             raise ValueError(f"{label}: {lo} ile {hi} arasında olmalı")
         return num
-    if kind == "select":
-        allowed = [o[0] for o in f["options"]]
-        if value not in allowed:
-            raise ValueError(f"{label}: geçersiz seçim")
-        return value
     return str(value).strip()
 
 

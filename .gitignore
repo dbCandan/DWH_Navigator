@@ -1,13 +1,16 @@
-# Kurum içi veri — repoya girmez (HANDOVER §18.1)
+# Kurum içi veri — repoya girmez
 data/
 out/
 *.xlsx
 *.xls
-!tests/fixtures/*.xlsx
 
-# Yerel ayarlar
+# Yerel ayarlar ve sırlar
 config/settings.yaml
 config/llm_integrations.yaml
+.env
+
+# Dağıtım çıktıları (docker save)
+dist/
 
 # Python
 __pycache__/

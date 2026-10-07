@@ -127,12 +127,19 @@ def encode(r: AnalysisResult) -> dict[str, Any]:
     return d
 
 
+def _known(cls: type, d: dict[str, Any]) -> dict[str, Any]:
+    """The fields ``cls`` still has: an answer kept by an older version may carry a
+    retired one."""
+    names = {f.name for f in fields(cls)}
+    return {k: v for k, v in d.items() if k in names}
+
+
 def _match_from_dict(d: dict[str, Any], columns: dict[str, DictColumn]) -> ObjectMatch:
     hits = []
     for h in d["columns"]:
         col = columns[h["col"]]  # KeyError: not in this dictionary -> unusable answer
-        hits.append(ColumnHit(**{**h, "col": col}))
-    return ObjectMatch(**{**d, "level": Level(d["level"]), "columns": hits})
+        hits.append(ColumnHit(**{**_known(ColumnHit, h), "col": col}))
+    return ObjectMatch(**{**_known(ObjectMatch, d), "level": Level(d["level"]), "columns": hits})
 
 
 def decode(d: dict[str, Any], columns: dict[str, DictColumn]) -> AnalysisResult | None:
@@ -141,7 +148,7 @@ def decode(d: dict[str, Any], columns: dict[str, DictColumn]) -> AnalysisResult 
     try:
         return AnalysisResult(
             **{
-                **d,
+                **_known(AnalysisResult, d),
                 "verdict": Verdict(d["verdict"]),
                 "objects": [_match_from_dict(m, columns) for m in d["objects"]],
                 "near_misses": [_match_from_dict(m, columns) for m in d["near_misses"]],
