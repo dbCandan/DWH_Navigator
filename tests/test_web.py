@@ -331,7 +331,7 @@ def test_settings_roundtrip(app_with_settings: App) -> None:
     app = app_with_settings
     got = app.settings_get()
     assert [p["id"] for p in got["pages"]] == ["llm", "search", "data"]
-    pages = {p["id"] for p in got["pages"]} | {"dictionary"}  # the Sözlük view (ADR-049)
+    pages = {p["id"] for p in got["pages"]} | {"dictionary", "words"}  # admin views (ADR-052)
     assert all(s["page"] in pages for s in got["sections"])
     on_view = [f["key"] for s in got["sections"] if s["page"] == "dictionary" for f in s["fields"]]
     assert on_view[0] == "dictionary.store"

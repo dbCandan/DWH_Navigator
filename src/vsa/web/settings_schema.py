@@ -310,12 +310,12 @@ SECTIONS: list[dict[str, Any]] = [
         ],
     },
     {
-        # Shown on the admin screen's Sözlük view (ADR-049/052), not on a settings page:
-        # "dictionary" is not one of PAGES.
+        # Shown on the admin screen's Sözlük and Kelimeler views (ADR-049/052), each next to
+        # what it locates, not on a settings page: "dictionary" and "words" are not PAGES.
         "id": "dictionary",
         "page": "dictionary",
         "title": "Dosya ayarları",
-        "intro": "Sözlük dosyalarının yerleri; bir dosya değişirse indeks yeniden kurulmalı.",
+        "intro": "Sözlük dosyasının yeri; değişirse indeks yeniden kurulmalı.",
         "fields": [
             {
                 "key": "dictionary.store",
@@ -324,12 +324,19 @@ SECTIONS: list[dict[str, Any]] = [
                 "effect": REINDEX,
                 "help": "İçe aktarılan sözlüğün saklandığı yer (data/dictionary.jsonl).",
             },
+        ],
+    },
+    {
+        "id": "words",
+        "page": "words",
+        "title": "Dosya ayarları",
+        "intro": "Kelime listelerinin yerleri; değişirse indeks yeniden kurulmalı.",
+        "fields": [
             {
                 "key": "expansion.term_dictionary",
                 "label": "Terim sözlüğü dosyası",
                 "type": "str",
-                "effect": NOW,
-                "advanced": True,
+                "effect": REINDEX,
                 "help": "jsonl, satır başına bir grup: term, equivalents, domain, note.",
             },
             {
@@ -337,7 +344,6 @@ SECTIONS: list[dict[str, Any]] = [
                 "label": "Durak kelimeler dosyası",
                 "type": "str",
                 "effect": REINDEX,
-                "advanced": True,
                 "help": "jsonl, satır başına bir kelime: word, group.",
             },
         ],

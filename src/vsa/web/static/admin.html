@@ -596,7 +596,7 @@ const NAV = [
   { id: "arama", label: "Arama ve cevap", icon: "sliders", desc: "Analistin okuduğu malzeme ve arama ipuçları" },
   { id: "bakim", label: "Bakım", icon: "wrench", desc: "Arama indeksi, önceki cevaplar ve klasörler" },
 ];
-const PAGE_OF_SECTION = { search: "arama", data: "bakim", dictionary: "sozluk" };
+const PAGE_OF_SECTION = { search: "arama", data: "bakim", dictionary: "sozluk", words: "kelimeler" };
 let CURRENT = null;
 
 const Shell = {
@@ -1094,6 +1094,16 @@ setInterval(() => {
 }, 15000);
 
 // ======================================================================= page: dictionary
+// The file locations a page reads, folded under it; a change waits for "Kaydet ve uygula".
+function fileSettings(page) {
+  const secs = Settings.sections(page);
+  if (!secs.length) return null;
+  const pending = (DATA.settings.reindex_pending || []);
+  return h("details", { class: "fold", open: pending.length ? true : null },
+    h("summary", {}, "Dosya ayarları", pending.length ? h("span", { class: "eff" }, "indeks bekliyor") : null),
+    secs.map(sec => sec.fields.map(f => Settings.row(Settings.fields[f.key]))),
+    pending.length ? h("div", { class: "msg warn" }, `Kaydedilen ayarlar henüz indekste değil (${pending.join(", ")}). `, h("button", { class: "btn sm primary", type: "button", onclick: e => reindex(e.currentTarget) }, "İndeksi yeniden kur")) : null);
+}
 const Dict = PAGES.sozluk = {
   q: "", group: "", shown: 200,
   async show(arg) {
@@ -1111,7 +1121,7 @@ const Dict = PAGES.sozluk = {
       d.meta ? h("a", { class: "btn", href: "/api/admin/dictionary/export", download: "" }, icon("download"), "Excel olarak dışa aktar") : null,
       h("a", { class: "btn ghost", href: "/api/admin/dictionary/template", download: "" }, icon("file"), "Boş şablon")];
     const head = pageHead("Sözlük", `Tek sözlük: ${D.store.path}; Excel yalnız içe ve dışa aktarım içindir.`, acts);
-    const settingsCard = this.fileSettings(ix);
+    const settingsCard = fileSettings("sozluk");
     if (!d.meta) {
       put($("#p-sozluk"), head, D.error ? h("div", { class: "msg bad" }, D.error) : null,
         h("section", { class: "card" },
@@ -1143,15 +1153,6 @@ const Dict = PAGES.sozluk = {
         h("div", { class: "list-box", id: "d-list" })),
       settingsCard);
     this.list();
-  },
-  fileSettings(ix) {
-    const secs = Settings.sections("sozluk");
-    if (!secs.length) return null;
-    const pending = (DATA.settings.reindex_pending || []);
-    return h("details", { class: "fold", open: pending.length ? true : null },
-      h("summary", {}, "Dosya ayarları", pending.length ? h("span", { class: "eff" }, "indeks bekliyor") : null),
-      secs.map(sec => sec.fields.map(f => Settings.row(Settings.fields[f.key]))),
-      pending.length ? h("div", { class: "msg warn" }, `Kaydedilen ayarlar henüz indekste değil (${pending.join(", ")}). `, h("button", { class: "btn sm primary", type: "button", onclick: e => reindex(e.currentTarget) }, "İndeksi yeniden kur")) : null);
   },
   list() {
     const d = dictState(), box = $("#d-list"); if (!box || !d.tables) return;
@@ -1229,6 +1230,7 @@ const Words = PAGES.kelimeler = {
     const p = $("#p-kelimeler");
     if (!p.childElementCount) put(p, pageHead("Kelimeler", ""), skeleton());
     if (!this.saved || !this.dirty()) this.adopt(await api("/api/admin/words"));
+    if (!DATA.settings) await LOAD.settings().catch(() => null);
     if (CURRENT === "kelimeler") this.render();
   },
   adopt(r) { this.saved = r; this.terms = copyTerms(r.terms.items); this.stops = r.stopwords.items.map(s => ({ ...s })); },
@@ -1239,7 +1241,7 @@ const Words = PAGES.kelimeler = {
     const top = id => ($(id) || {}).scrollTop || 0, at = [scrollY, top("#w-terms"), top("#w-stops")];
     put($("#p-kelimeler"),
       pageHead("Kelimeler", "Terim sözlüğü sorguyu iş biriminin kelimeleriyle genişletir; durak kelimeler aramada yok sayılır."),
-      this.termCard(), this.stopCard());
+      this.termCard(), this.stopCard(), DATA.settings ? fileSettings("kelimeler") : null);
     this.termList();
     scrollTo(0, at[0]); $("#w-terms").scrollTop = at[1]; $("#w-stops").scrollTop = at[2];
     Shell.refresh();
