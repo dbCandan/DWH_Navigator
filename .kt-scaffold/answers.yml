@@ -1,0 +1,24 @@
+project_intent: İş birimlerinin doğal dildeki veri taleplerini veri ambarı sözlüğüne
+  karşı kurum içi LLM ile eşleştirip tablo seviyesinde, gerekçeli ve güven skorlu
+  öneriler ve Excel raporu alması; sözlüğün, terim listelerinin ve model bağlantısının
+  yönetim ekranından yönetilmesi; kimlik doğrulamalı ve kurumsal Kubernetes ortamında
+  güvenli çalışma.
+project_id: project-c7a5d93323018df1d574bd676c88a0b7
+primary_domain: data-dictionary
+product_name: DWH Navigator
+product_slug: dwhnavigator
+application_mode: separated-web
+backend_profile: python-fastapi
+persistence_profile: sqlalchemy-alembic
+env_prefix: DWHNAVIGATOR_
+api_prefix: /api/dwhnavigator/v1
+tenant_header: x-tenant-id
+locales:
+- tr
+observability: true
+agent_clients:
+- claude-code
+- codex
+generator_version: 0.4.0
+recommendation_rationale: Sabit Python profili FastAPI, SQLAlchemy ve Alembic kullanır;
+  arka uç teknolojisini geliştirici veya kodlama ajanı seçmez.
