@@ -1,24 +1,10 @@
 import type {ReactNode} from 'react';
 import {useAuth} from '@/contexts/AuthContext';
-import {useIntl} from '@/contexts/IntlContext';
+import {AccessDenied} from './AccessDenied';
 
-export function PermissionRoute({
-  permission,
-  children,
-}: {
-  permission?: string;
-  children: ReactNode;
-}) {
+/** A generated route that needs one permission; the backend checks it on every request. */
+export function PermissionRoute({permission, children}: {permission?: string; children: ReactNode}) {
   const {hasPermission} = useAuth();
-  const {t} = useIntl();
-  if (permission && !hasPermission(permission))
-    return (
-      <main className="center">
-        <div>
-          <h1>{t('access.forbidden.title')}</h1>
-          <p>{t('access.forbidden.body')}</p>
-        </div>
-      </main>
-    );
+  if (permission && !hasPermission(permission)) return <AccessDenied />;
   return <>{children}</>;
 }
