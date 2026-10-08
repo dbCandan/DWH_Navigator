@@ -12,6 +12,7 @@ const PasswordChangePage = lazy(() => import('@/pages/PasswordChangePage'));
 const AdminShell = lazy(() => import('@/components/admin/AdminShell').then((m) => ({default: m.AdminShell})));
 const AdminFramePage = lazy(() => import('@/pages/admin/AdminFramePage'));
 const UsersPage = lazy(() => import('@/pages/admin/UsersPage'));
+const AiPage = lazy(() => import('@/pages/admin/AiPage'));
 
 /**
  * The application's addresses: the main screen at `/`, the admin screen under `/admin`
@@ -34,7 +35,7 @@ export default function App() {
               <Route path="analizler/:analysisId?" element={<AdminFramePage page="analizler" />} />
               <Route path="sozluk/*" element={<AdminFramePage page="sozluk" />} />
               <Route path="kelimeler" element={<AdminFramePage page="kelimeler" />} />
-              <Route path="yapay-zeka" element={<AdminFramePage page="yapay-zeka" />} />
+              <Route path="yapay-zeka" element={<AiPage />} />
               <Route path="arama" element={<AdminFramePage page="arama" />} />
               <Route path="bakim" element={<AdminFramePage page="bakim" />} />
               <Route

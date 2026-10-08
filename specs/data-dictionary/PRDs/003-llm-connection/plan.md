@@ -69,4 +69,4 @@ yazılması ([analysis-records](../008-analysis-records/PRD.md)) ve ön yüzdeki
 | 14, 15 | `tests/unit/test_llm_adapter.py`, `tests/integration/test_llm_integrations_api.py` |
 | 18, 22, Gözlemlenebilirlik | `tests/unit/test_llm_adapter.py`, `tests/integration/test_llm_integrations_api.py` |
 | Veri ve geçiş | `tests/integration/test_llm_data_model.py` |
-| 19 | Ön yüz testleri (açık görev) |
+| 19 | `app/frontend/src/pages/admin/AiPage.test.tsx`, `app/frontend/src/components/admin/AdminShell.test.tsx` |

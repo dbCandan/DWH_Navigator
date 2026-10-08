@@ -2,7 +2,9 @@ import {act, fireEvent, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {ApiError} from '@/lib/apiClient';
 import {clearAuth} from '@/lib/authStorage';
+import {LlmIntegrationService} from '@/services/llmIntegrations';
 import {UserAdminService} from '@/services/userAdmin';
+import {llmState} from '@/test/llm';
 import {message, renderApp, signedIn} from '@/test/render';
 import type {UserSummary} from '@/types/auth';
 
@@ -39,6 +41,7 @@ describe('Kullanıcılar (user-accounts Requirement 16)', () => {
   beforeEach(() => {
     signedIn('super');
     vi.spyOn(UserAdminService, 'list').mockResolvedValue(page([ALI, SUPER]));
+    vi.spyOn(LlmIntegrationService, 'list').mockResolvedValue(llmState());
   });
   afterEach(() => {
     vi.restoreAllMocks();

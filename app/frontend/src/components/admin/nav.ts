@@ -41,3 +41,9 @@ export const NAV: readonly NavEntry[] = [
 export const NAV_PAGES: readonly NavPage[] = NAV.filter((entry): entry is NavPage => 'id' in entry);
 
 export const adminPath = (id: AdminPageId) => `/admin/${id}`;
+
+/**
+ * The drawer the command palette's "Yeni model entegrasyonu" and "Model envanteri" open on the AI
+ * page (search-settings Requirement 25); it travels in the address's navigation state.
+ */
+export type AiDrawerRequest = 'editor' | 'inventory';

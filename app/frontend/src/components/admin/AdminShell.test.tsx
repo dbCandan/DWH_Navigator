@@ -3,7 +3,9 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {NAV_PAGES} from './nav';
 import {clearAuth} from '@/lib/authStorage';
 import messages from '@/locales/tr.json';
+import {LlmIntegrationService} from '@/services/llmIntegrations';
 import {UserAdminService} from '@/services/userAdmin';
+import {llmState} from '@/test/llm';
 import {message, renderApp, signedIn} from '@/test/render';
 
 const label = (id: string) => message(`admin.page.${id}.label`);
@@ -16,6 +18,7 @@ async function openAdmin(path: string) {
 describe('admin shell (search-settings Requirement 20-22, 24)', () => {
   beforeEach(() => {
     vi.spyOn(UserAdminService, 'list').mockResolvedValue({items: [], page: 1, size: 50, total: 0});
+    vi.spyOn(LlmIntegrationService, 'list').mockResolvedValue(llmState());
   });
   afterEach(() => {
     vi.restoreAllMocks();
@@ -95,7 +98,8 @@ describe('admin shell (search-settings Requirement 20-22, 24)', () => {
     expect(box).toHaveAttribute('placeholder', message('admin.palette.placeholder'));
     expect(screen.getByText(message('admin.palette.pages'))).toBeInTheDocument();
     expect(screen.getByText(message('admin.palette.actions'))).toBeInTheDocument();
-    expect(screen.getAllByRole('option')).toHaveLength(NAV_PAGES.length + 1);
+    // The pages, then "Yeni model entegrasyonu", "Model envanteri" and "Uygulamaya dön".
+    expect(screen.getAllByRole('option')).toHaveLength(NAV_PAGES.length + 3);
 
     fireEvent.change(box, {target: {value: 'kull'}});
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([

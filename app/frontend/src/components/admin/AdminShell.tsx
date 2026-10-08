@@ -5,11 +5,14 @@ import {PersonIcon} from '@/components/auth/PersonIcon';
 import {useAuth} from '@/contexts/AuthContext';
 import {useIntl} from '@/contexts/IntlContext';
 import {useDocumentTitle} from '@/hooks/useDocumentTitle';
+import {useLlmState} from '@/hooks/useLlmState';
 import {useSurface} from '@/hooks/useSurface';
+import {modelStatus, type ModelStatus} from '@/lib/modelStatus';
 import type {PaletteEntry} from '@/lib/paletteSearch';
 import {CommandPalette} from './CommandPalette';
 import {Icon} from './Icon';
-import {adminPath, NAV, NAV_PAGES, type AdminPageId} from './nav';
+import {LlmStateProvider} from './LlmStateProvider';
+import {adminPath, NAV, NAV_PAGES, type AdminPageId, type AiDrawerRequest} from './nav';
 import {ToastProvider} from './Toasts';
 import './admin.css';
 import './session.css';
@@ -23,6 +26,13 @@ function pageOf(pathname: string): AdminPageId | null {
 const typing = (target: EventTarget | null) =>
   target instanceof HTMLElement && /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName);
 
+/** The system status's light for a state (admin.html Shell.refresh led()). */
+const led = (state: ModelStatus['state']) => (state === 'ok' ? 'ok' : state === 'down' ? 'bad' : state === 'unknown' ? '' : 'warn');
+
+/** The AI page's menu badge: the model state's dot (llm-connection Requirement 19). */
+const modelBadge = (state: ModelStatus['state']) =>
+  state === 'ok' ? 'ok' : state === 'down' ? 'bad' : state === 'none' ? 'warn' : null;
+
 /**
  * The admin screen's shell (search-settings Requirement 20-22, 24, 25): the sidebar with the
  * brand, "Ara veya git…", the menu in three groups, the system status, the session area and
@@ -33,7 +43,9 @@ export function AdminShell() {
   useSurface('admin');
   return (
     <ToastProvider>
-      <ShellLayout />
+      <LlmStateProvider>
+        <ShellLayout />
+      </LlmStateProvider>
     </ToastProvider>
   );
 }
@@ -41,6 +53,7 @@ export function AdminShell() {
 function ShellLayout() {
   const {t} = useIntl();
   const {user, access, logout} = useAuth();
+  const {llm, reload: reloadLlm} = useLlmState();
   const location = useLocation();
   const navigate = useNavigate();
   const page = pageOf(location.pathname);
@@ -48,6 +61,13 @@ function ShellLayout() {
   const [whoOpen, setWhoOpen] = useState(false);
   const menu = useRef<HTMLElement>(null);
   const pages = useMemo(() => NAV_PAGES.filter((item) => !item.superAdmin || access.manageUsers), [access.manageUsers]);
+
+  const model = modelStatus(llm, t);
+
+  // The states are read when the shell opens and on every page change (search-settings Requirement 21).
+  useEffect(() => {
+    void reloadLlm();
+  }, [page, reloadLlm]);
 
   useDocumentTitle(
     page ? t('admin.documentTitle', {page: t(`admin.page.${page}.label`)}) : t('admin.documentTitleFallback'),
@@ -106,6 +126,7 @@ function ShellLayout() {
   const entries = useMemo<PaletteEntry[]>(() => {
     const pageGroup = t('admin.palette.pages');
     const actionGroup = t('admin.palette.actions');
+    const openOnAiPage = (open: AiDrawerRequest) => navigate(adminPath('yapay-zeka'), {state: {open}});
     return [
       ...pages.map((item) => ({
         groupId: 'pages',
@@ -115,6 +136,22 @@ function ShellLayout() {
         subtitle: t(`admin.page.${item.id}.tip`),
         run: () => navigate(adminPath(item.id)),
       })),
+      {
+        groupId: 'actions',
+        group: actionGroup,
+        icon: 'plus' as const,
+        title: t('admin.palette.newIntegration'),
+        subtitle: t('admin.palette.newIntegrationTip'),
+        run: () => openOnAiPage('editor'),
+      },
+      {
+        groupId: 'actions',
+        group: actionGroup,
+        icon: 'list' as const,
+        title: t('admin.palette.inventory'),
+        subtitle: t('admin.palette.inventoryTip'),
+        run: () => openOnAiPage('inventory'),
+      },
       {
         groupId: 'actions',
         group: actionGroup,
@@ -158,16 +195,28 @@ function ShellLayout() {
                 >
                   <Icon name={entry.icon} />
                   <span className="lbl">{t(`admin.page.${entry.id}.label`)}</span>
-                  <span className="nb" />
+                  <span className="nb">
+                    {entry.id === 'yapay-zeka' && modelBadge(model.state) ? (
+                      <span className={`bdg ${modelBadge(model.state)} dot`} title={model.label} />
+                    ) : null}
+                  </span>
                 </NavLink>
               ),
             )}
           </nav>
           <div className="side-foot">
             <div className="sys" id="sys" aria-live="polite">
-              <div>
-                <i className="led" />
-                <span>{t('admin.sys.modelPending')}</span>
+              <div title={model.detail}>
+                <i className={'led ' + led(model.state)} />
+                <span>
+                  {model.state === 'ok'
+                    ? model.label
+                    : model.state === 'down'
+                      ? t('admin.sys.modelDown')
+                      : model.state === 'none'
+                        ? t('admin.sys.modelNone')
+                        : t('admin.sys.modelPending')}
+                </span>
               </div>
               <div>
                 <i className="led" />

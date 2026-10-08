@@ -26,12 +26,18 @@
   `OpenAICompatibleAdapter`'a bağlayan görünüm; motor ana koda alındığında yapılır.
 - [ ] Task 7 — Requirement 18: analiz kaydındaki çağrı özetleri ve model kullanımı toplamları
   (analysis-records tablosuyla birlikte).
-- [ ] Task 8 — Requirement 19 / Acceptance 5: Yapay zekâ sayfası, Vitest testleri, OpenAPI ve
-  üretilmiş tiplerin güncelliği.
+- [x] Task 8 — Requirement 19 / Acceptance 5: Yapay zekâ sayfası (etkin model kartı, entegrasyon
+  kartları, düzenleyici ve envanter çekmeceleri, onaylar ve bildirimler), kabuktaki rozet, sistem
+  durumu satırı ve Ctrl K'daki iki eylem; Vitest testleri, OpenAPI ve üretilmiş tiplerin güncelliği.
+  Kanıt: `app/frontend/src/pages/admin/AiPage.test.tsx`, `scripts/quality-gate.sh frontend`.
 - [ ] Task 9 — Dağıtım etkisi (nonprod): `deploy-hooks.sh`'ın şifreleme anahtarını bir kez
   üretmesi, kurum kök sertifikasının imaja eklenmesi, ağ çıkış kuralı (kubernetes-delivery).
 - [ ] Task 10 — Acceptance 6 ve 7: yerel Compose'da tarayıcıyla ekle → test et → aktif et → soru
   akışı ve `nonprod` ayarlarıyla yerel koşum. Yerel çıkış kapısı ve sahte model sunucusuyla API
-  düzeyindeki canlı deneme yapıldı; tarayıcı ve soru adımları Task 6-8'e bağlıdır.
+  düzeyinde ve tarayıcıda ekle → test et → aktif et denendi; soru adımı Task 6-7'ye bağlıdır.
 - [ ] Task 11 — Acceptance 8: `vibecode-test` kümesinde RunAI ucuyla koşum (ayrı kullanıcı talimatı).
-- [ ] Task 12 — Acceptance 9: görsel eşdeğerlik ekran görüntüleri.
+- [x] Task 12 — Acceptance 9: görsel eşdeğerlik ekran görüntüleri. Yerel Compose'da hedef ile
+  kaynak `76e21a3` aynı sentetik entegrasyonlarla ve sahte model sunucusuyla (yerel çıkış kapısı)
+  çalıştırıldı; sayfa, model listesi, düzenleyicinin üç adımı ve envanter masaüstü ve telefon
+  genişliğinde yan yana karşılaştırıldı. Farklar yalnız model sunucusunun adresi (hedefte kapı adı,
+  kaynakta makinenin kendisi), hata metninde adresin olmaması (Requirement 13) ve oturum alanıdır.

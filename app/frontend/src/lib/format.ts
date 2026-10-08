@@ -14,6 +14,19 @@ export function formatDateTime(iso: string): string {
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 
+/** "850 ms", "2,4 sn", "12 sn", "3 dk 05 sn" (admin.html msText). */
+export function formatDuration(milliseconds: number | null | undefined, t: Translate): string {
+  const ms = Math.round(milliseconds || 0);
+  if (ms < 1000) return t('common.duration.ms', {ms});
+  if (ms < 60000)
+    return t('common.duration.seconds', {
+      seconds: (ms / 1000).toLocaleString(LOCALE, {maximumFractionDigits: ms < 10000 ? 1 : 0}),
+    });
+  const minutes = Math.floor(ms / 60000);
+  const seconds = Math.round((ms % 60000) / 1000);
+  return t('common.duration.minutes', {minutes, seconds: String(seconds).padStart(2, '0')});
+}
+
 /** "bugün 14:05", else "08.10 14:05" (with the year when it is not this year); admin.html when(). */
 export function formatWhen(iso: string, t: Translate, now: Date = new Date()): string {
   const date = new Date(iso);
