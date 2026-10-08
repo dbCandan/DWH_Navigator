@@ -7,7 +7,5 @@
 !src/vsa/**
 !data/terms.jsonl
 !data/stopwords.jsonl
-!docker/entrypoint.sh
-!docker/settings.yaml
 **/__pycache__
 **/*.py[cod]

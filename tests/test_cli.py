@@ -1,4 +1,4 @@
-"""CLI: an index that does not fit the dictionary is noticed (``serve --auto-index``)."""
+"""CLI: an index that does not fit the dictionary is noticed (``vsa serve`` builds it first)."""
 
 from __future__ import annotations
 

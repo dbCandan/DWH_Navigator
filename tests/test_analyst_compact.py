@@ -29,14 +29,14 @@ def test_catalog_uses_profile_and_falls_back_to_column_names() -> None:
             "Mevduat",
         )
     }
-    cat = build_catalog({"EDWDM.CUS.vA": a, "EDWDM.CUS.vB": b}, profiles)
-    assert cat.lines["EDWDM.CUS.vA"] == (
+    first, second = build_catalog({"EDWDM.CUS.vA": a, "EDWDM.CUS.vB": b}, profiles).text.split(
+        "\n"
+    )
+    assert first == (
         "T1 | EDWDM.CUS.vA | Mevduat | 1 kolon | Müşteri aylık bakiyeleri. | Satır: Müşteri × Ay"
         " | Zaman: Period"
     )
-    assert cat.lines["EDWDM.CUS.vB"].endswith("Kolonlar: Amount")  # no profile: names
-    with_names = build_catalog({"EDWDM.CUS.vA": a}, profiles, with_columns=True)
-    assert with_names.lines["EDWDM.CUS.vA"].endswith("Kolonlar: Period")
+    assert second.endswith("Kolonlar: Amount")  # no profile: names
 
 
 def test_column_line_compact_and_detail() -> None:
@@ -58,8 +58,6 @@ def test_table_material_details_only_the_relevant_columns() -> None:
     text = table_material("EDWDM.CUS.vA", "T1", cols, {1: 1.0}, 400, 90, detail_columns=1)
     assert "- BalanceTL [Ölçü]: Uzun açıklama bakiye." in text
     assert "- Period [Zaman]: Dönem · YYYYMM" in text
-    full = table_material("EDWDM.CUS.vA", "T1", cols, {}, 400, 90)  # default: all detailed
-    assert "- Period [Zaman]: Uzun açıklama dönem." in full
 
 
 def test_loader_reads_role_summary_and_profiles(tmp_path: Path) -> None:

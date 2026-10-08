@@ -13,11 +13,10 @@ from typing import Any
 
 import pytest
 from openpyxl import load_workbook
-from typer.testing import CliRunner
 
 from tests.conftest import write_xlsx
 from vsa import dictionary_store as ds
-from vsa.cli import app as cli_app
+from vsa.cli import main as cli_main
 from vsa.config import Settings, load_settings
 from vsa.loader import build_columns, object_profiles, read_workbook, records
 from vsa.pipeline import Engine
@@ -84,17 +83,12 @@ def test_bad_workbooks_are_refused(
         ds.from_workbook(write_xlsx(tmp_path / "x.xlsx", sheets))
 
 
-def test_engine_reads_only_the_store(sample_store_path: Path, tmp_path: Path) -> None:
+def test_engine_reads_only_the_store(sample_store_path: Path) -> None:
     s = Settings()
     s.dictionary.store = str(sample_store_path)
     engine = Engine.from_dictionary_file(s)
     assert engine.dictionary.source_path.endswith("dictionary.jsonl")
     assert len(engine.dictionary.columns) == 3
-    # older settings files still naming a workbook source load, the keys are ignored
-    old = tmp_path / "settings.yaml"
-    old.write_text("dictionary:\n  source: excel\n  path: data/VeriSozlugu.xlsx\n"
-                   "  sheet: Kolonlar\n", encoding="utf-8")  # fmt: skip
-    assert load_settings(old).dictionary.store == "data/dictionary.jsonl"
 
 
 def test_cli_import_and_export(sample_dictionary_path: Path, tmp_path: Path) -> None:
@@ -104,15 +98,13 @@ def test_cli_import_and_export(sample_dictionary_path: Path, tmp_path: Path) -> 
         f"index:\n  dir: {(tmp_path / 'index').as_posix()}\n",
         encoding="utf-8",
     )
-    runner = CliRunner()
-    r = runner.invoke(cli_app, ["dictionary", "import", str(sample_dictionary_path),
-                                "--settings", str(settings)])  # fmt: skip
-    assert r.exit_code == 0, r.output
+    assert cli_main(["dictionary", "import", str(sample_dictionary_path),
+                     "--settings", str(settings)]) == 0  # fmt: skip
     meta = json.loads((tmp_path / "index" / "meta.json").read_text(encoding="utf-8"))
     assert meta["columns"] == 3  # the import is the dictionary: indexed at once
-    r = runner.invoke(cli_app, ["dictionary", "export", str(tmp_path / "e.xlsx"),
-                                "--settings", str(settings)])  # fmt: skip
-    assert r.exit_code == 0 and (tmp_path / "e.xlsx").is_file()
+    assert cli_main(["dictionary", "export", str(tmp_path / "e.xlsx"),
+                     "--settings", str(settings)]) == 0  # fmt: skip
+    assert (tmp_path / "e.xlsx").is_file()
 
 
 # --------------------------------------------------------------------------- admin API

@@ -11,15 +11,13 @@ dependencies = [
     "openpyxl>=3.1.5",
     "defusedxml>=0.7.1",  # openpyxl parses uploaded workbooks with it (XML attacks)
     "pyyaml>=6.0.2",
-    "typer>=0.12",
-    "rich>=13.7",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5", "mypy>=1.10", "types-PyYAML", "types-openpyxl", "types-defusedxml"]
 
 [project.scripts]
-vsa = "vsa.cli:app"
+vsa = "vsa.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -41,9 +39,6 @@ ignore = ["SIM905"]  # "a b c".split() is the readable form for word lists
 
 [tool.ruff.lint.per-file-ignores]
 "src/vsa/web/settings_schema.py" = ["E501"]  # Turkish help texts (a data table)
-
-[tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["typer.Option", "typer.Argument"]
 
 [tool.mypy]
 strict = true

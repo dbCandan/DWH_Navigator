@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # DWH Navigator (VSA) — üretim imajı.
 #   docker build -t dwh-navigator:0.1.0 .
-# Ayrıntı: docs/KURULUM.md. İmaja yalnız uygulama kodu, terim sözlüğü ve durak kelimeleri
+# Ayrıntı: docs/KURULUM.md. İmaja yalnız uygulama kodu, terim sözlüğü ve durak kelimeler
 # girer (bkz. .dockerignore); sözlük, ayarlar ve kayıtlar /app/data birimindedir.
 
 # Taban imaj özetiyle sabitlenir (aynı girdi, aynı imaj); güncellemek için: docs/KURULUM.md
@@ -33,16 +33,17 @@ RUN set -eux; \
 COPY --from=build /opt/venv /opt/venv
 WORKDIR /app
 COPY src/vsa /app/src/vsa
-# data/ bir birimdir (volume): ilk açılışta varsayılanlar /app/defaults'tan kopyalanır (ADR-052).
-COPY data/terms.jsonl data/stopwords.jsonl docker/settings.yaml /app/defaults/
-COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/vsa-entrypoint
+# data/ is a volume: a missing term dictionary / stopword file starts from these (ADR-052).
+COPY data/terms.jsonl data/stopwords.jsonl /app/src/vsa/defaults/
+# `vsa …` inside the container, as on a developer machine.
+RUN printf '#!/bin/sh\nexec python -m vsa.cli "$@"\n' > /usr/local/bin/vsa \
+ && chmod 755 /usr/local/bin/vsa
 
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONPATH=/app/src \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONIOENCODING=utf-8 \
-    VSA_PORT=8765
+    PYTHONIOENCODING=utf-8
 
 RUN mkdir -p /app/data && chown vsa:vsa /app/data
 USER 10001:10001
@@ -50,7 +51,8 @@ VOLUME ["/app/data"]
 EXPOSE 8765
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
-  CMD ["python", "-c", "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/healthz' % os.environ.get('VSA_PORT', '8765'), timeout=4)"]
+  CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/healthz', timeout=4)"]
 
-ENTRYPOINT ["vsa-entrypoint"]
-CMD ["serve"]
+# serve builds a missing / stale index before it opens (sözlük yoksa boş açılır).
+ENTRYPOINT ["vsa"]
+CMD ["serve", "--host", "0.0.0.0", "--port", "8765"]

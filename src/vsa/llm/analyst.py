@@ -4,8 +4,9 @@ Search on columns finds tables that *mention* a concept; a person asking for "th
 customer's credit card information" wants the tables that are *about* credit cards.
 Rules cannot tell those apart reliably, a strong model reading the catalog can. So:
 
-1. ``shortlist``: the model sees every table (name, group, column names) and picks
-   candidate tables, look-alike tables and search terms for look-alike columns.
+1. ``shortlist``: the model sees every table (name, group, what it holds, row level, time
+   columns) and picks candidate tables, look-alike tables and search terms for look-alike
+   columns.
 2. ``analyse``: the model reads every column description of the candidates plus the
    look-alike columns of the whole dictionary, and writes the report.
 3. ``build_answer``: nothing the model wrote reaches the user unverified (ADR-002).
@@ -22,19 +23,13 @@ import logging
 import re
 from collections import Counter, defaultdict
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 
-from vsa import trace
 from vsa.llm.analyst_prompts import (
     ANALYST_SCHEMA,
-    CHUNK_SCHEMA,
     SHORTLIST_SCHEMA,
     analyst_system,
     analyst_user,
-    chunk_system,
-    chunk_user,
-    reconcile_system,
     shortlist_system,
     shortlist_user,
 )
@@ -65,8 +60,6 @@ class Catalog:
     text: str  # one line per table; identical for every request (prefix caching)
     ids: dict[str, str]  # "T12" -> object key
     keys: dict[str, str]  # object key -> "T12"
-    lines: dict[str, str] = field(default_factory=dict)  # object key -> its catalog line
-    groups: dict[str, str] = field(default_factory=dict)  # object key -> dataset group
 
 
 def _group(columns: Sequence[DictColumn]) -> str:
@@ -77,59 +70,29 @@ def _group(columns: Sequence[DictColumn]) -> str:
 def build_catalog(
     objects: Mapping[str, Sequence[DictColumn]],
     profiles: Mapping[str, ObjectProfile] | None = None,
-    with_columns: bool = False,
 ) -> Catalog:
     """One line per table. With a profile (the object sheet) the line carries what the
-    table holds, its row level and time columns; column names are added on request or
-    when a table has no profile description."""
+    table holds, its row level and time columns; a table without a profile description
+    lists its column names instead."""
     profiles = profiles or {}
-    lines: dict[str, str] = {}
-    groups: dict[str, str] = {}
+    lines: list[str] = []
     ids: dict[str, str] = {}
     for i, key in enumerate(sorted(objects), 1):
         cols = objects[key]
         tid = f"T{i}"
         ids[tid] = key
         prof = profiles.get(key)
-        groups[key] = (prof.group if prof else "") or _group(cols)
-        parts = [tid, key, groups[key], f"{len(cols)} kolon"]
+        parts = [tid, key, (prof.group if prof else "") or _group(cols), f"{len(cols)} kolon"]
         if prof and prof.description:
             parts.append(prof.description)
             if prof.grain:
                 parts.append(f"Satır: {prof.grain}")
             if prof.time_columns:
                 parts.append(f"Zaman: {', '.join(prof.time_columns)}")
-        if with_columns or not (prof and prof.description):
+        else:
             parts.append("Kolonlar: " + ", ".join(c.column for c in cols))
-        lines[key] = " | ".join(parts)
-    return Catalog("\n".join(lines.values()), ids, {k: t for t, k in ids.items()}, lines, groups)
-
-
-def chunk_catalog(catalog: Catalog, n: int) -> list[str]:
-    """The catalog cut into ``n`` parts of similar size. Tables of one dataset group stay
-    together (card tables with card tables), so each part can still compare relatives; a
-    group larger than a part is split. Empty parts are dropped."""
-    n = max(1, n)
-    by_group: dict[str, list[str]] = defaultdict(list)
-    for key in catalog.lines:
-        by_group[catalog.groups[key]].append(key)
-    size = {g: sum(len(catalog.lines[k]) for k in keys) for g, keys in by_group.items()}
-    target = sum(size.values()) / n
-    bins: list[list[str]] = [[] for _ in range(n)]
-    load = [0] * n
-    for group in sorted(by_group, key=lambda g: -size[g]):
-        pieces = [by_group[group]]
-        if size[group] > target * 1.2:  # too big for one part: spread it
-            keys = by_group[group]
-            parts = min(n, int(size[group] // target) + 1)
-            pieces = [keys[i::parts] for i in range(parts)]
-        for piece in pieces:
-            i = load.index(min(load))
-            bins[i] += piece
-            load[i] += sum(len(catalog.lines[k]) for k in piece)
-    order = {k: i for i, k in enumerate(catalog.lines)}
-    ordered = [sorted(b, key=order.__getitem__) for b in bins if b]
-    return ["\n".join(catalog.lines[k] for k in keys) for keys in ordered]
+        lines.append(" | ".join(parts))
+    return Catalog("\n".join(lines), ids, {k: t for t, k in ids.items()})
 
 
 # --------------------------------------------------------------------------- step 1
@@ -177,14 +140,9 @@ def _terms(value: object, cap: int) -> list[str]:
     ]
 
 
-def parse_shortlist(
-    reply: Mapping[str, object],
-    candidate_ids: Mapping[str, str],
-    confusable_ids: Mapping[str, str],
-    limit: int,
-) -> Shortlist:
-    cands, reasons, unknown = _picks(reply.get("candidates"), candidate_ids, limit)
-    conf, _, unknown_conf = _picks(reply.get("confusables"), confusable_ids, limit)
+def parse_shortlist(reply: Mapping[str, object], ids: Mapping[str, str], limit: int) -> Shortlist:
+    cands, reasons, unknown = _picks(reply.get("candidates"), ids, limit)
+    conf, _, unknown_conf = _picks(reply.get("confusables"), ids, limit)
     families: list[tuple[str, list[str]]] = []
     raw_families = reply.get("families")
     for fam in raw_families if isinstance(raw_families, list) else []:
@@ -204,75 +162,14 @@ def parse_shortlist(
 def shortlist(
     query: str, catalog: Catalog, hints: str, client: LLMClient, limit: int
 ) -> Shortlist | None:
-    """Step 1 in one call: the whole catalog."""
+    """Step 1: the whole catalog in one call."""
     reply = client.chat_json(
         shortlist_system(catalog.text, limit),
         shortlist_user(query, hints),
         SHORTLIST_SCHEMA,
         max_tokens=2500,
     )
-    return None if reply is None else parse_shortlist(reply, catalog.ids, catalog.ids, limit)
-
-
-@dataclass(slots=True)
-class ChunkRead:
-    """Step 1a: what the parallel readers of the catalog parts proposed."""
-
-    candidates: list[str]  # object keys, part by part
-    reasons: dict[str, str]
-    search_terms: list[str]
-    parts: int
-    failed: int
-    unknown_ids: int = 0
-
-
-def read_chunks(
-    query: str, chunks: Sequence[str], client: LLMClient, per_chunk: int, ids: Mapping[str, str]
-) -> ChunkRead | None:
-    """Step 1a: every part of the catalog read at the same time, for recall. None only when
-    every part failed; a failed part is counted and the others carry on."""
-
-    def one(i: int, chunk: str) -> dict[str, object] | None:
-        with trace.span(f"Parça {i}/{len(chunks)}"):
-            return client.chat_json(
-                chunk_system(chunk, per_chunk), chunk_user(query), CHUNK_SCHEMA, max_tokens=1500
-            )
-
-    with ThreadPoolExecutor(max_workers=max(1, len(chunks))) as pool:
-        tasks = [pool.submit(trace.carry(one), i, c) for i, c in enumerate(chunks, 1)]
-        replies = [t.result() for t in tasks]
-    if all(r is None for r in replies):
-        return None
-    read = ChunkRead([], {}, [], parts=len(chunks), failed=sum(r is None for r in replies))
-    for reply in replies:
-        if reply is None:
-            continue
-        keys, why, unknown = _picks(reply.get("candidates"), ids, per_chunk)
-        read.unknown_ids += unknown
-        for key in keys:
-            if key not in read.reasons:
-                read.candidates.append(key)
-                read.reasons[key] = why[key]
-        read.search_terms += [t for t in _terms(reply.get("search_terms"), 8)
-                              if t not in read.search_terms]  # fmt: skip
-    return read
-
-
-def reconcile(
-    query: str,
-    pool: str,
-    client: LLMClient,
-    limit: int,
-    pool_ids: Mapping[str, str],
-    catalog_ids: Mapping[str, str],
-) -> Shortlist | None:
-    """Step 1b: the pooled candidates compared side by side; the final candidates, the
-    reading of the request, its information families and look-alike tables."""
-    reply = client.chat_json(
-        reconcile_system(pool, limit), shortlist_user(query, "-"), SHORTLIST_SCHEMA,
-        max_tokens=2500,
-    )  # fmt: skip
-    return None if reply is None else parse_shortlist(reply, pool_ids, catalog_ids, limit)
+    return None if reply is None else parse_shortlist(reply, catalog.ids, limit)
 
 
 # --------------------------------------------------------------------------- material
@@ -315,14 +212,14 @@ def table_material(
     desc_chars: int,
     full_limit: int,
     evidence: str = "",
-    detail_columns: int | None = None,
+    detail_columns: int = 8,
     profile: ObjectProfile | None = None,
 ) -> str:
     """Every column of a candidate table; for very wide tables only the relevant ones
     get a line and the rest are listed by name. ``evidence`` is a line under the
-    heading (which request concepts the table carries, why it was added).
-    ``detail_columns``: None = every line carries the description; N = only the N most
-    relevant columns do, the others are compact (``Ad [Rol]: özet``)."""
+    heading (which request concepts the table carries, why it was added). Only the
+    ``detail_columns`` most relevant columns carry the description, the others are
+    compact (``Ad [Rol]: özet``, ADR-040)."""
     head = f"### {tid} · {key} · Talep eden birim: {_group(columns)} · {len(columns)} kolon"
     if profile and profile.grain:
         head += f" · Satır: {profile.grain}"
@@ -332,11 +229,7 @@ def table_material(
         columns,
         key=lambda c: (-relevance.get(c.id, 0.0), -(fold(c.column) in STRUCTURAL), c.id),
     )
-    detailed = (
-        {c.id for c in columns}
-        if detail_columns is None
-        else {c.id for c in ranked[:detail_columns] if relevance.get(c.id, 0.0) > 0}
-    )
+    detailed = {c.id for c in ranked[:detail_columns] if relevance.get(c.id, 0.0) > 0}
 
     def line(c: DictColumn) -> str:
         return column_line(c, desc_chars, detail=c.id in detailed)

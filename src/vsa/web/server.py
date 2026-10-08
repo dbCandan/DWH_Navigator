@@ -558,7 +558,7 @@ class App:
             spans = e.pop("spans", [])
             steps: dict[str, int] = {}
             for sp in spans:
-                if sp["kind"] == trace.STEP and not sp["name"].startswith("Parça"):
+                if sp["kind"] == trace.STEP:
                     steps[sp["name"]] = steps.get(sp["name"], 0) + int(sp["ms"])
             e["steps"] = steps
             e["waits"] = sum(int(sp["ms"]) for sp in spans if sp["kind"] == trace.EVENT)
