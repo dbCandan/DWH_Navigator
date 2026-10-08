@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.0
+Version: 1.0.1
 
 Acceptance date: 2026-10-08
 
@@ -447,31 +447,30 @@ sınıfa eşlenir. Kullanıcıya ve yöneticiye yalnız sınıfın sabit Türkç
 gösterilir; adres, sunucunun hata gövdesi, istisna metni ve anahtar hiçbir iletide yer almaz.
 Sunucu gövdesi yalnız Requirement 7 uyarlaması ve `context_exceeded` ayrımı için okunur.
 
-| Sınıf | Ne zaman | Kısa neden (test adımı, yoklama) | Analiz nedeni |
-|---|---|---|---|
-| `not_configured` | Aktif entegrasyon ya da sohbet modeli yok | Sohbet modeli bağlı değil | Sohbet modeli bağlı değil; Yönetim → Yapay zekâ sayfasından bir model bağlayın. |
-| `key_unreadable` | Kayıtlı anahtar açılamıyor (şifreleme anahtarı yok, değişmiş ya da değer bozulmuş) | Kayıtlı API anahtarı okunamadı; anahtarı yeniden girin | Model bağlantısının API anahtarı okunamadı; Yönetim → Yapay zekâ sayfasında anahtarı yeniden girin. |
-| `network_policy_denied` | Ad özel ağ dışına çözülüyor ya da bağlanılan adres özel ağ dışında | adres kurum ağı dışında; istek gönderilmedi | Model sunucusuna ulaşılamadı. |
-| `name_unresolved` | Ad çözülemedi | sunucu adı çözülemedi — adresi kontrol edin | Model sunucusuna ulaşılamadı. |
-| `connect_refused` | Bağlantı reddedildi | bağlantı reddedildi — adres/port yanlış ya da sunucu kapalı | Model sunucusuna ulaşılamadı. |
-| `connect_error` | Başka bir bağlantı hatası | bağlantı kurulamadı | Model sunucusuna ulaşılamadı. |
-| `tls_error` | Sertifika doğrulanamadı ya da şifreli bağlantı kurulamadı | güvenli bağlantı kurulamadı — sunucu sertifikası doğrulanamadı | Model sunucusuna ulaşılamadı. |
-| `timeout` | Bağlanma ya da okuma süresi doldu | sunucu zamanında yanıt vermedi — adres erişilemez olabilir | Model zamanında yanıt vermedi (zaman aşımı). |
-| `unauthorized` | 401 ya da 403 kodu | Sunucu HTTP {kod} döndürdü (API anahtarı eksik veya geçersiz) | Model hatası: Sunucu HTTP {kod} döndürdü (API anahtarı eksik veya geçersiz) |
-| `context_exceeded` | 2xx dışı yanıt gövdesinin ilk 600 karakteri "context" ile birlikte "exceed", "size" ya da "length" içeriyor (400'de önce uyarlama denenir) | modelin bağlam penceresi yetmedi | Modelin bağlam penceresi tablo kataloğu için küçük (~70k token gerekir). Model sunucusunda daha geniş bağlam açın (vLLM: --max-model-len) veya Yönetim → Yapay zekâ'dan daha geniş bağlamlı bir sohbet modeli seçin. |
-| `upstream_status` | Diğer 2xx dışı yanıtlar (3xx dahil) | Sunucu HTTP {kod} döndürdü | 504'te "Model zamanında yanıt vermedi (zaman aşımı).", diğerlerinde "Model hatası: Sunucu HTTP {kod} döndürdü" |
-| `invalid_response` | Gövde JSON nesnesi değil ya da beklenen alan yok | yoklamada "yanıt JSON değil — adres OpenAI uyumlu API'nin /v1 adresi mi?", sohbette "beklenmeyen yanıt" | Model hatası: beklenmeyen yanıt |
-| `invalid_json` | Onarımdan sonra da JSON nesnesi çıkmadı | model geçerli JSON üretmedi | Model hatası: model geçerli JSON üretmedi |
-| `response_too_large` | Açılmış yanıt 4 MiB'ı aştı | yanıt izin verilen boyutu aştı | Model hatası: yanıt izin verilen boyutu aştı |
-| `cancelled` | Analiz durduruldu | durduruldu | Yok; durdurma [question-analysis](../004-question-analysis/PRD.md) PRD'sindedir |
+| Sınıf | Ne zaman | Kısa neden (test adımı, yoklama) |
+|---|---|---|
+| `not_configured` | Aktif entegrasyon ya da sohbet modeli yok | Sohbet modeli bağlı değil |
+| `key_unreadable` | Kayıtlı anahtar açılamıyor (şifreleme anahtarı yok, değişmiş ya da değer bozulmuş) | Kayıtlı API anahtarı okunamadı; anahtarı yeniden girin |
+| `network_policy_denied` | Ad özel ağ dışına çözülüyor ya da bağlanılan adres özel ağ dışında | adres kurum ağı dışında; istek gönderilmedi |
+| `name_unresolved` | Ad çözülemedi | sunucu adı çözülemedi — adresi kontrol edin |
+| `connect_refused` | Bağlantı reddedildi | bağlantı reddedildi — adres/port yanlış ya da sunucu kapalı |
+| `connect_error` | Başka bir bağlantı hatası | bağlantı kurulamadı |
+| `tls_error` | Sertifika doğrulanamadı ya da şifreli bağlantı kurulamadı | güvenli bağlantı kurulamadı — sunucu sertifikası doğrulanamadı |
+| `timeout` | Bağlanma ya da okuma süresi doldu | sunucu zamanında yanıt vermedi — adres erişilemez olabilir |
+| `unauthorized` | 401 ya da 403 kodu | Sunucu HTTP {kod} döndürdü (API anahtarı eksik veya geçersiz) |
+| `context_exceeded` | 2xx dışı yanıt gövdesinin ilk 600 karakteri "context" ile birlikte "exceed", "size" ya da "length" içeriyor (400'de önce uyarlama denenir) | modelin bağlam penceresi yetmedi |
+| `upstream_status` | Diğer 2xx dışı yanıtlar (3xx dahil) | Sunucu HTTP {kod} döndürdü |
+| `invalid_response` | Gövde JSON nesnesi değil ya da beklenen alan yok | yoklamada "yanıt JSON değil — adres OpenAI uyumlu API'nin /v1 adresi mi?", sohbette "beklenmeyen yanıt" |
+| `invalid_json` | Onarımdan sonra da JSON nesnesi çıkmadı | model geçerli JSON üretmedi |
+| `response_too_large` | Açılmış yanıt 4 MiB'ı aştı | yanıt izin verilen boyutu aştı |
+| `cancelled` | Analiz durduruldu | durduruldu |
 
 Yoklama iletisi, `network_policy_denied`, `name_unresolved`, `connect_refused`, `connect_error`,
 `tls_error`, `timeout` ve `invalid_response` sınıflarında "Model sunucusuna ulaşılamadı: {kısa
-neden}", diğer sınıflarda yalnız kısa nedendir. Sağlık denetimi bir analizi durdurduğunda analiz
-nedeni, yoklama iletisi "Model sunucusuna ulaşılamadı" ile başlıyorsa iletinin kendisi, başlamıyorsa
-"Model sunucusu yanıt vermedi: {yoklama iletisi}" olur (kaynak `Engine.analyze` ile aynı).
-[question-analysis](../004-question-analysis/PRD.md) analiz nedenini "Analiz yapılamadı: " önekiyle
-gösterir.
+neden}", diğer sınıflarda yalnız kısa nedendir. Analiz yapılamadığında kullanıcıya gösterilen sebep
+bu sınıflardan çıkarılır; sebep metinlerinin tek tablosu
+[question-analysis](../004-question-analysis/PRD.md) Requirement 5'tedir (kaynak
+`pipeline.fallback_reason` ve `Engine.analyze` ile aynı; adres ve sunucu gövdesi olmadan).
 
 Requirement 14: Model listesi `GET <adres>/models` yanıtının `data[]` öğelerini okur. Adres `/v1`
 ile bitiyorsa ayrıca LM Studio'nun `GET <kök>/api/v0/models` ucu okunur; bu ucun hatası yok sayılır.
