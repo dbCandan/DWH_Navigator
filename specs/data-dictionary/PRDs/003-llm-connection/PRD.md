@@ -769,7 +769,7 @@ kalıcı değildir.
   Ortama göre şema kuralı; şifreleme (yanlış anahtar, değiştirilmiş değer, başka satır, başka köken,
   anahtar biçimi); Requirement 4 kuralları; gövde kurucusunun sabit örneklerle bayt eşitliği;
   Requirement 7 uyarlama sırası ve 3 sınırı; `parse_json_reply` (kaynak `tests/test_llm.py`
-  örnekleri); Requirement 13 sınıf ve metin tablosu, yoklama iletisi ve analiz nedeni kuralı; sağlık
+  örnekleri); Requirement 13 sınıf ve metin tablosu ve yoklama iletisi; sağlık
   önbelleği (sahte saatle 30 sn, bağlantı değişince boşalma); ayar doğrulaması.
 - **Fark testi:** Kaynak `vsa` paketi (`76e21a3`) test ortamına ayrıca kurulur. Kaynak
   `OpenAICompatibleClient` ve hedef bağdaştırıcı, gelen istekleri bayt olarak kaydeden aynı sahte
@@ -779,8 +779,8 @@ kalıcı değildir.
   seed reddi (tek tek ve art arda, kaynak `tests/test_client.py` metinleriyle); JSON olmayan ilk yanıt
   ve onarım; iki kez JSON olmayan yanıt; `choices` yok; 401; 500; 504; bağlam aşımı metinli 400;
   `seed` −1 ve boş `reasoning_effort`. Sunucunun aldığı gövde dizisi bayt bayt aynı, dönen JSON
-  nesnesi eşit olmalıdır; kaynak `fallback_reason` metni, sunucu metni içermeyen satırlarda
-  Requirement 13 analiz nedeniyle aynıdır.
+  nesnesi eşit olmalıdır. Analiz sebebi metinleri [question-analysis](../004-question-analysis/PRD.md)
+  Requirement 5'in testlerindedir.
 - **Sahte sunucuyla gerçek ağ bağlantısı:** askıda kalan sunucu (zaman aşımı), 4 MiB aşımı, 307
   yönlendirmesi, test sertifika otoritesiyle imzalanmamış sertifika, ortamda `HTTPS_PROXY`
   tanımlıyken doğrudan bağlantı, genel adrese çözülen ad ve bağlantı anında adres değiştiren sahte
