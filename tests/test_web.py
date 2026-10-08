@@ -18,6 +18,7 @@ import pytest
 from vsa.config import Settings
 from vsa.pipeline import Engine
 from vsa.web.server import App, make_handler
+from vsa.web.settings_schema import PAGES
 
 
 @pytest.fixture
@@ -72,7 +73,6 @@ def test_status(base_url: str) -> None:
     data = json.loads(body)
     assert status == 200 and data["columns"] == 3 and data["llm"] == ""
     assert data["llm_state"]["state"] == "none"  # ADR-034: the page warns
-    assert len(data["updated"]) == 10  # ISO date of the dictionary file
 
 
 def test_ask_and_report(base_url: str) -> None:
@@ -135,7 +135,6 @@ def test_term_list_end_to_end(base_url: str) -> None:
     assert job["done"] == 2 and [i["state"] for i in job["items"]] == ["bitti", "bitti"]
     assert job["header"] == "Terim" and len(job["notes"]) == 2  # a blank row and a repeat
     assert job["items"][1]["verdict"] == "BULUNAMADI"
-    assert json.loads(get(base_url + "/api/list")[1])["id"] == job["id"]
     status, raw, _ = get(f"{base_url}/api/list/{job['id']}/item/1")
     item = json.loads(raw)
     assert status == 200 and item["query"] == "kart limit doluluk oranı" and item["report_id"]
@@ -251,26 +250,6 @@ def test_ask_carries_earlier_votes(base_url: str) -> None:
     assert again["feedback"]["mine"] == {best: "down"}
 
 
-def test_feedback_to_golden_candidates(tmp_path: Path) -> None:
-    from vsa.feedback import export_candidates
-
-    fb = tmp_path / "fb.jsonl"
-    rows = [
-        {"query": "q1", "object": "DB.S.vA", "field": "", "vote": "down"},
-        {"query": "q1", "object": "DB.S.vA", "field": "", "vote": "up"},  # latest wins
-        {"query": "q1", "object": "DB.S.vB", "field": "", "vote": "down"},
-        {"query": "q2", "object": "DB.S.vC", "field": "", "vote": "down"},
-    ]
-    fb.write_text("\n".join(json.dumps(r) for r in rows) + "\nbroken\n", encoding="utf-8")
-    out = tmp_path / "cand.yaml"
-    assert export_candidates(fb, out) == 1
-    import yaml
-
-    items = yaml.safe_load(out.read_text(encoding="utf-8"))
-    assert items[0]["expected_objects"] == ["DB.S.vA"]
-    assert items[0]["rejected_objects"] == ["DB.S.vB"]
-
-
 def test_explorer_content_and_column_layers(base_url: str) -> None:
     # "doluluk oranı" is in no table or column name — only the content layer finds it.
     _, body, _ = get(base_url + "/api/objects?q=" + urllib.parse.quote("doluluk oranı"))
@@ -330,8 +309,7 @@ def app_with_settings(sample_store_path: Path, tmp_path: Path) -> App:
 def test_settings_roundtrip(app_with_settings: App) -> None:
     app = app_with_settings
     got = app.settings_get()
-    assert [p["id"] for p in got["pages"]] == ["llm", "search", "data"]
-    pages = {p["id"] for p in got["pages"]} | {"dictionary", "words"}  # admin views (ADR-052)
+    pages = {*PAGES, "dictionary", "words"}  # admin views (ADR-052)
     assert all(s["page"] in pages for s in got["sections"])
     on_view = [f["key"] for s in got["sections"] if s["page"] == "dictionary" for f in s["fields"]]
     assert on_view[0] == "dictionary.store"

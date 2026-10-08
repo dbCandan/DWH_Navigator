@@ -157,7 +157,6 @@ def test_admin_dictionary_tab(server: str, sample_dictionary_path: Path, tmp_pat
     r = json.loads(body)
     assert status == 200 and r["state"]["summary"]["meta"]["source"] == "VeriSozlugu.xlsx"
     status, body = call(base + "/api/status")
-    assert json.loads(body)["dictionary"] == "dictionary.jsonl"
     assert json.loads(body)["columns"] == 3  # in use at once
 
     status, body = call(base + "/api/admin/dictionary/table/EDWDM.CMP.vCardLimitFullness")

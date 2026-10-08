@@ -18,24 +18,9 @@ from vsa.config import Settings
 NOW = "anında"  # engine is rebuilt from the index on save (seconds)
 REINDEX = "indeks"  # BM25 index must be rebuilt (button on the screen, ~10 s)
 
-# Pages of the settings screen, in order. The LLM page is drawn from /api/llm, not from fields.
-PAGES: list[dict[str, Any]] = [
-    {
-        "id": "llm",
-        "title": "Yapay zekâ",
-        "intro": "Talebi okuyup cevabı yazan sohbet modeli.",
-    },
-    {
-        "id": "search",
-        "title": "Arama ve cevap",
-        "intro": "Analistin ne kadar malzeme okuyacağını ve ona verilen arama ipuçlarını belirler.",
-    },
-    {
-        "id": "data",
-        "title": "Veri ve bakım",
-        "intro": "Veri sözlüğü, indeks ve rapor konumları; indeksin yeniden kurulması.",
-    },
-]
+# Pages of the settings screen (their titles are the admin screen's). The LLM page is drawn
+# from /api/llm, not from fields.
+PAGES = ("llm", "search", "data")
 
 # ``advanced`` fields sit behind "Uzman ayarları"; a section that is all advanced is folded
 # as a whole. ``format: pct`` shows a 0–1 value as a percentage.

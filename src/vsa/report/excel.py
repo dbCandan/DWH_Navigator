@@ -58,8 +58,8 @@ def slugify(text: str, limit: int = 40) -> str:
     return slug or "talep"
 
 
-def report_path(out_dir: Path, mode: str, query: str, now: datetime | None = None) -> Path:
-    stamp = (now or datetime.now()).strftime("%Y%m%d_%H%M")
+def report_path(out_dir: Path, mode: str, query: str) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M")
     return out_dir / f"VSA_{mode}_{slugify(query)}_{stamp}.xlsx"
 
 

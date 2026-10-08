@@ -74,11 +74,9 @@ def score_column(
         score += BONUS_TERM_DICTIONARY
         signals.append("Kurumsal terim sözlüğü üzerinden eşleşti")
 
-    needs_derivation = False
     if q.measure == "oran" and covered:
         ratio = next(c for c in content if c.kind is ConceptKind.MEASURE)
         if not covers(f.name_tokens | frozenset(f.description), ratio):
-            needs_derivation = True
             score -= PENALTY_DERIVATION
             caveats.append(CAVEAT_DERIVATION)
 
@@ -102,7 +100,6 @@ def score_column(
         signals=signals,
         caveats=caveats,
         concepts=[c.label for c in covered],
-        needs_derivation=needs_derivation,
     )
 
 

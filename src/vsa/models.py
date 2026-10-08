@@ -52,7 +52,6 @@ class ObjectProfile:
     key: str  # DB.Schema.Object
     description: str = ""
     grain: str = ""  # what one row is
-    key_columns: tuple[str, ...] = ()
     time_columns: tuple[str, ...] = ()
     domain: str = ""
     group: str = ""
@@ -101,7 +100,6 @@ class ColumnHit:
     signals: list[str] = field(default_factory=list)  # Turkish, human-readable
     caveats: list[str] = field(default_factory=list)
     concepts: list[str] = field(default_factory=list)  # labels of concepts it covers
-    needs_derivation: bool = False
     role: str = ""  # why it is listed under the object: "eşleşme" / "kavram" / "zaman"
 
 

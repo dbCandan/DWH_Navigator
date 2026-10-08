@@ -129,14 +129,14 @@ def stem(token: str) -> str:
 
 
 def load_stopwords(lines: Iterable[str]) -> frozenset[str]:
-    """Build a stopword set from raw lines (``#`` comments and blanks skipped).
+    """Build a stopword set from words (blanks skipped).
 
     Holds both the folded and the stemmed form, so inflected fillers such as
     "bilgilerini" are caught by the entry "bilgisi" (both stem to "bilgi").
     """
     words: set[str] = set()
     for line in lines:
-        word = line.split("#", 1)[0].strip()
+        word = line.strip()
         if word:
             folded = fold(word)
             words.update((folded, stem(folded)))

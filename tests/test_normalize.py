@@ -15,7 +15,7 @@ from vsa.text.normalize import (
     tr_lower,
 )
 
-STOP = load_stopwords(["ve", "bilgisi", "verisi", "için", "tablo", "# yorum", ""])
+STOP = load_stopwords(["ve", "bilgisi", "verisi", "için", "tablo", ""])
 
 
 class TestTurkishCase:

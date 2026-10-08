@@ -29,11 +29,8 @@ def hit(h: ColumnHit) -> dict[str, Any]:
     return {
         **column(h.col),
         "role": h.role,
-        "score": round(h.rule_score, 4),
         "signals": h.signals,
         "caveats": h.caveats,
-        "concepts": h.concepts,
-        "derive": h.needs_derivation,
     }
 
 
@@ -47,7 +44,6 @@ def match(m: ObjectMatch, rank: int = 0) -> dict[str, Any]:
         "groups": m.dataset_groups,
         "score": round(m.score, 4),
         "level": m.level.value,
-        "rule_score": None if m.rule_score is None else round(m.rule_score, 4),
         "llm": None if m.llm_confidence is None else round(m.llm_confidence, 4),
         "components": {k: round(v, 4) for k, v in m.components.items()},
         "covered": m.covered,
@@ -76,10 +72,8 @@ def analysis(r: AnalysisResult) -> dict[str, Any]:
         "elapsed_ms": r.elapsed_ms,
         "dictionary_version": r.dictionary_version,
         "llm_model": r.llm_model,
-        "dropped": r.dropped_by_validation,
         "analyst": r.analyst,
         "fallback": r.fallback,
-        "confidence_factor": r.confidence_factor,
         "interpretation": r.interpretation,
         "design": r.design,
         "attention": r.attention,

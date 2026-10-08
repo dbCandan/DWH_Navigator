@@ -59,7 +59,7 @@ def test_synonym_bonus() -> None:
 def test_derivation_penalty_when_ratio_missing() -> None:
     ready, _ = score(make("CardLimitRate", "Kart limit oranı."), "kart limit oranı")
     parts, _ = score(make("CardLimit", "Kart limit tutarı."), "kart limit oranı")
-    assert CAVEAT_DERIVATION in parts.caveats and parts.needs_derivation
+    assert CAVEAT_DERIVATION in parts.caveats
     assert CAVEAT_DERIVATION not in ready.caveats
 
 

@@ -1,31 +1,17 @@
-"""Feedback loop, first step (HANDOVER §17 M7). Does file I/O.
-
-Thumbs from the web UI land in ``data/feedback.jsonl``. This module turns them into
-*candidate* golden-set items for review — they are not added to the golden set
-automatically, because only verified requests belong there (§13.3).
-
-The same votes shape the answer shown when a question comes again (ADR-036): see
-``assess`` and ``apply`` below (pure functions; the server reads the file).
+"""Feedback (ADR-036): thumbs from the web UI land in ``data/feedback.jsonl`` and shape
+the answer shown when a question comes again. ``load_feedback`` reads the file; ``assess``
+and ``apply`` are pure.
 """
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import yaml
-
 from vsa.scoring.combine import level_for
-
-
-@dataclass(slots=True)
-class QueryFeedback:
-    query: str
-    up: list[str] = field(default_factory=list)
-    down: list[str] = field(default_factory=list)
 
 
 def load_feedback(path: Path) -> list[dict[str, Any]]:
@@ -38,52 +24,6 @@ def load_feedback(path: Path) -> list[dict[str, Any]]:
         except json.JSONDecodeError:
             continue
     return rows
-
-
-def summarize(rows: list[dict[str, Any]]) -> list[QueryFeedback]:
-    """Latest vote per (query, object) wins. Votes of the removed target-table mode
-    (with a ``field``) are ignored (ADR-033)."""
-    latest: dict[tuple[str, str], str] = {}
-    for r in rows:
-        if not r.get("field") and r.get("scope", "object") == "object":
-            latest[(r.get("query", ""), r.get("object", ""))] = r.get("vote", "")
-    by_query: dict[str, QueryFeedback] = {}
-    for (query, obj), vote in latest.items():
-        fb = by_query.setdefault(query, QueryFeedback(query))
-        if vote == "up":
-            fb.up.append(obj)
-        elif vote == "down":
-            fb.down.append(obj)
-    return list(by_query.values())
-
-
-def golden_candidates(summary: list[QueryFeedback]) -> list[dict[str, Any]]:
-    today = date.today().isoformat()
-    items: list[dict[str, Any]] = []
-    for i, fb in enumerate((s for s in summary if s.up), 1):
-        item: dict[str, Any] = {
-            "id": f"fb-{today}-{i:02d}",
-            "query": fb.query,
-            "mode": "ask",
-            "expected_objects": sorted(fb.up),
-            "source": f"geri-bildirim-{today}",
-            "notes": "Arayüz geri bildiriminden aday; doğrulanınca golden_set.yaml'a taşıyın.",
-        }
-        if fb.down:
-            item["rejected_objects"] = sorted(fb.down)
-        items.append(item)
-    return items
-
-
-def export_candidates(feedback_path: Path, out_path: Path) -> int:
-    items = golden_candidates(summarize(load_feedback(feedback_path)))
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(
-        "# Golden set ADAYLARI — gözden geçirip doğrulananları tests/golden_set.yaml'a ekleyin.\n"
-        + yaml.safe_dump(items, allow_unicode=True, sort_keys=False, width=100),
-        encoding="utf-8",
-    )
-    return len(items)
 
 
 # --------------------------------------------------------------------------- reading votes
@@ -182,8 +122,6 @@ def assess(
     since = answer_since.replace(" ", "T")
     latest: dict[tuple[str, str], tuple[dict[str, Any], float]] = {}
     for r in rows:
-        if r.get("field"):
-            continue  # removed target-table mode (ADR-033)
         if r.get("scope") == "answer" and since and str(r.get("at", "")) < since:
             continue
         if text_key and r.get("text_key") == text_key:

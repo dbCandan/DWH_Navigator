@@ -202,13 +202,7 @@ class Engine:
     index_meta: dict[str, Any] = {}
 
     def save(self) -> dict[str, Any]:
-        s = self.settings
-        return save_index(
-            Path(s.index.dir),
-            self.dictionary,
-            self.bm25,
-            {"field_weights": s.search.field_weights, "k1": s.search.bm25.k1, "b": s.search.bm25.b},
-        )
+        return save_index(Path(self.settings.index.dir), self.dictionary, self.bm25)
 
     # ------------------------------------------------------------------ analysis
 
