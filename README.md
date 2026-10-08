@@ -12,7 +12,7 @@ cevabı kurum içi sunucudaki sohbet modeli (DGX Spark, OpenAI uyumlu API) yazar
 ## Hızlı başlangıç (Docker)
 
 ```bash
-docker build -t dwh-navigator:0.2.0 .
+docker build -t dwh-navigator:0.1.0 .
 cp .env.example .env            # VSA_ADMIN_PASSWORD'ü doldurun
 docker compose up -d            # http://<sunucu>:8765 · yönetim: /admin
 ```

@@ -1,4 +1,4 @@
-# Güvenlik — ön zafiyet taraması ve sertleştirme (0.2.0, 2026-10-08)
+# Güvenlik — ön zafiyet taraması ve sertleştirme (0.1.0, 2026-10-08)
 
 Şirket ağına entegrasyon taramasından önce yapılan iç denetimin özeti. Taramalar aşağıdaki
 komutlarla tekrarlanabilir; her sürümde ve taban imaj güncellendiğinde yeniden çalıştırın.
@@ -30,7 +30,7 @@ no-store` taşır — cevaplar ve raporlar tarayıcıda/vekilde önbelleğe alı
 
 Karşılaştırma: aynı uygulama Debian 13 (`python:3.12-slim-trixie`) tabanında 165 OS zafiyeti
 (44 HIGH, hiçbirinin yaması yok) veriyordu; Alpine'e geçilerek sıfırlandı ve imaj 212 MB'tan
-119 MB'a, komut satırı paketleri çıkınca (0.2.0, ADR-053) 100 MB'a indi.
+100 MB'a indi (komut satırı paketleri de çıkarıldı, ADR-053).
 
 ## Bileşen envanteri (SBOM özeti)
 
@@ -46,7 +46,7 @@ Karşılaştırma: aynı uygulama Debian 13 (`python:3.12-slim-trixie`) tabanın
 
 Web sunucusu ve model istemcisi Python standart kütüphanesidir (`http.server`, `urllib`);
 web arayüzü tek HTML dosyasıdır, dış kaynak (CDN, font, analitik) yüklemez.
-Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.2.0`.
+Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.1.0`.
 
 ## Bu denetimde kapatılan bulgular
 
@@ -99,8 +99,8 @@ Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.2.0
 ## Taramaları tekrarlamak
 
 ```bash
-docker build -t dwh-navigator:0.2.0 .
-docker save dwh-navigator:0.2.0 -o image.tar
+docker build -t dwh-navigator:0.1.0 .
+docker save dwh-navigator:0.1.0 -o image.tar
 docker run --rm -v "$PWD:/scan" aquasec/trivy image --input /scan/image.tar \
   --scanners vuln,secret,misconfig --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
 docker run --rm -v "$PWD:/src" aquasec/trivy config /src
@@ -117,7 +117,7 @@ Dinamik tarama (uygulama ayrı bir Docker ağında, parolalı):
 ```bash
 docker network create vsa-scan
 docker run -d --name vsa-scan-app --network vsa-scan -e VSA_ADMIN_PASSWORD=... \
-  -v "$PWD/data:/app/data" dwh-navigator:0.2.0
+  -v "$PWD/data:/app/data" dwh-navigator:0.1.0
 docker run --rm --network vsa-scan -v "$PWD:/zap/wrk:rw" zaproxy/zap-stable \
   zap-baseline.py -t http://vsa-scan-app:8765 -r zap.html
 docker run --rm --network vsa-scan projectdiscovery/nuclei -u http://vsa-scan-app:8765 \
