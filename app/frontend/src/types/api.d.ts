@@ -734,6 +734,469 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/dictionary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dictionary State
+         * @description The active and previous version summaries and the serving index's dictionary version.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryState"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export Dictionary
+         * @description The active version in the template, named after the Istanbul time.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Excel çalışma kitabı */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description dictionary_not_imported: etkin sözlük sürümü yok */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Dictionary
+         * @description Import a workbook in the template; 201 with a new version, 200 when the content is the
+         *     active version's (Requirement 7).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "X-Filename"?: string | null;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/octet-stream": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            responses: {
+                /** @description İçerik etkin sürümle aynı */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryImported"];
+                    };
+                };
+                /** @description Successful Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryImported"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description dictionary_import_in_progress: başka bir içe aktarma yazıyor */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description upload_too_large: gövde 20 MB'tan büyük */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description unsupported_media_type: gövde Excel değil */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description dictionary_file_empty: gövde boş; dictionary_workbook_invalid: dosya şablona uymuyor */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_build_failed: indeks kurulamadı, hiçbir şey yazılmadı */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_change_busy: başka bir değişiklik uygulanıyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/tables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dictionary Tables
+         * @description Tables of the active version as imported, by ``DB.Şema.Obje`` in code point order.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryTablesPage"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description dictionary_not_imported: etkin sözlük sürümü yok */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_request: sayfa değerleri */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/tables/{table_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dictionary Table
+         * @description One table's Objeler record and Kolonlar records as imported, in sheet order.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    table_key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryTableRecords"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description dictionary_not_imported: etkin sözlük sürümü yok; dictionary_table_not_found: anahtar için Kolonlar kaydı yok */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dictionary Template
+         * @description The empty template: both sheets with their header rows.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Excel çalışma kitabı */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/liveness": {
         parameters: {
             query?: never;
@@ -1378,7 +1841,7 @@ export interface paths {
         };
         /**
          * Readiness
-         * @description Return 503 until the runtime role connects and the schema reaches the image's head.
+         * @description Return 503 until the database is ready and the first search index serves.
          */
         get: {
             parameters: {
@@ -1408,12 +1871,645 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/search-index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Index State
+         * @description The serving index, a change in progress and the last failed attempt; no content.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SearchIndexState"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/search-index/rebuilds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rebuild Search Index
+         * @description Build the index again from the current inputs, even when they did not change.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SearchIndexRebuilt"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_build_failed: indeks kurulamadı, hiçbir şey yazılmadı */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_change_busy: başka bir değişiklik uygulanıyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/search-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Settings
+         * @description The settings schema, the 24 effective values and their defaults.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SearchSettings"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Save Settings
+         * @description Save the changed values; the engine is built with them before they are written.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SearchSettingsPatch"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SearchSettingsSaved"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_setting_unknown: şemada olmayan anahtar; search_setting_invalid: tür ya da aralık; invalid_request: bozuk gövde */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_build_failed: indeks kurulamadı, hiçbir şey yazılmadı */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_change_busy: başka bir değişiklik uygulanıyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/vocabulary/{list_name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read List
+         * @description The list's items in their stored order and its revision.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    list_name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VocabularyListState"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description vocabulary_list_not_found: liste adı terms ya da stopwords değil */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        /**
+         * Save List
+         * @description Replace the whole list; the index is rebuilt with it before it is written.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    list_name: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VocabularyListSave"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VocabularyListSaved"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description vocabulary_list_not_found: liste adı terms ya da stopwords değil */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description vocabulary_items_invalid, vocabulary_too_many_items, vocabulary_term_empty, vocabulary_term_without_equivalents, vocabulary_term_duplicate, vocabulary_stopword_not_single_word, vocabulary_value_too_long, vocabulary_too_many_equivalents: liste denetimi; invalid_request: alan türü */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_build_failed: indeks kurulamadı, hiçbir şey yazılmadı */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_change_busy: başka bir değişiklik uygulanıyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/vocabulary/{list_name}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export List
+         * @description The saved list as a one-sheet workbook, named after the Istanbul time.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    list_name: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Excel çalışma kitabı */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description vocabulary_list_not_found: liste adı terms ya da stopwords değil */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/vocabulary/{list_name}/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import List
+         * @description Replace the list with a workbook's rows, checked like a save.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "X-Filename"?: string | null;
+                };
+                path: {
+                    list_name: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/octet-stream": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VocabularyListSaved"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description vocabulary_list_not_found: liste adı terms ya da stopwords değil */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description upload_too_large: gövde 20 MB'tan büyük */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description unsupported_media_type: gövde Excel değil */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description vocabulary_file_empty, vocabulary_workbook_unreadable, vocabulary_workbook_too_many_rows, vocabulary_workbook_column_missing, vocabulary_workbook_empty: dosya; vocabulary_items_invalid, vocabulary_too_many_items, vocabulary_term_empty, vocabulary_term_without_equivalents, vocabulary_term_duplicate, vocabulary_stopword_not_single_word, vocabulary_value_too_long, vocabulary_too_many_equivalents: liste denetimi; invalid_request: alan türü */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_build_failed: indeks kurulamadı, hiçbir şey yazılmadı */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_change_busy: başka bir değişiklik uygulanıyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         ActiveChange: {
             active: boolean;
+        };
+        ActiveDictionaryVersion: {
+            /** @enum {string} */
+            channel: "arayuz" | "betik";
+            column_count: number;
+            /** Format: date-time */
+            imported_at: string;
+            imported_by: components["schemas"]["DictionaryImporter"] | null;
+            object_count: number;
+            public_id: string;
+            row_count: number;
+            source_name: string;
+            version: string;
+            warning_count: number;
+            warnings: string[];
         };
         AuthenticatedUser: {
             display_name: string;
@@ -1428,12 +2524,74 @@ export interface components {
             tenant_id: string;
             username: string;
         };
+        DictionaryImported: {
+            changed: boolean;
+            index: components["schemas"]["SearchIndexState"];
+            version: components["schemas"]["DictionaryVersionSummary"];
+            warnings: string[];
+        };
+        DictionaryImporter: {
+            display_name: string;
+            public_id: string;
+        };
+        DictionaryState: {
+            active: components["schemas"]["ActiveDictionaryVersion"] | null;
+            index_dictionary_version: string;
+            previous: components["schemas"]["DictionaryVersionSummary"] | null;
+        };
+        DictionaryTable: {
+            columns: number;
+            description: string;
+            domain: string;
+            grain: string;
+            group: string;
+            key: string;
+            name: string;
+        };
+        DictionaryTableRecords: {
+            columns: {
+                [key: string]: string;
+            }[];
+            key: string;
+            object: {
+                [key: string]: string;
+            } | null;
+        };
+        DictionaryTablesPage: {
+            items: components["schemas"]["DictionaryTable"][];
+            page: number;
+            page_size: number;
+            total: number;
+        };
+        DictionaryVersionSummary: {
+            /** @enum {string} */
+            channel: "arayuz" | "betik";
+            column_count: number;
+            /** Format: date-time */
+            imported_at: string;
+            imported_by: components["schemas"]["DictionaryImporter"] | null;
+            object_count: number;
+            public_id: string;
+            row_count: number;
+            source_name: string;
+            version: string;
+            warning_count: number;
+        };
         ErrorDetail: {
             code: string;
             message: string;
         };
         ErrorResponse: {
             detail: components["schemas"]["ErrorDetail"];
+        };
+        HTTPValidationError: {
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        IndexChange: {
+            /** Format: date-time */
+            at: string;
+            /** @enum {string} */
+            trigger: "startup" | "dictionary" | "terms" | "stopwords" | "settings" | "manual";
         };
         LlmActiveChange: {
             active: boolean;
@@ -1633,6 +2791,89 @@ export interface components {
             /** @enum {string} */
             role: "kullanici" | "yonetici";
         };
+        SearchIndexRebuilt: {
+            build_ms: number | null;
+            built_at: string | null;
+            columns: number;
+            dictionary_version: string;
+            elapsed_ms: number;
+            last_failure: components["schemas"]["IndexChange"] | null;
+            objects: number;
+            running: components["schemas"]["IndexChange"] | null;
+            stale_inputs: ("dictionary" | "terms" | "stopwords" | "settings")[];
+            /** @enum {string} */
+            state: "building" | "ready" | "stale";
+            trigger: ("startup" | "dictionary" | "terms" | "stopwords" | "settings" | "manual") | null;
+        };
+        /** @description ``GET /search-index`` (Requirement 15); no error text and no content. */
+        SearchIndexState: {
+            build_ms: number | null;
+            built_at: string | null;
+            columns: number;
+            dictionary_version: string;
+            last_failure: components["schemas"]["IndexChange"] | null;
+            objects: number;
+            running: components["schemas"]["IndexChange"] | null;
+            stale_inputs: ("dictionary" | "terms" | "stopwords" | "settings")[];
+            /** @enum {string} */
+            state: "building" | "ready" | "stale";
+            trigger: ("startup" | "dictionary" | "terms" | "stopwords" | "settings" | "manual") | null;
+        };
+        SearchSettingField: {
+            advanced: boolean;
+            /** @enum {string} */
+            effect: "immediate" | "reindex";
+            format: "pct" | null;
+            help: string;
+            key: string;
+            label: string;
+            max: number | null;
+            min: number | null;
+            step: number | null;
+            /** @enum {string} */
+            type: "bool" | "int" | "float";
+        };
+        SearchSettingSection: {
+            advanced: boolean;
+            fields: components["schemas"]["SearchSettingField"][];
+            id: string;
+            intro: string;
+            /** @enum {string} */
+            page: "search" | "data";
+            title: string;
+        };
+        SearchSettings: {
+            defaults: {
+                [key: string]: boolean | number;
+            };
+            sections: components["schemas"]["SearchSettingSection"][];
+            values: {
+                [key: string]: boolean | number;
+            };
+        };
+        SearchSettingsPatch: {
+            values: {
+                [key: string]: unknown;
+            };
+        };
+        SearchSettingsSaved: {
+            changed: string[];
+            elapsed_ms: number;
+            index: components["schemas"]["SearchIndexState"];
+            values: {
+                [key: string]: boolean | number;
+            };
+        };
+        StopwordItem: {
+            group: string;
+            word: string;
+        };
+        TermItem: {
+            domain: string;
+            equivalents: string[];
+            note: string;
+            term: string;
+        };
         UserCreateRequest: {
             display_name: string;
             /** @enum {string} */
@@ -1662,6 +2903,31 @@ export interface components {
             public_id: string;
             role: ("kullanici" | "yonetici" | "super_admin") | null;
             username: string;
+        };
+        ValidationError: {
+            ctx?: Record<string, never>;
+            input?: unknown;
+            loc: (string | number)[];
+            msg: string;
+            type: string;
+        };
+        VocabularyListSave: {
+            items?: unknown;
+        };
+        VocabularyListSaved: {
+            changed: boolean;
+            elapsed_ms: number;
+            index: components["schemas"]["SearchIndexState"];
+            items: components["schemas"]["TermItem"][] | components["schemas"]["StopwordItem"][];
+            /** @enum {string} */
+            list: "terms" | "stopwords";
+            revision: number;
+        };
+        VocabularyListState: {
+            items: components["schemas"]["TermItem"][] | components["schemas"]["StopwordItem"][];
+            /** @enum {string} */
+            list: "terms" | "stopwords";
+            revision: number;
         };
     };
     responses: never;

@@ -91,10 +91,18 @@ async def client() -> AsyncIterator[AsyncClient]:
         yield test_client
 
 
+class _SearchIndex:
+    """Stands in for the search index: whether the first engine was built."""
+
+    def __init__(self, serving: bool) -> None:
+        self.is_serving = serving
+
+
 @pytest.fixture
 def use_readiness(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
-    def install(readiness: DatabaseReadiness) -> None:
+    def install(readiness: DatabaseReadiness, *, index_serving: bool = True) -> None:
         monkeypatch.setattr(health_module, "database_readiness", readiness)
+        monkeypatch.setattr(app.state, "search_index", _SearchIndex(index_serving))
 
     yield install
 
@@ -106,6 +114,18 @@ async def test_schema_at_the_image_head_is_ready(client: AsyncClient, use_readin
 
     assert response.status_code == 200
     assert response.json() == {"status": "ready"}
+
+
+async def test_ready_database_without_the_first_search_index_is_not_ready(
+    client: AsyncClient, use_readiness: Any
+) -> None:
+    # data-dictionary 009-search-settings Requirement 10: the first engine must serve first.
+    use_readiness(_readiness(_Database({HEAD})), index_serving=False)
+
+    response = await client.get(f"{get_settings().api_prefix}/readiness")
+
+    assert response.status_code == 503
+    assert response.json() == {"status": "not-ready"}
 
 
 @pytest.mark.parametrize("recorded", [None, set(), {PREVIOUS}], ids=["no-table", "empty", "old"])

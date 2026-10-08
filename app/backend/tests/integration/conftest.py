@@ -5,7 +5,7 @@ import secrets
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 import pytest
@@ -20,6 +20,9 @@ from app.core.login_throttle import LoginRateLimiter
 from app.db.session import async_session_factory, engine
 from app.main import app
 from app.services.super_admin_service import ensure_super_admin
+
+if TYPE_CHECKING:
+    from tests.integration.data_dictionary import DataDictionary
 
 CLIENT_ADDRESS = "10.0.0.5"
 
@@ -217,6 +220,17 @@ async def auth(migrated_database: None) -> AsyncIterator[AuthHarness]:
         app.dependency_overrides.pop(get_login_rate_limiter, None)
 
 
+@pytest.fixture
+async def dd(auth: AuthHarness) -> AsyncIterator["DataDictionary"]:
+    """A fresh installation's data dictionary, a started search index and a manager."""
+
+    # Imported here: the harness module imports this one.
+    from tests.integration.data_dictionary import data_dictionary_harness
+
+    async for harness in data_dictionary_harness(auth):
+        yield harness
+
+
 class RecordingHandler(logging.Handler):
     def __init__(self) -> None:
         super().__init__()
@@ -243,7 +257,16 @@ def recorded_logs() -> Iterator[RecordingHandler]:
 
     handler = RecordingHandler()
     loggers = [
-        logging.getLogger(name) for name in ("app.auth", "app.admin", "app.http", "app.security")
+        logging.getLogger(name)
+        for name in (
+            "app.auth",
+            "app.admin",
+            "app.http",
+            "app.security",
+            "app.dictionary",
+            "app.vocabulary",
+            "app.search",
+        )
     ]
     levels = [logger.level for logger in loggers]
     root = logging.getLogger()

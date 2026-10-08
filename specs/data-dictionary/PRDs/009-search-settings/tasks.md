@@ -2,4 +2,24 @@
 
 [Plan](plan.md) belgesinden türetildi.
 
-- [ ] Task 1 — Requirement 1 / Acceptance 1: çıktıyı uygulayın; odaklı test ve koşum/kanıt makbuzunu bu görevde belirtin.
+- [x] Task 1 — Requirement 1-8 / Acceptance 1: ayar şeması, denetim ve iletileri, yalnız değişen
+  değerin saklanması, açılışta saklı değerin denetimi, parmak izine giren alanlar. Kanıt:
+  `tests/unit/test_search_settings_schema.py`, `tests/parity/test_admin_parity.py`,
+  `tests/integration/test_search_settings_api.py`.
+- [x] Task 2 — Requirement 9-15 / Acceptance 2: açılışta veritabanından kurma ve hazırlık
+  denetimi, değişiklik sırası (önce kur sonra yaz, 500, 503, bağlantı kopsa da tamamlanma), analiz
+  kilidi beklememe, kelime indeksinin yeniden kullanımı, elle yeniden kurma, durum ve `stale`.
+  Kanıt: `tests/unit/test_search_index.py`, `tests/integration/test_search_settings_api.py`,
+  `scripts/quality-gate.sh all`.
+- [x] Task 3 — Gözlemlenebilirlik: olaylar, ölçümler ve aralıklar. Kanıt:
+  `tests/integration/test_search_index_signals.py`.
+- [ ] Task 4 — Requirement 2 ve 10'un tüketicileri: question-analysis'in `GET /status`
+  (`shortlist`) ve analiz başlatmada `503 search_index_not_ready` (Dalga 3).
+- [ ] Task 5 — Requirement 16: Bakım sayfasının kayıtlı cevap bloğu, question-analysis'in
+  `GET /saved-answers/summary` ve `DELETE /saved-answers` uçlarıyla.
+- [ ] Task 6 — Requirement 17-25 / Acceptance 3: yönetim kabuğu, Arama ve cevap ve Bakım sayfaları,
+  ön yüz testleri (ön yüz dalgası).
+- [ ] Task 7 — Acceptance 4: yerel Compose'da tarayıcıyla senaryo.
+- [ ] Task 8 — Acceptance 5: nonprod'da gerçek sözlükle kurulum süreleri ve bellek (ayrı kullanıcı
+  talimatı).
+- [ ] Task 9 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri.

@@ -14,6 +14,7 @@ endpoint the no-op providers stay installed, so every helper here is safe to cal
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -80,9 +81,22 @@ LLM_OUTCOMES = frozenset(
 LLM_PROBE_OPERATIONS = frozenset({"health", "models", "inventory"})
 LLM_TOKEN_KINDS = frozenset({"prompt", "completion"})
 LLM_FEATURES = frozenset({"system_role", "response_format", "reasoning_effort", "seed"})
+# Fixed label sets of data-dictionary/PRDs/001-dictionary-management (Gözlemlenebilirlik).
+DICTIONARY_IMPORT_OUTCOMES = frozenset(
+    {"created", "unchanged", "invalid", "too_large", "unsupported_type", "conflict", "error"}
+)
+DICTIONARY_CHANNELS = frozenset({"arayuz", "betik"})
+DICTIONARY_EXPORT_KINDS = frozenset({"dictionary", "template"})
+# Fixed label sets of data-dictionary/PRDs/009-search-settings (Gözlemlenebilirlik).
+SEARCH_TRIGGERS = frozenset({"startup", "dictionary", "terms", "stopwords", "settings", "manual"})
+SEARCH_BUILD_OUTCOMES = frozenset({"ok", "failed"})
+SEARCH_CHANGE_OUTCOMES = frozenset({"applied", "unchanged", "failed", "busy"})
 
 # A chat call reads for up to timeout_seconds (at most 3600 s) after waiting for a slot.
 _LLM_BUCKETS = (0.25, 0.5, 1, 2.5, 5, 10, 20, 30, 60, 120, 300, 600, 900, 1800, 2700, 3600)
+
+# Reading, checking and writing a dictionary of up to 200,000 rows; building the search index.
+_IMPORT_BUCKETS = (0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 30, 45, 60, 90, 120)
 
 # An unreachable collector delays the flush at shutdown by at most this long per signal.
 _EXPORT_TIMEOUT_SECONDS = 5
@@ -146,6 +160,55 @@ class _Instruments:
             "dwhnavigator_llm_probes_total",
             unit="{probe}",
             description="Model server /models reads by operation and outcome class",
+        )
+        # data-dictionary/PRDs/001-dictionary-management
+        self.dictionary_imports = meter.create_counter(
+            "dwhnavigator_dictionary_imports_total",
+            unit="{import}",
+            description="Dictionary imports by outcome class and channel",
+        )
+        self.dictionary_import_duration = meter.create_histogram(
+            "dwhnavigator_dictionary_import_duration_seconds",
+            unit="s",
+            description="Reading, checking and writing one dictionary import, by outcome class",
+            explicit_bucket_boundaries_advisory=_IMPORT_BUCKETS,
+        )
+        self.dictionary_exports = meter.create_counter(
+            "dwhnavigator_dictionary_exports_total",
+            unit="{export}",
+            description="Dictionary and empty template downloads",
+        )
+        self.dictionary_active_columns = meter.create_gauge(
+            "dwhnavigator_dictionary_active_columns",
+            unit="{column}",
+            description="Valid columns of the active dictionary version in the serving index",
+        )
+        self.dictionary_active_tables = meter.create_gauge(
+            "dwhnavigator_dictionary_active_tables",
+            unit="{table}",
+            description="Tables of the active dictionary version in the serving index",
+        )
+        # data-dictionary/PRDs/009-search-settings
+        self.search_index_builds = meter.create_counter(
+            "dwhnavigator_search_index_builds_total",
+            unit="{build}",
+            description="Search index builds by trigger and outcome",
+        )
+        self.search_index_build_duration = meter.create_histogram(
+            "dwhnavigator_search_index_build_duration_seconds",
+            unit="s",
+            description="Duration of search index builds by trigger",
+            explicit_bucket_boundaries_advisory=_IMPORT_BUCKETS,
+        )
+        self.search_index_ready = meter.create_gauge(
+            "dwhnavigator_search_index_ready",
+            unit="1",
+            description="1 when an index serves and matches the database, otherwise 0",
+        )
+        self.search_changes = meter.create_counter(
+            "dwhnavigator_search_changes_total",
+            unit="{change}",
+            description="Changes of the search data through the change queue by outcome",
         )
 
 
@@ -397,3 +460,132 @@ def record_llm_probe(*, operation: str, outcome: str) -> None:
             "outcome": bounded(outcome, LLM_OUTCOMES),
         },
     )
+
+
+# --- Dictionary (data-dictionary/PRDs/001-dictionary-management) --------------------------------
+
+
+@dataclass
+class DictionaryImportRecord:
+    """What the ``dictionary import`` span reports at its end; classes and counts only."""
+
+    outcome: str = "error"
+    row_count: int = 0
+
+
+@contextmanager
+def dictionary_import_span(channel: str) -> Iterator[DictionaryImportRecord]:
+    """The ``dictionary import`` span: outcome, channel, row count and duration; no content."""
+
+    record = DictionaryImportRecord()
+    bounded_channel = bounded(channel, DICTIONARY_CHANNELS)
+    started = perf_counter()
+    with _content_free_span(
+        "dictionary import",
+        SpanKind.INTERNAL,
+        {"dwhnavigator.dictionary.channel": bounded_channel},
+    ) as span:
+        try:
+            yield record
+        finally:
+            seconds = perf_counter() - started
+            outcome = bounded(record.outcome, DICTIONARY_IMPORT_OUTCOMES)
+            span.set_attribute("dwhnavigator.dictionary.outcome", outcome)
+            span.set_attribute("dwhnavigator.dictionary.row_count", record.row_count)
+            span.set_attribute("dwhnavigator.duration_ms", round(seconds * 1000))
+            if outcome == "error":
+                span.set_status(Status(StatusCode.ERROR))
+            instruments = _signals.instruments
+            instruments.dictionary_imports.add(1, {"outcome": outcome, "channel": bounded_channel})
+            instruments.dictionary_import_duration.record(seconds, {"outcome": outcome})
+
+
+def record_dictionary_export(kind: str) -> None:
+    _signals.instruments.dictionary_exports.add(1, {"kind": bounded(kind, DICTIONARY_EXPORT_KINDS)})
+
+
+def set_active_dictionary(columns: int, tables: int) -> None:
+    _signals.instruments.dictionary_active_columns.set(columns)
+    _signals.instruments.dictionary_active_tables.set(tables)
+
+
+# --- Search index (data-dictionary/PRDs/009-search-settings) -----------------------------------
+
+
+@dataclass
+class SearchChangeRecord:
+    outcome: str = "failed"
+
+
+@dataclass
+class SearchBuildRecord:
+    outcome: str = "failed"
+    columns: int = 0
+    objects: int = 0
+
+
+@contextmanager
+def search_change_span(trigger: str) -> Iterator[SearchChangeRecord]:
+    """The ``search_change.apply`` span of one change and its ``changes_total`` point."""
+
+    record = SearchChangeRecord()
+    bounded_trigger = bounded(trigger, SEARCH_TRIGGERS)
+    with _content_free_span(
+        "search_change.apply",
+        SpanKind.INTERNAL,
+        {"dwhnavigator.search.trigger": bounded_trigger},
+    ) as span:
+        try:
+            yield record
+        finally:
+            outcome = bounded(record.outcome, SEARCH_CHANGE_OUTCOMES)
+            span.set_attribute("dwhnavigator.search.outcome", outcome)
+            if outcome == "failed":
+                span.set_status(Status(StatusCode.ERROR))
+            _signals.instruments.search_changes.add(
+                1, {"trigger": bounded_trigger, "outcome": outcome}
+            )
+
+
+def record_search_change(trigger: str, outcome: str) -> None:
+    """A change that never entered the queue (``busy``)."""
+
+    _signals.instruments.search_changes.add(
+        1,
+        {
+            "trigger": bounded(trigger, SEARCH_TRIGGERS),
+            "outcome": bounded(outcome, SEARCH_CHANGE_OUTCOMES),
+        },
+    )
+
+
+@contextmanager
+def search_index_build_span(trigger: str) -> Iterator[SearchBuildRecord]:
+    """The ``search_index.build`` span: trigger, outcome, column and table counts."""
+
+    record = SearchBuildRecord()
+    bounded_trigger = bounded(trigger, SEARCH_TRIGGERS)
+    started = perf_counter()
+    with _content_free_span(
+        "search_index.build",
+        SpanKind.INTERNAL,
+        {"dwhnavigator.search.trigger": bounded_trigger},
+    ) as span:
+        try:
+            yield record
+        finally:
+            outcome = bounded(record.outcome, SEARCH_BUILD_OUTCOMES)
+            span.set_attribute("dwhnavigator.search.outcome", outcome)
+            span.set_attribute("dwhnavigator.search.columns", record.columns)
+            span.set_attribute("dwhnavigator.search.objects", record.objects)
+            if outcome == "failed":
+                span.set_status(Status(StatusCode.ERROR))
+            instruments = _signals.instruments
+            instruments.search_index_builds.add(1, {"trigger": bounded_trigger, "outcome": outcome})
+            instruments.search_index_build_duration.record(
+                perf_counter() - started, {"trigger": bounded_trigger}
+            )
+
+
+def set_search_index_ready(ready: bool) -> None:
+    _signals.instruments.search_index_ready.set(1 if ready else 0)

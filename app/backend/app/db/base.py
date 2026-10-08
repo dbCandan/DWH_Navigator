@@ -3,12 +3,23 @@
 from app.db.base_class import Base  # noqa: F401
 
 # Alembic imports this module to populate Base.metadata. Keep the imports here.
+from app.domain.models.dictionary import (  # noqa: F401
+    DictionaryColumnRecord,
+    DictionaryObjectRecord,
+    DictionaryVersion,
+)
 from app.domain.models.llm_integration import LlmIntegration  # noqa: F401
 from app.domain.models.permission import Permission, RolePermission  # noqa: F401
 from app.domain.models.refresh_session import RefreshSession  # noqa: F401
 from app.domain.models.role import Role, UserRole  # noqa: F401
+from app.domain.models.search_setting import SearchSetting  # noqa: F401
 from app.domain.models.tenant import Tenant  # noqa: F401
 from app.domain.models.user import User  # noqa: F401
 from app.domain.models.user_change import UserChange  # noqa: F401
+from app.domain.models.vocabulary import (  # noqa: F401
+    VocabularyListHeader,
+    VocabularyStopword,
+    VocabularyTerm,
+)
 
 # kt-scaffold:model-registry

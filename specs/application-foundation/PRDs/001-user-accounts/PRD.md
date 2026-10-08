@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.0
+Version: 1.0.1
 
 Acceptance date: 2026-10-08
 
@@ -318,8 +318,11 @@ izni kalkar (Decision 13). `index.html` `Cache-Control: no-store` taşır; yaln�
 statik JS ve CSS dosyaları önbelleğe alınabilir (Decision 14). Tarayıcı HSTS'yi düz HTTP'de yok
 sayar, yerel çalışma etkilenmez; kümede giriş denetleyicisi kendi HSTS değerini koyarsa o geçerli
 olur. Hiçbir yanıtın `Server` başlığı yazılım sürümü taşımaz: backend `--no-server-header` ile başlar,
-ön yüz sunucusu ve yerel vekil `server_tokens off` kullanır. Tarayıcıdaki ana akışlarda (giriş,
-parola değiştirme, soru, toplu arama, yönetim ekranı sayfaları) konsolda CSP ihlali görülmez.
+ön yüz sunucusu ve yerel vekil `server_tokens off` kullanır. Sürüm imajındaki ön yüzle tarayıcıdaki
+ana akışlarda (giriş, parola değiştirme, soru, toplu arama, yönetim ekranı sayfaları) konsolda CSP
+ihlali görülmez. Yerel geliştirme yığını ön yüzü anında yenileme için Vite geliştirme sunucusuyla
+sunar; Vite satır içi betik ve stil eklediğinden katı CSP orada uygulanmaz ve CSP kanıtı sürüm
+imajıyla alınır.
 
 Requirement 15: Hata yanıtları. Uygulamanın ürettiği her hata tek zarfla döner:
 `{"detail":{"code":"...","message":"..."}}`; ileti Türkçedir ve güvenlidir, yanıt `x-request-id`
@@ -585,7 +588,7 @@ olaylarının geçmişi ayrıca değişiklik kaydı tablosunda kalıcı saklanı
   kez gösterilmesi, role göre yollar. Yapılandırma testi: ön yüz sunucusunun CSP metni birebir ve
   `server_tokens off`.
 - Tarayıcı senaryosu: hesap aç → tek kullanımlık parolayla gir → yeni parola belirle → uygulamayı kullan
-  → çık; ana akışlarda konsolda CSP ihlali olmaması.
+  → çık; sürüm imajındaki ön yüzle ana akışlarda konsolda CSP ihlali olmaması.
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
 
@@ -609,7 +612,8 @@ olaylarının geçmişi ayrıca değişiklik kaydı tablosunda kalıcı saklanı
   yeni parola belirlemeden ilerleyemez, yeni parolayla girer; 15 dakikalık belirteç sessizce yenilenir
   ve iki sekme açıkken oturum düşmez; çıkış çalışır; `kullanici` yönetim ekranına giremez (sayfa ve API
   403); süper yönetici rolü değiştirir, parolayı sıfırlar ve hesabı pasifleştirir, değişiklik hemen
-  yansır; sayfa ve API yanıtlarında Requirement 14 başlıkları görülür, konsolda CSP ihlali yoktur;
+  yansır; sayfa ve API yanıtlarında Requirement 14 başlıkları görülür, sürüm imajındaki ön yüzle
+  konsolda CSP ihlali yoktur;
   başka kökenden gönderilen POST 403 alır (Requirement 2–5, 7, 8, 10, 13, 14, 16).
 - [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı: görünüm. Yerel Compose'da giriş ekranı,
   ilk girişteki "Yeni parola belirleyin" adımı, "Parolamı değiştir" ve Kullanıcılar sayfasının ekran
