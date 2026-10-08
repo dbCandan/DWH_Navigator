@@ -37,21 +37,15 @@ from vsa.models import (
 )
 from vsa.text.normalize import fold
 
-CACHE_FORMAT = 2  # bump when the stored form or the answer's meaning changes (2: `missing`)
+CACHE_FORMAT = 3  # bump when the stored form or the answer's meaning changes
 _WORD = re.compile(r"[^\W_]+", re.UNICODE)
 # Words that turn a request around; they are stopwords or vanish in stemming, so the
 # meaning key carries them explicitly ("kartı olan" ≠ "kartı olmayan").
 NEGATIONS = frozenset({"yok", "degil", "haric", "harici", "disinda", "olmayan", "olmadan",
                        "olmayanlar", "hic", "without", "except", "not", "no"})  # fmt: skip
 # Settings that do not change an answer: where files go, and this feature's own switches.
-_NEUTRAL = ("report", "cache", "index")
-# The stopword list as it shipped until ADR-052 (sorted, folded words); it stands for the old
-# file path, so answers kept until then stay valid. Any other list is its own digest.
-_SHIPPED_STOPWORDS = "250c0f8481b93f85"
-_OLD_LIST_PATHS = {
-    "term_dictionary": "config/term_dictionary.csv",
-    "stopwords": "config/stopwords_tr.txt",
-}
+# The dictionary and the word lists count by their content (below), not by their path.
+_NEUTRAL = ("report", "cache", "index", "dictionary")
 _LLM_KEYS = ("model", "temperature", "reasoning_effort", "seed")
 
 
@@ -97,22 +91,14 @@ def fingerprint(
     raw = asdict(settings)
     for key in _NEUTRAL:
         raw.pop(key, None)
-    # Where the dictionary is read from does not shape an answer; its version (below) does.
-    # The section is fixed as it was before ADR-050 so answers kept until then stay valid.
-    raw["dictionary"] = {"path": "data/VeriSozlugu.xlsx", "sheet": "Kolonlar"}
-    # Likewise the word lists (ADR-052): their content counts, not where they are. Term groups
-    # are in "_" below; the stopwords take the old path's place while they are the shipped list.
-    words = json.dumps(sorted(stopwords), ensure_ascii=False)
-    digest = hashlib.sha256(words.encode("utf-8")).hexdigest()[:16]
-    raw["expansion"]["term_dictionary"] = _OLD_LIST_PATHS["term_dictionary"]
-    raw["expansion"]["stopwords"] = (
-        _OLD_LIST_PATHS["stopwords"] if digest == _SHIPPED_STOPWORDS else digest
-    )
+    for key in ("term_dictionary", "stopwords"):
+        raw["expansion"].pop(key)
     raw["llm"] = {k: raw["llm"][k] for k in _LLM_KEYS}
     raw["_"] = {
         "format": CACHE_FORMAT,
         "dictionary": dictionary_version,
         "terms": [[g.term, *g.equivalents, g.domain, g.note] for g in term_groups],
+        "stopwords": sorted(stopwords),
         "top": top_n,
         "prompts": prompts_digest(),
     }
@@ -146,19 +132,12 @@ def encode(r: AnalysisResult) -> dict[str, Any]:
     return d
 
 
-def _known(cls: type, d: dict[str, Any]) -> dict[str, Any]:
-    """The fields ``cls`` still has: an answer kept by an older version may carry a
-    retired one."""
-    names = {f.name for f in fields(cls)}
-    return {k: v for k, v in d.items() if k in names}
-
-
 def _match_from_dict(d: dict[str, Any], columns: dict[str, DictColumn]) -> ObjectMatch:
     hits = []
     for h in d["columns"]:
         col = columns[h["col"]]  # KeyError: not in this dictionary -> unusable answer
-        hits.append(ColumnHit(**{**_known(ColumnHit, h), "col": col}))
-    return ObjectMatch(**{**_known(ObjectMatch, d), "level": Level(d["level"]), "columns": hits})
+        hits.append(ColumnHit(**{**h, "col": col}))
+    return ObjectMatch(**{**d, "level": Level(d["level"]), "columns": hits})
 
 
 def decode(d: dict[str, Any], columns: dict[str, DictColumn]) -> AnalysisResult | None:
@@ -167,7 +146,7 @@ def decode(d: dict[str, Any], columns: dict[str, DictColumn]) -> AnalysisResult 
     try:
         return AnalysisResult(
             **{
-                **_known(AnalysisResult, d),
+                **d,
                 "verdict": Verdict(d["verdict"]),
                 "objects": [_match_from_dict(m, columns) for m in d["objects"]],
                 "near_misses": [_match_from_dict(m, columns) for m in d["near_misses"]],

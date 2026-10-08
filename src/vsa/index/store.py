@@ -1,16 +1,15 @@
-"""Index persistence under ``data/index/`` (HANDOVER §18.2). Does file I/O.
+"""Index persistence under ``data/index/``. Does file I/O.
 
 columns.json         normalized column records
 bm25.json            BM25 postings and document lengths
-objects.json         object profiles (the object sheet: description, grain, keys…)
-meta.json            dictionary sha/version, row count, build time, settings digest
+objects.json         object profiles (the object sheet: description, grain, time columns…)
+meta.json            dictionary version, row count, build time
 
-Records written by older versions may carry retired fields; they are ignored on load.
+An index of another format is rebuilt (``vsa serve`` does it on start).
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import asdict
 from datetime import datetime
@@ -20,7 +19,7 @@ from typing import Any
 from vsa.index.bm25 import BM25Index
 from vsa.models import DictColumn, Dictionary, ObjectProfile
 
-INDEX_FORMAT = 1
+INDEX_FORMAT = 2
 
 
 class IndexMissingError(FileNotFoundError):
@@ -38,34 +37,23 @@ def _column_from_dict(d: dict[str, Any]) -> DictColumn:
         synonyms=tuple(d["synonyms"]),
         dataset_group=d["dataset_group"],
         has_pii=bool(d["has_pii"]),
-        role=d.get("role", ""),
-        summary=d.get("summary", ""),
+        role=d["role"],
+        summary=d["summary"],
     )
 
 
 def _profile_from_dict(d: dict[str, Any]) -> ObjectProfile:
     return ObjectProfile(
         key=d["key"],
-        description=d.get("description", ""),
-        grain=d.get("grain", ""),
-        key_columns=tuple(d.get("key_columns", ())),
-        time_columns=tuple(d.get("time_columns", ())),
-        domain=d.get("domain", ""),
-        group=d.get("group", ""),
+        description=d["description"],
+        grain=d["grain"],
+        time_columns=tuple(d["time_columns"]),
+        domain=d["domain"],
+        group=d["group"],
     )
 
 
-def settings_digest(parts: dict[str, Any]) -> str:
-    blob = json.dumps(parts, sort_keys=True, ensure_ascii=False).encode("utf-8")
-    return hashlib.sha256(blob).hexdigest()[:12]
-
-
-def save_index(
-    directory: Path,
-    dictionary: Dictionary,
-    bm25: BM25Index,
-    index_settings: dict[str, Any],
-) -> dict[str, Any]:
+def save_index(directory: Path, dictionary: Dictionary, bm25: BM25Index) -> dict[str, Any]:
     directory.mkdir(parents=True, exist_ok=True)
 
     def dump(name: str, obj: Any) -> None:
@@ -74,7 +62,6 @@ def save_index(
     dump("columns.json", [asdict(c) for c in dictionary.columns])
     dump("objects.json", [asdict(p) for p in dictionary.objects.values()])
     dump("bm25.json", bm25.to_dict())
-    (directory / "synonym_index.json").unlink(missing_ok=True)  # retired debug file
     meta = {
         "format": INDEX_FORMAT,
         "dictionary_source": dictionary.source_path,
@@ -82,7 +69,6 @@ def save_index(
         "columns": len(dictionary.columns),
         "objects": len(dictionary.object_keys),
         "built_at": datetime.now().isoformat(timespec="seconds"),
-        "settings_digest": settings_digest(index_settings),
         "warnings": dictionary.warnings,
     }
     dump("meta.json", meta)
@@ -99,18 +85,16 @@ def load_index(directory: Path) -> tuple[Dictionary, BM25Index, dict[str, Any]]:
     if meta.get("format") != INDEX_FORMAT:
         raise IndexMissingError("İndeks formatı eski; `vsa index` ile yeniden kurun.")
     cols = json.loads((directory / "columns.json").read_text(encoding="utf-8"))
-    objects_path = directory / "objects.json"
-    profiles = (
-        [_profile_from_dict(p) for p in json.loads(objects_path.read_text(encoding="utf-8"))]
-        if objects_path.exists()
-        else []
-    )
+    profiles = [
+        _profile_from_dict(p)
+        for p in json.loads((directory / "objects.json").read_text(encoding="utf-8"))
+    ]
     bm25 = BM25Index.from_dict(json.loads((directory / "bm25.json").read_text(encoding="utf-8")))
     dictionary = Dictionary(
         columns=[_column_from_dict(c) for c in cols],
         source_path=meta["dictionary_source"],
         version=meta["dictionary_version"],
-        warnings=list(meta.get("warnings", [])),
+        warnings=list(meta["warnings"]),
         objects={p.key: p for p in profiles},
     )
     return dictionary, bm25, meta

@@ -5,7 +5,6 @@ from pathlib import Path
 import pytest
 
 from tests.conftest import import_workbook, write_xlsx
-from vsa.config import load_settings
 from vsa.dictionary_store import load_dictionary
 from vsa.loader import (
     build_columns,
@@ -102,18 +101,6 @@ def test_jsonl_lists(tmp_path: Path) -> None:
     words.write_text('{"word": "ve"}\nve\n', encoding="utf-8")
     with pytest.raises(ValueError, match="s.jsonl satır 2"):
         load_stopword_file(words)
-
-
-def test_old_list_paths_mean_the_jsonl_files(tmp_path: Path) -> None:
-    path = tmp_path / "settings.yaml"
-    path.write_text(
-        "expansion:\n  term_dictionary: config/term_dictionary.csv\n"
-        "  stopwords: config/stopwords_tr.txt\n",
-        encoding="utf-8",
-    )
-    s = load_settings(path)
-    assert s.expansion.term_dictionary == "data/terms.jsonl"
-    assert s.expansion.stopwords == "data/stopwords.jsonl"
 
 
 def test_real_dictionary(real_dictionary_path: Path, tmp_path: Path) -> None:

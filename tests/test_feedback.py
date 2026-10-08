@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from vsa.feedback import apply, assess, summarize
+from vsa.feedback import apply, assess
 
 NOW = datetime(2026, 10, 1, 12, 0)
 
@@ -105,12 +105,6 @@ def test_no_votes_leaves_the_answer_as_is() -> None:
     data = answer(match("A", 0.8))
     out = apply(data, assess([], "t", now=NOW), {})
     assert out["objects"][0]["score"] == 0.8 and out["rejected"] == [] and out["endorsed"] == []
-
-
-def test_answer_votes_stay_out_of_golden_candidates() -> None:
-    rows = [{"query": "q", "object": "", "scope": "answer", "vote": "up"},
-            {"query": "q", "object": "A", "vote": "up"}]  # fmt: skip
-    assert summarize(rows)[0].up == ["A"]
 
 
 def test_answer_votes_judge_one_answer_not_the_question() -> None:

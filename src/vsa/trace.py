@@ -5,7 +5,6 @@ Pure: spans are collected in memory. Nothing is recorded unless the caller opene
 ``recording()``; without one every function here is a cheap no-op, so the CLI, eval and
 the explorer run untraced. The web server writes finished traces (I/O stays there).
 
-Worker threads do not inherit the recording; submit their work through ``carry``.
 """
 
 from __future__ import annotations
@@ -13,7 +12,7 @@ from __future__ import annotations
 import contextvars
 import threading
 import time
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
@@ -95,7 +94,7 @@ _parent: contextvars.ContextVar[int | None] = contextvars.ContextVar("vsa_span",
 
 @contextmanager
 def recording() -> Iterator[Trace]:
-    """Collect every span opened inside this block (and in work passed through ``carry``)."""
+    """Collect every span opened inside this block."""
     trace = Trace()
     t1, t2 = _trace.set(trace), _parent.set(None)
     try:
@@ -169,9 +168,3 @@ class Laps:
         if self._cm is not None:
             cm, self._cm, self._span = self._cm, None, None
             cm.__exit__(None, None, None)
-
-
-def carry(fn: Callable[..., T]) -> Callable[..., T]:
-    """``fn`` bound to the caller's recording, for a worker thread (one copy per task)."""
-    ctx = contextvars.copy_context()
-    return lambda *args: ctx.run(fn, *args)

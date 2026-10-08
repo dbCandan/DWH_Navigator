@@ -15,7 +15,7 @@ from vsa.text.normalize import (
     tr_lower,
 )
 
-STOP = load_stopwords(["ve", "bilgisi", "verisi", "için", "tablo", "# yorum", ""])
+STOP = load_stopwords(["ve", "bilgisi", "verisi", "için", "tablo", ""])
 
 
 class TestTurkishCase:
@@ -90,7 +90,7 @@ class TestStem:
 
 class TestTokenize:
     def test_stopwords_token_level(self) -> None:
-        # "bilgisi" is a stopword but "risk" must survive (HANDOVER §6.5).
+        # "bilgisi" is a stopword but "risk" must survive.
         assert tokenize("risk bilgisi", stopwords=STOP) == ["risk"]
 
     def test_camel_with_compound(self) -> None:
@@ -122,7 +122,7 @@ class TestStopwords:
 
 
 def test_no_direct_lower_calls_outside_normalize() -> None:
-    """HANDOVER §6.1: no module may call .lower()/.upper()/.casefold() directly."""
+    """No module may call .lower()/.upper()/.casefold() directly."""
     src = Path(__file__).resolve().parents[1] / "src" / "vsa"
     pattern = re.compile(r"\.(lower|upper|casefold)\(\)")
     offenders = [

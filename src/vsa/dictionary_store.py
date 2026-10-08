@@ -20,7 +20,6 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -36,9 +35,11 @@ from vsa.loader import (
     _resolve_columns,
     build_columns,
     file_version,
+    formulas_as_text,
     object_profiles,
     read_workbook,
     records,
+    write_jsonl,
 )
 from vsa.models import Dictionary
 
@@ -143,16 +144,11 @@ def save(store: Store, path: Path) -> None:
             old = {}
         if old.get("digest") == store.meta["digest"] and old.get("version"):
             store.meta["version"] = old["version"]
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    with tmp.open("w", encoding="utf-8", newline="\n") as fh:
-        fh.write(json.dumps(store.meta, ensure_ascii=False) + "\n")
-        for kind, rows in (("object", store.objects), ("column", store.columns)):
-            for r in rows:
-                fh.write(json.dumps({"type": kind, **r}, ensure_ascii=False) + "\n")
-    if path.exists():
-        os.replace(path, path.with_suffix(path.suffix + ".bak"))
-    os.replace(tmp, path)
+    write_jsonl(path, [
+        store.meta,
+        *({"type": "object", **r} for r in store.objects),
+        *({"type": "column", **r} for r in store.columns),
+    ])  # fmt: skip
 
 
 # --------------------------------------------------------------------------- read
@@ -259,10 +255,7 @@ def _sheet(
     ws.append(header)
     for r in rows:
         ws.append([r.get(h) or None for h in header])
-    for row in ws.iter_rows():
-        for cell in row:
-            if cell.data_type == "f":  # a text starting with "=" stays a text
-                cell.data_type = "s"
+    formulas_as_text(ws)
     ws.freeze_panes = "A2"
 
 

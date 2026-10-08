@@ -21,14 +21,13 @@ from collections.abc import Callable, Mapping
 from typing import Any, Protocol
 
 from vsa import cancel, trace
+from vsa.text.normalize import fold
 
 log = logging.getLogger(__name__)
 
 _FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 # Qwen emits <think>, Gemma via Google AI Studio <thought> — often with a draft JSON inside.
 _THINK = re.compile(r"<(think|thought)>.*?</\1>", re.DOTALL)
-
-_ASCII_LOWER = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz")
 
 
 class LLMError(RuntimeError):
@@ -108,11 +107,6 @@ def _error_text(text: str) -> str:
     """The message of a JSON error body (OpenAI / Google style), else the text itself."""
     m = re.search(r'"(?:message|detail)"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
     return (m.group(1) if m else text)[:300]
-
-
-def fold_error(text: str) -> str:
-    """Lower-cased ASCII of an API error message, for keyword checks."""
-    return text.encode("ascii", "ignore").decode().translate(_ASCII_LOWER)
 
 
 def _why(exc: BaseException) -> str:
@@ -233,7 +227,7 @@ class OpenAICompatibleClient:
         # learned from the first HTTP 400 (see ``_adapt``).
         self.system_role = True
         self.structured = True
-        self.last_error = ""  # why the last chat call failed, for the user (ADR-029 fallback)
+        self.last_error = ""  # why the last chat call failed, told to the user (ADR-038)
 
     @property
     def available(self) -> bool:
@@ -336,7 +330,7 @@ class OpenAICompatibleClient:
         *,
         max_tokens: int = 1024,
     ) -> dict[str, Any] | None:
-        """Schema-constrained JSON (HANDOVER §10.4); one repair attempt, then None (§10.6)."""
+        """Schema-constrained JSON; one repair attempt, then None."""
         if not self.available:
             return None
         with trace.span("LLM çağrısı", self._model, trace.LLM) as s:
@@ -410,7 +404,7 @@ class OpenAICompatibleClient:
         """Drop a request feature the model rejected with HTTP 400; True if a retry helps."""
         if "HTTP 400" not in error:
             return False
-        text = fold_error(error)
+        text = fold(error)
         if self.system_role and ("developer instruction" in text or "system instruction" in text):
             self.system_role = False
         elif self.structured and any(

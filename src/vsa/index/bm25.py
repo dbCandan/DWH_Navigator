@@ -1,4 +1,4 @@
-"""Field-weighted BM25 over dictionary columns (HANDOVER §6.6).
+"""Field-weighted BM25 over dictionary columns.
 
 Each field's term frequency is multiplied by its weight before the usual BM25
 saturation, so a hit in the column name (weight 3) counts more than one in the

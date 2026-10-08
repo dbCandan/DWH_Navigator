@@ -94,31 +94,6 @@ def test_load_settings_reads_the_integrations_file(tmp_path: Path) -> None:
     assert (llm.enabled, llm.endpoint, llm.model) == (True, SPARK, "gpt")
 
 
-def test_files_from_before_vector_search_was_removed_still_load(tmp_path: Path) -> None:
-    """Old settings carry a ``dense:`` section and embedding fields; old integrations an
-    embedding model. All of it is ignored, nothing fails."""
-    settings = tmp_path / "settings.yaml"
-    settings.write_text(
-        "llm:\n  enabled: true\n  endpoint: http://old/v1\n  model: old\n"
-        "  embedding_model: bge\n  embedding_endpoint: http://old:8001/v1\n"
-        "dense:\n  enabled: true\n  top_k: 150\n  weight: 0.35\n",
-        encoding="utf-8",
-    )
-    assert load_settings(settings).llm.model == "old"
-    integrations_path(settings).write_text(
-        "integrations:\n- id: s\n  name: S\n  endpoint: http://10.0.0.5:8000/v1\n"
-        "  enabled: true\n  chat_model: gpt\n  embedding_model: bge\n"
-        "- id: e\n  name: E\n  endpoint: http://10.0.0.6:8001/v1\n"
-        "  enabled: true\n  embedding_model: bge\n",
-        encoding="utf-8",
-    )
-    llm = load_settings(settings).llm
-    assert (llm.enabled, llm.endpoint, llm.model) == (True, SPARK, "gpt")
-    s, e = read_integrations(integrations_path(settings)) or []
-    assert s.enabled and s.roles == ["chat"]
-    assert not e.enabled and e.roles == []  # embedding-only entry: kept, never active
-
-
 # --------------------------------------------------------------------------- admin API
 
 

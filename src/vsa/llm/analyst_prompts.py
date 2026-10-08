@@ -2,9 +2,9 @@
 
 Two steps, like an analyst at the dictionary:
 
-1. **shortlist** — the whole catalog (every table with its column names) in the system
-   message, the request in the user message. The system message is the same for every
-   request, so a server with prefix caching (vLLM on the A100s) reads the catalog once.
+1. **shortlist** — the whole catalog (one line per table: what it holds, row level, time
+   columns) in the system message, the request in the user message. The system message is
+   the same for every request, so a server with prefix caching reads the catalog once.
 2. **analyst** — every column description of the shortlisted tables plus look-alike
    columns from the rest of the dictionary; the model writes the report in the shape of
    the hand-made analyses (Özet · Öneriler · Önerilen Kurgu · Dikkat · Notlar).
@@ -108,68 +108,6 @@ def shortlist_user(query: str, hints: str) -> str:
         '"families": [{"name": "müşterilik kıdemi", '
         '"terms": ["Tenure", "kıdem", "RecordingTime"]}]}'
     )
-
-
-# ---------------------------------------------------------------- step 1, split (ADR-029)
-# The catalog is read in parallel parts (1a, recall), the candidates of all parts plus the
-# search engine's are then compared side by side (1b, reconcile) to pick the final ones.
-
-CHUNK_RULES = """GÖREV (1a — katalog parçası):
-Aşağıdaki KATALOG PARÇASI veri ambarı kataloğunun yalnızca bir bölümüdür (id | tablo | talep \
-eden birim | kolon sayısı | tablonun içeriği | satır düzeyi | zaman kolonları); diğer \
-bölümler aynı anda başka yerde okunuyor. Bu \
-bölümdeki tablolardan talebe cevap OLABİLECEK her tabloyu seç: varlığın ana tablosu, talebin \
-bilgi ailelerini taşıyan tablolar, talebin kavramlarını birlikte taşıyan tablolar, gereken boyut \
-tabloları (sektör, segment…).
-
-Kurallar:
-- Emin değilsen dahil et. Bu adımda kaçırmak, fazla seçmekten çok daha kötüdür: birazdan bütün \
-bölümlerin adayları birlikte, yan yana kıyaslanacak ve elenecek.
-- Kolon adında kavram geçse bile konusu başka olan tablolar (model girdisi / eğitim verisi, \
-kampanya, pazarlama izni, personel) ancak gerçekten cevap olabilirse seçilir.
-- En fazla {per_chunk} aday; bu bölümde uygun tablo yoksa candidates boş liste.
-- why: tek kısa cümle (tablo neyi tutuyor, talebin hangi kısmına cevap).
-- search_terms: talebin kavramlarının sözlükte geçebileceği 3-8 kelime (İngilizce kolon adı \
-parçaları ve Türkçe açıklama kelimeleri).
-- Yalnızca bu bölümdeki id'leri kullan. JSON dışında hiçbir şey yazma."""
-
-CHUNK_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "candidates": {"type": "array", "items": _ITEM},
-        "search_terms": {"type": "array", "items": {"type": "string"}},
-    },
-    "required": ["candidates", "search_terms"],
-    "additionalProperties": False,
-}
-
-
-def chunk_system(chunk: str, per_chunk: int) -> str:
-    return (
-        f"{ANALYST_ROLE}\n\n{CHUNK_RULES.format(per_chunk=per_chunk)}\n\n"
-        f"KATALOG PARÇASI:\n{chunk}"
-    )
-
-
-def chunk_user(query: str) -> str:
-    return (
-        f"TALEP: {query}\n\n"
-        "Şu şemada JSON üret:\n"
-        '{"candidates": [{"id": "T12", "why": "kısa neden"}], "search_terms": ["Tenure", "kıdem"]}'
-    )
-
-
-RECONCILE_HEAD = """GÖREV (1b — aday havuzunu uzlaştır):
-Kataloğun bütün bölümleri ayrı ayrı okundu; her bölümün adayları, arama motorunun önerdikleri \
-ile birlikte aşağıdaki ADAY HAVUZU'nda toplandı (id | tablo | talep eden birim | kolon sayısı | \
-talebe en ilgili kolonlar | neden aday). Bölümler birbirini görmediği için adaylar henüz \
-kıyaslanmadı: şimdi hepsini YAN YANA kıyasla ve bir sonraki adımda bütün kolonları okunacak \
-final adayları seç. Aşağıdaki kurallarda "katalog" dediğim yer bu ADAY HAVUZU'dur."""
-
-
-def reconcile_system(pool: str, shortlist: int) -> str:
-    rules = SHORTLIST_RULES[SHORTLIST_RULES.index("Kurallar:") :].format(shortlist=shortlist)
-    return f"{ANALYST_ROLE}\n\n{RECONCILE_HEAD}\n\n{rules}\n\nADAY HAVUZU:\n{pool}"
 
 
 ANALYST_RULES ="""GÖREV (2. adım — "doğru kaynak neresi?" cevabı):

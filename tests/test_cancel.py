@@ -9,7 +9,7 @@ from collections.abc import Iterator
 
 import pytest
 
-from vsa import cancel, trace
+from vsa import cancel
 from vsa.llm.client import LLMError, OpenAICompatibleClient
 
 
@@ -101,23 +101,3 @@ def test_stop_cuts_a_hanging_llm_call(silent_server: tuple[str, list[str]]) -> N
             break
         time.sleep(0.05)
     assert events[:2] == ["accepted", "client left"]  # the connection was really closed
-
-
-def test_parallel_parts_all_stop(silent_server: tuple[str, list[str]]) -> None:
-    from concurrent.futures import ThreadPoolExecutor
-
-    endpoint, events = silent_server
-    client = OpenAICompatibleClient(endpoint, "m", timeout=30)
-    token = cancel.Token()
-
-    def part(_: int) -> object:
-        return client.chat_json("s", "u", {"type": "object"})
-
-    threading.Timer(0.5, token.cancel).start()
-    started = time.perf_counter()
-    with cancel.using(token), trace.recording(), ThreadPoolExecutor(3) as pool:
-        tasks = [pool.submit(trace.carry(part), i) for i in range(3)]
-        errors = [t.exception(10) for t in tasks]
-    assert all(isinstance(e, cancel.Cancelled) for e in errors)
-    assert time.perf_counter() - started < 4
-    assert events.count("accepted") == 3

@@ -1,4 +1,4 @@
-"""Excel analysis reports (HANDOVER §12.1, §12.2). Does file I/O.
+"""Excel analysis reports. Does file I/O.
 
 One question: Özet · Öneriler.
 A term list (ADR-033): the same two sheets, combined, with a term column.
@@ -58,8 +58,8 @@ def slugify(text: str, limit: int = 40) -> str:
     return slug or "talep"
 
 
-def report_path(out_dir: Path, mode: str, query: str, now: datetime | None = None) -> Path:
-    stamp = (now or datetime.now()).strftime("%Y%m%d_%H%M")
+def report_path(out_dir: Path, mode: str, query: str) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d_%H%M")
     return out_dir / f"VSA_{mode}_{slugify(query)}_{stamp}.xlsx"
 
 

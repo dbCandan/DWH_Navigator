@@ -20,6 +20,7 @@ from typing import Any
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.worksheet import Worksheet
 
 from vsa.models import DictColumn, ObjectProfile, TermGroup
 from vsa.text.normalize import fold, load_stopwords
@@ -28,7 +29,7 @@ log = logging.getLogger(__name__)
 
 _PII_MARKER = re.compile(r"kvkk|kişisel\s+veri", re.IGNORECASE)
 
-# Column-name aliases, matched case-insensitively (an older source spelt "DAtabaseName").
+# Template column names, matched case-insensitively.
 _REQUIRED = {
     "database": ("databasename",),
     "schema": ("schemaname",),
@@ -37,9 +38,9 @@ _REQUIRED = {
     "description": ("columndescription",),
 }
 _OPTIONAL = {
-    "synonyms": ("synonyms", "esanlamlilar"),
-    "role": ("role", "rol"),
-    "summary": ("summary", "ozet"),
+    "synonyms": ("synonyms",),
+    "role": ("role",),
+    "summary": ("summary",),
 }
 
 Row = Mapping[str, object]
@@ -115,7 +116,6 @@ def object_profiles(objects: Iterable[Row]) -> dict[str, ObjectProfile]:
             key=key,
             description=_cell(rec.get("ObjectDescription")),
             grain=_cell(rec.get("Grain")),
-            key_columns=tuple(_names(rec.get("KeyColumns"))),
             time_columns=tuple(_names(rec.get("TimeColumns"))),
             domain=_cell(rec.get("BusinessDomain")),
             group=_cell(rec.get("DatasetGroup")),
@@ -409,10 +409,7 @@ def words_to_workbook(kind: str, items: Sequence[Mapping[str, Any]], out: Path) 
             ", ".join(v) if isinstance(v := rec.get(key), list) else (v or None)
             for key, _, _ in fields
         ])  # fmt: skip
-    for row in ws.iter_rows():
-        for cell in row:
-            if cell.data_type == "f":  # a text starting with "=" stays a text
-                cell.data_type = "s"
+    formulas_as_text(ws)
     for row in ws.iter_rows(max_row=1):
         for cell in row:
             cell.font = Font(bold=True)
@@ -425,7 +422,16 @@ def words_to_workbook(kind: str, items: Sequence[Mapping[str, Any]], out: Path) 
     return out
 
 
-def write_jsonl(path: Path, rows: Sequence[Mapping[str, Any]]) -> None:
+def formulas_as_text(ws: Worksheet) -> None:
+    """A text starting with "=" stays a text: openpyxl would write it as a formula."""
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.data_type == "f":
+                cell.data_type = "s"
+
+
+def write_jsonl(path: Path, rows: Iterable[Mapping[str, Any]]) -> None:
+    """Written whole or not at all; the previous file is kept as ``.bak``."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     with tmp.open("w", encoding="utf-8", newline="\n") as fh:

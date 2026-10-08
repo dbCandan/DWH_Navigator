@@ -1,4 +1,4 @@
-"""Orchestration (HANDOVER §4): query -> search -> column rules -> object
+"""Orchestration: query -> search -> column rules -> object
 aggregation -> validation -> explained result. Pure given its inputs; the
 ``Engine.from_*`` constructors are the only parts that touch files.
 """
@@ -32,12 +32,9 @@ from vsa.llm.analyst import (
     analyse,
     build_answer,
     build_catalog,
-    chunk_catalog,
     column_caveats,
     confusable_material,
     narrow_tables,
-    read_chunks,
-    reconcile,
     shortlist,
     table_material,
     term_matcher,
@@ -68,8 +65,6 @@ NEAR_MISS_COUNT = 3
 # Rule results shown to the analyst model as hints (ADR-029).
 ANALYST_HINT_TABLES = 15
 ANALYST_RULE_POOL = 60  # rule-ranked tables the "together" hint picks from
-POOL_RULE_TOGETHER = 8  # rule tables carrying most request concepts, added to the pool
-POOL_RULE_TOP = 5  # and the rule ranking's first ones
 ANALYST_HINT_COLUMNS = 25
 FAMILY_MIN_SHARE = 0.6  # a family table must score this share of the family's best table
 
@@ -106,7 +101,6 @@ class AnalystReading:
     confusables: str
     columns_of: dict[str, list[DictColumn]]
     seconds: float  # step 1
-    steps: list[str] = field(default_factory=list)  # how step 1 went, for the method notes
 
     @property
     def ids(self) -> dict[str, str]:
@@ -208,13 +202,7 @@ class Engine:
     index_meta: dict[str, Any] = {}
 
     def save(self) -> dict[str, Any]:
-        s = self.settings
-        return save_index(
-            Path(s.index.dir),
-            self.dictionary,
-            self.bm25,
-            {"field_weights": s.search.field_weights, "k1": s.search.bm25.k1, "b": s.search.bm25.b},
-        )
+        return save_index(Path(self.settings.index.dir), self.dictionary, self.bm25)
 
     # ------------------------------------------------------------------ analysis
 
@@ -222,7 +210,7 @@ class Engine:
         self, query: str, *, limit: int | None = None
     ) -> tuple[list[ObjectMatch], ExpandedQuery]:
         """The rule engine's ranked objects for a query (no answer threshold): the
-        analyst's hints and the fallback answer. ``limit`` overrides how many are kept."""
+        analyst's hints (and the measured rule answer). ``limit`` overrides how many are kept."""
         s = self.settings
         lap = trace.Laps()
         lap("Sorgu genişletme")
@@ -362,7 +350,6 @@ class Engine:
             self._catalog = build_catalog(
                 {k: [f.col for f in o.features] for k, o in self.objects.items()},
                 self.dictionary.objects,
-                with_columns=self.settings.analyst.catalog_columns,
             )
             self._checker = MentionChecker.build(self.dictionary.columns)
         return self._catalog, self._checker
@@ -382,7 +369,7 @@ class Engine:
 
         lines = ["Kural skoru en yüksek tablolar:"]
         lines += [line(m) for m in ranked[:ANALYST_HINT_TABLES]]
-        # §8 / ADR-005: a table carrying the requested concepts together beats a join.
+        # ADR-005: a table carrying the requested concepts together beats a join.
         together = sorted(ranked, key=lambda m: (-len(m.covered), -m.score))
         lines.append("Talebin kavramlarını en çok BİRLİKTE taşıyan tablolar:")
         lines += [line(m) for m in together[:ANALYST_HINT_TABLES] if len(m.covered) > 1]
@@ -402,13 +389,9 @@ class Engine:
             ranked, q = self.rank_objects(query, limit=ANALYST_RULE_POOL)
             relevance = self._column_relevance(q)
         started = time.perf_counter()
-        steps: list[str] = []
         with trace.span("1. adım — aday seçimi", f"{len(catalog.ids)} tablonun kataloğu") as sp:
-            if a.catalog_chunks > 1:
-                short = self._split_shortlist(query, catalog, ranked, relevance, steps)
-            else:
-                hints = self._hints(ranked, relevance, catalog)
-                short = shortlist(query, catalog, hints, self.llm, a.shortlist)
+            hints = self._hints(ranked, relevance, catalog)
+            short = shortlist(query, catalog, hints, self.llm, a.shortlist)
             if sp is not None and short is None:
                 sp.status, sp.detail = "error", "yanıt yok"
             elif sp is not None and short is not None:
@@ -448,7 +431,7 @@ class Engine:
                     self._concept_evidence(k, q, rel)
                     + ("\nTablo aramasıyla eklendi (1. adımda seçilmedi)" if k in by_search
                        else f"\nAile aramasıyla eklendi: {added[k]}" if k in added else ""),
-                    detail_columns=None if a.detail_columns < 0 else a.detail_columns,
+                    detail_columns=a.detail_columns,
                     profile=self.dictionary.objects.get(k),
                 )  # fmt: skip
                 for k in readable
@@ -459,74 +442,8 @@ class Engine:
             )  # fmt: skip
         return AnalystReading(
             catalog, checker, ranked, q, relevance, short, added, readable, material,
-            confusables, columns_of, seconds, steps,
+            confusables, columns_of, seconds,
         )  # fmt: skip
-
-    def _split_shortlist(
-        self,
-        query: str,
-        catalog: Catalog,
-        ranked: Sequence[ObjectMatch],
-        relevance: Mapping[int, float],
-        steps: list[str],
-    ) -> Shortlist | None:
-        """Step 1 in parts (ADR-029): the catalog's parts read in parallel for recall (1a),
-        their candidates pooled with the search engine's, then compared side by side (1b).
-        If the comparison fails, the pool's first candidates go on (the parts' picks first)."""
-        a = self.settings.analyst
-        t0 = time.perf_counter()
-        chunks = chunk_catalog(catalog, a.catalog_chunks)
-        with trace.span("1a — katalog parçaları (paralel)", f"{len(chunks)} parça") as sp:
-            read = read_chunks(query, chunks, self.llm, a.chunk_candidates, catalog.ids)
-            if sp is not None and read is None:
-                sp.status, sp.detail = "error", "hiçbir parça yanıt vermedi"
-            elif sp is not None and read is not None:
-                sp.status = "warn" if read.failed else "ok"
-                sp.detail = (f"{len(read.candidates)} aday; "
-                             f"{read.failed}/{read.parts} parça yanıtsız")
-        if read is None:
-            return None
-        t1 = time.perf_counter()
-        pool: dict[str, str] = dict(read.reasons)
-        together = sorted(ranked, key=lambda m: (-len(m.covered), -m.score))
-        for m in [*together[:POOL_RULE_TOGETHER], *ranked[:POOL_RULE_TOP]]:
-            concepts = ", ".join(m.covered) or "-"
-            pool.setdefault(m.object_key, f"arama motoru önerdi (kavramlar: {concepts})")
-        keys = list(pool)[: a.pool_size]
-        hits = term_matcher(read.search_terms)
-        lines = []
-        for key in keys:
-            cols = self.objects[key].features
-            best = sorted(cols, key=lambda f: -(relevance.get(f.col.id, 0.0) + 0.5 * hits(f.col)))
-            names = ", ".join(f.col.column for f in best[: a.pool_columns])
-            lines.append(
-                f"{catalog.keys[key]} | {key} | {catalog.groups[key]} | {len(cols)} kolon | "
-                f"ilgili kolonlar: {names} | neden aday: {pool[key] or '-'}"
-            )
-        with trace.span("1b — uzlaştırma", f"{len(keys)} adaylık havuz") as sp:
-            short = reconcile(query, "\n".join(lines), self.llm, a.shortlist,
-                              {catalog.keys[k]: k for k in keys}, catalog.ids)  # fmt: skip
-            if sp is not None and short is None:
-                sp.status, sp.detail = "warn", "yanıt yok — havuzun ilk adayları kullanıldı"
-        t2 = time.perf_counter()
-        failed = f", {read.failed} parça yanıt vermedi" if read.failed else ""
-        steps.append(
-            f"1a — katalog {read.parts} parçada paralel okundu: {len(read.candidates)} aday"
-            f"{failed} ({t1 - t0:.0f} sn)"
-        )
-        if short is None:
-            steps.append("1b — uzlaştırma yanıt vermedi; havuzun ilk adayları kullanıldı")
-            return Shortlist(
-                "", keys[: a.shortlist], {k: pool[k] for k in keys}, [], read.search_terms,
-                read.unknown_ids,
-            )  # fmt: skip
-        steps.append(
-            f"1b — {len(keys)} adaylık havuz yan yana kıyaslandı, {len(short.candidates)} "
-            f"final aday seçildi ({t2 - t1:.0f} sn)"
-        )
-        short.unknown_ids += read.unknown_ids
-        short.search_terms = short.search_terms or read.search_terms
-        return short
 
     _narrow_keys: frozenset[str] | None = None
 
@@ -594,7 +511,6 @@ class Engine:
             f"Analist akışı (ADR-029): {self.llm.model}",
             f"1. adım — {len(catalog.ids)} tablonun kataloğundan {len(short.candidates)} aday "
             f"ve {len(short.confusables)} benzer tablo seçildi ({reading.seconds:.0f} sn)",
-            *reading.steps,
             "Okunan adaylar: " + (", ".join(k.rsplit(".", 1)[-1] for k in short.candidates) or "-"),
             "Benzer (uyarı) tablolar: "
             + (", ".join(k.rsplit(".", 1)[-1] for k in short.confusables) or "-"),
@@ -677,7 +593,7 @@ class Engine:
         return added
 
     def _concept_evidence(self, key: str, q: ExpandedQuery, relevance: Mapping[int, float]) -> str:
-        """Which request concepts the table carries, and in which column (§8, lexical)."""
+        """Which request concepts the table carries, and in which column (lexical)."""
         parts: list[str] = []
         for concept in q.content_concepts:
             carriers = [f for f in self.objects[key].features if covers(f.all_tokens, concept)]

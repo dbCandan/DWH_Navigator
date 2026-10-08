@@ -1,4 +1,4 @@
-"""Object-level aggregation (HANDOVER §8, ADR-005, ADR-011) and validation (§11)."""
+"""Object-level aggregation (ADR-005, ADR-011) and validation."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def run(tables: dict[str, list[tuple[str, str]]], query: str) -> list[ObjectMatc
 
 
 def test_coverage_beats_single_strong_column() -> None:
-    """Ek A.1: the winner carries several concepts TOGETHER, plus a period column."""
+    """The winner carries several concepts TOGETHER, plus a period column."""
     ranked = run(
         {
             "vWide": [

@@ -11,7 +11,6 @@ screen, CSRF and response headers: ``vsa.web.security``. TLS is the reverse prox
     POST /api/ask/cancel        {"ask_id": "..."} stop that analysis and its LLM calls
     POST /api/list              raw .xlsx body (X-Filename): a term list, one per row of the
                                 first column, each answered by the question flow (ADR-033)
-    GET  /api/list              the latest list (to reattach after a page reload)
     GET  /api/list/<id>         progress: every term's state and short answer
     GET  /api/list/<id>/item/<n>  one term's full answer (as /api/ask returns it)
     POST /api/list/<id>/cancel  stop the list (the running term's LLM calls too)
@@ -106,7 +105,6 @@ from vsa.web.security import (
 )
 from vsa.web.settings_schema import (
     FIELDS,
-    PAGES,
     REINDEX,
     SECTIONS,
     coerce,
@@ -181,7 +179,6 @@ class ListJob:
             "cancelled": self.token.cancelled,
             "total": len(items),
             "done": len(done),
-            "current": self.current,
             "elapsed_ms": round(((self.finished or time.perf_counter()) - self.started) * 1000),
             "eta_ms": round(mean * left) if self.running and done else None,
             "items": [serialize.list_item(i, self.state(i)) for i in items],
@@ -195,12 +192,11 @@ class App:
         out_dir: Path,
         feedback_path: Path,
         settings_path: Path | None = None,
-        analyses_path: Path | None = None,
     ) -> None:
         self.engine = engine
         self.out_dir = out_dir
         self.feedback_path = feedback_path
-        self.analyses_path = analyses_path or feedback_path.parent / ANALYSES_LOG
+        self.analyses_path = feedback_path.parent / ANALYSES_LOG
         self.answers = AnswerStore(feedback_path.parent / ANSWERS_FILE)  # ADR-035
         self._log_lock = threading.Lock()
         self._hosts: dict[str, str] = {}
@@ -253,28 +249,13 @@ class App:
 
     def status(self) -> dict[str, Any]:
         e = self.engine
-        s = e.settings
-        source = Path(e.dictionary.source_path)
         return {
-            "dictionary": source.name,
-            "version": e.dictionary.version,
-            # when the dictionary file was last changed ("" if the index outlived the file)
-            "updated": (datetime.fromtimestamp(source.stat().st_mtime).date().isoformat()
-                        if source.is_file() else ""),
             "columns": len(e.dictionary.columns),
             "objects": len(e.objects),
             "llm": e.llm.model if e.analyst_enabled else "",
-            "analyst": e.analyst_enabled,  # ADR-029: the model writes the answer
             # ADR-034: "ok" | "none" (no chat model) | "down" (configured, not answering)
             "llm_state": self._llm_state(),
-            "shortlist": s.analyst.shortlist,
-            "examples": [
-                "Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?",
-                "Müşterilerin risk bilgilerini aylık bazda ve kırılımlı olarak (kredi kartı, "
-                "gayrimenkul, ihtiyaç kredisi vb.) gösteren bir tablo mevcut mudur?",
-                "Müşteri bazında aylık FAST ve havale transfer adedi ile tutarı",
-                "İhtiyaç kredisi kullanan müşterilerin gecikme gün sayısı",
-            ],
+            "shortlist": e.settings.analyst.shortlist,
         }
 
     def _llm_state(self) -> dict[str, str]:
@@ -429,10 +410,6 @@ class App:
             raise KeyError(jid)
         return job
 
-    def list_latest(self) -> dict[str, Any]:
-        jobs = list(self.lists.values())
-        return jobs[-1].snapshot() if jobs else {}
-
     def list_item(self, jid: str, index: int, voter: str = "") -> dict[str, Any]:
         items = self.list_job(jid).result.items
         result = items[index - 1].result if 1 <= index <= len(items) else None
@@ -558,12 +535,11 @@ class App:
             spans = e.pop("spans", [])
             steps: dict[str, int] = {}
             for sp in spans:
-                if sp["kind"] == trace.STEP and not sp["name"].startswith("Parça"):
+                if sp["kind"] == trace.STEP:
                     steps[sp["name"]] = steps.get(sp["name"], 0) + int(sp["ms"])
             e["steps"] = steps
-            e["waits"] = sum(int(sp["ms"]) for sp in spans if sp["kind"] == trace.EVENT)
             items.append(e)
-        return {"items": items, "path": str(self.analyses_path), "limit": ADMIN_LIST_LIMIT}
+        return {"items": items}
 
     def clear_analyses(self, body: dict[str, Any]) -> dict[str, Any]:
         """Delete the given analyses, or all of them with ``{"all": true}`` — never by
@@ -672,14 +648,10 @@ class App:
     def settings_get(self) -> dict[str, Any]:
         st = self.engine.settings
         return {
-            "pages": PAGES,
             "sections": SECTIONS,
             "values": values_of(st),
             "defaults": defaults(),
-            "path": str(self.settings_path),
             "status": {
-                "llm": self.engine.llm.available,
-                "llm_model": self.engine.llm.model,
                 "dictionary_version": self.engine.dictionary.version,
                 "index_built_at": self.engine.index_meta.get("built_at", ""),
                 "answers": self.answers.stats(self.engine.cache_fingerprint(5)),  # ADR-035
@@ -688,7 +660,6 @@ class App:
         }
 
     def settings_save(self, body: dict[str, Any]) -> dict[str, Any]:
-        started = time.perf_counter()
         submitted = body.get("values") or {}
         if not isinstance(submitted, dict):
             raise ValueError("values bekleniyor")
@@ -713,8 +684,6 @@ class App:
             "ok": True,
             "changed": [labels[k] for k in changed],
             "reindex_needed": self.reindex_pending,
-            "elapsed_ms": round((time.perf_counter() - started) * 1000),
-            "status": self.settings_get()["status"],
         }
 
     def _settings_tree(self) -> dict[str, Any]:
@@ -729,7 +698,7 @@ class App:
         header = (
             "# DWH Navigator ayarları — Yönetim ekranından kaydedildi "
             f"({datetime.now().isoformat(timespec='seconds')}).\n"
-            "# Elle de düzenlenebilir; anlamları için: docs/settings.example.yaml\n"
+            "# Elle de düzenlenebilir; yazılmayan ayar varsayılandır.\n"
         )
         self.settings_path.write_text(
             header + yaml.safe_dump(tree, allow_unicode=True, sort_keys=False), encoding="utf-8"
@@ -760,7 +729,6 @@ class App:
 
     def dictionary_import(self, raw: bytes, filename: str) -> dict[str, Any]:
         """A workbook in the template becomes the dictionary; the index is rebuilt at once."""
-        started = time.perf_counter()
         if not raw:
             raise ValueError("Dosya boş")
         with tempfile.TemporaryDirectory() as tmp:
@@ -773,7 +741,6 @@ class App:
             "ok": True,
             "meta": store.meta,
             "warnings": store.warnings[:20],
-            "elapsed_ms": round((time.perf_counter() - started) * 1000),
             "state": self.dictionary_state(),
         }
 
@@ -840,7 +807,6 @@ class App:
 
     def reindex(self) -> dict[str, Any]:
         """Rebuild the BM25 index from the dictionary with the saved settings (~10 s)."""
-        started = time.perf_counter()
         settings = load_settings(self.settings_path)
         with self.lock:
             fresh = Engine.from_dictionary_file(settings)
@@ -852,8 +818,6 @@ class App:
             "ok": True,
             "columns": meta["columns"],
             "objects": meta["objects"],
-            "version": meta["dictionary_version"],
-            "elapsed_ms": round((time.perf_counter() - started) * 1000),
         }
 
     def galaxy(self) -> list[dict[str, Any]]:
@@ -938,9 +902,6 @@ class App:
     ) -> fb.FeedbackView:
         with _feedback_lock:
             rows = fb.load_feedback(self.feedback_path)
-        for r in rows:  # votes from before ADR-036 carry the question only
-            if "text_key" not in r:
-                r["text_key"] = answer_cache.text_key(str(r.get("query", "")))
         version = self.engine.dictionary.version
         return fb.assess(
             rows, text, meaning, dictionary_version=version, voter=voter, answer_since=answer_at
@@ -958,8 +919,7 @@ class App:
         return out
 
     def _known(self) -> dict[str, dict[str, Any]]:
-        return {r["key"]: {"name": r["name"], "schema": r["schema"], "groups": r["groups"]}
-                for r in self.object_index}  # fmt: skip
+        return {r["key"]: {"name": r["name"], "schema": r["schema"]} for r in self.object_index}
 
 
 _feedback_lock = threading.Lock()  # not the engine lock: a vote must not wait for an analysis
@@ -1105,8 +1065,6 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                     self._json(app.galaxy())
                 elif url.path.startswith("/api/report/"):
                     self._xlsx(app.report(url.path.rsplit("/", 1)[-1]))
-                elif url.path == "/api/list":
-                    self._json(app.list_latest())
                 elif url.path.startswith("/api/list/"):
                     parts = url.path.split("/")[3:]  # <id> [, "item", <n>] | [, "report"]
                     if len(parts) == 1:

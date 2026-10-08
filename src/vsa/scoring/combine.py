@@ -1,4 +1,4 @@
-"""Confidence levels (HANDOVER §9.3)."""
+"""Confidence levels."""
 
 from __future__ import annotations
 

@@ -5,7 +5,7 @@ uyumlu API) çıkar; başka hiçbir adrese bağlanmaz, dış kaynak (CDN, font, 
 
 | | |
 |---|---|
-| İmaj | `dwh-navigator:0.1.0` — Alpine 3.24 + Python 3.12, ~119 MB |
+| İmaj | `dwh-navigator:0.2.0` — Alpine 3.24 + Python 3.12, ~100 MB |
 | Port | `8765` (HTTP; TLS önündeki ters vekilde) |
 | Kullanıcı | `vsa` (uid/gid `10001`), kök değil |
 | Yazılabilir alan | yalnız `/app/data` (birim) ve `/tmp` |
@@ -16,19 +16,20 @@ uyumlu API) çıkar; başka hiçbir adrese bağlanmaz, dış kaynak (CDN, font, 
 **İnternete çıkabilen bir makinede derleyip** şirket ağına taşımak en kolayıdır:
 
 ```bash
-docker build -t dwh-navigator:0.1.0 .
-docker save dwh-navigator:0.1.0 | gzip > dwh-navigator-0.1.0.tar.gz
+docker build -t dwh-navigator:0.2.0 .
+docker save dwh-navigator:0.2.0 | gzip > dwh-navigator-0.2.0.tar.gz
 ```
 
 Şirket ağındaki sunucuda:
 
 ```bash
-docker load -i dwh-navigator-0.1.0.tar.gz
+docker load -i dwh-navigator-0.2.0.tar.gz
 ```
 
 Kurum içi bir kayıt defteri (Harbor, Nexus, Artifactory…) varsa `docker tag` + `docker push`
-ile oraya da konabilir. Derleme sırasında Docker Hub'dan taban imaj ve PyPI'dan 11 paket
-indirilir; paketlerin sürümü ve SHA-256 özeti `requirements.lock` dosyasında sabittir.
+ile oraya da konabilir. Derleme sırasında Docker Hub'dan taban imaj ve PyPI'dan 4 paket
+(openpyxl, et-xmlfile, defusedxml, PyYAML) indirilir; sürümleri ve SHA-256 özetleri
+`requirements.lock` dosyasında sabittir.
 
 ## 2. Veri klasörü
 
@@ -49,10 +50,11 @@ Konteyner `uid 10001` ile çalışır; Linux'ta klasörün sahibini ayarlayın:
 sudo chown -R 10001:10001 data
 ```
 
-İlk açılışta `data/` altına şunlar oluşur: `settings.yaml` (ayarlar), `terms.jsonl` (terim
+İlk açılışta `data/` altına şunlar oluşur: `terms.jsonl` (terim
 sözlüğü) ve `stopwords.jsonl` (durak kelimeler; ikisi de `/admin` → **Kelimeler**'den
 düzenlenir, var olan dosyaya dokunulmaz), `index/` (arama
-indeksi), `llm_integrations.yaml` (model bağlantıları, **API anahtarı içerir**), `cache/`
+indeksi), `llm_integrations.yaml` (model bağlantıları, **API anahtarı içerir**), `settings.yaml`
+(yalnız yönetim ekranından bir ayar değişince; yoksa ölçülmüş varsayılanlar geçerli), `cache/`
 (kayıtlı cevaplar), `logs/` (analiz kayıtları), `feedback.jsonl` (👍/👎), `out/` (Excel raporları).
 **Yedeklenecek tek klasör `data/`'dır.**
 
@@ -87,7 +89,7 @@ Compose yoksa aynısı:
 docker run -d --name dwh-navigator --restart unless-stopped -p 8765:8765 \
   -e VSA_ADMIN_PASSWORD=... -v "$PWD/data:/app/data" \
   --read-only --tmpfs /tmp:size=64m --cap-drop ALL --security-opt no-new-privileges:true \
-  dwh-navigator:0.1.0
+  dwh-navigator:0.2.0
 ```
 
 ## 5. Model bağlantısı
@@ -134,8 +136,8 @@ uygulama hiçbir Excel dosyasını sözlük olarak okumaz.
 Aynı işlemler komut satırından (dosya `data/` altında olmalı):
 
 ```bash
-docker compose exec vsa vsa-entrypoint dictionary import data/VeriSozlugu.xlsx
-docker compose exec vsa vsa-entrypoint dictionary export data/sozluk_yedek.xlsx
+docker compose exec vsa vsa dictionary import data/VeriSozlugu.xlsx
+docker compose exec vsa vsa dictionary export data/sozluk_yedek.xlsx
 docker compose restart        # komut satırından içe aktarınca: çalışan arayüz yeni sözlüğü okusun
 ```
 
@@ -147,9 +149,9 @@ konteyner yeniden başlatılınca.
 ## 8. Komut satırı (isteğe bağlı)
 
 ```bash
-docker compose exec vsa vsa-entrypoint ask "kredi kartı limit doluluk oranı"
-docker compose exec vsa vsa-entrypoint ask -i data/terimler.xlsx   # rapor: data/out/
-docker compose exec vsa vsa-entrypoint index
+docker compose exec vsa vsa ask "kredi kartı limit doluluk oranı"
+docker compose exec vsa vsa ask -i data/terimler.xlsx   # rapor: data/out/
+docker compose exec vsa vsa index
 ```
 
 ## 9. Güncelleme ve geri dönüş

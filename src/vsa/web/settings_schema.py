@@ -18,24 +18,9 @@ from vsa.config import Settings
 NOW = "anında"  # engine is rebuilt from the index on save (seconds)
 REINDEX = "indeks"  # BM25 index must be rebuilt (button on the screen, ~10 s)
 
-# Pages of the settings screen, in order. The LLM page is drawn from /api/llm, not from fields.
-PAGES: list[dict[str, Any]] = [
-    {
-        "id": "llm",
-        "title": "Yapay zekâ",
-        "intro": "Talebi okuyup cevabı yazan sohbet modeli.",
-    },
-    {
-        "id": "search",
-        "title": "Arama ve cevap",
-        "intro": "Analistin ne kadar malzeme okuyacağını ve ona verilen arama ipuçlarını belirler.",
-    },
-    {
-        "id": "data",
-        "title": "Veri ve bakım",
-        "intro": "Veri sözlüğü, indeks ve rapor konumları; indeksin yeniden kurulması.",
-    },
-]
+# Pages of the settings screen (their titles are the admin screen's). The LLM page is drawn
+# from /api/llm, not from fields.
+PAGES = ("llm", "search", "data")
 
 # ``advanced`` fields sit behind "Uzman ayarları"; a section that is all advanced is folded
 # as a whole. ``format: pct`` shows a 0–1 value as a percentage.
@@ -61,12 +46,12 @@ SECTIONS: list[dict[str, Any]] = [
                 "key": "analyst.detail_columns",
                 "label": "Tam açıklamasıyla okunan kolon sayısı (tablo başına)",
                 "type": "int",
-                "min": -1,
+                "min": 0,
                 "max": 60,
                 "step": 1,
                 "effect": NOW,
                 "help": "En ilgili bu kadar kolon tam açıklamayla, kalanı “Ad [Rol]: özet” olarak "
-                "gider; -1: hepsi tam (yavaş).",
+                "gider.",
             },
             {
                 "key": "analyst.min_confidence",
@@ -78,27 +63,6 @@ SECTIONS: list[dict[str, Any]] = [
                 "step": 0.05,
                 "effect": NOW,
                 "help": "Modelin bundan az emin olduğu tablolar önerilmez (“bulunamadı” geçerli cevap).",
-            },
-            {
-                "key": "analyst.catalog_chunks",
-                "label": "Katalog kaç parçada okunur",
-                "type": "int",
-                "min": 1,
-                "max": 8,
-                "step": 1,
-                "effect": NOW,
-                "advanced": True,
-                "help": "1: tek çağrı (hızlı, önbelleğe uygun); N: N parça paralel okunur, adaylar "
-                "sonra kıyaslanır.",
-            },
-            {
-                "key": "analyst.catalog_columns",
-                "label": "Katalogda kolon adları da olsun",
-                "type": "bool",
-                "effect": NOW,
-                "advanced": True,
-                "help": "Kapalı: tablo açıklaması, satır düzeyi, zaman kolonları (~43 bin token); "
-                "açık: kolon adları da (çok daha uzun).",
             },
             {
                 "key": "analyst.max_tokens",
@@ -132,7 +96,7 @@ SECTIONS: list[dict[str, Any]] = [
                 "label": "Sözlüğün eş anlamlılarını kullan",
                 "type": "bool",
                 "effect": NOW,
-                "help": "Kolon açıklamalarındaki “Eş anlamlılar / aranabilir terimler” bölümleri.",
+                "help": "Sözlüğün Synonyms kolonundaki eş anlamlılar.",
             },
             {
                 "key": "expansion.weight",

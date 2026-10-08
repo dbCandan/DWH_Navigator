@@ -3,8 +3,6 @@ Scripted model replies; no server needed."""
 
 from __future__ import annotations
 
-import re
-import threading
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -16,7 +14,6 @@ from vsa.llm.analyst import (
     MentionChecker,
     build_answer,
     build_catalog,
-    chunk_catalog,
     column_caveats,
     table_material,
 )
@@ -71,10 +68,8 @@ class ScriptedClient:
         return self.replies.pop(0) if self.replies else None
 
 
-def engine(client: Any, chunks: int = 1) -> Engine:
-    """Scripted replies come in call order, so step 1 runs in one call unless asked."""
+def engine(client: Any) -> Engine:
     settings = Settings()
-    settings.analyst.catalog_chunks = chunks
     dictionary = Dictionary(COLUMNS, "sozluk.xlsx", "abc-6")
     return Engine(dictionary, settings, Resources(), llm=client)
 
@@ -222,7 +217,6 @@ def test_family_search_adds_overlooked_tables() -> None:
     families = [{"name": "kart işlemleri", "terms": ["Turnover", "TrnAmount"]}]
     client = ScriptedClient({**SHORTLIST, "families": families}, analyst_reply())
     settings = Settings()
-    settings.analyst.catalog_chunks = 1  # scripted replies come in call order
     e = Engine(Dictionary(cols, "sozluk.xlsx", "abc-7"), settings, Resources(), llm=client)
     r = e.analyze("müşterinin kredi kartı bilgisi")
     step2 = client.users[1]
@@ -297,63 +291,6 @@ class TestEngine:
         assert any("× 0.8" in line for line in r.method)
         ok = engine(ScriptedClient(SHORTLIST, analyst_reply())).analyze("kredi kartı")
         assert ok.analyst and ok.confidence_factor == 1.0
-
-class RoutingClient:
-    """Answers by the kind of request, so parallel parts can come in any order."""
-
-    available = True
-    model = "fake-analyst"
-    down = ""  # health(): "" = the server answers
-
-    def health(self) -> str:
-        return self.down
-
-    def __init__(self, reconcile_reply: dict[str, Any] | None) -> None:
-        self.reconcile_reply = reconcile_reply
-        self.systems: list[str] = []
-        self.lock = threading.Lock()
-
-    def chat_json(
-        self, system: str, user: str, schema: Mapping[str, Any], *, max_tokens: int = 1024
-    ) -> dict[str, Any] | None:
-        with self.lock:
-            self.systems.append(system)
-        if "GÖREV (1a" in system:  # a catalog part: propose every table in it
-            ids = re.findall(r"^(T\d+) \|", system, re.MULTILINE)
-            picks = [{"id": i, "why": "parça"} for i in ids]
-            return {"candidates": picks, "search_terms": ["kart"]}
-        if "GÖREV (1b" in system:
-            return self.reconcile_reply
-        return analyst_reply()
-
-
-class TestSplitCatalog:
-    def test_parts_cover_every_table_once(self) -> None:
-        cat = build_catalog(objects())
-        for n in (1, 2, 5):
-            parts = chunk_catalog(cat, n)
-            lines = [line for part in parts for line in part.splitlines()]
-            assert sorted(lines) == sorted(cat.text.splitlines())
-            assert 1 <= len(parts) <= min(n, len(cat.ids))
-
-    def test_parts_then_reconcile(self) -> None:
-        client = RoutingClient(SHORTLIST)
-        r = engine(client, chunks=2).analyze("müşterinin kredi kartı bilgisi")
-        assert r.analyst and [m.object_key for m in r.objects] == [LIST]
-        parts = [s for s in client.systems if "GÖREV (1a" in s]
-        (pool,) = [s for s in client.systems if "GÖREV (1b" in s]
-        assert len(parts) == 2
-        # the pool shows both tables side by side, with their relevant columns and why
-        assert "T2 | EDWDM.CON.vCreditCardList" in pool and "T1 | EDWDM.AIS.vChurnInput" in pool
-        assert "ilgili kolonlar:" in pool and "neden aday: parça" in pool
-        assert any(m.startswith("1a —") for m in r.method)
-        assert any(m.startswith("1b —") for m in r.method)
-
-    def test_reconcile_failure_keeps_the_pool(self) -> None:
-        r = engine(RoutingClient(None), chunks=2).analyze("müşterinin kredi kartı bilgisi")
-        assert r.analyst  # the parts' candidates went on to step 2
-        assert any("uzlaştırma yanıt vermedi" in m for m in r.method)
-
 
 def test_core_concept_missing_means_not_found() -> None:
     """ADR-041: look-alike tables are not an answer when the core concept is missing."""

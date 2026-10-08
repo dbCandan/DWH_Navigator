@@ -1,4 +1,4 @@
-# Güvenlik — ön zafiyet taraması ve sertleştirme (2026-10-07; imaj taraması 2026-10-08 yenilendi)
+# Güvenlik — ön zafiyet taraması ve sertleştirme (0.2.0, 2026-10-08)
 
 Şirket ağına entegrasyon taramasından önce yapılan iç denetimin özeti. Taramalar aşağıdaki
 komutlarla tekrarlanabilir; her sürümde ve taban imaj güncellendiğinde yeniden çalıştırın.
@@ -7,18 +7,18 @@ komutlarla tekrarlanabilir; her sürümde ve taban imaj güncellendiğinde yenid
 
 | Kapsam | Araç | Sonuç |
 |---|---|---|
-| Konteyner imajı — işletim sistemi paketleri (Alpine 3.24.2) | Trivy 0.72.0, DB 2026-10-07 | **0** zafiyet |
+| Konteyner imajı — işletim sistemi paketleri (Alpine 3.24.2) | Trivy 0.72.0, DB 2026-10-08 | **0** zafiyet |
 | Konteyner imajı — Python paketleri | Trivy 0.72.0 | **0** zafiyet |
 | Konteyner imajı — gömülü sır (anahtar, parola, token) | Trivy secret | **0** bulgu |
 | Dockerfile yapılandırması | Trivy misconfig | **0** bulgu |
-| Bağımlılık kilidi (`requirements.lock`, 11 paket) | pip-audit 2.10.1 (PyPI + OSV) | **0** zafiyet |
-| Uygulama kaynak kodu (7.4 bin satır) | Bandit 1.9.4 | **0** bulgu (tüm önem seviyeleri) |
-| Kaynak kod, Docker dosyaları (46 dosya) | Semgrep (p/python, p/security-audit, p/owasp-top-ten, p/secrets) | **0** bulgu |
-| Git geçmişi (54 commit) ve çalışma ağacı | Gitleaks 8.30.1 | **0** sızıntı |
-| Çalışan uygulama — pasif DAST | OWASP ZAP baseline (stable) | **0 FAIL**, 65 PASS; 1 bilgi uyarısı (aşağıda) |
-| Çalışan uygulama — şablon taraması | Nuclei 3.11.0 (10.532 şablon çalıştı; dos/fuzz/intrusive hariç) | **0** zafiyet; 5 bilgi eşleşmesi (aşağıda) |
+| Bağımlılık kilidi (`requirements.lock`, 4 paket) | pip-audit 2.10.1 (PyPI + OSV) | **0** zafiyet |
+| Uygulama kaynak kodu (`src/vsa`) | Bandit 1.9.4 | **0** bulgu (tüm önem seviyeleri) |
+| Kaynak kod, Docker dosyaları (45 dosya) | Semgrep 1.171 (p/python, p/security-audit, p/owasp-top-ten, p/secrets) | **0** bulgu |
+| Git geçmişi (68 commit) ve çalışma ağacı | Gitleaks 8.30.1 | **0** sızıntı |
+| Çalışan uygulama — pasif DAST | OWASP ZAP baseline (stable) | **0 FAIL**, 66 PASS; 1 bilgi uyarısı (aşağıda) |
+| Çalışan uygulama — şablon taraması | Nuclei (10.542 şablon; dos/fuzz/intrusive hariç) | **0** zafiyet; 5 bilgi eşleşmesi (aşağıda) |
 | Lint / tip | ruff, mypy --strict | temiz |
-| Testler | pytest | 248 test geçti |
+| Testler | pytest | 240 test geçti |
 
 Nuclei'nin 5 eşleşmesi bilgi düzeyindedir: teknoloji tespitleri (`addEventListener`, `/healthz`),
 dosya yükleme formunun varlığı (Excel listesi; sınırları bulgu 5'te), eksik
@@ -30,7 +30,7 @@ no-store` taşır — cevaplar ve raporlar tarayıcıda/vekilde önbelleğe alı
 
 Karşılaştırma: aynı uygulama Debian 13 (`python:3.12-slim-trixie`) tabanında 165 OS zafiyeti
 (44 HIGH, hiçbirinin yaması yok) veriyordu; Alpine'e geçilerek sıfırlandı ve imaj 212 MB'tan
-119 MB'a indi.
+119 MB'a, komut satırı paketleri çıkınca (0.2.0, ADR-053) 100 MB'a indi.
 
 ## Bileşen envanteri (SBOM özeti)
 
@@ -43,12 +43,10 @@ Karşılaştırma: aynı uygulama Debian 13 (`python:3.12-slim-trixie`) tabanın
 | et-xmlfile | 2.0.0 | openpyxl bağımlılığı |
 | defusedxml | 0.7.1 | yüklenen Excel'lerin XML'i güvenli ayrıştırılır |
 | PyYAML | 6.0.3 | ayar dosyaları (yalnız `safe_load`) |
-| typer, annotated-doc, shellingham | 0.27.3, 0.0.5, 1.5.4 | komut satırı |
-| rich, markdown-it-py, mdurl, Pygments | 15.0.0, 4.2.0, 0.1.2, 2.21.0 | terminal çıktısı |
 
 Web sunucusu ve model istemcisi Python standart kütüphanesidir (`http.server`, `urllib`);
 web arayüzü tek HTML dosyasıdır, dış kaynak (CDN, font, analitik) yüklemez.
-Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.1.0`.
+Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.2.0`.
 
 ## Bu denetimde kapatılan bulgular
 
@@ -75,7 +73,7 @@ Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.1.0
 - `cap_drop: ALL`, `no-new-privileges`, bellek (2 GB) ve süreç (256) sınırı.
 - Taban imaj özetle (digest), Python paketleri sürüm + SHA-256 ile sabit (`--require-hashes`,
   yalnız wheel). pip ve setuptools çalışma imajında yok.
-- İmaja yalnız uygulama kodu ve iki yapılandırma dosyası girer (`.dockerignore` beyaz liste):
+- İmaja yalnız uygulama kodu ve iki kelime listesi girer (`.dockerignore` beyaz liste):
   sözlük, kurum içi veri, API anahtarları, testler, Windows betikleri (`baslat.bat`) girmez.
 - `HEALTHCHECK` `/healthz` ile (modele çağrı yapmaz).
 
@@ -101,8 +99,8 @@ Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.1.0
 ## Taramaları tekrarlamak
 
 ```bash
-docker build -t dwh-navigator:0.1.0 .
-docker save dwh-navigator:0.1.0 -o image.tar
+docker build -t dwh-navigator:0.2.0 .
+docker save dwh-navigator:0.2.0 -o image.tar
 docker run --rm -v "$PWD:/scan" aquasec/trivy image --input /scan/image.tar \
   --scanners vuln,secret,misconfig --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
 docker run --rm -v "$PWD:/src" aquasec/trivy config /src
@@ -119,7 +117,7 @@ Dinamik tarama (uygulama ayrı bir Docker ağında, parolalı):
 ```bash
 docker network create vsa-scan
 docker run -d --name vsa-scan-app --network vsa-scan -e VSA_ADMIN_PASSWORD=... \
-  -v "$PWD/data:/app/data" dwh-navigator:0.1.0
+  -v "$PWD/data:/app/data" dwh-navigator:0.2.0
 docker run --rm --network vsa-scan -v "$PWD:/zap/wrk:rw" zaproxy/zap-stable \
   zap-baseline.py -t http://vsa-scan-app:8765 -r zap.html
 docker run --rm --network vsa-scan projectdiscovery/nuclei -u http://vsa-scan-app:8765 \

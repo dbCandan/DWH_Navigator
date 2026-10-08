@@ -17,7 +17,6 @@ from vsa.config import integrations_path, read_integrations, write_integrations
 from vsa.llm.client import LLMError, OpenAICompatibleClient
 from vsa.llm.integrations import (
     CHAT,
-    EFFORTS,
     ROLE_LABEL,
     Integration,
     conflicts,
@@ -83,13 +82,7 @@ class LLMAdmin:
             "roles": roles,
             "saved": self.path.exists(),
             "path": str(self.path),
-            "engine": {
-                "chat": engine.llm.available,
-                "chat_down": engine.llm.health() if engine.llm.available else "",
-                "chat_model": engine.llm.model,
-                "analyst": engine.analyst_enabled,
-            },
-            "efforts": list(EFFORTS),
+            "engine": {"chat_down": engine.llm.health() if engine.llm.available else ""},
         }
 
     # ------------------------------------------------------------------ change
@@ -188,7 +181,7 @@ class LLMAdmin:
         base["endpoint"] = normalize_endpoint(str(base.get("endpoint", "")))
         if not base["endpoint"]:
             raise ValueError("API adresi girilmedi")
-        return Integration(**{k: v for k, v in base.items() if k != "has_key"})
+        return Integration(**base)
 
     @staticmethod
     def _client(item: Integration, timeout: float = 30) -> OpenAICompatibleClient:

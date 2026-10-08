@@ -1,4 +1,4 @@
-"""Rule-based Turkish report texts: reason, caveat, usage (HANDOVER §9.6).
+"""Rule-based Turkish report texts: reason, caveat, usage.
 
 Only for the rule engine's own answer (``Engine.rule_answer``), which is measured but
 never shown (ADR-038); the analyst writes its own texts.

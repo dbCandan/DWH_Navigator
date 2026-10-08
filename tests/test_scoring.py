@@ -1,4 +1,4 @@
-"""Column rule score (HANDOVER §9.2) — every rule has a test."""
+"""Column rule score — every rule has a test."""
 
 from __future__ import annotations
 
@@ -59,12 +59,12 @@ def test_synonym_bonus() -> None:
 def test_derivation_penalty_when_ratio_missing() -> None:
     ready, _ = score(make("CardLimitRate", "Kart limit oranı."), "kart limit oranı")
     parts, _ = score(make("CardLimit", "Kart limit tutarı."), "kart limit oranı")
-    assert CAVEAT_DERIVATION in parts.caveats and parts.needs_derivation
+    assert CAVEAT_DERIVATION in parts.caveats
     assert CAVEAT_DERIVATION not in ready.caveats
 
 
 def test_scope_negation_penalty() -> None:
-    """HANDOVER Ek A.2: TotalLimitFullness is "kart bazlı değil"."""
+    """TotalLimitFullness is "kart bazlı değil"."""
     neg, _ = score(make("TotalLimitFullness", "Toplam limit. Kart bazlı değil."), "kart limit")
     pos, _ = score(make("TotalLimitFullness", "Toplam limit. Kart bazlıdır."), "kart limit")
     assert neg.raw_score < pos.raw_score

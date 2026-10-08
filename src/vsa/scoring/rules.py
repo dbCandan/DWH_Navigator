@@ -1,4 +1,4 @@
-"""Deterministic column-level rule score (HANDOVER §9.2, ADR-010, ADR-012).
+"""Deterministic column-level rule score (ADR-010, ADR-012).
 
     base  = 0.35 × search + 0.25 × column_concept_coverage (IDF-weighted)
     search = relative BM25
@@ -74,11 +74,9 @@ def score_column(
         score += BONUS_TERM_DICTIONARY
         signals.append("Kurumsal terim sözlüğü üzerinden eşleşti")
 
-    needs_derivation = False
     if q.measure == "oran" and covered:
         ratio = next(c for c in content if c.kind is ConceptKind.MEASURE)
         if not covers(f.name_tokens | frozenset(f.description), ratio):
-            needs_derivation = True
             score -= PENALTY_DERIVATION
             caveats.append(CAVEAT_DERIVATION)
 
@@ -102,13 +100,12 @@ def score_column(
         signals=signals,
         caveats=caveats,
         concepts=[c.label for c in covered],
-        needs_derivation=needs_derivation,
     )
 
 
 def _negated_concepts(f: ColumnFeatures, covered: list[Concept]) -> list[Concept]:
-    """Concepts the description explicitly rules out: "Kart bazlı değil, …" (§9.2
-    "kapsam farkı"). A concept token within a few words before "değil" counts."""
+    """Concepts the description explicitly rules out: "Kart bazlı değil, …"
+    ("kapsam farkı"). A concept token within a few words before "değil" counts."""
     out: list[Concept] = []
     desc = f.description
     for i, tok in enumerate(desc):

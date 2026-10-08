@@ -1,4 +1,4 @@
-"""Validation against the dictionary (HANDOVER §11, ADR-002). Non-negotiable.
+"""Validation against the dictionary (ADR-002). Non-negotiable.
 
 Every (object, column) pair in the output is looked up in the dictionary. Anything
 not found is dropped and logged at WARNING — the drop count is the hallucination

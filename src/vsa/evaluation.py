@@ -1,11 +1,11 @@
-"""Evaluation (HANDOVER §13, M2).
+"""Evaluation (M2).
 
 Two item groups:
 
 * **ask**   — free-text requests (the analyst answer when the model is on, ADR-029).
   Hit at k when ANY ``expected_objects`` is in the top k
-  (several answers can be right, Ek A.1); ``primary_object`` tracks the manual first
-  choice. Also column recall and trap checks (Ek A.2).
+  (several answers can be right); ``primary_object`` tracks the manual first
+  choice. Also column recall and trap checks.
 * **negative** — requests with no answer in the dictionary; anything but
   BULUNAMADI is a false answer (ADR-006).
 
@@ -259,7 +259,7 @@ def _git_commit(start: Path) -> str:
 def append_history(
     report: EvalReport, path: Path, engine: Engine, label: str = ""
 ) -> dict[str, Any]:
-    """Record metrics before/after a weight change (§9.7). One JSON object per line."""
+    """Record metrics before/after a weight change. One JSON object per line."""
     entry = {
         "at": datetime.now().isoformat(timespec="seconds"),
         "commit": _git_commit(path.parent if path.parent.exists() else Path.cwd()),

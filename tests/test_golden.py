@@ -31,7 +31,7 @@ def engine(tmp_path_factory: pytest.TempPathFactory) -> Engine:
 
 
 def test_m1_acceptance(engine: Engine) -> None:
-    """HANDOVER §17 M1: expected object in the top 5 for every golden ask item;
+    """M1: expected object in the top 5 for every golden ask item;
     no trap violations; every negative item answered BULUNAMADI (ADR-006).
     Items taken from the hand-made chat analyses measure the analyst flow (ADR-029),
     which needs a model; the LLM-free core is held to the M1 items."""
