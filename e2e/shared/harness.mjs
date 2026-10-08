@@ -4,8 +4,18 @@ import {readFileSync} from 'node:fs';
 import {mkdir} from 'node:fs/promises';
 
 export const baseUrl = (process.env.APP_E2E_BASE || 'http://localhost:8080').replace(/\/$/, '');
+export const apiPrefix = '/api/dwhnavigator/v1';
 export const username = process.env.APP_E2E_SUPER_ADMIN_USER || process.env.DWHNAVIGATOR_SUPER_ADMIN_USER;
 export const password = process.env.APP_E2E_SUPER_ADMIN_PASS || process.env.DWHNAVIGATOR_SUPER_ADMIN_PASS;
+
+/**
+ * Process-supplied local accounts; nothing is stored in the repository. A super admin opened from
+ * the start-up password still holds a one-time password and sets `newPassword`
+ * (APP_E2E_SUPER_ADMIN_NEW_PASS) at its first sign-in; later runs sign in with that password.
+ */
+export const accounts = {
+  superAdmin: {username, password, newPassword: process.env.APP_E2E_SUPER_ADMIN_NEW_PASS},
+};
 
 const primaryCatalog = JSON.parse(
   readFileSync(new URL('../../app/frontend/src/locales/tr.json', import.meta.url), 'utf8'),
@@ -19,6 +29,34 @@ export function message(key) {
   assert.equal(typeof value, 'string', `missing primary locale message ${key}`);
   return value;
 }
+
+/**
+ * Sign in through the real form and wait for the main screen. When the account still holds its
+ * one-time password, the same screen asks for a new one (user-accounts Requirement 16); the
+ * account's `newPassword` is set there. Returns whether that first-sign-in step ran.
+ */
+export async function signIn(page, account) {
+  assert.ok(account.username && account.password, 'account credentials are required');
+  await page.goto(baseUrl + '/login');
+  await page.getByLabel(message('auth.login.username')).fill(account.username);
+  await page.getByLabel(message('auth.login.password'), {exact: true}).fill(account.password);
+  await page.getByRole('button', {name: message('auth.login.submit')}).click();
+  const home = page.getByRole('heading', {name: message('explorer.hero.title')});
+  const firstLogin = page.getByRole('heading', {name: message('auth.firstLogin.title')});
+  await home.or(firstLogin).waitFor();
+  if (!(await firstLogin.isVisible())) return false;
+  assert.ok(account.newPassword, 'the account asks for a new password: set APP_E2E_SUPER_ADMIN_NEW_PASS');
+  await page.getByLabel(message('auth.password.new'), {exact: true}).fill(account.newPassword);
+  await page.getByLabel(message('auth.password.repeat')).fill(account.newPassword);
+  await page.getByRole('button', {name: message('auth.firstLogin.submit')}).click();
+  await home.waitFor();
+  return true;
+}
+
+// Chromium logs every non-2xx fetch as "Failed to load resource". Those lines only repeat the
+// HTTP status: a 401 of a session restore without a refresh cookie is part of the contract, and
+// every 5xx is checked from the response itself below, with its URL.
+const NETWORK_STATUS_LOG = /^Failed to load resource: the server responded with a status of \d{3}/;
 
 export async function withBrowser(name, scenario) {
   assert.ok(username, 'APP_E2E_SUPER_ADMIN_USER is required');
@@ -42,7 +80,7 @@ export async function withBrowser(name, scenario) {
   });
   const page = await context.newPage();
   page.on('console', (message) => {
-    if (message.type() === 'error') {
+    if (message.type() === 'error' && !NETWORK_STATUS_LOG.test(message.text())) {
       consoleErrors.push(message.text());
     }
   });
