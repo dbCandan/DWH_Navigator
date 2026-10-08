@@ -1,10 +1,15 @@
 # PRD — analysis-records
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -13,9 +18,9 @@ Kayıt iş kabul edilince açılır, iş bitince sonucu, tam cevabı, adımları
 kimin, ne zaman, hangi soruyu sorduğu; cevabı kimin yazdığı; sonuç, önerilen tablolar, model
 çağrıları ve token (modelin okuduğu ve yazdığı metin parçası) sayıları. Yönetici, yönetim ekranının
 **Genel bakış** sayfasında sistemin sağlığını, ilk kurulumda kalan adımları ve son etkinliği görür;
-**Analizler** sayfasında biten analizleri süzer, bir kaydın adım adım zaman çizelgesini açar, sürenin
-nereye gittiğini karşılaştırır ve kayıtları kalıcı olarak siler. Saklama süresi dolan kayıtlar
-kendiliğinden silinir.
+**Analizler** sayfasında biten analizleri süzer, bir kaydın adım adım zaman çizelgesini açar,
+sürenin nereye gittiğini karşılaştırır ve kayıtları kalıcı olarak siler. Kayıtlar süresiz saklanır;
+kendiliğinden silinmez, yalnız yönetici siler.
 
 ## Aktörler ve sonuçlar
 
@@ -27,7 +32,6 @@ kendiliğinden silinir.
   analizinin sonucunu ve raporunu, kayıt durdukça [question-analysis](../004-question-analysis/PRD.md)
   uçlarından alır. Yönetim sayfalarını göremez; bu PRD'nin API uçları (sunucunun istek kabul ettiği
   adresler) ona 403 (yetki yok) döner.
-- **İşletim ekibi:** Saklama süresini ortam ayarıyla belirler; uygulama içinde bir rol değildir.
 - **[question-analysis](../004-question-analysis/PRD.md):** Analizi iş olarak yürütür; kaydı kabulde
   açar, iş başlarken ve bitince günceller. Kayda hangi alanların ve adımların hangi anda yazıldığı,
   durum geçişleri ve tam cevabın okunması (sonuç ve rapor) orada tanımlıdır (Requirement 8, 16 ve 18).
@@ -46,7 +50,7 @@ adı tutulmaz; adresten makine adı bulmak için DNS sorgusu (ters DNS) yapılma
 Decision 3: Kaydın hiçbir alanı şunları taşımaz: modele giden istem (prompt), modelin ham yanıtı ya da
 yanıttan parça, model sunucusunun adresi ve hata gövdesi, API anahtarı, istek başlıkları, ham istisna
 (beklenmeyen hata) metni. Hata ve sebep alanlarında yalnız sabit hata kodu ve kullanıcıya gösterilen
-güvenli Türkçe ileti bulunur. Gerekçe: kayıt saklama süresi boyunca bütün yöneticilere açıktır; sunucu
+güvenli Türkçe ileti bulunur. Gerekçe: kayıt silinene kadar bütün yöneticilere açıktır; sunucu
 adresi ve hata gövdesi ağ ayrıntısı sızdırır; ham yanıt, var olmayan tablo denetiminden geçmemiş
 metindir.
 
@@ -56,18 +60,17 @@ Kaydı yalnız question-analysis'in iş hizmeti açar ve günceller; son duruma 
 değişmez, yalnız silinir. Silme kalıcıdır; yedek tutulmaz.
 
 - Kaydın `public_id`'si analiz işinin kimliğidir. Süren (`queued` sırada, `running` yürüyor) kayıt
-  yönetim ekranında görünmez, yönetici silmesine ve saklama işine girmez; son durumuna (`completed`,
+  yönetim ekranında görünmez, yönetici silmesine girmez; son durumuna (`completed`,
   `failed`, `cancelled`, `interrupted`) ulaşınca görünür.
-- Kaydın tam cevabını question-analysis'in sonuç ve rapor uçları okur. Kayıt silinince — elle ya da
-  saklama süresi dolunca — o analizin sonucu ve raporu da açılamaz (Açık soru 2). Toplu arama
-  terimlerinin cevapları [list-search](../005-list-search/PRD.md)'ün kendi tablolarında durur; kaydın
-  silinmesi listeyi ve liste raporunu etkilemez.
-- Toplu arama teriminin listesi, liste dosyasının adı ve terimin sırası list-search'ten gelir;
-  list-search bu PRD'nin saklama süresini listelerin saklanmasında da kullanır.
+- Kaydın tam cevabını question-analysis'in sonuç ve rapor uçları okur. Yönetici kaydı silince o
+  analizin sonucu ve raporu da açılamaz (Decision 15). Toplu arama terimlerinin cevapları
+  [list-search](../005-list-search/PRD.md)'ün kendi tablolarında durur; kaydın silinmesi listeyi ve
+  liste raporunu etkilemez.
+- Toplu arama teriminin listesi, liste dosyasının adı ve terimin sırası list-search'ten gelir.
 - Model çağrısı özetinin biçimi ve hata sınıfları llm-connection'dadır (Requirement 12, 13 ve 18);
   bu PRD onları adımların içinde saklar ve gösterir. Ayrı çağrı tablosu yoktur.
 - Yönetim ekranının kabuğu — kenar çubuğu, Ctrl K komut paleti, adres biçimi ve derin bağlantılar
-  (sayfayı ya da kaydı doğrudan açan adres), çekmece (yandan açılan panel), onay penceresi, `/`
+  (sayfayı ya da kaydı doğrudan açan adres), çekmece (yandan açılan panel), onay, `/`
   kısayolu — [search-settings](../009-search-settings/PRD.md) PRD'sindedir. Paletin "Son sorular"
   grubu bu PRD'nin liste ucunu, "Performans ayrıntıları" işlemi bu PRD'nin Analizler sayfasını
   kullanır.
@@ -76,9 +79,9 @@ değişmez, yalnız silinir. Silme kalıcıdır; yedek tutulmaz.
   kayıtlı cevap özeti ve silme işlemi question-analysis (Requirement 15: `GET /saved-answers/summary`,
   `DELETE /saved-answers`). Bu PRD yalnız kartların gösterimini tanımlar.
 - Kayıt yazma ya da güncelleme hatasının günlük olayı ve ölçümü question-analysis'tedir. Kayıt
-  tablosunun göçü (veritabanı yapısını kuran betik) ve yeni ortam ayarının dağıtıma eklenmesi
+  tablosunun göçü (veritabanı yapısını kuran betik)
   [kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md) yoluyla
-  yapılır.
+  uygulanır.
 
 ## Mevcut davranış
 
@@ -129,8 +132,8 @@ değişikliktir.
 - **Liste ucu** (`GET /api/admin/analyses`, `App.analyses`): Dosyanın son 3.000 satırını
   (`ADMIN_LIST_LIMIT`) en yeni önce, adımlar olmadan, adım adına göre toplanmış sürelerle (`steps`)
   döndürür. Süzme, göstergeler, grafik ve "Daha fazla" tarayıcıda bu 3.000 satırdan hesaplanır; daha
-  eski kayıt hiçbir yerde görünmez. **Hedefte:** süzme, sayfalama ve göstergeler sunucuda, saklama
-  süresindeki bütün biten kayıtlar üzerinden (Requirement 6–9, Decision 7).
+  eski kayıt hiçbir yerde görünmez. **Hedefte:** süzme, sayfalama ve göstergeler sunucuda, bütün
+  biten kayıtlar üzerinden (Requirement 6–9, Decision 7).
 - **Ayrıntı ucu** (`GET /api/admin/analysis/<id>`, `App.analysis`): Kaydı bütün adımlarıyla döndürür;
   kayıt son 3.000 satırda yoksa 404 "Kayıt bulunamadı". **Hedefte:** Requirement 10.
 - **Silme** (`POST /api/admin/analyses/clear`, `App.clear_analyses`): Gövde `{"ids": [...]}` ya da
@@ -139,8 +142,8 @@ değişikliktir.
   (`tests/test_web.py::test_clear_analyses`). **Hedefte:** ekranın tuttuğu kimlik listesi yerine süzgeç
   ve "bu ana kadar" sınırı gönderilir (Requirement 11, Decision 8).
 - **Saklama:** Kayıtlar süresiz tutulur, yalnız elle silinir. `docs/GUVENLIK.md` kalan risk 5:
-  `data/logs/` soru metinleri ve istemci adresleri içerir. **Hedefte:** saklama süresi ve günlük
-  kendiliğinden silme (Requirement 12, Açık soru 1).
+  `data/logs/` soru metinleri ve istemci adresleri içerir. **Hedefte:** aynı; kayıtlar süresiz
+  saklanır ve yalnız yönetici siler (Requirement 11, 12); istemci adresi tutulmaz (Decision 2).
 - **Koruma** (`src/vsa/web/security.py` `AdminGuard`, ADR-047): `/admin` ve `/api/admin/*`,
   `VSA_ADMIN_PASSWORD` ile tarayıcının parola kutusunu (HTTP Basic) ister; parola yoksa yalnız
   sunucunun kendisinden açılır. **Hedefte:** oturum ve `yonetici` rolü (Decision 4).
@@ -152,12 +155,13 @@ değişikliktir.
   bu PRD'nin uçlarından, kartların verisi kendi PRD'lerinden gelir (Requirement 13–15).
 - **Analizler** (`Analyses`): araç çubuğu (dönem, "Cevabı yazan", "Soran", arama, "Canlı"), süzgece
   uyan satırlardan dört gösterge, 150'şer satırlık liste ve "Daha fazla", 15 saniyelik canlı
-  yenileme (ayrıntı açıkken durur), ayrıntı çekmecesi (`openDetail`, `detail`), aşama özeti (`PHASES`,
-  `phasesOf`: 1 saniyeden kısa sırada bekleme gösterilmez), katlanmış zaman çizelgesi (`timeline`),
-  ↑/↓ ile kayıtlar arasında gezinme ve Esc, "Performans" çekmecesi (`perf`), "Temizle…" (`clear`,
-  tarayıcının iki onay kutusu). "Soran", makine adı ya da IP'dir (yoksa "bilinmiyor"); ayrıntının alt
-  satırı IP'yi de gösterir. **Hedefte:** aynı işlev; soran görünen addır, IP gösterilmez; onaylar
-  iskeletin onay penceresiyle alınır (Requirement 16–22).
+  yenileme (ayrıntı açıkken durur), ayrıntı çekmecesi (`openDetail`, `detail`), aşama özeti
+  (`PHASES`, `phasesOf`: 1 saniyeden kısa sırada bekleme gösterilmez), katlanmış zaman çizelgesi
+  (`timeline`), ↑/↓ ile kayıtlar arasında gezinme ve Esc, "Performans" çekmecesi (`perf`),
+  "Temizle…" (`clear`, tarayıcının iki onay kutusu). "Soran", makine adı ya da IP'dir (yoksa
+  "bilinmiyor"); ayrıntının alt satırı IP'yi de gösterir. **Hedefte:** aynı işlev ve görünüm; soran
+  görünen addır, IP gösterilmez; onaylar kaynaktaki gibi tarayıcının onay penceresiyle alınır
+  (Requirement 16–22).
 - **Komut satırı ve ölçüm:** `vsa ask` ve `vsa eval` kayıt yazmaz. **Hedefte:** ölçüm betiği de kayıt
   yazmaz ([quality-evaluation](../010-quality-evaluation/PRD.md)).
 
@@ -238,7 +242,7 @@ API yanıtında bulunmaz.
 
 Requirement 5: Yönetim ekranının uçları yalnız son durumdaki kayıtları okur ve siler: liste, özet,
 günlük sayılar, soran listesi, ayrıntı ve silme `queued` ve `running` kayıtları görmez. Süren işin
-kaydı ayrıntı ucunda 404 alır, hiçbir silme isteğiyle silinmez, saklama işine girmez.
+kaydı ayrıntı ucunda 404 alır, hiçbir silme isteğiyle silinmez.
 
 Requirement 6: Liste, süzgeçlere uyan kayıtları kabul zamanına göre en yeni önce (eşitlikte en son
 açılan önce) sayfalı döndürür: sayfa boyutu varsayılan 150, en çok 500. Süzgeçler:
@@ -277,7 +281,7 @@ görünen ada göre sıralı döndürür; Analizler sayfasının "Soran" seçimi
 Requirement 10: Ayrıntı, Requirement 6'daki satır alanlarına ek olarak cevap özetini, yeniden
 kullanılan cevap bilgisini, model çağrısı ve token toplamlarını, sözlük sürümünü, başlama ve bitiş
 zamanını, sırada bekleme süresini, altı aşamanın süresini, `steps_truncated` işaretini ve bütün
-adımları döndürür; tam cevabı döndürmez. Yok, süren ya da saklama süresi dolup silinmiş kayıt için
+adımları döndürür; tam cevabı döndürmez. Yok, süren ya da silinmiş kayıt için
 yanıt 404 `analysis_record_not_found`'dır.
 
 Requirement 11: Silme yalnız açık bir seçimle yapılır: ya süzgeçler (dönem, akış, soran, metin) ve
@@ -289,13 +293,9 @@ uçlarında da açılmaz; o kaydı gösteren kayıtlı cevap bağı boşalır, k
 `until`'den sonra kabul edilen kayıt silinmez. Yanıt silinen kayıt sayısını ve kalan toplam kayıt
 sayısını taşır. Aynı istek tekrarlanırsa ikinci yanıt 0 silinen döner ve başka kayda dokunmaz.
 
-Requirement 12: Saklama süresini aşan son durumdaki kayıtlar — kabul zamanı şimdiden
-`DWHNAVIGATOR_ANALYSIS_RECORD_RETENTION_DAYS` günden eski olanlar — backend açılışında ve sonra en geç
-24 saatte bir kendiliğinden ve Requirement 11'deki gibi kalıcı silinir. Ayar 1–365 gün arasıdır,
-varsayılanı 90 gündür (Açık soru 1); aralık dışı değerle backend başlamaz. Silme 1.000'erlik işlemlerle
-yapılır; backend tek kopya çalıştığı ve güncellemede eski ve yeni süreç birlikte çalışmadığı için
-([kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md)
-Decision 5) iş tek süreçte yürür ve ayrı kilit gerekmez. **Yeni davranış:** kaynakta kayıtlar süresizdi.
+Requirement 12: Kayıtlar süresiz saklanır (kaynakla aynı). Hiçbir kayıt yaşı yüzünden kendiliğinden
+silinmez; kayıt yalnız yöneticinin Requirement 11'deki silmesiyle kalkar. Saklama süresi ayarı ve
+zamanlanmış silme işi yoktur (Decision 16).
 
 Requirement 13: Genel bakış (`/admin/genel`, yönetim ekranının açılış sayfası) başlığı "Genel bakış",
 açıklaması "Sistemin durumu ve son etkinlik; her ayara ve işleme Ctrl K ile gidilir." olan sayfadır ve
@@ -404,12 +404,12 @@ kullanımı" ("N model çağrısı · X giriş + Y çıkış token" ya da "Bu d�
 çekmeceyi kapatır. Süzgeçte kayıt yoksa "Bu süzgeçte soru yok." yazar.
 
 Requirement 22: "Temizle…" düğmesi süzgeçte kayıt yoksa "Silinecek analiz yok" bildirimini ("Süzgeç
-boş.") gösterir. Kayıt varsa iskeletin onay penceresi (search-settings Requirement 24) sorar: dönem
+boş.") gösterir. Kayıt varsa tarayıcının onay penceresi (search-settings Requirement 24) sorar: dönem
 "Tümü" ve başka süzgeç yoksa "Kayıtlı N analizin tamamı silinsin mi?", değilse "Süzgeçteki N analiz
 (<dönemin küçük harfli adı>) silinsin mi?" — akış, soran ya da metin süzgeci varsa parantezin içine
 ", süzgeçli" eklenir (örnek: "Süzgeçteki 12 analiz (son 7 gün, süzgeçli) silinsin mi?"). İki sorunun
 altında "Silinen analizler kalıcı olarak silinir, yedek tutulmaz. Kullanıcılar bu analizlerin
-sonucunu ve raporunu da açamaz." yazar (ikinci cümle yenidir; Açık soru 2). Onayda Requirement 11'deki
+sonucunu ve raporunu da açamaz." yazar (ikinci cümle yenidir; Decision 15). Onayda Requirement 11'deki
 silme isteği gider: ilk durumda `all=true`, ikincisinde süzgeçler; ikisinde de `until` listenin
 `snapshot_at` değeridir. Ardından "Analizler silindi" bildirimi ("N analiz silindi; M kaldı.")
 gösterilir ve ikinci onay sorulur: "Kayıtlı cevaplar da silinsin mi? Silinmezse aynı ya da aynı
@@ -421,12 +421,14 @@ Sonunda liste ve göstergeler yeniden yüklenir.
 Requirement 23: İki sayfanın bütün metinleri kaynaktaki Türkçe metinlerdir ve
 `app/frontend/src/locales/tr.json` kataloğundadır; akış etiketleri "● Analist", "↻ Önceki cevap", "!
 Yapılamadı", "■ Durduruldu", "✕ Hata" ve yeni "↯ Yarıda kesildi"dir. Zaman, süre ve sayı biçimleri
-Türkçe yerel ayarıyla kaynaktaki gibidir: bugünkü zaman "bugün 14:05", bu yılın tarihi "08.10 14:05",
-önceki yılın tarihi "08.10.2025 14:05"; süre 1 saniyeden kısaysa "850 ms", 10 saniyeden kısaysa "4,5
-sn", 1 dakikadan kısaysa "45 sn", değilse "2 dk 05 sn"; token sayısı "950", "12,3 k", "1,2 M"; sayılar
-"1.234". Masaüstünde sayfa tek ekrandır ve uzun listeler kendi içinde kayar (search-settings Requirement
-25). Frontend kurallarıyla (rules/30–34) çelişen bir görsel ayrıntıda kural geçerlidir. Grafik, yığılmış
-çubuk ve zaman çizelgesindeki dinamik genişlik ve konumlar tarayıcının stil nesnesi (CSSOM) ya da SVG
+Türkçe yerel ayarıyla kaynaktaki gibidir: bugünkü zaman "bugün 14:05", bu yılın tarihi "08.10
+14:05", önceki yılın tarihi "08.10.2025 14:05"; süre 1 saniyeden kısaysa "850 ms", 10 saniyeden
+kısaysa "4,5 sn", 1 dakikadan kısaysa "45 sn", değilse "2 dk 05 sn"; token sayısı "950", "12,3 k",
+"1,2 M"; sayılar "1.234". Masaüstünde sayfa tek ekrandır ve uzun listeler kendi içinde kayar
+(search-settings Requirement 25). İki sayfanın görünümü kaynaktaki `admin.html` ile birebir aynıdır;
+frontend kurallarının (rules/30–34) istekleri görünümü değiştirmeden karşılanır
+([search-settings](../009-search-settings/PRD.md) Decision 11). Grafik, yığılmış çubuk ve zaman
+çizelgesindeki dinamik genişlik ve konumlar tarayıcının stil nesnesi (CSSOM) ya da SVG
 öznitelikleriyle verilir; çalışırken `<style>` öğesi ekleyen bileşen kullanılmaz
 ([user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) Requirement 14).
 
@@ -459,10 +461,10 @@ güncellenir.
 
 - Rol ve kiracı kapsamı (tek kiracı `platform`) her istekte sunucuda denetlenir; ön yüzdeki menü
   gizlemesi yalnız kolaylıktır. `kullanici` rolündeki istek 403 alır.
-- Kayıt kişisel veri taşır: soranın kimliği, soru metni ve cevap. Yönetim ekranında yalnız `yonetici`
-  görür; günlüğe ve telemetriye girmez (Decision 1); saklama süresi dolunca silinir (Requirement 12);
-  silme kalıcıdır (Decision 13). Kaydın sahibi kendi analizini yalnız question-analysis'in sahiplik
-  denetimli uçlarından görür.
+- Kayıt kişisel veri taşır: soranın kimliği, soru metni ve cevap. Yönetim ekranında yalnız
+  `yonetici` görür; günlüğe ve telemetriye girmez (Decision 1); süresiz saklanır ve yalnız yönetici
+  silince kalkar (Requirement 11, 12); silme kalıcıdır (Decision 13). Kaydın sahibi kendi analizini
+  yalnız question-analysis'in sahiplik denetimli uçlarından görür.
 - Soru, özet ve adım ayrıntıları kullanıcı ya da model kaynaklı metindir; ön yüzde yalnız düz metin
   olarak gösterilir, HTML (sayfa biçimleme kodu) olarak işlenmez. Böylece bir sorunun içine yazılan
   betik yöneticinin tarayıcısında çalışmaz.
@@ -496,7 +498,7 @@ güncellenir.
 - Arama anahtarı; soru, model adı, cevap özeti, liste dosyası adı ve tablo anahtarlarının Türkçe harf
   katlamasından geçmiş birleşimidir; kayıt son duruma ulaşınca üretilir, API'de dönmez.
 - Dizinler: kiracı + durum + kabul zamanı (azalan) + iç kimlik (liste ve sıralama); kiracı + soran +
-  kabul zamanı ("Soran" süzgeci); kabul zamanı (saklama işi).
+  kabul zamanı ("Soran" süzgeci).
 - question-analysis'in kayıtlı cevap tablosu cevabı üreten kaydı gösterir; kayıt silinince bu bağ
   boşalır (question-analysis Veri ve geçiş). Oylar ([answer-feedback](../006-answer-feedback/PRD.md))
   ve list-search tabloları bu tabloya bağ kurmaz.
@@ -505,17 +507,14 @@ güncellenir.
 
 ## Gözlemlenebilirlik
 
-- Yapılandırılmış günlük olayları: `analysis_record.deleted` (silinen sayı, kapsam `filter` ya da
-  `all`, silen kullanıcının `public_id`'si), `analysis_record.retention_run` (silinen sayı, süre ms,
-  sonuç `ok` ya da `failed`). Soru, cevap, tablo, model adı, görünen ad ve arama metni bu olaylara
-  girmez. Liste ucunun `q` parametresi de günlüğe girmez; taban istek günlüğü yalnız rota şablonunu
-  (adresin değişken kısımları çıkarılmış hali) yazar (rules/25). Kaydın yazılamaması
-  question-analysis'in `analysis.record_write_failed` olayıdır.
-- Ölçümler: silinen kayıt sayısı `dwhnavigator_analysis_records_deleted_total{reason}` (`reason`
-  `manual` ya da `retention`; kümede olmayan değer `other`); saklama işinin son başarılı çalışma zamanı
-  `dwhnavigator_analysis_record_retention_last_success_timestamp_seconds` (Unix saniyesi: 1970'ten bu
-  yana geçen saniye; 48 saatten eskiyse iş durmuş demektir). Kullanıcı, kayıt, akış ve model ölçüm
-  etiketine girmez. Bu PRD yeni iz aralığı (trace span) eklemez.
+- Yapılandırılmış günlük olayı: `analysis_record.deleted` (silinen sayı, kapsam `filter` ya da
+  `all`, silen kullanıcının `public_id`'si). Soru, cevap, tablo, model adı, görünen ad ve arama
+  metni bu olaylara girmez. Liste ucunun `q` parametresi de günlüğe girmez; taban istek günlüğü
+  yalnız rota şablonunu (adresin değişken kısımları çıkarılmış hali) yazar (rules/25). Kaydın
+  yazılamaması question-analysis'in `analysis.record_write_failed` olayıdır.
+- Ölçüm: yöneticinin sildiği kayıt sayısı `dwhnavigator_analysis_records_deleted_total` (etiketsiz).
+  Kullanıcı, kayıt, akış ve model ölçüm etiketine girmez. Bu PRD yeni iz aralığı (trace span)
+  eklemez.
 - Ortak kurallar ve sinyal saklama süresi
   [application-foundation alanındadır](../../../application-foundation/DOMAIN.md). Tüketen test:
   `app/backend/tests/integration/test_telemetry_signals.py`.
@@ -524,15 +523,11 @@ güncellenir.
 
 - Yeni tablo dağıtımdaki göç adımıyla uygulanır
   ([kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md)).
-- Yeni ortam ayarı `DWHNAVIGATOR_ANALYSIS_RECORD_RETENTION_DAYS` (sır değildir)
-  `app/backend/.env.example`, `app/infra/docker-compose.local.yml` ve
-  `helm/dwhnavigator/values-project.yaml` (`backend.config`; fabrikanın yönettiği `values.yaml`
-  projede düzenlenmez, kubernetes-delivery Decision 3) dosyalarına eklenir;
-  `python3 scripts/check-config-sync.py` geçer.
-- Saklama işi backend sürecinin içinde çalışır; yeni chart nesnesi, sır veya ağ çıkışı yoktur.
+- Yeni ortam ayarı, chart nesnesi, sır veya ağ çıkışı yoktur.
 - Hacim: tam cevap ortalama ~30 KB, adımlar ~5 KB'tır; bir kayıt yaklaşık 35 KB tutar. Toplu arama
-  2.000 terimlik listelerle kısa sürede binlerce kayıt üretir; 100.000 kayıt yaklaşık 3,5 GB'tır.
-  Kalıcı disk boyutu plan aşamasında 90 günlük tahmini hacimle doğrulanır.
+  200 terimlik listelerle kısa sürede binlerce kayıt üretir; 100.000 kayıt yaklaşık 3,5 GB'tır.
+  Kayıtlar süresiz saklandığı için tablo yalnız yönetici sildikçe küçülür; kalıcı disk boyutu plan
+  aşamasında beklenen yıllık hacimle doğrulanır.
 
 ## Test stratejisi
 
@@ -545,11 +540,11 @@ güncellenir.
   değişmeme; süren kaydın uçlarda görünmemesi, ayrıntıda 404 alması ve silinmemesi; dönem sınırları
   (İstanbul saatiyle gece yarısı çevresi); akış, soran ve Türkçe harfli metin araması ("İŞLEM",
   "işlem", "islem"); `%` ve `_` içeren arama; sıralama eşitlikleri ve sayfalama; `until` sonrası
-  kaydın listede ve silmede dışarıda kalması; özetin ve günlük sayıların (sıfır günler dahil) sabit veri
-  kümesinde beklenen değerler; `all=true`, süzgeçli silme, kapsamsız silmede 422 ve tekrarlanan silmede
-  0; silinen kaydın tam cevabının gitmesi ve kayıtlı cevap bağının boşalması; `kullanici`'ya 403,
-  oturumsuza 401, olmayan kayda 404; saklama işinin yalnız süresi dolan son durumdaki kaydı silmesi ve
-  tekrarlandığında aynı sonucu vermesi.
+  kaydın listede ve silmede dışarıda kalması; özetin ve günlük sayıların (sıfır günler dahil) sabit
+  veri kümesinde beklenen değerler; `all=true`, süzgeçli silme, kapsamsız silmede 422 ve tekrarlanan
+  silmede 0; silinen kaydın tam cevabının gitmesi ve kayıtlı cevap bağının boşalması; `kullanici`'ya
+  403, oturumsuza 401, olmayan kayda 404; kabul zamanı bir yıldan eski son durumdaki kaydın backend
+  yeniden açıldıktan sonra yerinde kalması (Requirement 12).
 - **Veri sızıntısı:** sahte model sunucusu yanıtına, hata gövdesine ve adresine konan ayırt edici
   işaret dizesi kayıtlarda ve bu PRD'nin API yanıtlarında aranır; bulunmamalıdır (Requirement 4).
 - **Ön yüz (Vitest, ön yüz test aracı):** sağlık kartlarının bütün durumları ve bir kaynağın
@@ -559,6 +554,9 @@ güncellenir.
   bağlantı; Performans çekmecesi ve kişiye tıklama; Temizle akışının iki onayı ve gönderdiği
   parametreler; metinlerin `tr.json`'dan gelmesi.
 - **Tarayıcı (Playwright, uçtan uca tarayıcı testi):** Acceptance 4 ve 5'teki akışlar.
+- **Görsel eşdeğerlik:** kaynak `76e21a3` ve hedef aynı sözlükle ve aynı soruların sorulmasıyla
+  oluşan kayıtlarla yan yana çalıştırılır; iki sayfanın ve çekmecelerin ekran görüntüleri aynı ekran
+  boyutlarında karşılaştırılır (Acceptance 6).
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
 
@@ -576,7 +574,7 @@ güncellenir.
   Requirement 1–3 ve 5–12'yi doğrular; göç ettirilmiş şema testi zorunlu bloğu ve fiziksel silme
   sapmasını doğrular; OpenAPI kayıtlı dosyayla aynıdır.
 - [ ] Acceptance 2: L1 — Otomatik testlerden geçti: veri sızıntısı testi Requirement 4'ü doğrular;
-  telemetri testi iki ölçümü ve etiket kümesini doğrular.
+  telemetri testi silme olayını ve ölçümünü doğrular.
 - [ ] Acceptance 3: L1 — Otomatik testlerden geçti: ön yüz testleri Requirement 13–23'ü doğrular;
   yerelleştirme anahtar eşliği testi geçer.
 - [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da (geliştirici makinesindeki
@@ -588,25 +586,29 @@ güncellenir.
   ve son sorular bu kayıtları içerir (Requirement 1–3, 5, 13–20).
 - [ ] Acceptance 5: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da `kullanici` rolündeki
   hesap `GET /analysis-records`'ta 403 alır; yönetici "Cevabı yazan: Durduruldu" süzgeciyle yalnız
-  durdurulan kaydı siler, diğer kayıtlar kalır ve kullanıcı silinen analizin raporunu artık indiremez;
-  liste yüklendikten sonra biten kayıt "Tümü" silmesinde kalır; backend analiz sürerken yeniden
-  başlatılınca kayıt "Yarıda kesildi" olarak görünür; saklama süresi 1 güne ayarlanıp kabul zamanı
-  geçmişe çekilen kayıt saklama işiyle silinir; veritabanında IP ya da makine adı sütunu ve değeri
-  yoktur (Requirement 2, 11, 12, 22, Decision 2).
+  durdurulan kaydı siler, diğer kayıtlar kalır ve kullanıcı silinen analizin raporunu artık
+  indiremez; liste yüklendikten sonra biten kayıt "Tümü" silmesinde kalır; backend analiz sürerken
+  yeniden başlatılınca kayıt "Yarıda kesildi" olarak görünür; veritabanında IP ya da makine adı
+  sütunu ve değeri yoktur (Requirement 2, 11, 22, Decision 2).
+- [ ] Acceptance 6: L2 — Gerçek istemci/ortamda doğrulandı: görsel eşdeğerlik. Yerel Compose'da
+  hedef ile kaynak `76e21a3` aynı sözlükle ve aynı soruların sorulmasıyla oluşan kayıtlarla
+  çalıştırılır; Genel bakış, Analizler, ayrıntı çekmecesi ve Performans çekmecesinin ekran
+  görüntüleri masaüstü (1440×900) ve telefon genişliğinde (390×844 piksel) yan yana karşılaştırılır.
+  Fark yalnız fabrikanın zorunlu kıldığı oturum alanında kabul edilir (Requirement 13–23).
 
 ## Kararlar
 
 - Decision 5: Kayıt, analiz işinin kendisidir: question-analysis işi kabul edince kaydı açar ve aynı
-  kaydı sonuna kadar günceller; ayrı bir iş tablosu yoktur. Gerekçe: aynı analiz için iki satır ve iki
-  saklama süresi olmaz; sonuç ve rapor kayıttan okunur; kaynakta yeniden başlamada kaybolan analizler
-  "Yarıda kesildi" olarak görünür.
+  kaydı sonuna kadar günceller; ayrı bir iş tablosu yoktur. Gerekçe: aynı analiz için iki satır
+  olmaz; sonuç ve rapor kayıttan okunur; kaynakta yeniden başlamada kaybolan analizler "Yarıda
+  kesildi" olarak görünür.
 - Decision 6: Ekranda ve süzgeçlerde kullanılan zaman kabul zamanıdır (`asked_at`); kaynak satırın
   yazıldığı anı (analizin bitişini) gösteriyordu. Gerekçe: dakikalar süren analizde "ne zaman soruldu"
   sorusuna doğru cevap verir; bitiş zamanı ayrıntıda durur. "Bugün" ve 14 günlük grafiğin gün sınırları
   İstanbul saatiyle (`Europe/Istanbul`) hesaplanır; kaynakta tarayıcının saatiyle hesaplanıyordu ve
   kullanıcılar Türkiye'dedir.
 - Decision 7: Süzme, sayfalama ve göstergeler sunucuda hesaplanır. Gerekçe: kaynaktaki 3.000 satır
-  sınırı kalkar, saklama süresindeki bütün kayıtlar sayılır, tarayıcıya binlerce satır taşınmaz.
+  sınırı kalkar, bütün kayıtlar sayılır, tarayıcıya binlerce satır taşınmaz.
   Hesap yöntemi kaynaktaki `Analyses.kpi`, `perf` ve `quantile` ile aynıdır.
 - Decision 8: Toplu silme, ekranın gösterdiği satırların kimlik listesi yerine süzgeç ve `until` ile
   yapılır. Gerekçe: sunucu sayfalamasında ekran bütün kimlikleri tutmaz; `until`, listeyi gördükten
@@ -632,19 +634,13 @@ güncellenir.
   listeleri kayıtlardan önce silebilir (kişi başına en yeni 5 liste); kayıt, liste silindikten sonra
   da hangi listenin kaçıncı terimi olduğunu ve dosya adını göstermelidir.
 
-## Açık sorular
-
-1. **Analiz kayıtları ne kadar süre saklansın?** Kaynakta kayıtlar süresizdi ve yalnız elle
-   siliniyordu; kayıt soranın kimliğini, sorusunu ve tam cevabı taşır; süre aynı zamanda kullanıcının
-   eski analizinin raporunu ne kadar indirebileceğini ve list-search'te listelerin en çok ne kadar
-   saklanacağını belirler. Öneri: 90 gün (DWH Code Review'daki inceleme metniyle aynı);
-   `DWHNAVIGATOR_ANALYSIS_RECORD_RETENTION_DAYS` ile 1–365 gün arasında ayarlanabilsin ve süresi dolan
-   kayıtlar günde en az bir kez kendiliğinden silinsin (Requirement 12).
-2. **Yöneticinin bir kaydı silmesi, kullanıcının o analizin sonucunu ve raporunu da silsin mi?** Hedefte
-   tek soru raporu ve sonuç analiz kaydındaki tam cevaptan üretiliyor (question-analysis); kaynakta
-   raporlar ayrı, bellekteki bir depodaydı. Öneri: Evet; kayıt tek yerdir, silme gizlilik ve temizlik
-   içindir ve onay penceresi bunu açıkça söyler (Requirement 22). Toplu arama listeleri ve raporları
-   kendi tablolarında kaldığı için etkilenmez.
+- Decision 15: Yöneticinin bir analiz kaydını silmesi, kullanıcının o analizin sonucunu ve raporunu
+  da kaldırır; onay penceresi bunu açıkça söyler (Requirement 22). Gerekçe: kayıt analiz işinin
+  kendisidir (Decision 5); tek soru raporu ve sonuç kayıttaki tam cevaptan üretilir ve silme
+  gizlilik ve temizlik içindir. Toplu arama listeleri ve raporları kendi tablolarında durduğu için
+  etkilenmez.
+- Decision 16: Kayıtlar süresiz saklanır; saklama süresi ayarı ve kendiliğinden silme yoktur
+  (kaynakla aynı). Gerekçe: proje sahibinin kararı; kayıtları yalnız yönetici "Temizle…" ile siler.
 
 ## Teslim akışı
 
@@ -652,13 +648,15 @@ Belirtim → Plan → Görevler → Uygulama ([Plan](plan.md), [Görevler](tasks
 
 ## Riskler
 
-- **Kişisel veri birikimi:** Sorular, cevaplar ve soranlar saklama süresi boyunca tek tabloda durur ve
-  bütün yöneticilere açıktır. Silinen kayıtlar veritabanı yedeklerinde, yedeğin kendi saklama süresince
-  kalır; yedek düzeni kubernetes-delivery'dedir.
+- **Kişisel veri birikimi:** Sorular, cevaplar ve soranlar süresiz saklanır; yönetici silene kadar
+  tek tabloda durur ve bütün yöneticilere açıktır (Decision 16). Veritabanı yedeği alınmadığı için
+  ([kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md))
+  silinen kayıt hiçbir yerde kalmaz ve geri getirilemez.
 - **Silme kullanıcıyı etkiler:** Yöneticinin "Temizle…" işlemi kullanıcıların o analizlerin sonucunu ve
-  raporunu da kaldırır (Açık soru 2).
-- **Hacim:** Tam cevapla bir kayıt ~35 KB tutar; toplu arama binlerce kayıt üretir ve "Tümü" döneminde
-  özet sorgusu yavaşlayabilir. Liste ve özetin yanıt süresi plan aşamasında gerçekçi hacimle ölçülür.
+  raporunu da kaldırır (Decision 15).
+- **Hacim:** Tam cevapla bir kayıt ~35 KB tutar; toplu arama binlerce kayıt üretir ve kayıtlar
+  süresiz saklandığı için tablo zamanla büyür; "Tümü" döneminde özet sorgusu yavaşlayabilir. Liste
+  ve özetin yanıt süresi plan aşamasında gerçekçi hacimle ölçülür.
 - **Adım anahtarı:** Aşamaları question-analysis'in adım anahtarları belirler; bir ana adım anahtarsız
   yazılırsa o adımın süresi "Süre nereye gitti" ve Performans görünümünde hiçbir aşamada görünmez.
 - **Yarıda kesilen iş:** Çökmede bellekteki adımlar kaybolur; böyle bir kayıt "Yarıda kesildi"

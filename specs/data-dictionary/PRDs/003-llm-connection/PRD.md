@@ -1,10 +1,15 @@
 # PRD — llm-connection
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -68,7 +73,7 @@ gider, ölü sunucuyu beklemez ve süreç genelinde aynı anda süren sohbet ça
 - İstem ve şema içeriği, analist adımları, analizlerin sırayla yürümesi, analizin durdurulması,
   kayıtlı cevaplar ve "Analiz yapılamadı" cevabının gösterimi
   [question-analysis](../004-question-analysis/PRD.md) PRD'sinindir. Çağrı özetinin analiz
-  kaydındaki veri modeli, saklama süresi ve gösterimi
+  kaydındaki veri modeli ve gösterimi
   [analysis-records](../008-analysis-records/PRD.md) PRD'sinindir.
 
 Decision 1: Modele erişim bir uygulama portu ile altyapı bağdaştırıcısı arasında ayrılır
@@ -88,10 +93,11 @@ PostgreSQL'de durur. Adres, model ve API anahtarı için ortam değişkeni yoktu
 ilk kayda taşıma yolu (`from_llm_settings`) kalkar; kaynak dosyalardan veri taşınmaz.
 
 Decision 4: Ortam (`local` veya `nonprod`) `DWHNAVIGATOR_ENVIRONMENT` ayarından okunur;
-`development` `local`, `staging` `nonprod` demektir, başka ya da okunamayan değer `nonprod`
-sayılır ([application-foundation alanı](../../../application-foundation/DOMAIN.md)). Ortamlar
-arasındaki tek fark kabul edilen adres şemasıdır: şifresiz `http` yalnız `local`'de kabul edilir,
-`nonprod`'da yalnız şifreli `https` (Açık soru 2).
+`development` `local`, `staging` `nonprod` demektir, başka ya da okunamayan değer `nonprod` sayılır
+([application-foundation alanı](../../../application-foundation/DOMAIN.md)). Ortamlar arasındaki tek
+fark kabul edilen adres şemasıdır: şifresiz `http` yalnız `local`'de kabul edilir, `nonprod`'da
+yalnız şifreli `https`; `nonprod`'un model ucu (RunAI) `https` olduğu için istisna yoktur (Decision
+18).
 
 ## Mevcut davranış
 
@@ -236,9 +242,9 @@ maddede belirtilmiştir.
 - **Arayüz** (`src/vsa/web/static/admin.html` `AI`, `modelState`, `Shell.refresh`; ADR-032,
   ADR-051): Yapay zekâ sayfası etkin model kartı, entegrasyon kartları, üç adımlı düzenleyici
   çekmece (Bağlantı; Model ve "Gelişmiş"; Test) ve model envanteri çekmecesi sunar; çakışma ve silme
-  onayını tarayıcının `confirm` penceresiyle sorar. **Hedefte:** React'te aynı işlev ve metinler;
-  onaylar paylaşılan erişilebilir onay penceresiyle; "Kurum dışı adres" etiketi ve dosya iletisi
-  kalkar (Requirement 19).
+  onayını tarayıcının `confirm` penceresiyle sorar. **Hedefte:** React'te aynı işlev, görünüm ve
+  metinler; onaylar yine tarayıcının `confirm` penceresiyle; kurum dışı adres yasaklandığı ve dosya
+  kalktığı için "Kurum dışı adres" etiketi ve dosya iletisi kalkar (Requirement 19).
 - **Komut satırı ve kurulum** (`vsa ask`, `vsa eval`; `docs/KURULUM.md` §5): Komut satırı da
   bağlantıyı aynı dosyalardan okur; kurulum belgesi ekran kullanılmayacaksa bağlantının
   `settings.yaml` `llm:` bölümüne yazılıp konteynerin yeniden başlatılmasını önerir ve örnek adres
@@ -515,15 +521,16 @@ sayısı), `adaptations` (bırakılan özellikler, sırasıyla), `repaired` (ona
 `prompt_tokens` ve `completion_tokens`. Sağlık denetimi `outcome`, `http_status`, `duration_ms` ve
 `cached` (önbellekten mi) döndürür. Özette istem, soru, şema, model yanıtı, sunucu hata gövdesi,
 adres, anahtar ve başlık yoktur. Analizdeki çağrı özetlerinin tek kalıcı yeri analiz kaydıdır: hangi
-adıma yazıldıkları [question-analysis](../004-question-analysis/PRD.md), veri modeli, saklama süresi
-ve gösterimi [analysis-records](../008-analysis-records/PRD.md) PRD'sindedir; analiz kaydındaki model
-kullanımı toplamları (çağrı, giriş ve çıkış token'ı) bu özetlerden türetilir. Bu PRD çağrı özeti için
-tablo kurmaz; analiz dışındaki çağrılar (bağlantı testi, model listesi, envanter, sağlık denetimi)
+adıma yazıldıkları [question-analysis](../004-question-analysis/PRD.md), veri modeli ve gösterimi
+[analysis-records](../008-analysis-records/PRD.md) PRD'sindedir; analiz kaydındaki model kullanımı
+toplamları (çağrı, giriş ve çıkış token'ı) bu özetlerden türetilir. Bu PRD çağrı özeti için tablo
+kurmaz; analiz dışındaki çağrılar (bağlantı testi, model listesi, envanter, sağlık denetimi)
 PostgreSQL'e yazılmaz, tek istisna testin `record` sonucudur (Decision 8). Ölçüm betiğinin çağrı
 özetleriyle ne yapacağı [quality-evaluation](../010-quality-evaluation/PRD.md) PRD'sindedir.
 
-Requirement 19: Yönetim ekranının **Yapay zekâ** sayfası React'te kaynaktaki işlevle yeniden kurulur;
-kaynak `admin.html` `AI` bölümündeki bütün görünür metinler aynen
+Requirement 19: Yönetim ekranının **Yapay zekâ** sayfası React'te kaynaktaki işlev ve görünümle
+(kaynak `admin.html` ile birebir aynı; [search-settings](../009-search-settings/PRD.md) Decision 11)
+yeniden kurulur; kaynak `admin.html` `AI` bölümündeki bütün görünür metinler aynen
 `app/frontend/src/locales/tr.json`'a taşınır:
 
 - **Başlık:** "Yapay zekâ", "Cevabı kurum içi sohbet modeli yazar; bu rolü tek aktif entegrasyon
@@ -550,9 +557,10 @@ kaynak `admin.html` `AI` bölümündeki bütün görünür metinler aynen
   "Sohbet" etiketleri, ulaşılamayan sunucu için "{ad}: {neden}" uyarısı.
 - **Onaylar ve bildirimler:** Çakışma ("“{ad}” (Sohbet modeli) şu an bu rolde aktif. Pasif yapılıp
   yerine bu entegrasyon kullanılsın mı?") ve silme ("“{ad}” entegrasyonu silinsin mi?", aktifse
-  "Aktif olduğu için sohbet modeli boşta kalır; sorular cevaplanamaz.") onayları paylaşılan
-  erişilebilir onay penceresiyle sorulur; bildirimler kaynaktakiyle aynıdır ("Entegrasyon eklendi",
-  "Aktif edildi" … "uygulama yeni bağlantıyla çalışıyor.", "Test başarılı", "Kaydedilemedi" vb.).
+  "Aktif olduğu için sohbet modeli boşta kalır; sorular cevaplanamaz.") onayları kaynaktaki gibi
+  tarayıcının onay penceresiyle (`confirm`) sorulur; bildirimler kaynaktakiyle aynıdır ("Entegrasyon
+  eklendi", "Aktif edildi" … "uygulama yeni bağlantıyla çalışıyor.", "Test başarılı",
+  "Kaydedilemedi" vb.).
 - **Değişenler:** "Kurum dışı adres" etiketi ve "Bu bağlantı ayar dosyasından okundu…" iletisi
   kalkar. `nonprod`'da API adresi yardım metni "/v1 ile biten https:// adresi." olur. Şifreleme
   anahtarı yoksa anahtar alanı kapalıdır ve "Bu ortamda API anahtarı saklanamıyor; şifreleme anahtarı
@@ -639,12 +647,12 @@ durumu nesnesini (Requirement 12) belirler.
   değeri yanıta, loga, ize ve hata iletisine girmez; doğrulama hatası değeri yankılamaz; kayıtlı
   anahtar başka adres kökenine gönderilmez (Requirement 16). Kaynakta anahtar `data/` biriminde düz
   metindi (`docs/GUVENLIK.md` kalan risk 5).
-- **Şifresiz bağlantı:** `http` yalnız `local`'de kabul edilir (Decision 4, Açık soru 2).
+- **Şifresiz bağlantı:** `http` yalnız `local`'de kabul edilir (Decision 4).
   Şifresiz bağlantıda API anahtarı, soru ve sözlük metni ağda açık gider (kaynak kalan risk 4).
-- **Modele giden içerik:** Soru metni ve sözlük içeriği (tablo ve kolon açıklamaları, özetler) yalnız
-  kurum içi model sunucusuna gider; başka ürünlerle paylaşılan kurum içi bir uca gönderim Açık soru 1
-  kararına bağlıdır. Sözlük yalnız tanım metinleridir, müşteri verisi işlenmez (kaynak
-  kalan risk 6).
+- **Modele giden içerik:** Soru metni ve sözlük içeriği (tablo ve kolon açıklamaları, özetler)
+  yalnız kurum içi model sunucusuna gider; `nonprod`'da başka ürünlerle paylaşılan kurum içi RunAI
+  ucuna gönderimi proje sahibi onayladı (Decision 18). Sözlük yalnız tanım metinleridir, müşteri
+  verisi işlenmez (kaynak kalan risk 6).
 - **Değişiklik izi:** Her değişiklik `updated_by` ve `updated_at` sütunlarına ve
   `llm_integration.changed` olayına (yapan kullanıcının `public_id`'si, değişen alan adları) yazılır.
 
@@ -733,9 +741,10 @@ kalıcı değildir.
   [kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md)
   PRD'sinindir.
 - **İmaj:** Model sunucusunun sertifikasını imzalayan kurum kök sertifikası backend imajının sistem
-  güven deposuna eklenir. RunAI ucu seçilirse (Açık soru 1) bu kök, DWH Code Review imajına
-  eklenen `corporate-inference-root.crt` ile aynıdır; dosya dağıtım öncesi parmak iziyle doğrulanır.
-  İmaj tanımı [kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md)
+  güven deposuna eklenir. `nonprod` RunAI ucunu kullandığı için (Decision 18) bu kök, DWH Code
+  Review imajına eklenen `corporate-inference-root.crt` ile aynıdır; dosya dağıtım öncesi parmak
+  iziyle doğrulanır. İmaj tanımı
+  [kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md)
   PRD'sindedir.
 - **Bağımlılık:** `httpx` bugün yalnız geliştirme bağımlılığıdır (`app/backend/requirements-dev.in`);
   çalışma zamanı bağımlılığı olarak `app/backend/requirements.in`'e ve `dependency-admission.json`
@@ -743,8 +752,8 @@ kalıcı değildir.
   kullanıldığı için `requirements.in`'e açıkça yazılır ve kabul kaydına girer.
   `app/backend/requirements-llm.in` (LangChain) etkinleştirilmez (Decision 5).
 - **Ağ çıkışı:** Backend model için yalnız seçilen model sunucusunun adresine ve portuna çıkabilir.
-  RunAI ucu seçilirse DWH Code Review'da gözlenen adres `10.14.3.99/32`, TCP 443'tür ve dağıtım
-  öncesi yeniden doğrulanır; DGX Spark seçilirse adres ve port ağ ekibinden alınır. Kural
+  `nonprod`'daki RunAI ucu için DWH Code Review'da gözlenen adres `10.14.3.99/32`, TCP 443'tür ve
+  dağıtım öncesi yeniden doğrulanır (kubernetes-delivery'deki bekleyen bilgi). Kural
   (kubernetes-delivery Requirement 10) ve yerel Compose'un model sunucusuna erişimi
   (`app/infra/.env`'de `COMPOSE_PROFILES=local-egress` ile açılan yerel çıkış kapısı,
   kubernetes-delivery Requirement 17)
@@ -847,9 +856,17 @@ Bu yetenek vektör araması ve gömme kullanmaz; kaynak vektör aramasını ADR-
   `https` adresli entegrasyon kaydedilir ve test edilir; şifreleme anahtarı verilmeden API anahtarı
   kaydı 422 alır, anahtarsız entegrasyonla bir soru tamamlanır (Requirement 1–3, Decision 4).
 - [ ] Acceptance 8: L2 — Gerçek istemci/ortamda doğrulandı (nonprod): KT Rancher `vibecode-test`
-  kümesindeki sürümde yönetici Açık soru 1'de seçilen ucu ekler, test eder ve aktif eder; bir soru
-  kümede tamamlanır; ağ çıkış kuralının izin vermediği bir özel adrese bağlantı testi `timeout` ya da
-  `connect_error` verir. Kümeye dağıtım ayrı kullanıcı talimatı ister.
+  kümesindeki sürümde yönetici RunAI ucunu
+  (`https://runai.gpudtx.kuveytturk.com.tr/inference/qwen36-35b-a3b-fp8/v1`, Decision 18) ekler,
+  test eder ve aktif eder; bir soru kümede tamamlanır; ağ çıkış kuralının izin vermediği bir özel
+  adrese bağlantı testi `timeout` ya da `connect_error` verir. Kümeye dağıtım ayrı kullanıcı
+  talimatı ister.
+- [ ] Acceptance 9: L2 — Gerçek istemci/ortamda doğrulandı: görsel eşdeğerlik. Yerel Compose'da
+  hedef ile kaynak `76e21a3` aynı entegrasyonlarla çalıştırılır; Yapay zekâ sayfası, düzenleyici
+  çekmecenin üç adımı ve model envanteri çekmecesinin ekran görüntüleri masaüstü (1440×900) ve
+  telefon genişliğinde (390×844 piksel) yan yana karşılaştırılır. Fark yalnız Requirement 19'daki
+  "Değişenler" maddesinde ve fabrikanın zorunlu kıldığı oturum alanında kabul edilir (Requirement
+  19).
 
 ## Kararlar
 
@@ -869,7 +886,7 @@ yeniden deneme soruyu 15 dakika daha bekletir; ölü sunucuyu sağlık denetimi 
 
 Decision 8: Çağrı özetinin tek kalıcı yeri analiz kaydıdır; bu PRD çağrı tablosu kurmaz ve analiz
 dışındaki çağrıları PostgreSQL'e yazmaz. Gerekçe: kaynakta da model çağrıları analiz kaydının
-adımlarıydı; ayrı bir tablo aynı bilgiyi iki yerde, iki ayrı saklama süresiyle tutardı. Bağlantı
+adımlarıydı; ayrı bir tablo aynı bilgiyi iki yerde tutardı. Bağlantı
 testi, model listesi ve sağlık denetimi işletim için log olayı ve ölçümle izlenir.
 
 Decision 9: Kayıtlı API anahtarı adres kökenine bağlıdır: köken değişirse yeni anahtar girilmedikçe
@@ -917,26 +934,15 @@ değişiklik bildirimi kurulmaz. Gerekçe: analiz dakikalar sürer, tek satırl�
 Decision 17: Kiracı başına en çok 50 entegrasyon tanımlanır. Gerekçe: liste sayfalanmadan `total`
 ile döner ve envanter her sunucuya istek yapar; ekip birkaç sunucu kullanır.
 
-## Açık sorular
-
-1. `nonprod`'da hangi model sunucusu ve sohbet modeli kullanılacak? Bağlam: ölçülmüş kalite (294
-   soruda yaklaşık %89,8) ekibin DGX Spark sunucusundaki LM Studio'da `gemma-4-31b` ile alındı
-   (şifresiz `http`, seri çalışma, kümeden erişimi ve adresi bilinmiyor), DWH Code Review ile
-   Grafoword'ün `nonprod`'da kullandığı kurum içi RunAI ucu
-   `https://runai.gpudtx.kuveytturk.com.tr/inference/qwen36-35b-a3b-fp8/v1` ise şifreli ve
-   anahtarsızdır ama başka ürünlerle paylaşılır ve bu modelle hiç ölçülmedi (kaynağın küçük altın
-   setinde başka bir Qwen modeli `qwen3.8-27b` ilk sıra isabetinde 0,625'te kaldı, `gemma-4-31b`
-   0,875). Öneri: `nonprod`'un sohbet modeli RunAI ucundaki `qwen36-35b-a3b-fp8` olsun; soru metni ve
-   sözlük içeriğinin bu paylaşılan kurum içi uca gönderilmesi onaylansın; `nonprod` iş birimlerine
-   açılmadan önce geliştirici bu modeli [quality-evaluation](../010-quality-evaluation/PRD.md)
-   PRD'sindeki altın set ve büyük referans setle ölçsün; sonuç `gemma-4-31b` ölçümünün gerisinde
-   kalırsa model seçimi yeniden sahibe gelsin.
-2. Şifresiz `http` adres `nonprod`'da kabul edilsin mi? Bağlam: kaynaktaki örnek DGX adresi
-   `http://dgx-spark:8000/v1` şifresizdir; şifresiz bağlantıda API anahtarı, soru ve sözlük metni ağda
-   açık gider (kaynak `docs/GUVENLIK.md` kalan risk 4) ve DWH Code Review `nonprod`'da yalnız `https`
-   kabul eder. Öneri: `http` yalnız `local`'de kabul edilsin, `nonprod`'da yalnız `https`;
-   Açık soru 1'de DGX Spark seçilirse o tek ana makine için sahibi, nedeni ve bitiş tarihi yazılı
-   süreli bir istisna ayrıca karara bağlansın.
+Decision 18: `nonprod`'un sohbet modeli kurum içi RunAI ucundaki `qwen36-35b-a3b-fp8`'dir
+(`https://runai.gpudtx.kuveytturk.com.tr/inference/qwen36-35b-a3b-fp8/v1`; şifreli ve anahtarsız;
+DWH Code Review ve Grafoword'ün `nonprod`'da kullandığı uç). Soru metni ve sözlük içeriğinin bu
+paylaşılan kurum içi uca gönderilmesini proje sahibi onayladı. `nonprod` iş birimlerine açılmadan
+önce geliştirici bu modeli [quality-evaluation](../010-quality-evaluation/PRD.md) PRD'sindeki altın
+set ve büyük referans setle ölçer; sonuç kaynağın `gemma-4-31b` ölçümünün (294 soruda yaklaşık
+%89,8) gerisinde kalırsa model seçimi yeniden proje sahibine gelir. Gerekçe: ölçülmüş model ekibin
+DGX Spark sunucusundaki `gemma-4-31b`'dir ama o sunucu şifresiz `http` kullanır ve kümeden erişimi
+bilinmez; RunAI ucu şifreli, anahtarsız ve kümeden kullanılmaktadır.
 
 ## Teslim akışı
 
@@ -944,15 +950,18 @@ Belirtim → Plan → Görevler → Uygulama
 
 ## Riskler
 
-- **Ölçülmemiş model:** `nonprod` modeli ölçülmüş modelden farklıysa cevap kalitesi kaynaktakinden
-  düşük olabilir (Açık soru 1). Fark testleri yalnız kodun aynı davrandığını kanıtlar, modelin
-  kalitesini değil.
+- **Ölçülmemiş model:** `nonprod` modeli (`qwen36-35b-a3b-fp8`) ölçülmüş modelden (`gemma-4-31b`)
+  farklıdır ve bu modelle hiç ölçülmedi; cevap kalitesi kaynaktakinden düşük olabilir (kaynağın
+  küçük altın setinde başka bir Qwen modeli `qwen3.8-27b` ilk sıra isabetinde 0,625'te kaldı,
+  `gemma-4-31b` 0,875). Ölçüm iş birimlerine açılmadan önce yapılır (Decision 18). Fark testleri
+  yalnız kodun aynı davrandığını kanıtlar, modelin kalitesini değil.
 - **Düşünen model:** RunAI'deki Qwen modeli cevaptan önce gizli akıl yürütme yazan bir modeldir;
   sunucu `reasoning_effort: "none"` alanını yok sayarsa düşünme 1. adımın 2500 token'lık (modelin
   metin birimi) bütçesini tüketebilir ve analiz "model geçerli JSON üretmedi" ile biter. Gövdeye
   sunucuya özgü bir düşünme kapatma alanı eklemek gövdeyi kaynaktan ayırır ve ayrı karar ister.
-- **Bağlam penceresi:** Analistin 1. adımı yaklaşık 70 bin token'lık tablo kataloğu gönderir; seçilen
-  modelin bağlam penceresi yetmezse her soru `context_exceeded` ile biter.
+- **Bağlam penceresi:** Analistin 1. adımı yaklaşık 70 bin token'lık tablo kataloğu gönderir;
+  seçilen modelin bağlam penceresi yetmezse her soru `context_exceeded` ile biter. RunAI modelinin
+  bağlam penceresi bekleyen bilgidir ([question-analysis](../004-question-analysis/PRD.md) Riskler).
 - **Uzun bekleme:** Okuma süresi 900 saniyedir ve yeniden deneme yoktur; paylaşılan uçta yoğunlukta
   iki adımlı bir soru 30 dakikaya kadar sürebilir ya da zaman aşımıyla bitebilir.
 - **Soğuk model:** Model sunucusu modeli ilk istekte belleğe yüklüyorsa (kaynaktaki 180 saniyelik test

@@ -1,41 +1,48 @@
 # PRD — dictionary-explorer
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
 
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
+
 ## Amaç
 
-Kullanıcı ana ekranda veri ambarındaki bütün tabloları "Evren" yıldız haritasında görür: her yıldız bir
-tablodur, yıldızlar veri seti gruplarına göre kümelenir ve her küme kendi rengini taşır (ADR-024/027).
-Bir yıldıza tıklayarak, soru çubuğuna tablonun adını yazarak ya da klavyeyle kullanılabilen tablo
-listesinden seçerek tablonun dosyasını açar: bütün kolonlar, açıklamaları, eş anlamlıları, KVKK ve
-birleştirme anahtarı işaretleri, kolonlarda arama, süzgeçler ve aynı kümedeki öteki tablolar. Soru analiz
-edilirken harita aday tabloları dolaşan bir "yolculuk" gösterir; cevap gelince önerilen tabloları
-işaretler. Bu PRD ayrıca ana ekranın genel kabuğunu tanımlar: üst çubuk, durum göstergesi ve oturum
-alanı.
+Kullanıcı ana ekranda veri ambarındaki bütün tabloları "Evren" yıldız haritasında görür: her yıldız
+bir tablodur, yıldızlar veri seti gruplarına göre kümelenir ve her küme kendi rengini taşır
+(ADR-024/027). Bir yıldıza tıklayarak ya da soru çubuğuna tablonun adını yazarak tablonun dosyasını
+açar: bütün kolonlar, açıklamaları, eş anlamlıları, KVKK ve birleştirme anahtarı işaretleri,
+kolonlarda arama, süzgeçler ve aynı kümedeki öteki tablolar. Soru analiz edilirken harita aday
+tabloları dolaşan bir "yolculuk" gösterir; cevap gelince önerilen tabloları işaretler. Bu PRD ayrıca
+ana ekranın genel kabuğunu tanımlar: üst çubuk, durum göstergesi ve oturum alanı.
 
-Kaynak arayüz (`src/vsa/web/static/index.html`) React'te aynı işlevle yeniden kurulur. Frontend
-kurallarıyla (rules/30-34) çelişen görsel ayrıntılarda kural kazanır; çelişkiler ve hedefteki
-karşılıkları Decision 4–8'de yazılıdır.
+Kaynak arayüz (`src/vsa/web/static/index.html`) React'te görsel olarak birebir aynı kurulur
+(Decision 3). Frontend kurallarının (rules/30-34) istekleri görünümü değiştirmeden karşılanır; nasıl
+karşılandıkları Decision 4–8'de yazılıdır.
 
 ## Aktörler ve sonuçlar
 
 - **Kullanıcı (`kullanici`) ve yönetici (`yonetici`):** Ana ekranı aynı biçimde kullanır: haritada
-  gezinir, tablo dosyası açar, tablo arar, durum göstergesinden sözlüğün ve sohbet modelinin hazır olup
-  olmadığını görür. Yönetici ayrıca ana ekrandan yönetim ekranına geçer (Açık soru 2).
+  gezinir, tablo dosyası açar, tablo arar, durum göstergesinden sözlüğün ve sohbet modelinin hazır
+  olup olmadığını görür. Ana ekranda yönetim ekranına bağlantı yoktur; yönetici yönetim ekranını
+  adresini (`/admin`) yazarak açar (kaynakla aynı).
 - **Ana ekrana bağlanan yetenekler:** [question-analysis](../004-question-analysis/PRD.md) soru
   çubuğunu üst çubuğun ortasına yerleştirir, yolculuğu başlatıp bitirir ve cevaptaki tabloların dosyasını
   açar; [list-search](../005-list-search/PRD.md) üst çubuğa toplu arama hapını koyar;
   [answer-feedback](../006-answer-feedback/PRD.md) kullanıcıların doğruladığı tabloların dosyasını açar.
 
-Ölçülebilir sonuç: Giriş yapmış her kullanıcı herhangi bir tablonun bütün kolonlarını en çok iki adımda
-(yıldız, tablo adı ya da tablo listesi → tablo dosyası) ve fare kullanmadan da açar; tablo arama, Evren
-verisi ve tablo ayrıntısı uçları aynı sözlük, kelime listeleri ve ayarlarla kaynakla aynı sonucu (aynı
-tablolar, aynı sıra, aynı alanlar) döner; durum göstergesi sözlüğün ya da modelin hazır olmadığını en geç
-60 saniyede gösterir; süren bir analiz bu uçların hiçbirini bekletmez.
+Ölçülebilir sonuç: Giriş yapmış her kullanıcı herhangi bir tablonun bütün kolonlarını en çok iki
+adımda (yıldız ya da tablo adı → tablo dosyası) ve fare kullanmadan da (soru çubuğuna tablo adını
+yazarak) açar; ana ekran aynı sözlük ve ekran boyutunda kaynaktakiyle aynı görünür, tek fark oturum
+alanıdır; tablo arama, Evren verisi ve tablo ayrıntısı uçları aynı sözlük, kelime listeleri ve
+ayarlarla kaynakla aynı sonucu (aynı tablolar, aynı sıra, aynı alanlar) döner; durum göstergesi
+sözlüğün ya da modelin hazır olmadığını en geç 60 saniyede gösterir; süren bir analiz bu uçların
+hiçbirini bekletmez.
 
 ## Değişmezler ve sınırlar
 
@@ -67,25 +74,30 @@ Decision 2: Bu PRD'nin bütün uçları `kullanici` ve `yonetici` rollerine aç�
 rotayı görür); oturumsuz istek 401, iki rolden birine sahip olmayan kullanıcı 403 alır. Kaynakta ana
 ekran ve bu uçlar kimliksizdi.
 
-Decision 3: Haritanın ve tablo dosyasının görsel düzeni (koyu "Evren" gökyüzü, kümeler, yolculuk, tablo
-dosyasının sağdan açılan panel olması) kaynaktaki gibi korunur; bu düzen ürünün kimliğidir. Kurallarla
-çelişen ayrıntılar Decision 4–8'e göre değişir.
+Decision 3: Ana ekranın görsel tasarımı kaynakla birebir aynıdır: koyu "Evren" gökyüzü, kümeler,
+yolculuk, tablo dosyası paneli, soru çubuğu, cevap görünümü, liste ve oylar kaynaktaki CSS
+değerleriyle (renkler, yazı tipleri, aralıklar, gölgeler, canlandırmalar, kırılma noktaları), mümkün
+olduğunca aynı DOM düzeni ve sınıf adlarıyla, aynı Türkçe metinler ve aynı etkileşimlerle kurulur.
+Görünür yeni öğe eklenmez; tek yeni öğe fabrikanın zorunlu kıldığı oturum alanıdır (Requirement 1).
+İskeletin kendi varsayılan görünümü (ör. `HomePage`) kullanılmaz. Frontend kurallarının istekleri
+görünümü değiştirmeden karşılanır (Decision 4–8).
 
 ## Mevcut davranış
 
 Kaynak: `~/codes/kt-dwhnavigator`, `76e21a3`; ana ekran `src/vsa/web/static/index.html` (tek dosya, dış
 kaynak yok). Her maddenin sonunda hedefteki karşılığı yazılıdır.
 
-- **Kabuk ve üst çubuk** (`index.html` `header.top`): Solda pusula simgesi, "DWH Navigator" ve altında
-  "Veri ambarı rehberi"; marka `/` adresine giden "Yeni başlangıç" bağlantısıdır (sayfayı yeniden
-  yükler). Ortada boş bir yuva vardır; ilk sorudan sonra soru çubuğu kayarak buraya yerleşir. Sağda
-  durum göstergesi ve toplu arama sürerken "Liste N/M" ya da "Liste sonucu" hapı bulunur. Pusula bir
-  analiz sürerken arar gibi döner, cevap gelince yerine oturur. Sayfa kaydırılınca üst çubuğun arkasında
-  yumuşak bir perde belirir. 760 pikselden dar ekranda durum göstergesi gizlenir. Kullanıcı kimliği ve
-  çıkış yoktur. Ana ekrandan yönetim ekranına bilerek bağlantı verilmez; yönetim ekranı adres elle
-  yazılarak açılır (ADR-047, `tests/test_web.py` `test_admin_page_served_and_not_linked`). Alt satır boş
-  bir boşluktur. **Hedefte:** Giriş zorunlu; üst çubukta oturum alanı ve "Tablolar" düğmesi; yönetim
-  bağlantısı Açık soru 2'ye bağlı (Requirement 1).
+- **Kabuk ve üst çubuk** (`index.html` `header.top`): Solda pusula simgesi, "DWH Navigator" ve
+  altında "Veri ambarı rehberi"; marka `/` adresine giden "Yeni başlangıç" bağlantısıdır (sayfayı
+  yeniden yükler). Ortada boş bir yuva vardır; ilk sorudan sonra soru çubuğu kayarak buraya
+  yerleşir. Sağda durum göstergesi ve toplu arama sürerken "Liste N/M" ya da "Liste sonucu" hapı
+  bulunur. Pusula bir analiz sürerken arar gibi döner, cevap gelince yerine oturur. Sayfa
+  kaydırılınca üst çubuğun arkasında yumuşak bir perde belirir. 760 pikselden dar ekranda durum
+  göstergesi gizlenir. Kullanıcı kimliği ve çıkış yoktur. Ana ekrandan yönetim ekranına bilerek
+  bağlantı verilmez; yönetim ekranı adres elle yazılarak açılır (ADR-047, `tests/test_web.py`
+  `test_admin_page_served_and_not_linked`). Alt satır boş bir boşluktur. **Hedefte:** Aynı görünüm;
+  giriş zorunludur ve üst çubuğa yalnız oturum alanı eklenir; ana ekrandan yönetim ekranına yine
+  bağlantı verilmez (Requirement 1).
 - **Durum göstergesi** (`loadStatus`; `server.py` `App.status`, `App._llm_state`): Açılışta ve 60
   saniyede bir `GET /api/status` çağrılır; ayrıca analistin yazmadığı bir cevaptan sonra yenilenir.
   Yanıt `columns`, `objects`, `llm` (bağlı model adı ya da boş), `llm_state` (`ok`, `none`, `down`;
@@ -126,13 +138,13 @@ kaynak yok). Her maddenin sonunda hedefteki karşılığı yazılıdır.
   haritasız çalışır. **Hedefte:** Aynı (Requirement 5).
 - **Üzerine gelme, tıklama ve seçim** (`Cosmos` `pointermove`, `click`, `steer`, `drawSelected`):
   İmlece 14 pikselden yakın yıldız seçilebilir olur: el imleci, beyaz halka ve ipucu kutusunda ad,
-  "<şema> · <N> kolon" ve grup. Üst çubuk, cevap, soru çubuğu, düğme, bağlantı, form alanı, tablo, açılır
-  bölüm, alt satır ve tablo dosyası üzerindeyken yıldız seçilmez. Yıldıza tıklama tablo dosyasını açar,
-  boş gökyüzüne tıklama açık dosyayı kapatır. Dosya açıkken seçili yıldız ekranın panel dışındaki
-  alanının ortasına kayar (en az 320 piksel kalıyorsa), kümesinin üyelerine çizgiler çıkar, dönen bir
-  nişangâh ve adı görünür, öteki kümeler %40 parlaklığa iner. Yıldızlara klavyeyle erişilemez.
-  **Hedefte:** Aynı fare davranışı; klavye ve ekran okuyucu karşılığı eklenir (Requirement 6, 15,
-  Decision 4).
+  "<şema> · <N> kolon" ve grup. Üst çubuk, cevap, soru çubuğu, düğme, bağlantı, form alanı, tablo,
+  açılır bölüm, alt satır ve tablo dosyası üzerindeyken yıldız seçilmez. Yıldıza tıklama tablo
+  dosyasını açar, boş gökyüzüne tıklama açık dosyayı kapatır. Dosya açıkken seçili yıldız ekranın
+  panel dışındaki alanının ortasına kayar (en az 320 piksel kalıyorsa), kümesinin üyelerine çizgiler
+  çıkar, dönen bir nişangâh ve adı görünür, öteki kümeler %40 parlaklığa iner. Yıldızlara klavyeyle
+  erişilemez. **Hedefte:** Aynı fare davranışı; harita süsleyici kalır ve tablolara klavyeyle var
+  olan yollardan ulaşılır (Requirement 6, 15, Decision 4).
 - **Yolculuk** (`ask`, `Cosmos.begin`, `candidates`, `focus`, `end`, `radarDone`, `patrol`,
   `startReading`, `showCandidates`, `showFocus`): Soru gönderilince radar soru çubuğunun altından bir tur
   döner (1,2 rad/sn hızla, yaklaşık 5,2 saniye); bilgi satırı "N kolon taranıyor" ya da "rota
@@ -147,34 +159,37 @@ kaynak yok). Her maddenin sonunda hedefteki karşılığı yazılıdır.
   ekran turun bitmesini bekler; "Durdur" bu beklemeyi de bitirir. Hareket azaltma tercihi açıkken de
   yolculuk çizilir ve bekleme sürer. **Hedefte:** Aynı; hareket azaltmada durağan ve beklemesiz
   (Requirement 7, 8).
-- **Tablo adıyla açma** (`ask`, `Cosmos.find`): Soru çubuğuna yazılan metin boşluk içermiyorsa ve Türkçe
-  büyük/küçük harf duyarsız (ı ile i eşit) tam olarak bir tablonun adına, `Şema.ad`'ına ya da tam
-  anahtarına eşitse soru sorulmaz, o tablonun dosyası açılır. İki şemadaki `vCampaign` gibi birden çok
-  eşleşmede metin soru olarak sorulur. **Hedefte:** Aynı (Requirement 9).
-- **Tablo arama ucu** (`server.py` `App.objects`; ADR-023): Üç katman: ad (anahtar ve grup adı içinde
-  geçen metin), içerik (metin en az 3 karakterse motorun model kullanmayan kural sıralaması, en çok 25
-  tablo) ve kolon adı. Boş metinde ad sırasındaki ilk 60 tablo; en çok 60 sonuç; sıra katman, skor, ad.
-  Motor kilidi alınmaz. Arayüzde yalnız yolculuk adaylarını bulmak için kullanılır; "Keşfet" sekmesi
-  ADR-027 ile kalkmıştır. Soru metni adres satırında (`?q=`) gider. **Hedefte:** Aynı sonuç; metin istek
-  gövdesinde (`POST /explorer/table-searches`); ayrıca Tablolar listesinde kullanılır (Requirement 10,
-  15, Decision 9).
-- **Tablo dosyası** (`Dossier`, `GET /api/object/<anahtar>`, `App.object_detail`): Yanıt `key`, `name`,
-  `schema`, `groups`, kolonlar (`key`, `column`, `object`, `description`, `synonyms`, `pii`, `group`) ve
-  `join_keys` (birleştirme anahtarları). Panel sağdan açılır (en çok 540 piksel; dar ekranda tam genişlik):
-  küme tonunda gezegen simgesi, grup başlığı, tablo adı, tam anahtar ve "Kopyala", "Kapat (Esc)"; kolon,
-  anahtar ve KVKK sayıları; kolon araması; "Tümü · N", "Anahtar · n", "KVKK · n" süzgeçleri; kolon
-  satırları (`div` + `role=button`, Enter ve Space ile açılır); "Aynı kümede · N tablo" ve en büyük 14
-  komşu. Açılınca odak "Kapat"a gider, kapanınca dosyayı açan öğeye döner; Esc kapatır, "/" kolon
-  aramasına gider; Tab odağı panelden çıkıp soluklaşmış sayfaya geçebilir. `Role` ve `Summary`
-  gösterilmez. **Hedefte:** Aynı içerik; paylaşılan çekmece bileşeni, odak panelde kalır, satırlar
-  yerel düğme (Requirement 11–13, Decision 6–7).
+- **Tablo adıyla açma** (`ask`, `Cosmos.find`): Soru çubuğuna yazılan metin boşluk içermiyorsa ve
+  Türkçe büyük/küçük harf duyarsız (ı ile i eşit) tam olarak bir tablonun adına, `Şema.ad`'ına ya da
+  tam anahtarına eşitse soru sorulmaz, o tablonun dosyası açılır. İki şemadaki `vCampaign` gibi
+  birden çok eşleşmede metin soru olarak sorulur. **Hedefte:** Aynı; tablolara klavyeyle ulaşmanın
+  ana yoludur (Requirement 9, 15).
+- **Tablo arama ucu** (`server.py` `App.objects`; ADR-023): Üç katman: ad (anahtar ve grup adı
+  içinde geçen metin), içerik (metin en az 3 karakterse motorun model kullanmayan kural sıralaması,
+  en çok 25 tablo) ve kolon adı. Boş metinde ad sırasındaki ilk 60 tablo; en çok 60 sonuç; sıra
+  katman, skor, ad. Motor kilidi alınmaz. Arayüzde yalnız yolculuk adaylarını bulmak için
+  kullanılır; "Keşfet" sekmesi ADR-027 ile kalkmıştır. Soru metni adres satırında (`?q=`) gider.
+  **Hedefte:** Aynı sonuç ve aynı kullanım; metin istek gövdesinde (`POST /explorer/table-searches`)
+  (Requirement 10, Decision 9).
+- **Tablo dosyası** (`Dossier`, `GET /api/object/<anahtar>`, `App.object_detail`): Yanıt `key`,
+  `name`, `schema`, `groups`, kolonlar (`key`, `column`, `object`, `description`, `synonyms`, `pii`,
+  `group`) ve `join_keys` (birleştirme anahtarları). Panel sağdan açılır (en çok 540 piksel; dar
+  ekranda tam genişlik): küme tonunda gezegen simgesi, grup başlığı, tablo adı, tam anahtar ve
+  "Kopyala", "Kapat (Esc)"; kolon, anahtar ve KVKK sayıları; kolon araması; "Tümü · N", "Anahtar ·
+  n", "KVKK · n" süzgeçleri; kolon satırları (`div` + `role=button`, Enter ve Space ile açılır);
+  "Aynı kümede · N tablo" ve en büyük 14 komşu. Açılınca odak "Kapat"a gider, kapanınca dosyayı açan
+  öğeye döner; Esc kapatır, "/" kolon aramasına gider; Tab odağı panelden çıkıp soluklaşmış sayfaya
+  geçebilir. `Role` ve `Summary` gösterilmez. **Hedefte:** Aynı içerik ve görünüm; odak panelde
+  kalır, satırlar yerel düğme (Requirement 11–13, Decision 6–7).
 - **Dosyayı açan öteki yerler** (`colsButton`, `richOf`, `crowdSections`): Cevap kartındaki "Kolonlar"
   düğmesi, cevap metninde geçen ama önerilerde olmayan tablo adları ve kullanıcıların doğruladığı
   tablolar aynı paneli açar. **Hedefte:** Paylaşılan açma işlevi (Requirement 14).
 - **Görsel değerler** (`index.html` `:root` ve bileşen CSS'i): Koyu "Evren" paleti sabit renklerle
-  yazılmıştır (yönetim ekranı `admin.html` aynı paleti kullanır); sistem yazı tipleri; dış kaynak yoktur.
-  Hareket azaltma tercihi CSS canlandırmalarını kapatır ama çizim alanındaki hareketi durdurmaz.
-  **Hedefte:** Belirteçler ve hareket azaltma (Requirement 8, 17, Decision 5, 8).
+  yazılmıştır (yönetim ekranı `admin.html` aynı paleti kullanır); sistem yazı tipleri; dış kaynak
+  yoktur. Hareket azaltma tercihi CSS canlandırmalarını kapatır ama çizim alanındaki hareketi
+  durdurmaz. **Hedefte:** Kaynak CSS'in değerleri `globals.css`'te merkezi belirteçler (CSS
+  değişkenleri) olur ve görünüm değişmez; hareket azaltma tercihi çizim alanına da uygulanır
+  (Requirement 8, 17, Decision 5, 8).
 
 ## İşlevsel gereksinimler
 
@@ -185,15 +200,18 @@ sağa şunları taşır:
   ve ana ekranı ilk hâline döndürür (cevap temizlenir, soru çubuğu ortaya iner). Sürmekte olan toplu
   aramanın ne olacağı [list-search](../005-list-search/PRD.md) PRD'sindedir.
 - Orta yuva: ilk sorudan sonra soru çubuğu buraya yerleşir ([question-analysis](../004-question-analysis/PRD.md)).
-- Araçlar: toplu arama hapının yeri ([list-search](../005-list-search/PRD.md)), "Tablolar" düğmesi
-  (Requirement 15), durum göstergesi (Requirement 2), yalnız `yonetici` için "Yönetim" bağlantısı
-  (Açık soru 2) ve oturum alanı (görünen ad, "Parolamı değiştir" ve "Çıkış"; davranışı user-accounts
-  Requirement 16'dadır).
+- Araçlar: toplu arama hapının yeri ([list-search](../005-list-search/PRD.md)), durum göstergesi
+  (Requirement 2) ve oturum alanı (görünen ad, "Parolamı değiştir" ve "Çıkış"; davranışı
+  user-accounts Requirement 16'dadır). Oturum alanı fabrikanın zorunlu kıldığı tek yeni öğedir;
+  kaynağın üst çubuk biçimine en az müdahaleyle, durum hapıyla aynı görünüm ve belirteçlerle
+  yerleşir. Ana ekranda yönetim ekranına bağlantı yoktur (kaynakla aynı); yönetici `/admin` adresini
+  yazarak açar.
 
 Pusula simgesi bir analiz sürerken arar gibi döner ve cevap gelince yerine oturur; hareket azaltmada
-dönmez. Sayfa kaydırılınca üst çubuğun arkasında içeriğin okunaklı geçmesini sağlayan yumuşak bir perde
-belirir. 760 pikselden dar ekranda durum göstergesi gizlenir ve düğmeler yalnız simgeyle, erişilebilir
-adlarıyla görünür. Sekme başlığı "DWH Navigator", sekme simgesi pusuladır.
+dönmez. Sayfa kaydırılınca üst çubuğun arkasında içeriğin okunaklı geçmesini sağlayan yumuşak bir
+perde belirir. 760 pikselden dar ekranda durum göstergesi gizlenir (kaynakla aynı); oturum alanı
+yalnız simgeyle, erişilebilir adıyla görünür. Sekme başlığı "DWH Navigator", sekme simgesi
+pusuladır.
 
 Requirement 2: Durum göstergesi [question-analysis](../004-question-analysis/PRD.md) PRD'sinin
 `GET /status` ucunu (Requirement 17) açılışta, 60 saniyede bir ve question-analysis analistin yazmadığı
@@ -234,7 +252,6 @@ Requirement 5: Haritanın çizimi:
   hafifçe kayar.
 - Sol altta "Veri evreni · <tablo> tablo · <küme> küme" yazısı ve yolculuk günlüğü durur; 760 pikselden
   dar ekranda, sayfa 120 pikselden fazla kaydırılınca, cevap varken ve tablo dosyası açıkken gizlenir.
-  Bu yazı süsleyicidir; aynı bilgi Tablolar listesinde erişilebilir biçimde vardır.
 - Çizim saniyede en çok yaklaşık 30 kare, yolculuğun okuma ve bekleme evrelerinde en çok 20 kare yapılır;
   sekme görünmezken çizim durur.
 - Sayfada cevap varken harita %30 parlaklıkta yalnız arka plandır; yıldızlar üzerine gelme, etiket ve
@@ -269,15 +286,16 @@ bitirilir (bu PRD'nin Requirement 14'teki işlevleriyle) ve kaynaktaki evreleri 
    boştayken tabloları sırayla bağlayan kesikli çizgi.
 5. Bitiş: cevapsız biten, durdurulan ya da hata veren analizde yolculuk durur.
 
-Bilgi satırındaki yolculuk günlüğü son dört adımı " → " ile gösterir; daha eskisi varsa başa "…" konur.
-Cevap radar turundan önce gelirse (ör. kayıtlı cevap) cevap görünümü turun bitmesini bekler; "Durdur" bu
-beklemeyi de bitirir (Decision 12). Hareket azaltmada (Requirement 8) bekleme yoktur.
+Bilgi satırındaki yolculuk günlüğü son dört adımı " → " ile gösterir; daha eskisi varsa başa "…"
+konur. Analiz işi sıradayken (`queued`) günlüğe "sırada" adımı yazılır; sayı ve süre yazılmaz
+([question-analysis](../004-question-analysis/PRD.md) Requirement 20). Cevap radar turundan önce
+gelirse (ör. kayıtlı cevap) cevap görünümü turun bitmesini bekler; "Durdur" bu beklemeyi de bitirir
+(Decision 12). Hareket azaltmada (Requirement 8) bekleme yoktur.
 
-Requirement 8: İşletim sisteminin "hareketi azalt" tercihi açıksa ya da kullanıcı "Hareketi durdur"
-dediyse (Açık soru 3) harita durağandır: dönüş, ışıldama, bulutsu kayması, fare kayması, radar, sonda,
-iniş halkaları ve panel geçiş canlandırmaları çizilmez; seçili yıldız ve sonuç takımyıldızı durağan
-işaretlerle gösterilir; kamera kayması anında olur; soru akışı radar turunu beklemez; pusula dönmez
-(Decision 8).
+Requirement 8: İşletim sisteminin "hareketi azalt" tercihi açıksa harita durağandır: dönüş,
+ışıldama, bulutsu kayması, fare kayması, radar, sonda, iniş halkaları ve panel geçiş canlandırmaları
+çizilmez; seçili yıldız ve sonuç takımyıldızı durağan işaretlerle gösterilir; kamera kayması anında
+olur; soru akışı radar turunu beklemez; pusula dönmez (Decision 8).
 
 Requirement 9: [question-analysis](../004-question-analysis/PRD.md) soruyu göndermeden önce metni bu
 yeteneğin ad eşleme işlevine verir. Metin boşluk içermiyorsa ve Türkçe büyük/küçük harf duyarsız (ı ile
@@ -355,45 +373,48 @@ Requirement 13: Tablo dosyasının etkileşimi:
 
 Requirement 14: Ana ekrandaki her yetenek tablo dosyasını tek bir paylaşılan işlevle açar ve kapatır
 (`open(key)`, `close()`, açık mı bilgisi). Kullananlar: yıldız tıklaması, tablo adıyla açma
-(Requirement 9), Tablolar listesi (Requirement 15), komşu tablo düğmeleri, cevap kartındaki "Kolonlar"
+(Requirement 9), komşu tablo düğmeleri, cevap kartındaki "Kolonlar"
 düğmesi ve cevap metnindeki önerilmemiş tablo adları ([question-analysis](../004-question-analysis/PRD.md)),
 kullanıcıların doğruladığı tablolar ([answer-feedback](../006-answer-feedback/PRD.md)). Yıldızı olmayan
 bir tablo da açılabilir (küçük başlık "Tablo", varsayılan ton, komşu yok). Yolculuk işlevleri (başlat,
 adayları ver, sonuçları göster, bitir ve radar süresi) aynı paylaşılan bağlamdan verilir.
 
-Requirement 15: Üst çubuktaki "Tablolar" düğmesi, haritadaki yıldızların klavye ve ekran okuyucu
-karşılığı olan bir panel açar (Decision 4, Açık soru 1):
-- Arama alanı "Tablo, kolon ya da konu ara…". Boşken bütün tablolar Evren verisinden kümelere göre
-  listelenir (kümeler büyükten küçüğe, başlık "<grup> · <N>", içinde ad sırasıyla). Yazınca yaklaşık 250
-  milisaniye beklenip tablo arama ucu (Requirement 10) çağrılır; sonuçlar uçtan gelen sırayla, eşleşme
-  türü ("adında", "içeriğinde", "kolon adında"), içerik eşleşmesinde güven düzeyi ve yüzde skoru ve
-  eşleşen kolonlarla gösterilir. Eski aramanın geç gelen cevabı gösterilmez.
-- Her satır bir düğmedir (ad, `DB.Şema`, kolon sayısı, grup); Enter ya da tıklama paneli kapatır ve
-  tablo dosyasını açar; tablo dosyası kapanınca odak "Tablolar" düğmesine döner.
-- Sonuç sayısı ekran okuyucuya duyurulur ("<N> tablo"); uyan yoksa "Aramaya uyan tablo yok.". Esc paneli
-  kapatır.
+Requirement 15: Klavye erişimi görünümü değiştirmeden sağlanır (Decision 4); görünür yeni öğe eklenmez:
+- Ana ekrandaki bütün etkileşimli öğeler (marka, soru çubuğu, düğmeler, cevaptaki tablo düğmeleri,
+  tablo dosyasının denetimleri, kolon satırları, komşu tablo düğmeleri) klavyeyle odaklanır ve Enter
+  ya da Boşluk ile çalışır.
+- Klavye odağı yalnız klavyeyle gezinirken görünen bir odak halkasıyla gösterilir (`:focus-visible`;
+  kaynağın yönetim ekranındaki `2px` vurgu rengi halka); fareyle kullanımda görünüm değişmez.
+- Haritadaki tablolara klavyeyle var olan yollardan ulaşılır: soru çubuğuna tablo adını yazmak
+  (Requirement 9), cevap kartındaki "Kolonlar" ve tablo düğmeleri, kullanıcıların doğruladığı
+  tablolar ve tablo dosyasındaki komşu tablo düğmeleri. Tablo dosyası kapanınca odak dosyayı açan
+  öğeye döner.
 
 Requirement 16: Durum yanıtındaki `dictionary_version`, yüklenmiş Evren verisininkinden farklıysa
-(sözlük içe aktarıldı, önceki sürüme dönüldü ya da indeks yeniden kuruldu) Evren verisi yeniden yüklenir
+(sözlük içe aktarıldı ya da indeks yeniden kuruldu) Evren verisi yeniden yüklenir
 ve harita yeni tablolarla kurulur; açık tablo dosyası açık kalır (yeni; kaynakta harita sayfa
 yenilenene kadar eski kalıyordu).
 
-Requirement 17: Ana ekranın renkleri, yazı boyutları, gölgeleri ve yarıçapları `app/frontend/src/globals.css`
-içinde anlamsal belirteçlerle (gökyüzü yüzeyi, yüzey, çizgi, yazı, soluk yazı, vurgu, Yüksek/Orta/Düşük,
-KVKK gibi adlandırılmış değerlerle) merkezi olarak tanımlanır; bileşenler sabit renk yazmaz. Küme tonu
-Requirement 4'teki hesapla bulunur ve belirteçteki doygunluk ve açıklık değerleriyle uygulanır. Yazı
-tipleri sistem yazı tipleridir; dışarıdan yazı tipi ya da başka kaynak yüklenmez. Yönetim ekranı aynı
-belirteçleri kullanır ([search-settings](../009-search-settings/PRD.md)); gerekçe bu PRD'nin Decision
-5'idir. Dinamik görsel
-değerler (küme tonu, konum, parlaklık) çizim alanında (canvas) ya da tarayıcının stil nesnesi (CSSOM)
-ve SVG öznitelikleriyle verilir; çalışırken `<style>` öğesi ekleyen bileşen kullanılmaz (sayfa CSP'si
-`style-src 'self'`: [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md)
-Requirement 14, Decision 13).
+Requirement 17: Ana ekranın görünümü kaynaktaki `index.html` CSS'iyle birebir aynıdır. Kaynak CSS'in
+bütün değerleri (renkler, yazı tipleri, yazı boyutları, aralıklar, gölgeler, yarıçaplar,
+canlandırmalar, kırılma noktaları) `app/frontend/src/globals.css` içinde merkezi belirteçler (CSS
+değişkenleri; gökyüzü yüzeyi, yüzey, çizgi, yazı, soluk yazı, vurgu, Yüksek/Orta/Düşük, KVKK gibi
+adlarla) olarak tanımlanır; bileşenler sabit renk yazmaz, belirteçleri kullanır. DOM düzeni ve sınıf
+adları mümkün olduğunca kaynaktaki gibidir; iskeletin kendi varsayılan görünümü (ör. `HomePage`)
+kullanılmaz. Küme tonu Requirement 4'teki hesapla bulunur ve belirteçteki doygunluk ve açıklık
+değerleriyle uygulanır. Yazı tipleri sistem yazı tipleridir; dışarıdan yazı tipi ya da başka kaynak
+yüklenmez. Yönetim ekranı aynı belirteçleri kullanır
+([search-settings](../009-search-settings/PRD.md)); gerekçe bu PRD'nin Decision 5'idir. Dinamik
+görsel değerler (küme tonu, konum, parlaklık) çizim alanında (canvas) ya da tarayıcının stil nesnesi
+(CSSOM) ve SVG öznitelikleriyle verilir; çalışırken `<style>` öğesi ekleyen bileşen kullanılmaz
+(sayfa CSP'si `style-src 'self'`:
+[user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) Requirement 14,
+Decision 13).
 
-Requirement 18: Kullanıcıya görünen bütün metinler `app/frontend/src/locales/tr.json` kataloğundadır ve
-kaynaktaki Türkçe metinlerle aynıdır (Mevcut davranışta ve Requirement 1–15'te tırnak içinde verilenler).
-Yeni metinler yalnız Requirement 2'deki sözlük uyarısı, Requirement 15'teki Tablolar listesi, "Yönetim"
-bağlantısı ve "Hareketi durdur" / "Hareketi başlat" düğmesidir (Açık soru 1–3). "Diğer" küme adı
+Requirement 18: Kullanıcıya görünen bütün metinler `app/frontend/src/locales/tr.json` kataloğundadır
+ve kaynaktaki Türkçe metinlerle aynıdır (Mevcut davranışta ve Requirement 1–15'te tırnak içinde
+verilenler). Yeni metinler yalnız Requirement 2'deki sözlük uyarısı ve oturum alanının metinleridir
+([user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md)). "Diğer" küme adı
 backend'den veri olarak gelir ve katalogda değildir.
 
 Requirement 19: Hizmette indeks yokken (açılış sırasında) Evren, tablo arama ve tablo ayrıntısı
@@ -424,8 +445,7 @@ Durum göstergesinin okuduğu `GET /status` (kaynak `GET /api/status`) bu PRD'ni
 ## Güvenlik ve yetkilendirme
 
 - Kimlik ve rol [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) ile
-  gelir; rol denetimi backend'de, her uçta yapılır. Ön yüzde düğme gizlemek (ör. "Yönetim") yetki
-  denetimi değildir.
+  gelir; rol denetimi backend'de, her uçta yapılır. Ön yüzde bir öğeyi gizlemek yetki denetimi değildir.
 - Ana ekran sözlüğün ayrıştırılmış hâlini (tablo ve kolon adları, açıklamalar, eş anlamlılar, KVKK
   işaretleri) giriş yapmış her kullanıcıya gösterir; bu, alanın amacıdır (kullanıcı sözlükte tablo ve
   kolon gezer). KVKK işareti kolonun kişisel veri içerebileceğini söyler; kişisel verinin kendisi
@@ -438,16 +458,14 @@ Durum göstergesinin okuduğu `GET /status` (kaynak `GET /api/status`) bu PRD'ni
   HTML hiçbir yerde eklenmez.
 - Durum bilgisindeki model sebebi model sunucusunun adresini, anahtarını ve hata gövdesini taşımaz
   ([llm-connection](../003-llm-connection/PRD.md)).
-- "Kopyala" yalnız tablonun anahtarını panoya yazar. Tarayıcı deposunda yalnız "Hareketi durdur" seçimi
-  tutulur (Açık soru 3); kişisel veri tutulmaz.
+- "Kopyala" yalnız tablonun anahtarını panoya yazar. Bu yetenek tarayıcı deposuna bir şey yazmaz.
 
 ## Veri ve geçiş
 
 - Bu yeteneğin veritabanı tablosu ve göçü yoktur. Uçlar hizmetteki arama indeksinden okur; indeks
   [dictionary-management](../001-dictionary-management/PRD.md) PRD'sinin okuma işleviyle, etkin sözlük
   sürümünden [search-settings](../009-search-settings/PRD.md) PRD'sine göre kurulur.
-- Kaynaktan taşınacak veri yoktur. Tarayıcı deposunda yalnız hareket seçimi tutulur (anahtarı
-  `dwhnavigator.evren.motion`; depo kullanılamazsa seçim yalnız o oturum için geçerlidir).
+- Kaynaktan taşınacak veri yoktur. Tarayıcı deposunda veri tutulmaz.
 
 ## Gözlemlenebilirlik
 
@@ -492,16 +510,20 @@ kolon adı hiçbir log olayına, ölçüme ve iz aralığına girmez.
   kümesi için tablo arama, Evren verisi ve tablo ayrıntısı yanıtları kaynaktaki `App.objects`,
   `App.galaxy` ve `App.object_detail` çıktılarıyla `elapsed_ms` dışında aynıdır.
 - **Ön yüz (Vitest, ön yüz test aracı):** yerleşim işlevinin aynı girdide aynı çıktıyı vermesi, küme
-  sırası ve tonu; 14 piksel yakınlık seçimi; ad eşleme (büyük/küçük harf, ı/i, `Şema.ad`, tam anahtar,
-  `vCampaign` belirsizliği, boşluklu metin); durum hapının dört durumu, önceliği, ipucu ve "Sunucuya
-  ulaşılamadı"; tablo dosyası: sayılar, sıfırda devre dışı süzgeç, Türkçe harf duyarsız arama ve
-  vurgulama, Enter ve Space ile satır açma, "Ek not yok" kuralı, en çok 14 komşu ve sırası, kopyalama
-  bildirimi, geç gelen cevabın gösterilmemesi, odak tuzağı ve geri dönüşü, Esc ve "/"; Tablolar listesi:
-  kümelere göre göz atma, bekleme süresi, eski cevabın gösterilmemesi, eşleşme etiketleri, Enter ile
-  dosya açma ve odak geri dönüşü; hareket azaltmada çizim döngüsünün durağan olması ve radar beklemesinin
-  olmaması; sürüm değişince Evren verisinin yeniden yüklenmesi; bileşen dosyalarında sabit renk
-  bulunmaması. Harita çizimi piksel piksel test edilmez; ekran görüntüsü yalnız görsel özellikler için
-  kullanılır (kural 14).
+  sırası ve tonu; 14 piksel yakınlık seçimi; ad eşleme (büyük/küçük harf, ı/i, `Şema.ad`, tam
+  anahtar, `vCampaign` belirsizliği, boşluklu metin); durum hapının dört durumu, önceliği, ipucu ve
+  "Sunucuya ulaşılamadı"; tablo dosyası: sayılar, sıfırda devre dışı süzgeç, Türkçe harf duyarsız
+  arama ve vurgulama, Enter ve Space ile satır açma, "Ek not yok" kuralı, en çok 14 komşu ve sırası,
+  kopyalama bildirimi, geç gelen cevabın gösterilmemesi, odak tuzağı ve geri dönüşü, Esc ve "/";
+  klavye erişimi: etkileşimli öğelerin odaklanması, Enter ve Boşluk, odak halkasının yalnız klavye
+  odağında görünmesi, cevaptaki tablo düğmesinden dosya açma ve odak geri dönüşü; hareket azaltmada
+  çizim döngüsünün durağan olması ve radar beklemesinin olmaması; sürüm değişince Evren verisinin
+  yeniden yüklenmesi; bileşen dosyalarında sabit renk bulunmaması. Harita çizimi piksel piksel test
+  edilmez; ekran görüntüsü yalnız görsel özellikler için kullanılır (kural 14).
+- **Görsel eşdeğerlik:** kaynak `76e21a3` ve hedef aynı sözlükle yan yana çalıştırılır; aynı ekran
+  boyutlarında (masaüstü 1440×900 ve telefon genişliği 390×844 piksel) açılış görünümü, yolculuk,
+  cevap görünümü, tablo dosyası, liste görünümü ve oy alanının ekran görüntüleri yan yana
+  karşılaştırılır (Acceptance 5).
 - **Uçtan uca (tarayıcı, `e2e/data-dictionary/`):** Kabul kriterlerindeki L2 senaryoları; yıldız
   tıklaması birim testte, tablo açmanın klavye yolu uçtan uca testte doğrulanır.
 
@@ -526,35 +548,45 @@ Kaynak vektör aramasını ADR-039 ile kaldırdı; bu PRD vektör veya gömme (e
 - [ ] Acceptance 2: L1 — Otomatik testlerden geçti: Requirement 1, 2, 4–9 ve 12–18'in Vitest
   testleri geçer; OpenAPI dosyası ve üretilmiş ön yüz tipleri günceldir; katalogdaki anahtarlar
   kodla eşleşir.
-- [ ] Acceptance 3: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da (geliştirici makinesinde
-  konteynerleri birlikte çalıştıran düzen) örnek sözlükle `kullanici` olarak giriş yapılır; sol alttaki
-  bilgi satırındaki tablo ve küme sayısı Evren verisiyle tutar; bir tablo yalnız klavyeyle Tablolar listesinden açılır,
-  kolon araması ve süzgeçler çalışır, Esc sonrası odak "Tablolar" düğmesine döner; soru çubuğuna tek
-  eşleşen bir tablo adı yazılınca dosya açılır ve analiz kaydı oluşmaz, iki şemadaki ad yazılınca soru
-  sorulur; bir soruda yolculuk ve sonuç takımyıldızı görünür (ekran görüntüsüyle); "hareketi azalt"
-  öykünmesinde harita durağandır ve kayıtlı cevap beklemeden görünür; başka bir oturumda sözlük içe
-  aktarılınca harita 60 saniye içinde yeni tablolarla kurulur; `yonetici` olarak "Yönetim" bağlantısı
-  görünür, `kullanici` olarak görünmez (Açık soru 2) (Requirement 1, 2, 7–9, 12–16).
+- [ ] Acceptance 3: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da (geliştirici
+  makinesinde konteynerleri birlikte çalıştıran düzen) örnek sözlükle `kullanici` olarak giriş
+  yapılır; sol alttaki bilgi satırındaki tablo ve küme sayısı Evren verisiyle tutar; yalnız
+  klavyeyle soru çubuğuna tek eşleşen bir tablo adı yazılınca dosya açılır ve analiz kaydı oluşmaz,
+  kolon araması ve süzgeçler çalışır, odak halkası yalnız klavye odağında görünür, Esc sonrası odak
+  soru çubuğuna döner; iki şemadaki ad yazılınca soru sorulur; bir soruda yolculuk ve sonuç
+  takımyıldızı görünür (ekran görüntüsüyle); "hareketi azalt" öykünmesinde harita durağandır ve
+  kayıtlı cevap beklemeden görünür; başka bir oturumda sözlük içe aktarılınca harita 60 saniye
+  içinde yeni tablolarla kurulur; `yonetici` ve `kullanici` olarak ana ekranda yönetim bağlantısı
+  görünmez (Requirement 1, 2, 7–9, 12–16).
 - [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı (nonprod): gerçek sözlükle harita 390 yıldızı
   çizer; tablo arama yanıtı ölçülür ve 1 saniyenin altındadır; model kapatıldığında durum hapı
   "Modele ulaşılamıyor" der ve sebepte adres görünmez (Requirement 2, 5, 10). Küme dağıtımı bu kanıtın
   parçası değildir ve ayrı kullanıcı talimatı ister.
+- [ ] Acceptance 5: L2 — Gerçek istemci/ortamda doğrulandı: görsel eşdeğerlik. Yerel Compose'da
+  hedef ile kaynak `76e21a3` aynı sözlükle çalıştırılır; masaüstü (1440×900) ve telefon genişliğinde
+  (390×844 piksel) açılış görünümü, yolculuk, cevap görünümü, tablo dosyası, liste görünümü ve oy
+  alanının ekran görüntüleri yan yana karşılaştırılır. Fark yalnız fabrikanın zorunlu kıldığı oturum
+  alanında kabul edilir; renk, yazı, aralık, gölge, canlandırma ve yerleşimde başka fark bulunmaz
+  (Requirement 1, 15, 17, Decision 3).
 
 ## Kararlar
 
-Decision 4: Kural 32 yerel olmayan tıklanabilir öğe için rol, odak ve Enter/Space ister; çizim alanındaki
-yıldızlar yalnız fareyle seçilebiliyordu. Çizim alanı süsleyici kalır (ekran okuyucudan gizli) ve her
-yıldızın eşdeğeri Tablolar listesindeki bir düğmedir (Requirement 15); tablo adını yazarak açma da
-klavye yolu olarak kalır. Yıldızlar arasında ok tuşlarıyla gezinme seçilmedi: 390 yıldızda uzamsal
-gezinme ekran okuyucu için kullanışsızdır.
+Decision 4: Kural 32 yerel olmayan tıklanabilir öğe için rol, odak ve Enter/Space ister; çizim
+alanındaki yıldızlar yalnız fareyle seçilir. Görünür yeni öğe eklenmez: çizim alanı süsleyici kalır
+(ekran okuyucudan gizli) ve tablolara klavyeyle var olan yollardan ulaşılır — soru çubuğuna tablo
+adını yazmak, cevaptaki ve tablo dosyasındaki tablo düğmeleri. Bütün etkileşimli öğeler odaklanır ve
+odak halkası yalnız klavye odağında görünür (Requirement 15). Yıldızlar arasında ok tuşlarıyla
+gezinme seçilmedi: 390 yıldızda uzamsal gezinme ekran okuyucu için kullanışsızdır.
 
-Decision 5: Kural 32 anlamsal belirteç ister; kaynakta "Evren" paleti bileşen CSS'inde sabit renklerdi.
-Palet `globals.css`'te belirteç olur ve ana ekran ile yönetim ekranı aynı belirteçleri kullanır; küme
-tonu verinin kendisinden hesaplandığı için belirteç değil hesaptır, doygunluk ve açıklığı belirteçtir.
-Görünüm kaynaktakiyle aynı kalır.
+Decision 5: Kural 32 anlamsal belirteç ister; kaynakta "Evren" paleti bileşen CSS'inde sabit
+renklerdi. Kaynak CSS'in değerleri `globals.css`'e merkezi belirteçler (CSS değişkenleri) olarak
+taşınır ve ana ekran ile yönetim ekranı aynı belirteçleri kullanır; kuralın isteği böyle karşılanır
+ve görünüm değişmez. Küme tonu verinin kendisinden hesaplandığı için belirteç değil hesaptır,
+doygunluk ve açıklığı belirteçtir.
 
-Decision 6: Kural 32 paylaşılan kalıplar ister; tablo dosyası paylaşılan çekmece bileşeniyle kurulur ve
-arkadaki sayfayı kilitler (odak panelde kalır). Kaynakta panel `role="dialog"` taşıyordu ama odak
+Decision 6: Kural 32 paylaşılan kalıplar ister; tablo dosyası paylaşılan çekmece davranışıyla (odak
+tuzağı, Esc, odağın geri dönüşü) kurulur ve arkadaki sayfayı kilitler (odak panelde kalır); görünümü
+kaynaktaki panelin CSS değerleriyle aynıdır. Kaynakta panel `role="dialog"` taşıyordu ama odak
 panelden çıkabiliyordu; arkadaki sayfa soluklaştırıldığı için panel davranışça zaten kilitliydi.
 
 Decision 7: Kural 32 mümkünse yerel düğme ister; kolon satırlarındaki açma eylemi `div` yerine yerel
@@ -590,26 +622,17 @@ Decision 14: Tablolar `DB.Şema.Obje` anahtarıyla adreslenir; anahtar sürümle
 [dictionary-management](../001-dictionary-management/PRD.md) ile aynı adresleme kullanılır. Ana ekranda
 tablo dosyası için derin bağlantı (doğrudan o tabloyu açan adres) yoktur; kaynakta da yoktu.
 
-## Açık sorular
+Decision 15: Ana ekranda yönetim ekranına bağlantı yoktur (kaynakla aynı, ADR-047); yönetici yönetim
+ekranını adresini (`/admin`) yazarak açar. Yetki her istekte backend'de rolle denetlenir;
+bağlantının olmaması güvenlik önlemi değil, kaynak tasarımıdır.
 
-1. **Tablolar listesi görünür bir düğme olsun mu?** Kural 32 yıldızlar için klavye karşılığı istediğinden
-   bir tablo listesi gerekir; soru, bunun herkese görünür bir düğme mi yoksa yalnız klavye kısayoluyla
-   açılan gizli bir panel mi olacağıdır. Öneri: üst çubukta herkese görünen "Tablolar" düğmesi; boş
-   aramada kümelere göre bütün tablolar, yazınca üç katmanlı tablo araması (Requirement 15). Bu, kaynakta
-   ADR-027 ile kalkan "Keşfet" aramasının yerine küçük bir panel olarak döner.
-2. **Ana ekrandan yönetim ekranına bağlantı:** Kaynakta yönetim ekranına bilerek bağlantı verilmiyordu;
-   koruma bir paylaşılan parolaydı ve adres elle yazılıyordu. Hedefte erişim rolle denetlenir. Öneri:
-   üst çubukta yalnız `yonetici` rolüne "Yönetim" bağlantısı gösterilir; yetki yine backend'de denetlenir
-   (Requirement 1).
-3. **"Hareketi durdur" düğmesi:** Gökyüzü sürekli ve kendiliğinden hareket eder; işletim sisteminin
-   "hareketi azalt" tercihi karşılanır (Requirement 8), ama tercihi bilmeyen kullanıcının hareketi
-   durduracak bir denetimi yoktur (erişilebilirlik ölçütlerindeki "duraklat, durdur, gizle" maddesi).
-   Öneri: sol alt köşede küçük bir "Hareketi durdur" / "Hareketi başlat" düğmesi; seçim tarayıcıda
-   hatırlanır.
-4. **Uygulamanın tek teması:** Ana ekran ve yönetim ekranı koyu "Evren" paletini kullanır; iskeletin
-   giriş ekranı açık renklidir ve kullanıcı her girişte iki farklı görünüm arasında geçer. Öneri: Evren
-   paleti uygulamanın tek temasıdır; giriş ekranı da aynı belirteçleri kullanır ve bu değişiklik
-   [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) PRD'sinde uygulanır.
+Decision 16: Haritanın sürekli hareketini durduran bir düğme yoktur (kaynakla aynı); işletim
+sisteminin "hareketi azalt" tercihine uyulur (Requirement 8). Gerekçe: görünür yeni öğe eklenmez.
+
+Decision 17: Koyu "Evren" paleti uygulamanın tek temasıdır. Fabrikanın zorunlu kıldığı yeni ekranlar
+(giriş, parola değiştirme, süper yöneticinin Kullanıcılar sayfası) kaynağın aynı belirteçleri ve
+bileşen görünümüyle yapılır; bu ekranların sahibi
+[user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) PRD'sidir.
 
 ## Teslim akışı
 
@@ -618,8 +641,14 @@ Belirtim → Plan → Görevler → Uygulama
 ## Riskler
 
 - **Düşük donanım:** Kurum bilgisayarlarında ya da sanal masaüstünde grafik hızlandırma zayıfsa
-  sürekli çizim işlemciyi yorar. Kare sınırı, sekme gizliyken durma, hareket azaltma ve Açık soru 3'teki
-  düğme etkiyi sınırlar; gerçek cihazda ölçülmemiştir.
+  sürekli çizim işlemciyi yorar. Kare sınırı, sekme gizliyken durma ve hareket azaltma etkiyi
+  sınırlar; gerçek cihazda ölçülmemiştir.
+- **Hareketi durduracak denetim yok:** Gökyüzü sürekli ve kendiliğinden hareket eder; işletim
+  sisteminin "hareketi azalt" tercihini bilmeyen kullanıcının hareketi durduracak bir denetimi
+  yoktur (kaynakla aynı, Decision 16). Erişilebilirlik ölçütlerindeki "duraklat, durdur, gizle"
+  maddesi yalnız bu tercihle karşılanır.
+- **Klavyeyle tablo bulma:** Haritadaki tablolara klavyeyle ulaşmak tablonun adını bilmeyi ya da
+  soru sormayı gerektirir; görünür bir tablo listesi yoktur (Decision 4).
 - **Radar beklemesi:** Kayıtlı cevap anında dönse de ekran yaklaşık 5,2 saniye bekler; kullanıcılar bunu
   yavaşlık sanabilir (kaynak tasarımı, Decision 12).
 - **Ad eşleme:** Soru çubuğuna yalnız bir tablo adı yazan kullanıcı analiz yerine tablo dosyasını görür;
@@ -628,7 +657,8 @@ Belirtim → Plan → Görevler → Uygulama
   Evren verisi ağırlaşır; bugün 390 tablo vardır.
 - **Ana döngünün tıkanması:** İçerik katmanı ayrı iş parçacığında çalışmazsa her arama canlı olay
   akışlarını ve öteki istekleri yaklaşık 100 milisaniye bekletir; Requirement 10'daki test bunu yakalar.
-- **Görsel sadakat:** Belirteçlere geçişte renk ve yoğunluk kaynaktan kayabilir; kabul ekran
-  görüntüleriyle karşılaştırılır.
+- **Görsel sadakat:** Belirteçlere ve React'e geçişte renk, yoğunluk ve yerleşim kaynaktan
+  kayabilir; kabul, kaynak ve hedefin ekran görüntülerinin yan yana karşılaştırılmasıyla verilir
+  (Acceptance 5).
 - **Fark testlerinin kapsamı:** Tablo aramasının içerik katmanı çekirdek motora bağlıdır; motorda
   bayt bayt eşitlik bozulursa arama sonuçları da kaynaktan ayrışır.

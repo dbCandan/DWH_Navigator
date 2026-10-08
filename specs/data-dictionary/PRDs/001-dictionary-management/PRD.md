@@ -1,10 +1,15 @@
 # PRD — dictionary-management
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -24,7 +29,7 @@ betiğini tanımlar.
 
 - **Yönetici (`yonetici`):** Sözlüğü içe aktarır (dosya seçerek ya da Excel'i yönetim ekranının bir
   sayfasına sürükleyip bırakarak), dışa aktarır, boş şablonu indirir; Sözlük sayfasında tabloları ve
-  kayıtlarını içe aktarıldığı hâliyle görür; gerektiğinde önceki sürüme döner (Açık soru 1).
+  kayıtlarını içe aktarıldığı hâliyle görür.
 - **Kullanıcı (`kullanici`):** Sözlüğü değiştiremez ve bu PRD'nin uçlarını (API adreslerini)
   kullanamaz; tabloları ve kolonları ana ekranda [dictionary-explorer](../007-dictionary-explorer/PRD.md)
   ile gezer.
@@ -44,9 +49,9 @@ KVKK işaretlerini ve aynı uyarıları üretir.
 
 ## Değişmezler ve sınırlar
 
-- Uygulamanın her an en çok bir **etkin sözlük sürümü** vardır; sözlük okuyan her yetenek onu kullanır.
-  Sözlük yalnız şablondaki bir Excel'in içe aktarılmasıyla ya da önceki sürüme dönmeyle (Açık soru 1)
-  değişir; ekranda tek tek tablo veya kolon düzenleme yoktur (kaynakta da yoktur).
+- Uygulamanın her an en çok bir **etkin sözlük sürümü** vardır; sözlük okuyan her yetenek onu
+  kullanır. Sözlük yalnız şablondaki bir Excel'in içe aktarılmasıyla değişir; ekranda tek tek tablo
+  veya kolon düzenleme ve önceki sürüme dönme yoktur (kaynakta da yoktur).
 - İçe aktarılan kayıtlar Excel'deki hücre metinleriyle ve şablon sütun adlarıyla saklanır. Ayrıştırılmış
   kolonlar (eş anlamlı listesi, KVKK işareti, veri seti grubu) saklanmaz; her okumada aynı kodla
   yeniden üretilir. Böylece dışa aktarma şablonu olduğu gibi geri verir.
@@ -180,11 +185,12 @@ Kaynak: `~/codes/kt-dwhnavigator`, `76e21a3`. Her maddenin sonunda hedefteki kar
   değişir (gerçek önceki sözlük kaybolur) ve indeks yine kurulur.
   **Hedefte:** Sürüm ve özet hesabı aynıdır; aynı içerik yeni sürüm açmaz ve önceki sürümü silmez
   (Requirement 7, Decision 6).
-- **Uyarılar:** İçe aktarma yanıtı ilk 20 uyarıyı, meta yalnız uyarı sayısını taşır; `load_dictionary`
-  her açılışta her uyarıyı `log.info` ile uygulama loguna yazar (uyarılar tablo ve kolon adı içerir).
-  Sözlük sayfası yalnız "İçe aktarmada N uyarı vardı (ör. tekrarlanan ya da eksik satırlar atlandı)."
-  yazar. **Hedefte:** Uyarılar loga yazılmaz; sayısı ve ilk 20'si sürümle saklanır ve Sözlük sayfasında
-  görünür (Requirement 6, Decision 12).
+- **Uyarılar:** İçe aktarma yanıtı ilk 20 uyarıyı, meta yalnız uyarı sayısını taşır;
+  `load_dictionary` her açılışta her uyarıyı `log.info` ile uygulama loguna yazar (uyarılar tablo ve
+  kolon adı içerir). Sözlük sayfası yalnız "İçe aktarmada N uyarı vardı (ör. tekrarlanan ya da eksik
+  satırlar atlandı)." yazar. **Hedefte:** Uyarılar loga yazılmaz; sayısı ve ilk 20'si sürümle
+  saklanır ve API'den okunur; ekran kaynaktaki gibi uyarı sayısını ve içe aktarma bildiriminde ilk
+  üç uyarıyı gösterir (Requirement 6, Decision 12).
 - **Sözlüksüz açılış** (`dictionary_store.py` `empty`, `pipeline.py` `Engine.analyze`, ADR-050):
   Sözlük yoksa uygulama boş sözlük ve boş indeksle açılır ve loga dosya yolunu içeren bir uyarı yazar;
   soru "Analiz yapılamadı: Sözlük henüz içe aktarılmadı; Yönetim → Sözlük ekranından şablondaki Excel'i
@@ -210,35 +216,36 @@ Kaynak: `~/codes/kt-dwhnavigator`, `76e21a3`. Her maddenin sonunda hedefteki kar
   uçları ve tek hata zarfı (API sözleşmesi).
 - **Sözlük sayfası** (`src/vsa/web/static/admin.html` `PAGES.sozluk`, `importDictionary`,
   `fileSettings`): Başlık "Sözlük", açıklama "Tek sözlük: data/dictionary.jsonl; Excel yalnız içe ve
-  dışa aktarım içindir.", düğmeler "Excel'den içe aktar…", "Excel olarak dışa aktar" (sözlük varsa) ve
-  "Boş şablon". Sözlük yokken bırakma alanı ("Sözlük henüz yok — şablondaki Excel'i buraya bırakın ya da
-  tıklayıp seçin" / "İçe aktarılınca arama indeksi kurulur ve sorular bu sözlükle cevaplanır.") ve
-  şablonu anlatan "Şablon" kartı ("Boş şablonu indir"). Sözlük varken bilgi kartı (Tablo, Kolon, Kaynak
-  dosya, İçe aktarıldı, Sürüm — ilk 12 hane, tamamı ipucunda —, Boyut (KB); "✓ İndeks güncel" ya da
-  "İndeksi kur"; uyarı sayısı iletisi) ve Tablolar kartı: grup seçimi "Tüm gruplar (N)", arama "Tablo,
-  grup veya açıklama ara…" (anahtar, grup, alan ve açıklamada Türkçe harf duyarsız), başlık "Tablolar ·
-  N" ya da "Tablolar · M / N", sütunlar Tablo (ad, altında `DB.Şema`), Grup, Kolon, Açıklama; ilk 200
-  satır ve "Daha fazla (N)"; boş sonuçta "Aramaya uyan tablo yok.". Satıra tıklama ya da Enter derin
-  bağlantıyı (doğrudan o tabloyu açan adres) `#/sozluk/<DB.Şema.Obje>` açar; çekmecede (sayfanın yanından
-  açılan ayrıntı paneli) tablo açıklaması ya da "Tablo açıklaması yok.", Grup, Alan, Satır, Anahtar,
-  Zaman bilgileri ve "Kolonlar · N" tablosu (Kolon ve altında özet, Rol, Açıklama, Eş anlamlılar). En
-  altta katlanır "Dosya ayarları". İçe aktarmada yalnız `.xlsx` kabul edilir ("Excel (.xlsx) dosyası
-  seçin"); sözlük varsa tarayıcının onay penceresi "“ad” mevcut sözlüğün yerini alsın mı? Önceki sürüm
-  .bak olarak saklanır; arama indeksi yeniden kurulur (~10 sn)." sorar; bildirimler "İçe aktarılıyor…",
-  "Sözlük içe aktarıldı" (kolon ve tablo sayısı, kaynak, "İndeks kuruldu; sorular bu sözlükle
-  cevaplanır.", ilk üç uyarı) ve "İçe aktarılamadı". Excel yönetim ekranının Kelimeler dışındaki her
-  sayfasına bırakılabilir; bırakırken sayfayı kaplayan "Sözlüğü içe aktarmak için Excel dosyasını
-  bırakın" alanı görünür. Motorun sürümü dosyadakinden farklıysa sayfa indeksi eskimiş sayar.
-  **Hedefte:** Aynı düzen ve metinler; yol, Boyut ve "Dosya ayarları" kalkar; onay penceresi
-  uygulamanın kendi iletişim kutusudur; indirmeler oturumla yapılır; uyarı listesi, içe aktaran kişi ve
-  önceki sürüm görünür (Requirement 13–15).
+  dışa aktarım içindir.", düğmeler "Excel'den içe aktar…", "Excel olarak dışa aktar" (sözlük varsa)
+  ve "Boş şablon". Sözlük yokken bırakma alanı ("Sözlük henüz yok — şablondaki Excel'i buraya
+  bırakın ya da tıklayıp seçin" / "İçe aktarılınca arama indeksi kurulur ve sorular bu sözlükle
+  cevaplanır.") ve şablonu anlatan "Şablon" kartı ("Boş şablonu indir"). Sözlük varken bilgi kartı
+  (Tablo, Kolon, Kaynak dosya, İçe aktarıldı, Sürüm — ilk 12 hane, tamamı ipucunda —, Boyut (KB); "✓
+  İndeks güncel" ya da "İndeksi kur"; uyarı sayısı iletisi) ve Tablolar kartı: grup seçimi "Tüm
+  gruplar (N)", arama "Tablo, grup veya açıklama ara…" (anahtar, grup, alan ve açıklamada Türkçe
+  harf duyarsız), başlık "Tablolar · N" ya da "Tablolar · M / N", sütunlar Tablo (ad, altında
+  `DB.Şema`), Grup, Kolon, Açıklama; ilk 200 satır ve "Daha fazla (N)"; boş sonuçta "Aramaya uyan
+  tablo yok.". Satıra tıklama ya da Enter derin bağlantıyı (doğrudan o tabloyu açan adres)
+  `#/sozluk/<DB.Şema.Obje>` açar; çekmecede (sayfanın yanından açılan ayrıntı paneli) tablo
+  açıklaması ya da "Tablo açıklaması yok.", Grup, Alan, Satır, Anahtar, Zaman bilgileri ve "Kolonlar
+  · N" tablosu (Kolon ve altında özet, Rol, Açıklama, Eş anlamlılar). En altta katlanır "Dosya
+  ayarları". İçe aktarmada yalnız `.xlsx` kabul edilir ("Excel (.xlsx) dosyası seçin"); sözlük varsa
+  tarayıcının onay penceresi "“ad” mevcut sözlüğün yerini alsın mı? Önceki sürüm .bak olarak
+  saklanır; arama indeksi yeniden kurulur (~10 sn)." sorar; bildirimler "İçe aktarılıyor…", "Sözlük
+  içe aktarıldı" (kolon ve tablo sayısı, kaynak, "İndeks kuruldu; sorular bu sözlükle cevaplanır.",
+  ilk üç uyarı) ve "İçe aktarılamadı". Excel yönetim ekranının Kelimeler dışındaki her sayfasına
+  bırakılabilir; bırakırken sayfayı kaplayan "Sözlüğü içe aktarmak için Excel dosyasını bırakın"
+  alanı görünür. Motorun sürümü dosyadakinden farklıysa sayfa indeksi eskimiş sayar. **Hedefte:**
+  Aynı düzen, görünüm ve metinler; dosya olmadığı için yol, Boyut ve "Dosya ayarları" kalkar; onay
+  kaynaktaki gibi tarayıcının onay penceresiyle alınır; indirmeler oturumla yapılır (Requirement
+  13–15).
 - **Komut satırı** (`src/vsa/cli.py` `cmd_dictionary_import`, `cmd_dictionary_export`):
   `vsa dictionary import X.xlsx` sözlüğü yazar, ilk 10 uyarıyı basar ve kendi sürecinde indeksi kurar;
   çalışan arayüz yeni sözlüğü ancak konteyner yeniden başlatılınca kullanır (`docs/KURULUM.md` §7).
   `vsa dictionary export Y.xlsx [--template]` sözlüğü ya da boş şablonu yazar. Hata iletisi standart
   hataya yazılır, çıkış kodu 2'dir. **Hedefte:** Backend betiği (Requirement 16).
 - **Eşzamanlılık:** İki içe aktarma arasında kilit yoktur; son yazan kazanır. **Hedefte:** Aynı anda
-  yalnız bir içe aktarma ya da sürüm değişikliği yürür (Requirement 8).
+  yalnız bir içe aktarma yürür (Requirement 8).
 
 ## İşlevsel gereksinimler
 
@@ -305,12 +312,14 @@ sütun olabilir.". İleti yalnız yükleyen yöneticiye döner ve loga yazılmaz
 
 Requirement 6: Uyarılar kaynaktaki metinlerle ve sırayla üretilir: "“Objeler” sayfası yok: tablo
 açıklamaları ve gruplar olmadan aktarıldı." (en başta), "Satır N: eksik veritabanı/şema/obje/kolon,
-atlandı", "Tekrarlanan kolon, ilk kayıt tutuldu: <DB.Şema.Obje.Kolon>". **Yeni:** sayfa var ama şablondaki
-bir alanın sütunu başlık satırında yoksa "“<sayfa>” sayfasında şablondaki “<alan>” sütunu yok; bu alan
-boş aktarıldı." uyarısı Objeler sayfası uyarısından sonra, öteki uyarılardan önce eklenir. Objeler'de
-`ObjectKey` ile `DatabaseName`, `SchemaName`, `ObjectName` üçlüsü birbirinin yerine geçtiğinden bu
-alanlar için uyarı yalnız ikisi de eksikse verilir (Decision 5). Uyarı sayısı ve ilk 20 uyarı sürümle
-saklanır, içe aktarma yanıtında ve Sözlük sayfasında gösterilir; uyarılar uygulama loguna yazılmaz.
+atlandı", "Tekrarlanan kolon, ilk kayıt tutuldu: <DB.Şema.Obje.Kolon>". **Yeni:** sayfa var ama
+şablondaki bir alanın sütunu başlık satırında yoksa "“<sayfa>” sayfasında şablondaki “<alan>” sütunu
+yok; bu alan boş aktarıldı." uyarısı Objeler sayfası uyarısından sonra, öteki uyarılardan önce
+eklenir. Objeler'de `ObjectKey` ile `DatabaseName`, `SchemaName`, `ObjectName` üçlüsü birbirinin
+yerine geçtiğinden bu alanlar için uyarı yalnız ikisi de eksikse verilir (Decision 5). Uyarı sayısı
+ve ilk 20 uyarı sürümle saklanır, içe aktarma yanıtında ve sözlük durumu ucunda döner; Sözlük
+sayfası uyarı sayısını, içe aktarma bildirimi ilk üç uyarıyı gösterir (kaynakla aynı); uyarılar
+uygulama loguna yazılmaz.
 
 Requirement 7: Sürüm ve içerik özeti kaynaktaki gibi hesaplanır: sürüm, yüklenen dosyanın baytlarının
 SHA-256 parmak izinin ilk 12 onaltılık hanesi, `-` ve Kolonlar kayıt sayısıdır (`file_version`); içerik
@@ -323,14 +332,14 @@ numarası arama indeksine, kayıtlı cevap parmak izine, oy ağırlığına, ana
 okuma işleviyle (Requirement 10) geçer; bu kullanımların kuralları ilgili PRD'lerdedir.
 
 Requirement 8: Yeni sürüm tek veritabanı işleminde yazılır: sürüm kaydı, bütün Objeler ve Kolonlar
-kayıtları (Excel sırasıyla), etkin sürümün "önceki" yapılması ve en eski sürümün budanması (Requirement
-14) birlikte ya kalıcı olur ya hiç olmaz. İşlem yarıda kalırsa (süreç çökmesi dahil) etkin sözlük ve
-sürümü değişmez; okuyan hiçbir istek yarım sözlük görmez. Aynı anda yalnız bir içe aktarma ya da sürüm
-değişikliği yürür: PostgreSQL kilidi (aynı anda tek işe izin veren veritabanı kilidi) arayüzden ve
+kayıtları (Excel sırasıyla), etkin sürümün "önceki" yapılması ve en eski sürümün budanması
+(Requirement 14) birlikte ya kalıcı olur ya hiç olmaz. İşlem yarıda kalırsa (süreç çökmesi dahil)
+etkin sözlük ve sürümü değişmez; okuyan hiçbir istek yarım sözlük görmez. Aynı anda yalnız bir içe
+aktarma yürür: PostgreSQL kilidi (aynı anda tek işe izin veren veritabanı kilidi) arayüzden ve
 betikten gelen işlerin hepsini kapsar; kilit alınamazsa istek beklemeden 409
-`dictionary_import_in_progress` "Başka bir sözlük içe aktarması sürüyor; bitince yeniden deneyin." alır.
-Kilit yalnız yazma sırasında tutulur; dosyanın okunup doğrulanması kilitten önce yapılır. Veritabanı
-kısıtı aynı anda en çok bir etkin ve en çok bir önceki sürüm bulunmasını güvenceye alır.
+`dictionary_import_in_progress` "Başka bir sözlük içe aktarması sürüyor; bitince yeniden deneyin."
+alır. Kilit yalnız yazma sırasında tutulur; dosyanın okunup doğrulanması kilitten önce yapılır.
+Veritabanı kısıtı aynı anda en çok bir etkin ve en çok bir önceki sürüm bulunmasını güvenceye alır.
 
 Requirement 9: Doğrulanmış yeni sürüm [search-settings](../009-search-settings/PRD.md) PRD'sinin
 değişiklik sırasından (Requirement 11) "önce kur, sonra yaz" düzeniyle geçer: yeni sözlükle arama
@@ -348,15 +357,17 @@ yalnız bu işlevi kullanır. İşlev her okumada içerik özetini yeniden hesap
 (kayıtlar veritabanında elle değiştirilmiş demektir) kaynaktaki kural uygulanır: sürüm
 `<yeni özet>-<Kolonlar kayıt sayısı>` olur ve `dictionary.integrity_mismatch` olayı yazılır.
 
-Requirement 11: Etkin sürüm yokken (ilk kurulumda) okuma işlevi boş sözlük verir: kayıt yok, sürüm `""`,
-kaynak adı `""`. Uygulama bu durumda açılır ve çalışır. Görünür sonuçlar: soru "Analiz yapılamadı:
-Sözlük henüz içe aktarılmadı; …" cevabını alır ([question-analysis](../004-question-analysis/PRD.md));
-ana ekranın durum bilgisi 0 kolon ve 0 tablo gösterir ([dictionary-explorer](../007-dictionary-explorer/PRD.md));
-dışa aktarma ve tablo uçları 404 `dictionary_not_imported` "Sözlük henüz içe aktarılmadı." döner;
-Sözlük sayfası bırakma alanını gösterir; yönetim kenar çubuğunda Sözlük'ün yanında "!" rozeti ("Sözlük
-henüz içe aktarılmadı"), Genel bakış'ta sözlük kartı ve ilk kurulum adımı görünür
-([search-settings](../009-search-settings/PRD.md), [analysis-records](../008-analysis-records/PRD.md)).
-Sözlüksüz açılış loga dosya yolu ve içerik taşımayan `dictionary.empty` olayını yazar.
+Requirement 11: Etkin sürüm yokken (ilk kurulumda) okuma işlevi boş sözlük verir: kayıt yok, sürüm
+`""`, kaynak adı `dictionary.jsonl` (Requirement 17). Uygulama bu durumda açılır ve çalışır. Görünür
+sonuçlar: soru "Analiz yapılamadı: Sözlük henüz içe aktarılmadı; …" cevabını alır
+([question-analysis](../004-question-analysis/PRD.md)); ana ekranın durum bilgisi 0 kolon ve 0 tablo
+gösterir ([dictionary-explorer](../007-dictionary-explorer/PRD.md)); dışa aktarma ve tablo uçları
+404 `dictionary_not_imported` "Sözlük henüz içe aktarılmadı." döner; Sözlük sayfası bırakma alanını
+gösterir; yönetim kenar çubuğunda Sözlük'ün yanında "!" rozeti ("Sözlük henüz içe aktarılmadı"),
+Genel bakış'ta sözlük kartı ve ilk kurulum adımı görünür
+([search-settings](../009-search-settings/PRD.md),
+[analysis-records](../008-analysis-records/PRD.md)). Sözlüksüz açılış loga dosya yolu ve içerik
+taşımayan `dictionary.empty` olayını yazar.
 
 Requirement 12: Dışa aktarma, etkin sürümün kayıtlarını kaynaktaki `export` biçiminde yazar: `Objeler`
 ve `Kolonlar` sayfaları; başlık satırı şablon alanları ve ardından sürümün ek sütunları (içe
@@ -366,34 +377,29 @@ metin; başlık satırı dondurulmuş. Dosya bellekte üretilir ve saklanmaz; ad
 değiştirilmeden içe aktarılırsa içerik özeti aynıdır ve yeni sürüm oluşmaz (Requirement 7). Etkin sürüm
 yoksa 404 `dictionary_not_imported`.
 
-Requirement 13: Sözlük sayfası (yalnız `yonetici`) kaynaktaki düzeni ve metinleri korur (Mevcut
-davranış), şu farklarla:
+Requirement 13: Sözlük sayfası (yalnız `yonetici`) kaynaktaki düzeni, görünümü ve metinleri korur
+(Mevcut davranış); görünür yeni öğe eklenmez. Farklar yalnız dosya deposunun kalkmasından doğar:
 - Açıklama satırı "Tek sözlük uygulamanın veritabanındadır; Excel yalnız içe ve dışa aktarım içindir."
   olur; "Boyut" bilgisi ve "Dosya ayarları" bölümü kalkar.
-- Bilgi kartında "İçe aktaran" (kişinin görünen adı ya da betikle yapıldıysa "Betik") bulunur.
-- Uyarı sayısı iletisinin altında saklanan ilk 20 uyarı katlanır bir listede görünür.
 - İndeks etkin sürümden kurulmamışsa "✓ İndeks güncel" yerine "İndeksi kur" düğmesi görünür; düğme
   [search-settings](../009-search-settings/PRD.md) PRD'sindeki yeniden kurma ucunu çağırır.
-- Önceki sürüm varsa bilgi kartında "Önceki sürüm: <sürümün ilk 12 hanesi> · <tarih> · <kaynak dosya>"
-  satırı ve "Önceki sürüme dön" düğmesi bulunur (Requirement 14).
 - Tablo listesi ve çekmece içe aktarılmış kayıtları yazıldığı gibi gösterir (yinelenen ve hatalı
   satırlar dahil); bu, ana ekrandaki tablo dosyasının gösterdiği ayrıştırılmış görünümden bilerek
   farklıdır.
 - Tablo ayrıntısı derin bağlantıyla açılır; adres biçimi yönetim ekranı kabuğundadır
   ([search-settings](../009-search-settings/PRD.md)). Tablo satırının birincil eylemi klavyeyle de
   erişilebilir bir düğme ya da bağlantıdır.
-- Yükleniyor, boş, hata ve bildirim durumları paylaşılan ön yüz bileşenleriyle gösterilir; bütün
-  metinler `app/frontend/src/locales/tr.json` kataloğundadır.
+- Yükleniyor, boş, hata ve bildirim durumları kaynaktaki görünümle, yönetim ekranının ortak
+  bileşenleriyle gösterilir; bütün metinler `app/frontend/src/locales/tr.json` kataloğundadır.
+  Sayfanın görünümü kaynaktaki `admin.html` ile birebir aynıdır
+  ([search-settings](../009-search-settings/PRD.md) Decision 11).
 
 Requirement 14: En çok iki sürümün kayıtları saklanır: etkin sürüm ve bir önceki sürüm (kaynaktaki
 `.bak` dosyasının karşılığı). Yeni sürüm oluşunca etkin sürüm "önceki", eski önceki sürüm "budanmış"
-olur: budanan sürümün Objeler ve Kolonlar kayıtları silinir; sürüm kaydı (kim, ne zaman, hangi dosya,
-sayılar) yumuşak silinmiş (silinmeden silindi olarak işaretlenmiş) olarak kalır. Yönetici "Önceki
-sürüme dön" ile önceki sürümü özgün sürüm numarasıyla etkin yapar; o anki etkin sürüm önceki olur, yani
-iki sürüm arasında gidip gelinebilir. Geri dönüş uygulamanın onay iletişim kutusuyla sorulur ("Sözlük
-<sürümün ilk 12 hanesi> sürümüne dönülsün mü? Şimdiki sözlük önceki sürüm olarak saklanır; arama
-indeksi yeniden kurulur."), Requirement 8'deki kilidi kullanır ve indeksi Requirement 9'daki gibi yeniden
-kurdurur. Bu gereksinim Açık soru 1'e bağlıdır.
+olur: budanan sürümün Objeler ve Kolonlar kayıtları silinir; sürüm kaydı (kim, ne zaman, hangi
+dosya, sayılar) yumuşak silinmiş (silinmeden silindi olarak işaretlenmiş) olarak kalır. Önceki
+sürüme dönen ekran, düğme ya da uç yoktur (Decision 13); önceki sürümün özeti yalnız sözlük durumu
+ucunda (`previous`) döner.
 
 Requirement 15: İçe aktarma etkileşimi:
 - "Excel'den içe aktar…" dosya seçicisi ve Excel'in yönetim ekranının Kelimeler dışındaki herhangi bir
@@ -403,8 +409,8 @@ Requirement 15: İçe aktarma etkileşimi:
   Boş durumdaki bırakma alanı klavyeyle (Enter ve Space) de dosya seçicisini açar.
 - Uzantısı `.xlsx` olmayan dosya istek gönderilmeden "Excel (.xlsx) dosyası seçin" bildirimiyle
   reddedilir.
-- Etkin sözlük varsa uygulamanın onay iletişim kutusu sorar: "“<dosya adı>” mevcut sözlüğün yerini alsın
-  mı? Önceki sürüm saklanır; arama indeksi yeniden kurulur (~10 sn)."
+- Etkin sözlük varsa kaynaktaki gibi tarayıcının onay penceresi sorar: "“<dosya adı>” mevcut
+  sözlüğün yerini alsın mı? Önceki sürüm saklanır; arama indeksi yeniden kurulur (~10 sn)."
 - İşlem sürerken "İçe aktarılıyor…" / "<dosya adı> okunuyor, doğrulanıyor ve indeks kuruluyor."
   bildirimi görünür. Yeni sürümde "Sözlük içe aktarıldı" bildirimi "<kolon> kolon · <tablo> tablo
   (<kaynak>)", "İndeks kuruldu; sorular bu sözlükle cevaplanır." ve varsa "<N> uyarı: <ilk üç uyarı,
@@ -429,10 +435,12 @@ standart hataya yazılır ve çıkış kodu 2'dir. Betikle yapılan içe aktarma
 "Çalışan uygulama yeni sözlüğü indeks yeniden kurulunca kullanır (Yönetim → Bakım → İndeksi yeniden
 kur)." der ve Sözlük sayfası indeksi eskimiş gösterir.
 
-Requirement 17: Sözlüğün kaynak adı, etkin sürümün içe aktarıldığı Excel dosyasının adıdır (ör.
-`VeriSozlugu.xlsx`). Okuma işlevi (Requirement 10) motora sözlük kaynağı olarak bu adı verir; analiz
-sonucundaki ve raporlardaki "Kaynak sözlük" bilgisi bu adı gösterir (kaynakta her zaman
-`dictionary.jsonl`). Bu gereksinim Açık soru 2'ye bağlıdır.
+Requirement 17: Sözlüğün kaynak adı kaynaktaki gibi her zaman `dictionary.jsonl` metnidir. Okuma
+işlevi (Requirement 10) motora sözlük kaynağı olarak bu adı verir; analiz sonucundaki ve
+raporlardaki "Kaynak sözlük" bilgisi bu adı gösterir (ör. "Kaynak sözlük: dictionary.jsonl (11.136
+satır, 390 obje)") ve fark testlerinde kaynakla bayt bayt aynıdır (Decision 14). İçe aktarılan
+Excel'in adı sürüm kaydında `source_name` olarak saklanır ve Sözlük sayfasının "Kaynak dosya"
+bilgisinde görünür.
 
 Requirement 18: Yönetim uçları API sözleşmesi bölümündeki gibidir: sözlük durumu (etkin ve önceki sürüm
 özeti, indeksin kurulduğu sözlük sürümü); tablo listesi (içe aktarılmış Kolonlar kayıtlarının
@@ -461,11 +469,10 @@ ISO 8601 uluslararası tarih biçimiyle), `imported_by` (`{public_id, display_na
 | `POST /dictionary/imports` | `yonetici` | Excel gövdesi, `X-Filename` | 201 `changed: true` ya da 200 `changed: false`: `version` (sürüm özeti), `warnings[]` (en çok 20), `index` (search-settings `GET /search-index` yanıtı) | 409 `dictionary_import_in_progress`, 413 `upload_too_large`, 415 `unsupported_media_type`, 422 `dictionary_file_empty`, 422 `dictionary_workbook_invalid`, 500 `search_index_build_failed`, 503 `search_change_busy` |
 | `GET /dictionary/export` | `yonetici` | — | 200: Excel; `Content-Disposition: attachment; filename="VeriSozlugu_YYYYMMDD_HHMM.xlsx"` | 404 `dictionary_not_imported` |
 | `GET /dictionary/template` | `yonetici` | — | 200: Excel; `filename="VeriSozlugu_sablon.xlsx"` | — |
-| `POST /dictionary/versions/{public_id}/activation` | `yonetici` | — | 200: `version` (yeni etkin sürümün özeti), `index`; hedef zaten etkinse değişiklik yapmadan 200 | 404 `dictionary_version_not_found` (yok ya da budanmış), 409 `dictionary_import_in_progress`, 500 `search_index_build_failed`, 503 `search_change_busy` |
 
 Her uçta ortak hatalar 401 `not_authenticated` ve 403 `forbidden`'dır. Kaynaktaki `GET/POST
 /api/admin/dictionary…` uçlarının karşılığı bu tablodur; dosya yolu, dosya boyutu ve okuma hatası
-alanlarının karşılığı yoktur. Son uç (geri dönüş) Açık soru 1'e bağlıdır.
+alanlarının karşılığı yoktur.
 
 ## Güvenlik ve yetkilendirme
 
@@ -532,7 +539,6 @@ adı, dosya adı ve kullanıcı adı hiçbir log olayına, ölçüme ve iz aral�
   `unsupported_type`, `conflict`, `error`; `channel`; `version`; `row_count`, `column_count`,
   `object_count`, `warning_count`; `duration_ms`; hata kodu; kullanıcı `public_id`),
   `dictionary.export` (`kind`: `dictionary`, `template`; `version`; kullanıcı `public_id`),
-  `dictionary.version_activated` (`from_version`, `to_version`, kullanıcı `public_id`),
   `dictionary.pruned` (`version`, silinen Objeler ve Kolonlar kaydı sayısı), `dictionary.empty`
   (açılışta etkin sürüm yok), `dictionary.integrity_mismatch` (`stored_digest`, `actual_digest`). Sürüm
   ve özetler içerik değil, parmak izidir.
@@ -599,7 +605,7 @@ adı, dosya adı ve kullanıcı adı hiçbir log olayına, ölçüme ve iz aral�
   500 `search_index_build_failed`, aynı anda iki içe aktarma (biri 409; arayüz ve betik
   birlikte), aynı içeriğin yeniden aktarılması (yeni sürüm yok, önceki sürüm korunur, `changed: false`),
   dışa aktar → içe aktar (sürüm aynı), saklama ve budama (en çok iki sürümün kayıtları; budanan sürüm
-  satırı yumuşak silinmiş), önceki sürüme dönüş ve geri (özgün sürüm numarası), boş sözlük durumu ve 404
+  satırı yumuşak silinmiş), boş sözlük durumu ve 404
   `dictionary_not_imported`, tablo listesi ve tek tablo kayıtları (yinelenen satırlar dahil, Excel
   sırası, `/` içeren anahtar), rol denetimi (oturumsuz 401, `kullanici` 403), okuma işlevinin sırayı
   koruması ve elle değiştirilmiş kayıtta sürüm kuralı, göç ve zorunlu sütun kapısı (kayıt tablolarının
@@ -607,11 +613,14 @@ adı, dosya adı ve kullanıcı adı hiçbir log olayına, ölçüme ve iz aral�
 - **Veri sızıntısı:** test Excel'indeki tablo, kolon ve dosya adına konan ayırt edici bir işaret dizesi
   log çıktısında, ölçümlerde ve iz aralıklarında aranır; bulunmamalıdır.
 - **Ön yüz (Vitest, ön yüz test aracı):** boş durum ve klavyeyle dosya seçme, `.xlsx` denetimi, onay
-  iletişim kutusu, bildirimler (yeni sürüm, değişmedi, indeks kurulamadı, hata kodları), Kelimeler
-  dışındaki sayfalara bırakma, tablo listesi süzme, arama ve "Daha fazla", derin bağlantıyla çekmece,
-  önceki sürüm satırı ve geri dönüş onayı, eskimiş indeks uyarısı, indirmelerin oturumlu istekle yapılması
-  ve adreste erişim belirteci bulunmaması.
+  penceresinin metni, bildirimler (yeni sürüm, değişmedi, indeks kurulamadı, hata kodları; ilk üç
+  uyarı), Kelimeler dışındaki sayfalara bırakma, tablo listesi süzme, arama ve "Daha fazla", derin
+  bağlantıyla çekmece, eskimiş indeks uyarısı, indirmelerin oturumlu istekle yapılması ve adreste
+  erişim belirteci bulunmaması.
 - **Uçtan uca (tarayıcı, `e2e/data-dictionary/`):** Kabul kriterlerindeki L2 senaryoları.
+- **Görsel eşdeğerlik:** kaynak `76e21a3` ve hedef aynı sözlükle yan yana çalıştırılır; Sözlük
+  sayfası, tablo çekmecesi ve bırakma alanının ekran görüntüleri aynı ekran boyutlarında
+  karşılaştırılır (Acceptance 6).
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
 
@@ -632,22 +641,29 @@ Kaynak vektör aramasını ADR-039 ile kaldırdı; bu PRD vektör veya gömme (e
   uyarılar (yeni uyarılar hariç), içerik özeti, sürüm ve dışa aktarılan hücreler kaynakla aynıdır. Gerçek
   sözlük depo dışından verildiğinde 11.136 kolon, 390 tablo, 0 uyarı ve `-11136` sonekli sürüm görülür.
 - [ ] Acceptance 2: L1 — Otomatik testlerden geçti: Requirement 2, 8–11, 14, 16 ve 18'in gerçek
-  PostgreSQL testleri geçer: sınırlar, işlem bölünmezliği, 409 çakışması, aynı içerik, saklama ve budama,
-  önceki sürüme dönüş, boş sözlük, rol denetimi, betik; veri sızıntısı testinde işaret dizesi log, ölçüm
-  ve izde bulunmaz; göç ve zorunlu sütun kapısı ile tam kalite kapısı geçer.
+  PostgreSQL testleri geçer: sınırlar, işlem bölünmezliği, 409 çakışması, aynı içerik, saklama ve
+  budama, boş sözlük, rol denetimi, betik; veri sızıntısı testinde işaret dizesi log, ölçüm ve izde
+  bulunmaz; göç ve zorunlu sütun kapısı ile tam kalite kapısı geçer.
 - [ ] Acceptance 3: L1 — Otomatik testlerden geçti: Requirement 13 ve 15'in Vitest testleri geçer;
   OpenAPI dosyası ve üretilmiş ön yüz tipleri günceldir.
 - [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da yerel PostgreSQL ile
-  `yonetici` olarak giriş yapılır; örnek Excel Genel bakış sayfasına bırakılarak içe aktarılır, Sözlük
-  sayfasında sayılar, uyarılar ve "İçe aktaran" görünür; bir tablo derin bağlantıyla açılır; sözlük dışa
-  aktarılıp değiştirilmeden geri yüklenince "Sözlük değişmedi" ve aynı sürüm görülür; şablona uymayan
-  dosya hata verir ve sözlük değişmez; ikinci bir Excel içe aktarılıp "Önceki sürüme dön" ile ilk sürüme
-  dönülür. `kullanici` olarak Sözlük sayfası görünmez ve `/dictionary` ucu 403 döner; ana ekranın durum
-  bilgisi yeni kolon sayısını gösterir (Requirement 7, 8, 13–15).
+  `yonetici` olarak giriş yapılır; örnek Excel Genel bakış sayfasına bırakılarak içe aktarılır,
+  Sözlük sayfasında sayılar ve uyarı sayısı görünür; bir tablo derin bağlantıyla açılır; sözlük dışa
+  aktarılıp değiştirilmeden geri yüklenince "Sözlük değişmedi" ve aynı sürüm görülür; şablona
+  uymayan dosya hata verir ve sözlük değişmez; ikinci bir Excel içe aktarılınca sözlük durumu ucu
+  ilk sürümü önceki sürüm olarak döner ve sayfada önceki sürüme dönme düğmesi bulunmaz. `kullanici`
+  olarak Sözlük sayfası görünmez ve `/dictionary` ucu 403 döner; ana ekranın durum bilgisi yeni
+  kolon sayısını gösterir (Requirement 7, 8, 13–15).
 - [ ] Acceptance 5: L2 — Gerçek istemci/ortamda doğrulandı (nonprod): gerçek sözlük Excel'i (depo
   dışında) nonprod yönetim ekranından giriş katmanı üzerinden içe aktarılır; 11.136 kolon ve 390 tablo
   görünür ve bir soru bu sözlükle cevaplanır (Requirement 2, 9). Küme dağıtımı bu kanıtın parçası
   değildir ve ayrı kullanıcı talimatı ister.
+- [ ] Acceptance 6: L2 — Gerçek istemci/ortamda doğrulandı: görsel eşdeğerlik. Yerel Compose'da
+  hedef ile kaynak `76e21a3` aynı sözlükle çalıştırılır; Sözlük sayfası (sözlük yokken bırakma alanı
+  ve sözlük varken bilgi ve Tablolar kartları), tablo çekmecesi ve sürükleme alanının ekran
+  görüntüleri masaüstü (1440×900) ve telefon genişliğinde (390×844 piksel) yan yana karşılaştırılır.
+  Fark yalnız dosya deposunun kalkmasından doğan öğelerde (yol, Boyut, "Dosya ayarları") ve
+  fabrikanın zorunlu kıldığı oturum alanında kabul edilir (Requirement 13, 15).
 
 ## Kararlar
 
@@ -692,21 +708,20 @@ Decision 11: Excel'in okunup doğrulanması kilitten ve veritabanı işleminden 
 parçacığında yapılır; kilit yalnız yazma sırasında tutulur. Gerekçe: uzun okuma başka bir içe aktarmayı
 ve isteklere cevap veren ana döngüyü bekletmez.
 
-Decision 12: Uyarılar uygulama loguna yazılmaz (tablo ve kolon adı içerir); sayısı ve ilk 20'si sürümle
-saklanır ve Sözlük sayfasında gösterilir. Kaynakta uyarıların tamamı yalnız logda görülebiliyordu.
+Decision 12: Uyarılar uygulama loguna yazılmaz (tablo ve kolon adı içerir); sayısı ve ilk 20'si
+sürümle saklanır ve API'den okunur. Ekran kaynaktaki gibi uyarı sayısını ve içe aktarma bildiriminde
+ilk üç uyarıyı gösterir; görünür yeni öğe eklenmediği için 20 uyarının listesi ekranda gösterilmez.
+Kaynakta uyarıların tamamı yalnız logda görülebiliyordu.
 
-## Açık sorular
+Decision 13: Yalnız bir önceki sürümün kayıtları saklanır (kaynaktaki `.bak` dosyasının karşılığı);
+önceki sürüme dönen düğme, uç ya da betik yoktur. Gerekçe: kaynakta geri dönüş `.bak` dosyasının
+elle kopyalanmasıydı ve ekranda düğmesi yoktu; görünür yeni öğe eklenmez. Yanlış bir sözlüğün yerine
+doğru sözlüğün Excel'i yeniden içe aktarılır.
 
-1. **Önceki sürüm (`.bak` karşılığı) ve geri dönüş:** Kaynak her içe aktarmada önceki sözlüğü
-   `dictionary.jsonl.bak` dosyası olarak saklıyordu ve geri dönüş dosyanın elle kopyalanmasıydı; hedefte
-   dosya ve dosya erişimi yoktur. Öneri: yalnız bir önceki sürümün kayıtları saklanır; Sözlük sayfasındaki
-   onaylı "Önceki sürüme dön" düğmesi önceki sürümü özgün sürüm numarasıyla etkin yapar (kayıtlı cevaplar
-   ve oylar o sürüme göre yeniden geçerli olur) ve indeksi yeniden kurdurur; daha eski sürümlerin
-   kayıtları silinir, içe aktarma bilgileri kalır (Requirement 14 ve geri dönüş ucu).
-2. **Rapor ve analizde görünen sözlük kaynak adı:** Kaynakta raporun "Kaynak sözlük" satırı her zaman
-   uygulamanın kendi dosyasının adını (`dictionary.jsonl`) gösterir; hedefte bu dosya yoktur. Öneri:
-   etkin sürümün içe aktarıldığı Excel'in adı gösterilir (ör. "Kaynak sözlük: VeriSozlugu.xlsx (11.136
-   satır, 390 obje)"); fark testleri bu alanı karşılaştırma dışında tutar (Requirement 17).
+Decision 14: Analiz sonucundaki ve raporlardaki sözlük kaynak adı kaynaktaki gibi sabit
+`dictionary.jsonl` metnidir. Gerekçe: rapor ve analiz çıktısı kaynakla bayt bayt aynı kalır ve fark
+testleri bu alanı dışarıda bırakmadan karşılaştırır. İçe aktarılan Excel'in gerçek adı Sözlük
+sayfasında görünür.
 
 ## Teslim akışı
 
@@ -714,9 +729,13 @@ Belirtim → Plan → Görevler → Uygulama
 
 ## Riskler
 
-- **Yanlış ama geçerli Excel:** Şablona uyan ama yanlış ya da eski bir sözlük etkin sözlüğün yerini alır
-  ve cevaplar bozulur. Onay iletişim kutusu, uyarılar ve önceki sürüme dönüş (Açık soru 1) etkiyi
-  sınırlar; içe aktarmanın kendisi içeriğin doğruluğunu bilemez.
+- **Yanlış ama geçerli Excel:** Şablona uyan ama yanlış ya da eski bir sözlük etkin sözlüğün yerini
+  alır ve cevaplar bozulur. Onay penceresi ve uyarılar etkiyi sınırlar; önceki sürüme dönen bir
+  işlem olmadığından doğru sözlüğün Excel'i yeniden içe aktarılır (Decision 13). İçe aktarmanın
+  kendisi içeriğin doğruluğunu bilemez.
+- **Kaynak adı bilgi vermez:** Raporlardaki "Kaynak sözlük" her zaman `dictionary.jsonl` yazar;
+  raporun hangi Excel'den gelen sözlükle üretildiği yalnız sürüm numarasından anlaşılır (Decision
+  14).
 - **Türkçe başlıklar:** `Rol` veya `Ozet` başlıklı bir Excel roller ve özetler boş aktarılır; yeni uyarı
   bunu görünür kılar ama içe aktarmayı durdurmaz.
 - **Kütüphane sürümü:** `openpyxl`'in başka bir serisi hücre değerlerini farklı okursa (sayı, tarih)

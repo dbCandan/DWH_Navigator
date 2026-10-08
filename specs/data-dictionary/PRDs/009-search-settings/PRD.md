@@ -1,10 +1,15 @@
 # PRD — search-settings
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -150,21 +155,22 @@ maddede yazılıdır.
   `search_tables`, `evidence_columns`, `description_chars`, `full_table_columns` ve yalnız ölçümde
   kullanılan `scoring.min_answer_score`, `min_answer_coverage`, `rule_only_factor` yalnız
   `data/settings.yaml` elle düzenlenerek değişir. **Hedefte:** kodda sabit (Requirement 8,
-  Açık soru 1).
-- **Erişim** (`web/security.py` `AdminGuard`): `/admin`, `/api/admin`, `/api/settings`, `/api/reindex`
-  ve `/api/llm` yolları `VSA_ADMIN_PASSWORD` ile HTTP Basic ister, parola yoksa yalnız sunucunun
-  kendisinden açılır; POST istekleri `Sec-Fetch-Site`/`Origin` ile denetlenir. Uygulamadan yönetim
-  ekranına bağlantı yoktur (ADR-047). **Hedefte:** oturum ve `yonetici` rolü (Requirement 26); başka
-  siteden gelme denetimi bütün durum değiştiren isteklerde sürer
+  Decision 5).
+- **Erişim** (`web/security.py` `AdminGuard`): `/admin`, `/api/admin`, `/api/settings`,
+  `/api/reindex` ve `/api/llm` yolları `VSA_ADMIN_PASSWORD` ile HTTP Basic ister, parola yoksa
+  yalnız sunucunun kendisinden açılır; POST istekleri `Sec-Fetch-Site`/`Origin` ile denetlenir.
+  Uygulamadan yönetim ekranına bağlantı yoktur (ADR-047). **Hedefte:** oturum ve `yonetici` rolü
+  (Requirement 26); başka siteden gelme denetimi bütün durum değiştiren isteklerde sürer
   ([user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) Requirement 13);
-  ana ekrandan yönetim ekranına bağlantı [dictionary-explorer](../007-dictionary-explorer/PRD.md)
-  Açık soru 2'dedir.
+  ana ekrandan yönetim ekranına yine bağlantı yoktur
+  ([dictionary-explorer](../007-dictionary-explorer/PRD.md) Decision 15).
 - **Yönetim ekranı kabuğu** (`web/static/admin.html`, ADR-051): kenar çubuğu, yedi sayfa,
-  `#/sayfa/öğe` adresleri, Ctrl K komut paleti, sağdan açılan çekmece, alttaki kaydedilmemiş değişiklik
-  çubuğu, masaüstünde tek ekran düzeni; tek dosya, dış kaynak yok. Görünüm kendi sabit renkleri ve
-  degradeleriyle (“Evren” paleti) çizilir; onaylar tarayıcının `confirm()` penceresiyle alınır;
-  tıklanabilir satırlar yalnız Enter ile açılır. **Hedefte:** React'te aynı işlev (Requirement 20–25),
-  kurallardan doğan farklar Decision 10 ve 11'de.
+  `#/sayfa/öğe` adresleri, Ctrl K komut paleti, sağdan açılan çekmece, alttaki kaydedilmemiş
+  değişiklik çubuğu, masaüstünde tek ekran düzeni; tek dosya, dış kaynak yok. Görünüm kendi sabit
+  renkleri ve degradeleriyle (“Evren” paleti) çizilir; onaylar tarayıcının `confirm()` penceresiyle
+  alınır; tıklanabilir satırlar yalnız Enter ile açılır. **Hedefte:** React'te aynı işlev ve
+  görünüm; onaylar yine tarayıcının `confirm()` penceresiyle (Requirement 20–25); kurallardan doğan,
+  görünümü değiştirmeyen farklar Decision 10 ve 11'de.
 - **Arama ve cevap, Bakım sayfaları**: Requirement 17–19'daki düzen. Bakım'da “Klasörler” kartı
   (`report.out_dir`, `index.dir`) vardır; uzman ayarları notu ve kural ipuçları bölümü
   `vsa eval --save` komutuna değinir. **Hedefte:** “Klasörler” kartı ve dosya ayarları kalkar, metinler
@@ -303,7 +309,7 @@ değerle yazılmış kayıtlı cevaplar yeniden kullanılabilir. Parmak izi kayn
 değeri verir. Kayıtlı cevabın saklanması, aranması ve süresi question-analysis PRD'sindedir.
 
 Requirement 8: Ekranda olmayan şu ayarlar kodda sabittir; hiçbir uç, dosya ya da ortam değişkeni
-onları değiştiremez; değişiklik kod değişikliği ve altın set ölçümü ister (Açık soru 1):
+onları değiştiremez; değişiklik kod değişikliği ve altın set ölçümü ister (Decision 5):
 `analyst.confusables` 6 (uyarılar için okunan benzer tablo), `analyst.family_tables` 2 (bilgi ailesi
 başına terim aramasıyla eklenen tablo), `analyst.family_extra` 6 (bu yolla en fazla eklenen tablo),
 `analyst.search_tables` 3 (1. adımın seçmediği, kelime aramasının en iyi tabloları),
@@ -411,19 +417,20 @@ kaydedilmez, kabuktaki taslağa girer (Requirement 23).
 Requirement 19: **Bakım** sayfası (`/admin/bakim`): başlık `Bakım`, açıklama
 `Arama indeksi ve önceki cevaplar.` ¹, sağda Sözlük sayfasına giden `Sözlük` (sözlük yoksa
 `Sözlüğü içe aktar`) bağlantısı. **Arama indeksi** kartı: durum etiketi (`Güncel`, `Kuruluyor`,
-`Yeniden kurulmalı`, 0 kolonda `Boş`), açıklama `Sözlükten üretilen kelime indeksi; içe aktarmada
-kendiliğinden, terim / durak kelime / ağırlık değişince yeniden kurulur.`, `Sözlük` satırı
-(`N kolon · sürüm XXXXXXXX`, sözlük yoksa `yok`), `Son kurulum` satırı (zaman ya da `—`), `stale`
-durumunda `İndeks veritabanıyla uyuşmuyor: <farklı girdiler>.`, son deneme başarısızsa
-`Son kurulum denemesi başarısız oldu (<zaman>); değişiklik kaydedilmedi.`, `Arama indeksini yeniden
-kur` düğmesi (`stale` durumunda birincil) ve `birkaç saniye` notu. **Önceki cevaplar** kartı: `cache`
-bölümünün alanları ve altında `Kayıtlı cevaplar` bloğu: `Kayıtlı` satırı
+`Yeniden kurulmalı`, 0 kolonda `Boş`), açıklama
+`Sözlükten üretilen kelime indeksi; içe aktarmada kendiliğinden, terim / durak kelime / ağırlık değişince yeniden kurulur.`,
+`Sözlük` satırı (`N kolon · sürüm XXXXXXXX`, sözlük yoksa `yok`), `Son kurulum` satırı (zaman ya da
+`—`), `stale` durumunda `İndeks veritabanıyla uyuşmuyor: <farklı girdiler>.`, son deneme başarısızsa
+`Son kurulum denemesi başarısız oldu (<zaman>); değişiklik kaydedilmedi.`,
+`Arama indeksini yeniden kur` düğmesi (`stale` durumunda birincil) ve `birkaç saniye` notu. **Önceki
+cevaplar** kartı: `cache` bölümünün alanları ve altında `Kayıtlı cevaplar` bloğu: `Kayıtlı` satırı
 (`N · bugünkü sözlük, model ve ayarlarla geçerli: M`, hiç yoksa `henüz yok`), `En yeni` satırı, not
-`Silmek gerekmez: değişiklikte eskiler zaten kullanılmaz; tek yanlış cevap için uygulamada “Yeniden
-analiz et” yeterli.` ve kayıtlı cevap yokken devre dışı `Önceki cevapları sil…` düğmesi. Düğme onay
-penceresinde `Kayıtlı N cevap silinsin mi?` ve `Sonraki sorular baştan analiz edilir. Silinen cevaplar
-geri gelmez.` der; sonuçta `Önceki cevaplar silindi` / `N cevap silindi.` ya da `Silinemedi` bildirimi
-çıkar. Kaynaktaki “Klasörler” kartı yoktur.
+`Silmek gerekmez: değişiklikte eskiler zaten kullanılmaz; tek yanlış cevap için uygulamada “Yeniden analiz et” yeterli.`
+ve kayıtlı cevap yokken devre dışı `Önceki cevapları sil…` düğmesi. Düğme onay penceresinde
+`Kayıtlı N cevap silinsin mi?` ve
+`Sonraki sorular baştan analiz edilir. Silinen cevaplar geri gelmez.` der (tarayıcının onay
+penceresi, Requirement 24); sonuçta `Önceki cevaplar silindi` / `N cevap silindi.` ya da
+`Silinemedi` bildirimi çıkar. Kaynaktaki “Klasörler” kartı yoktur.
 
 Requirement 20: Yönetim ekranı kabuğu, uygulamanın istemci yönlendiricisinde `/admin` altında
 çalışır: `/admin` adresi `/admin/genel`'e yönlenir; sayfalar `/admin/genel`, `/admin/analizler`,
@@ -444,16 +451,19 @@ Requirement 21: Kenar çubuğu: üstte logo, `DWH Navigator` ve `Yönetim` (Gene
 `Terim sözlüğü ve durak kelimeler`; Yapay zekâ — `Cevabı yazan sohbet modeli ve bağlantıları`),
 `Ayarlar` (Arama ve cevap — `Analistin okuduğu malzeme ve arama ipuçları`; Bakım —
 `Arama indeksi ve önceki cevaplar` ¹; grubun sonunda yalnız süper yöneticiye görünen Kullanıcılar,
-sayfası user-accounts Requirement 16'dadır); açıklamalar ipucudur, geçerli sayfa işaretlidir. Menü
-rozetleri: Yapay zekâ'da model durumu noktası (llm-connection durumu), Sözlük'te sözlük içe
-aktarılmamışsa `!`, Arama ve cevap'ta kaydedilmemiş ayar sayısı, Bakım'da kaydedilmemiş ayar sayısı
-ya da indeks `stale` ise `!`. Altta sistem durumu üç satırdır: sohbet modeli (model adı,
-`Model yanıt vermiyor` ya da `Model bağlı değil`; [llm-connection](../003-llm-connection/PRD.md)),
-sözlük (`N tablo · M kolon` ya da `Sözlük yok`; dictionary-management), indeks (`İndeks güncel`,
-`İndeks kuruluyor`, `İndeks yeniden kurulmalı` ya da `İndeks boş`); sistem durumunun altında oturum
-alanı (görünen ad, `Parolamı değiştir` ve `Çıkış`; davranışı user-accounts Requirement 16'dadır); en
-altta `← Uygulamaya dön` (ana ekran `/`). Durumlar kabuk açılınca, sayfa değişince ve her işlemden
-sonra okunur; indeks `building` iken 2 saniyede bir yeniden okunur.
+sayfası user-accounts Requirement 16'dadır; fabrikanın zorunlu kıldığı bu öğe öteki menü öğeleriyle
+aynı görünümdedir); açıklamalar ipucudur, geçerli sayfa işaretlidir. Menü rozetleri: Yapay zekâ'da
+model durumu noktası (llm-connection durumu), Sözlük'te sözlük içe aktarılmamışsa `!`, Arama ve
+cevap'ta kaydedilmemiş ayar sayısı, Bakım'da kaydedilmemiş ayar sayısı ya da indeks `stale` ise `!`.
+Altta sistem durumu üç satırdır: sohbet modeli (model adı, `Model yanıt vermiyor` ya da
+`Model bağlı değil`; [llm-connection](../003-llm-connection/PRD.md)), sözlük (`N tablo · M kolon` ya
+da `Sözlük yok`; dictionary-management), indeks (`İndeks güncel`, `İndeks kuruluyor`,
+`İndeks yeniden kurulmalı` ya da `İndeks boş`); sistem durumunun altında oturum alanı (görünen ad,
+`Parolamı değiştir` ve `Çıkış`; davranışı user-accounts Requirement 16'dadır; fabrikanın zorunlu
+kıldığı bu alan kaynağın kenar çubuğu biçimine en az müdahaleyle, sistem durumu satırlarıyla aynı
+görünüm ve belirteçlerle yerleşir); en altta `← Uygulamaya dön` (ana ekran `/`). Durumlar kabuk
+açılınca, sayfa değişince ve her işlemden sonra okunur; indeks `building` iken 2 saniyede bir
+yeniden okunur.
 
 Requirement 22: Komut paleti `Ctrl K` (macOS'ta `Cmd K`) ya da `Ara veya git…` düğmesiyle açılır ve
 kapanır; arama kutusu `Sayfa, ayar, işlem, tablo ya da soru ara…`. Boş aramada `Sayfalar` ve `İşlemler`
@@ -484,10 +494,10 @@ Requirement 24: Çekmece sağdan açılan, odağı içinde tutan bir pencere pan
 alt yazı, gövde, isteğe bağlı alt düğme alanı ve geniş türü vardır; açılınca ilk giriş alanına odaklanır;
 Esc, `Kapat (Esc)` düğmesi, dışına tıklama ya da sayfa değişimiyle kapanır. Klavye: Esc önce paleti,
 sonra çekmeceyi kapatır; yazı alanında değilken ve palet ya da çekmece açık değilken `/` sayfanın arama
-kutusuna odaklanır. Bildirimler iskeletin bildirim kalıbıyla gösterilir (başarı yaklaşık 6,5, hata 11
+kutusuna odaklanır. Bildirimler kaynaktaki bildirim görünümüyle gösterilir (başarı yaklaşık 6,5, hata 11
 saniye görünür). Sunucuya ulaşılamazsa en çok 15 saniyede bir `Sunucuya ulaşılamadı` /
 `Bağlantıyı denetleyip sayfayı yenileyin.` bildirimi çıkar; ağ hatası oturumu kapatmaz (rules/31).
-Onaylar tarayıcının `confirm()` penceresiyle değil iskeletin onay penceresiyle alınır.
+Onaylar kaynaktaki gibi tarayıcının `confirm()` penceresiyle alınır; metinleri `tr.json`'dadır.
 
 Requirement 25: Masaüstünde (en az 921 piksel genişlik ve 600 piksel yükseklik) her sayfa tek ekrandır:
 sayfa pencere yüksekliğini doldurur; başlık ve özetler yerinde durur; uzun listeler (analizler,
@@ -626,6 +636,9 @@ Değişiklik sırasını kullanan öteki uçlar (sözlük içe aktarma, liste ka
   yüzde okuması), taslağın sayfalar arasında korunması, `Geri al`, `Kaydet ve uygula`, çıkış onayı,
   Bakım durum etiketleri ve silme onayı; tek ekran düzeni ve dar ekran için ekran görüntüsü
   karşılaştırması; yerelleştirme anahtar eşliği.
+- **Görsel eşdeğerlik:** kaynak `76e21a3` ve hedef aynı sözlük ve ayarlarla yan yana çalıştırılır;
+  kabuk, komut paleti, çekmece, kaydedilmemiş değişiklik çubuğu, Arama ve cevap ve Bakım
+  sayfalarının ekran görüntüleri aynı ekran boyutlarında karşılaştırılır (Acceptance 6).
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
 
@@ -663,12 +676,22 @@ Değişiklik sırasını kullanan öteki uçlar (sözlük içe aktarma, liste ka
   etkili ayar değişikliği (en çok 15 saniye) süreleri ölçülür; yeniden kurma sırasında kap bellek
   sınırını aşmaz ve süren bir analiz kesintisiz biter (Requirement 12–13). Küme dağıtımı ayrı kullanıcı
   talimatıyla yapılır.
+- [ ] Acceptance 6: L2 — Gerçek istemci/ortamda doğrulandı: görsel eşdeğerlik. Yerel Compose'da
+  hedef ile kaynak `76e21a3` aynı sözlük ve ayarlarla çalıştırılır; kenar çubuğu ve rozetler, komut
+  paleti (Ctrl K), bir çekmece, kaydedilmemiş değişiklik çubuğu, Arama ve cevap ve Bakım
+  sayfalarının ekran görüntüleri masaüstü (1440×900) ve telefon genişliğinde (390×844 piksel; kenar
+  çubuğunun üst çubuğa dönüştüğü düzen) yan yana karşılaştırılır. Fark yalnız fabrikanın zorunlu
+  kıldığı öğelerde (kenar çubuğundaki oturum alanı, süper yöneticinin Kullanıcılar menü öğesi) ve
+  dosya ayarlarının kalkmasından doğan metinlerde (¹ işaretliler, "Klasörler" kartı) kabul edilir
+  (Requirement 17–25, Decision 11).
 
 ## Kararlar
 
-Decision 5: Ekranda olmayan 10 ayar kodda sabittir (Requirement 8; Açık soru 1). Hedefte ayar dosyası
-yoktur; bu değerler yalnız geliştiricinin altın setle ölçerek değiştirdiği değerlerdir ve ölçülmüş
-davranışın korunması değişmezi kod incelemesinden geçmeyen bir değişiklik yolu bırakmamayı ister.
+Decision 5: Ekranda olmayan 10 ayar kodda sabittir (Requirement 8). Hedefte ayar dosyası yoktur; bu
+değerler yalnız geliştiricinin altın setle ölçerek değiştirdiği değerlerdir ve ölçülmüş davranışın
+korunması değişmezi kod incelemesinden geçmeyen bir değişiklik yolu bırakmamayı ister. Değişiklik
+kod incelemesi ve altın set ölçümüyle yapılır; ölçüm betiğinin farklı değerleri deneme yolu
+[quality-evaluation](../010-quality-evaluation/PRD.md) PRD'sindedir.
 
 Decision 6: İndeks diske ya da veritabanına yazılmaz; her açılışta ve her değişiklikte PostgreSQL'den
 kurulur. Kök dosya sistemi salt okunurdur, kurulum kaynakta yaklaşık 10 saniyedir ve saklanan indeksin
@@ -691,14 +714,21 @@ ile kurulum (en çok 30 saniye, Requirement 13) birlikte 60 saniye kuralının a
 Decision 10: Yönetim ekranı adresleri iskeletin istemci yönlendiricisiyle yol tabanlıdır (`/admin/...`);
 kaynaktaki `#/` adresleri kalkar (rules/30). Sayfa adları kaynaktakiyle aynıdır.
 
-Decision 11: Görünüm iskeletin temel bileşenleri ve anlamsal tasarım belirteçleriyle kurulur (rules/32):
-kaynaktaki sabit renkler ve degradeler bileşenlere kopyalanmaz; renkler ana ekranla ortak belirteçlerden
-(“Evren” paleti, [dictionary-explorer](../007-dictionary-explorer/PRD.md) Requirement 17 ve Decision 5)
-gelir; sayfa yapısı, düzen, metinler ve etkileşimler korunur. Kabuk, komut paleti (Ctrl K) ve
-çekmeceler çalışırken `<style>` öğesi ekleyen bileşen kullanmaz; dinamik görsel değerler tarayıcının
-stil nesnesi (CSSOM) ya da SVG öznitelikleriyle verilir (katı içerik güvenlik politikası,
-user-accounts Requirement 14). Tıklanabilir tablo satırları Enter ve Space ile de açılır; onaylar
-iskeletin onay penceresiyle alınır.
+Decision 11: Yönetim ekranı kaynaktaki `admin.html` ile görsel olarak birebir aynı kurulur: yedi
+sayfa, kenar çubuğu, Ctrl K komut paleti, çekmeceler ve alt çubuk aynı CSS değerleri (renkler,
+degradeler, yazı tipleri, aralıklar, gölgeler, canlandırmalar, kırılma noktaları), mümkün olduğunca
+aynı DOM düzeni ve sınıf adları, aynı Türkçe metinler ve aynı etkileşimlerle. Kaynak CSS'in
+değerleri `globals.css`'e ana ekranla ortak merkezi belirteçler (CSS değişkenleri; “Evren” paleti,
+[dictionary-explorer](../007-dictionary-explorer/PRD.md) Requirement 17 ve Decision 5) olarak
+taşınır; rules/32'nin anlamsal belirteç isteği böyle karşılanır ve görünüm değişmez. İskeletin kendi
+varsayılan görünümü kullanılmaz. Görünür yeni öğe eklenmez; yalnız fabrikanın zorunlu kıldığı oturum
+alanı ve süper yöneticinin Kullanıcılar sayfası eklenir ve kaynağın aynı belirteçleri ve bileşen
+görünümüyle yapılır. Kabuk, komut paleti ve çekmeceler çalışırken `<style>` öğesi ekleyen bileşen
+kullanmaz; dinamik görsel değerler tarayıcının stil nesnesi (CSSOM) ya da SVG öznitelikleriyle
+verilir (katı içerik güvenlik politikası, user-accounts Requirement 14). Tıklanabilir tablo
+satırları Enter ve Space ile de açılır ve klavye odağı yalnız klavyeyle gezinirken görünen odak
+halkasıyla gösterilir (kaynaktaki `:focus-visible` kuralı); onaylar kaynaktaki gibi tarayıcının
+`confirm()` penceresiyle alınır.
 
 Decision 12: Ayarların etiket, yardım ve bölüm metinleri arka uçtaki şemadadır ve API ile gelir, çünkü
 doğrulama iletileri aynı etiketi kullanır; ekranın kendi metinleri `app/frontend/src/locales/tr.json`
@@ -721,15 +751,6 @@ varsayımında görülmemesi gerekir, görülürse olay yazılır ve yönetici e
 Decision 16: `PATCH` türleri katıdır (Requirement 3); kaynaktaki `"5"` metnini ve `true` değerini sayı
 sayma davranışı API'nin tipli sözleşmesine (rules/21) uymadığı için kalkar. Ekran her zaman doğru türü
 gönderdiğinden kullanıcıya görünür fark yoktur.
-
-## Açık sorular
-
-1. Ekranda olmayan 10 ayar (`analyst.confusables`, `family_tables`, `family_extra`, `search_tables`,
-   `evidence_columns`, `description_chars`, `full_table_columns`, `scoring.min_answer_score`,
-   `min_answer_coverage`, `rule_only_factor`) kodda sabit kalsın mı? Kaynakta `data/settings.yaml`
-   elle düzenlenerek değiştirilebiliyorlardı; hedefte ayar dosyası yoktur. Öneri: kodda sabit kalsın;
-   değişiklik kod incelemesi ve altın set ölçümüyle yapılır, ölçüm betiğinin farklı değerleri deneme
-   yolu [quality-evaluation](../010-quality-evaluation/PRD.md) PRD'sinde tanımlanır.
 
 ## Teslim akışı
 

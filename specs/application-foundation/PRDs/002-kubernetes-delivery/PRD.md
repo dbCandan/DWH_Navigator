@@ -1,10 +1,15 @@
 # PRD — kubernetes-delivery
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [application-foundation](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -28,8 +33,9 @@ runtime Secret'ta (`dwhnavigator-runtime`; kümedeki sır deposu); veritabanı s
 - **Proje sahibi:** Nonprod `admin` süper yöneticisinin ilk parolasını seçer ve Azure gizli değişkeni
   `DWHNAVIGATOR_ADMIN_PASSWORD` olarak verir ([user-accounts](../001-user-accounts/PRD.md)
   Requirement 17).
-- **Kullanıcı:** Uygulamaya HTTPS adresinden ulaşır (Açık soru 1); dakikalar süren bir analizin canlı
-  ilerlemesi yolda kesilmez; Excel dosyalarını 20 MB'a kadar yükler (Requirement 11).
+- **Kullanıcı:** Uygulamaya `https://dwhnavigator.ailab-test.kuveytturk.com.tr` adresinden ulaşır
+  (Decision 20); dakikalar süren bir analizin canlı ilerlemesi yolda kesilmez; Excel dosyalarını 20
+  MB'a kadar yükler (Requirement 11).
 - **Geliştirici:** Aynı yapıyı Windows ya da macOS'ta Docker Compose ile PostgreSQL 17 üzerinde
   çalıştırır; yığını ajan komutlarıyla başlatır, durdurur ve durumunu görür.
 
@@ -62,11 +68,12 @@ Windows ve macOS'ta aynı komutlarla açılır.
   [search-settings](../../../data-dictionary/PRDs/009-search-settings/PRD.md) ve
   [question-analysis](../../../data-dictionary/PRDs/004-question-analysis/PRD.md) PRD'leri).
   `backend.replicaCount` 1'den büyük yapılmaz. Güncellemede eski ve yeni backend süreci birlikte
-  çalışmaz: backend Deployment'ı `Recreate` stratejisiyle (önce eski pod durur, sonra yeni pod başlar)
-  güncellenir. question-analysis ve
+  çalışmaz: backend Deployment'ı `Recreate` stratejisiyle (önce eski pod durur, sonra yeni pod
+  başlar) güncellenir. question-analysis ve
   [list-search](../../../data-dictionary/PRDs/005-list-search/PRD.md) PRD'lerindeki "yarıda kesildi"
-  tespiti bu kurala dayanır; iki sürecin çakışmasına karşı ek kilit gerekmez. Fabrika chart'ında bugün
-  strateji seçeneği yoktur; seçenek fabrika bağımlılığıdır (Dağıtım etkisi).
+  tespiti bu kurala dayanır; iki sürecin çakışmasına karşı ek kilit gerekmez. Fabrika chart'ında
+  bugün strateji seçeneği yoktur; seçenek fabrika bağımlılığıdır (Dağıtım etkisi) ve gelmeden
+  nonprod'a dağıtım yapılmaz (Decision 22).
 - Decision 6: Her iş yükü rules/45 sıkılaştırmasına uyar; kaynağın konteyner ölçüleriyle eşlemesi
   Requirement 2'dedir.
 - Decision 7: Çalışma zamanı veritabanı rolü yalnız veri okuma ve yazma (DML) yetkilidir; tablo
@@ -101,7 +108,8 @@ Kaynak `~/codes/kt-dwhnavigator` (`76e21a3`) ve hedef iskelet `~/codes/dwhnaviga
 - **Veri** (`docs/KURULUM.md` §2, ADR-052): sözlük, kelime listeleri, indeks, ayarlar, API anahtarı
   içeren `llm_integrations.yaml`, kayıtlı cevaplar, analiz kayıtları, oylar ve raporlar `data/`
   klasöründedir; "Yedeklenecek tek klasör `data/`'dır". **Hedefte:** her şey PostgreSQL'de;
-  konteynerde dosya deposu yok; tek kalıcı disk PostgreSQL'indir (Requirement 3); yedek Açık soru 4.
+  konteynerde dosya deposu yok; tek kalıcı disk PostgreSQL'indir (Requirement 3); yedek işi yoktur
+  (Decision 21).
 - **Kurulum ve güncelleme** (`docs/KURULUM.md` §1, §9): imaj internete çıkabilen bir makinede
   derlenip `docker save`/`docker load` ile taşınır ya da kurum kayıt defterine konur; güncelleme imaj
   etiketini değiştirip `docker compose up -d`; geri dönüş eski etiket. **Hedefte:** GitHub `main` →
@@ -121,8 +129,9 @@ Kaynak `~/codes/kt-dwhnavigator` (`76e21a3`) ve hedef iskelet `~/codes/dwhnaviga
   veritabanına ve model sunucusuna çıkar (Requirement 10).
 - **Model sunucusu** (`docs/KURULUM.md` §5): ölçümler ekibin DGX Spark sunucusundaki LM Studio
   üzerinde yapıldı (`gemma-4-31b`, sırayla çalışma, soru başına yaklaşık 45 saniye); kurulum belgesi
-  örnek adres olarak `http://dgx-spark:8000/v1` verir. **Hedefte:** hangi sunucunun kullanılacağı
-  llm-connection PRD'sindeki sahip kararıdır; adresi ve çıkış kuralı Açık soru 3.
+  örnek adres olarak `http://dgx-spark:8000/v1` verir. **Hedefte:** nonprod kurum içi RunAI ucunu
+  kullanır ([llm-connection](../../../data-dictionary/PRDs/003-llm-connection/PRD.md) Decision 18);
+  çıkış kuralı Requirement 10'dadır.
 - **Windows geliştirme** (`baslat.bat`, `scripts/stop_servers.ps1`, `.claude/launch.json`; README
   "Geliştirme (Windows, yerel)"): `baslat.bat` bu klasörde çalışan bütün `vsa serve` süreçlerini
   PowerShell betiğiyle durdurur, sonra `.venv\Scripts\vsa.exe serve --open` ile arayüzü 8765'te açar;
@@ -149,13 +158,14 @@ Kaynak `~/codes/kt-dwhnavigator` (`76e21a3`) ve hedef iskelet `~/codes/dwhnaviga
 
 ## İşlevsel gereksinimler
 
-Requirement 1: Proje katmanıyla `helm template` çıktısı tam olarak backend ve frontend Deployment'ını,
-PostgreSQL StatefulSet'ini, göç Job'unu, bunların Service'lerini (hepsi `ClusterIP`), tek Ingress'i ve
-her iş yükü için bir ağ izin kuralını üretir; Secret, düğüm kapısı, yük dengeleyici veya küme kapsamlı
-nesne üretmez. Backend Deployment'ı `replicas: 1` ve `strategy.type: Recreate` taşır; bu, proje
-katmanıyla render edilen çıktıda proje testiyle doğrulanır (Decision 5; strateji, fabrika chart'ına
-seçenek gelince yazılır). Chart sürümü fabrikanın yönettiği `Chart.yaml`'dan gelir
-(Decision 18).
+Requirement 1: Proje katmanıyla `helm template` çıktısı tam olarak backend ve frontend
+Deployment'ını, PostgreSQL StatefulSet'ini, göç Job'unu, bunların Service'lerini (hepsi
+`ClusterIP`), tek Ingress'i ve her iş yükü için bir ağ izin kuralını üretir; Secret, düğüm kapısı,
+yük dengeleyici veya küme kapsamlı nesne üretmez. Backend Deployment'ı `replicas: 1` ve
+`strategy.type: Recreate` taşır; bu, proje katmanıyla render edilen çıktıda proje testiyle
+doğrulanır (Decision 5; strateji, fabrika chart'ına seçenek gelince yazılır ve ilk nonprod dağıtımı
+ondan sonradır, Decision 22). Chart sürümü fabrikanın yönettiği `Chart.yaml`'dan gelir (Decision
+18).
 
 Requirement 2: Kaynağın sertleştirme ölçüleri hedefte şöyle karşılanır; her satır render denetimi
 (`scripts/render-charts.sh`) ya da imaj testiyle doğrulanır:
@@ -239,16 +249,18 @@ anlamı ve değişmesinin sonucu llm-connection PRD'sindedir.
 Requirement 8: Sır olmayan ortam ayarları `values-project.yaml`'dadır:
 
 - `backend.existingSecret: dwhnavigator-runtime`.
-- `backend.config`: `DWHNAVIGATOR_ENVIRONMENT=staging` ([alan belgesindeki](../../DOMAIN.md) `nonprod`
-  ortamı); `DWHNAVIGATOR_PUBLIC_ORIGIN` ve `DWHNAVIGATOR_CORS_ALLOW_ORIGINS` için uygulamanın HTTPS
-  adresi (Açık soru 1); güvenilen ingress pod ağı `DWHNAVIGATOR_TRUSTED_PROXY_CIDRS=10.42.0.0/16`
-  (DWH Code Review'da çalışan değer); `DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_USERNAME=admin`; boş
-  `DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT` (kümede toplayıcı yoktur; user-accounts Requirement 19);
-  data-dictionary PRD'lerinin dağıtım girdisi olarak tanımladığı sır olmayan ayarlar (llm-connection,
-  question-analysis, answer-feedback ve analysis-records). Model sunucusunun
-  adresi burada yoktur; model bağlantısı yönetim ekranından girilir ve PostgreSQL'de durur.
+- `backend.config`: `DWHNAVIGATOR_ENVIRONMENT=staging` ([alan belgesindeki](../../DOMAIN.md)
+  `nonprod` ortamı); `DWHNAVIGATOR_PUBLIC_ORIGIN` ve `DWHNAVIGATOR_CORS_ALLOW_ORIGINS` için
+  uygulamanın HTTPS adresi `https://dwhnavigator.ailab-test.kuveytturk.com.tr` (Decision 20);
+  güvenilen ingress pod ağı `DWHNAVIGATOR_TRUSTED_PROXY_CIDRS=10.42.0.0/16` (DWH Code Review'da
+  çalışan değer); `DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_USERNAME=admin`; boş
+  `DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT` (kümede toplayıcı yoktur; user-accounts Requirement
+  19); data-dictionary PRD'lerinin dağıtım girdisi olarak tanımladığı sır olmayan ayarlar
+  (llm-connection ve question-analysis). Model sunucusunun adresi burada yoktur; model bağlantısı
+  yönetim ekranından girilir ve PostgreSQL'de durur.
 - `backend.resources` (Requirement 2) ve `backend.networkPolicy.egress` (Requirement 10).
-- `frontend.ingress`: sınıf `nginx`, adres (Açık soru 1), TLS Secret'ı `ailab-tls`.
+- `frontend.ingress`: sınıf `nginx`, adres `dwhnavigator.ailab-test.kuveytturk.com.tr` (Decision
+  20), TLS Secret'ı `ailab-tls`.
 - `postgres.enabled: true` (10Gi, `nfs-sc`) ve `migration.enabled: true`.
 
 Render denetimi bu dosyada sır görünümlü anahtarı, PEM özel anahtarını, boş eşi ve `/8`'den geniş
@@ -265,27 +277,29 @@ Requirement 10: Ağ izin kuralları (varsayılan: her şey kapalı):
 
 | İş yükü | Giriş | Çıkış |
 |---|---|---|
-| backend | `kube-system` ingress denetleyicisi, TCP 8000 | DNS (`kube-system` `kube-dns`, UDP ve TCP 53); aynı release'in PostgreSQL podu, TCP 5432; model sunucusu: tek adres (`/32`) ve tek port (Açık soru 3) |
+| backend | `kube-system` ingress denetleyicisi, TCP 8000 | DNS (`kube-system` `kube-dns`, UDP ve TCP 53); aynı release'in PostgreSQL podu, TCP 5432; model sunucusu (RunAI ucu): tek adres ve tek port, DWH Code Review'da çalışan `10.14.3.99/32` TCP 443 (dağıtımdan önce yeniden doğrulanır; Riskler'deki bekleyen bilgi) |
 | frontend | `kube-system` ingress denetleyicisi, TCP 8080 | Yok |
 | PostgreSQL | Yalnız aynı release'in backend ve göç podları, TCP 5432 | Yok |
 | göç Job'u | Yok | DNS; PostgreSQL 5432 |
 
 Dış adresler yalnız `values-project.yaml`'dadır. Listede olmayan hedefe backend'den bağlantı
 kurulamaz; internete ve listede olmayan başka bir kurum adresine çıkış yoktur. Model sunucusunun
-kuralı adresi kesinleşene kadar yazılmaz; o sürede model çağrıları bağlantı hatasıyla biter ve analiz
+kuralı adres yeniden doğrulanmadan yazılmaz; o sürede model çağrıları bağlantı hatasıyla biter ve analiz
 "Analiz yapılamadı" olur (question-analysis). Uygulamanın özel ağ adresi denetimi llm-connection
 PRD'sindeki ek savunmadır; asıl sınır bu kuraldır.
 
 Requirement 11: Giriş denetleyicisi ve kenar:
 
-- Ingress `nginx` sınıfıyla uygulamanın adresini (Açık soru 1) `ailab-tls` sertifikasıyla sunar;
-  `deploy.sh` eksikse `ailab-tls`'i `kt-verim` namespace'inden kopyalar (rules/45).
+- Ingress `nginx` sınıfıyla uygulamanın adresini (`dwhnavigator.ailab-test.kuveytturk.com.tr`,
+  Decision 20) `ailab-tls` sertifikasıyla sunar; `deploy.sh` eksikse `ailab-tls`'i `kt-verim`
+  namespace'inden kopyalar (rules/45).
 - Yalnız `/api/dwhnavigator/v1` öneki backend'e, `/` frontend'e gider; backend'in `/docs` ve
   `/openapi.json` uçları dışarıdan erişilemez.
-- API yolunda 20 MB'a kadar istek gövdesi kabul edilir; büyüğü uygulamaya ulaşmadan 413 alır. Uçların
-  daha küçük sınırları kendi PRD'lerindedir. Nonprod'da bu sınır giriş denetleyicisine ingress
-  açıklamasıyla (annotation) verilir; fabrika chart'ına ingress açıklamaları seçeneği gelene kadar
-  (fabrika bağımlılığı, Dağıtım etkisi) denetleyicinin varsayılanı (ingress-nginx'te 1 MB) geçerlidir.
+- API yolunda 20 MB'a kadar istek gövdesi kabul edilir; büyüğü uygulamaya ulaşmadan 413 alır.
+  Uçların daha küçük sınırları kendi PRD'lerindedir. Nonprod'da bu sınır giriş denetleyicisine
+  ingress açıklamasıyla (annotation) verilir. Bu, fabrika chart'ına gelecek ingress açıklamaları
+  seçeneğine bağlıdır (fabrika bağımlılığı, Dağıtım etkisi); seçenek gelmeden denetleyicinin
+  varsayılanı (ingress-nginx'te 1 MB) geçerli olacağı için nonprod'a dağıtım yapılmaz (Decision 22).
 - Yavaş istemci koruması kenardadır: istek başlığını ve gövdesini okuma süreleri en çok 60 saniyedir
   (ingress-nginx ve nginx varsayılanı); kaynağın 120 saniyelik okuma sınırının karşılığı budur. Backend
   Service'ine yalnız giriş denetleyicisi ulaşabildiği için istemci backend'e doğrudan bağlanamaz.
@@ -335,7 +349,7 @@ bekler, yoksa kümeye dokunmadan durur (düğüm aynasından çekilen PostgreSQL
 yanıt vermez; bu `[IMAGE] UNKNOWN` olarak yazılır ve dağıtım sürer); namespace'i ve eksikse
 `ailab-tls`'i hazırlar; `deploy-hooks.sh` ile runtime Secret'ı, ardından veritabanı Secret'larını
 hazırlar; süren release'i çözer; `helm upgrade --install --atomic --wait --wait-for-jobs --timeout 30m`
-çalıştırır. Release ve namespace adı argümansız çağrıda `dwhnavigator`'dır (Açık soru 1). `--render`
+çalıştırır. Release ve namespace adı argümansız çağrıda `dwhnavigator`'dır (Decision 20). `--render`
 kümeye erişmeden ve kancayı çalıştırmadan aynı değerlerle çıktı üretir.
 
 Requirement 16: Başarısız güncelleme `--atomic` ile kendiliğinden önceki sürüme döner ve şemayı geri
@@ -413,7 +427,8 @@ isteğe bağlı gizli değişkenler, `IMAGE_WAIT_SECONDS`, `PENDING_WAIT_SECONDS
   kiracıyı ve başlangıç listelerini hazırlar; (3) backend açılır, başlangıç parolası verilmişse `admin`'i
   açar ve boş indeksle hazır olur; (4) süper yönetici girer, sözlüğü içe aktarır, model bağlantısını
   ekler ve hesapları açar; (5) kullanıcılar girer.
-- Veritabanı yedeği ve yedekten geri dönüş Açık soru 4'e bağlıdır.
+- Veritabanı yedeği ve yedekten geri dönüş yoktur (Decision 21); yönetici önemli değişikliklerden
+  sonra sözlüğü ve terim listelerini yönetim ekranından Excel olarak dışa aktarır.
 
 ## Gözlemlenebilirlik
 
@@ -424,10 +439,10 @@ nonprod'da telemetri adresi boştur (user-accounts Requirement 19). Bu PRD yeni 
 
 ## Dağıtım etkisi
 
-- Azure işi (Açık soru 2) aynı komutla çalışır ve yeni ayar veya gizli değişken istemez.
-  `JWT_PRIVATE_KEY`, `SETTINGS_ENCRYPTION_KEY` ve `DWHNAVIGATOR_ADMIN_PASSWORD` isteğe bağlıdır; Azure
-  gizli değişkenleri betiğe kendiliğinden geçmediği için verilen her biri dağıtım adımının ortamına
-  (`env:`) aynı adla açıkça eşlenir.
+- Azure işi (açılıp açılmadığı Riskler'deki bekleyen bilgidir) aynı komutla çalışır ve yeni ayar
+  veya gizli değişken istemez. `JWT_PRIVATE_KEY`, `SETTINGS_ENCRYPTION_KEY` ve
+  `DWHNAVIGATOR_ADMIN_PASSWORD` isteğe bağlıdır; Azure gizli değişkenleri betiğe kendiliğinden
+  geçmediği için verilen her biri dağıtım adımının ortamına (`env:`) aynı adla açıkça eşlenir.
 - Namespace'te 10Gi `nfs-sc` PostgreSQL diski, üç veritabanı Secret'ı, runtime Secret'ı ve `ailab-tls`
   kopyası oluşur. Azure işinin kimliği namespace'te Secret okuyup yazabilmeli ve Deployment'ı yeniden
   başlatabilmelidir.
@@ -492,14 +507,14 @@ nonprod'da telemetri adresi boştur (user-accounts Requirement 19). Bu PRD yeni 
   canlı akışı kesilmez ve en geç 15 saniyede bir canlı tutma satırı görülür; durdurma komutu yığını
   kapatır ve veritabanı birimi korunur. Kanıt iki işletim sistemi için ayrı raporlanır
   (Requirement 6, 11, 12, 17).
-- [ ] Acceptance 4: L2 — Canlı nonprod küme koşumu (yerel kanıttan ayrı): argümansız Azure işi ek ayar
-  veya gizli değişken olmadan kurar; podlar hazır, PostgreSQL diski 10Gi `nfs-sc` bağlı, göç Job'u
-  başarılı; HTTPS adresi `ailab-tls` ile açılır, yanıtlarda HSTS ve sürümsüz `Server` başlığı vardır;
-  `/docs` ve `/openapi.json` dışarıdan açılmaz; backend model sunucusuna ulaşır (Requirement 10'daki
-  kural yazıldıktan sonra) ve listede olmayan bir adrese ulaşamaz; 60 saniyeden uzun süren bir
-  analizin canlı akışı giriş denetleyicisinde kesilmez; 1 MB'tan büyük bir Excel yüklemesinin sonucu
-  fabrikanın ingress açıklamaları seçeneğinin durumuna göre gözlenir ve raporlanır (Requirement 1–13,
-  15).
+- [ ] Acceptance 4: L2 — Canlı nonprod küme koşumu (yerel kanıttan ayrı): argümansız Azure işi ek
+  ayar veya gizli değişken olmadan kurar; podlar hazır, PostgreSQL diski 10Gi `nfs-sc` bağlı, göç
+  Job'u başarılı; HTTPS adresi `ailab-tls` ile açılır, yanıtlarda HSTS ve sürümsüz `Server` başlığı
+  vardır; `/docs` ve `/openapi.json` dışarıdan açılmaz; backend model sunucusuna ulaşır (Requirement
+  10'daki kural yazıldıktan sonra) ve listede olmayan bir adrese ulaşamaz; 60 saniyeden uzun süren
+  bir analizin canlı akışı giriş denetleyicisinde kesilmez; 19 MB'lık bir Excel yüklemesi uygulamaya
+  ulaşır, 21 MB'lık yükleme 413 alır; backend Deployment'ı `Recreate` stratejisiyle güncellenir
+  (Requirement 1–13, 15; Decision 22).
 
 ## Kararlar
 
@@ -542,34 +557,20 @@ nonprod'da telemetri adresi boştur (user-accounts Requirement 19). Bu PRD yeni 
   sertifika dosyası ve dizin ayarları yoktur (proje sahibinin 2026-10-08 kararı); backend'in kümenin
   dışındaki tek hedefi model sunucusudur.
 
-## Açık sorular
-
-1. Nonprod adları ne olsun? Ingress adresi, namespace ve release adı bilinmiyor; `deploy.sh`
-   argümansız çağrıda release ve namespace olarak `dwhnavigator` kullanır ve DWH Code Review aynı
-   `ailab-tls` sertifikasıyla `dwhcodereview.ailab-test.kuveytturk.com.tr` adresini sunuyor. Öneri:
-   adres `https://dwhnavigator.ailab-test.kuveytturk.com.tr`, namespace ve release `dwhnavigator`.
-2. Bu depo için Azure dağıtım işi açık mı? Nonprod dağıtımı, bir Azure işinin
-   `helm/dwhnavigator/deploy.sh`'ı argümansız çağırmasına dayanır ve DWH Navigator için böyle bir işin
-   varlığı bilinmiyor. Öneri: işletim ekibinden, DWH Code Review'daki gibi `kt-vibecoding/kt-dwhnavigator`
-   deposunun `main` dalına her birleşmede çalışan, `KUBECONFIG`'i sağlayan, namespace'te Secret okuyup
-   yazabilen ve Deployment'ı yeniden başlatabilen bir iş istenir; `DWHNAVIGATOR_ADMIN_PASSWORD` gizli
-   değişkeni bu işin dağıtım adımının ortamına aynı adla eşlenir.
-3. Model sunucusu için hangi çıkış kuralı yazılsın? Hangi sunucunun (ekibin DGX Spark'ı mı, kurumun
-   RunAI ucu mu) kullanılacağı llm-connection PRD'sindeki sahip kararıdır; adresi, portu ve kümeden
-   erişim izni bilinmiyor. Öneri: o karardan sonra tek adres (`/32`) ve tek port yazılır; RunAI
-   seçilirse DWH Code Review'da nonprod'da çalışan kural (`10.14.3.99/32`, TCP 443) dağıtımdan önce
-   yeniden doğrulanarak kullanılır; DGX Spark seçilirse adres, port ve kümeden erişim izni işletim
-   ekibinden alınır; karar gelene kadar kural yazılmaz ve analizler "Analiz yapılamadı" döner.
-4. Veritabanı yedeği alınsın mı? Kaynak "yedeklenecek tek klasör `data/`" diyordu; hedefte sözlük,
-   terim listeleri, ayarlar, model bağlantıları, analiz kayıtları, kayıtlı cevaplar ve oylar tek
-   kopya PostgreSQL diskinde durur ve DWH Code Review'da sahip yedek istemedi. Öneri: DWH ile aynı:
-   chart'ta yedek işi yoktur ve disk kaybı riski kabul edilir; sözlük ve terim listeleri yönetim
-   ekranından Excel olarak dışa aktarılabildiği için yönetici önemli değişikliklerden sonra dışa aktarım
-   alabilir.
-5. Fabrika bağımlılıkları gelmeden nonprod'a ilk dağıtım yapılsın mı? Fabrika chart'ına backend
-   güncelleme stratejisi ve ingress açıklamaları seçenekleri gelene kadar kümede gövde sınırı 1 MB'tır
-   ve güncellemede eski ve yeni pod kısa süre birlikte çalışır (Riskler). Öneri: hayır; ilk nonprod
-   dağıtımı iki seçenek fabrikaya eklenip bu projede kullanıldıktan sonra yapılsın.
+- Decision 20: Nonprod adresi `https://dwhnavigator.ailab-test.kuveytturk.com.tr`, namespace ve
+  release adı `dwhnavigator`'dır. Gerekçe: `deploy.sh` argümansız çağrıda bu adları kullanır; DWH
+  Code Review aynı `ailab-tls` sertifikasıyla `dwhcodereview.ailab-test.kuveytturk.com.tr` adresini
+  sunar.
+- Decision 21: Veritabanı yedeği alınmaz; chart'ta yedek işi yoktur ve disk kaybı riski kabul edilir
+  (DWH Code Review ile aynı; proje sahibinin bu teslim için kararı). Sözlük ve terim listeleri
+  yönetim ekranından Excel olarak dışa aktarılabildiği için yönetici önemli değişikliklerden sonra
+  dışa aktarım alır; analiz kayıtları, kayıtlı cevaplar, oylar, ayarlar ve model bağlantıları için
+  kopya yoktur.
+- Decision 22: Nonprod'a ilk dağıtım, fabrika chart'ına backend güncelleme stratejisi
+  (`backend.strategy`) ve ingress açıklamaları seçenekleri eklenip bu projede kullanıldıktan sonra
+  yapılır. Gerekçe: seçenekler gelmeden kümede gövde sınırı 1 MB'tır (sözlük Excel'i
+  yüklenemeyebilir) ve güncellemede eski ve yeni backend podu kısa süre birlikte çalışır; "yarıda
+  kesildi" tespiti ve tek kopya varsayımı bozulur (Decision 5).
 
 ## Teslim akışı
 
@@ -577,24 +578,23 @@ Belirtim → Plan → Görevler → Uygulama
 
 ## Riskler
 
-- Tek kopya PostgreSQL'de disk arızası sözlüğü, terim düzenlemelerini, ayarları, model bağlantılarını,
-  analiz kayıtlarını ve oyları kaybettirir; yedek yoksa (Açık soru 4) bu risk kabul edilmiş olur.
+- Tek kopya PostgreSQL'de disk arızası sözlüğü, terim düzenlemelerini, ayarları, model
+  bağlantılarını, analiz kayıtlarını ve oyları kaybettirir; yedek olmadığı için (Decision 21) bu
+  risk kabul edilmiştir. Analiz kayıtları ve oylar süresiz saklandığı için kaybın kapsamı zamanla
+  büyür.
 - Runtime Secret silinirse kanca yeni bir ayar şifreleme anahtarı üretir; PostgreSQL'deki model API
   anahtarları eski anahtarla şifreli kaldığı için açılamaz ve yöneticinin onları yeniden girmesi
   gerekir; imza anahtarı da yenilendiği için bütün oturumlar kapanır.
 - `Recreate` güncellemesi kısa bir kesinti demektir: eski pod durduktan sonra yeni pod ilk arama
   indeksini kurup hazır olana kadar uygulama yanıt vermez; süren analiz ve toplu arama işleri "yarıda
-  kesildi" olur (question-analysis, list-search). Fabrika chart'ına strateji seçeneği gelene kadar
-  chart kesintisiz güncelleme kullanır; o sürede eski ve yeni pod kısa süre birlikte çalışabilir,
-  iki süreç model sunucusuna aynı anda istek gönderebilir ve "açılışta yarım kalan işleri kesik say"
-  yaklaşımı eski podda süren işi de kesik sayabilir.
-- Giriş denetleyicisinin gövde sınırı fabrikanın ingress açıklamaları seçeneği gelene kadar 1 MB'tır
-  (Requirement 11); sözlük Excel'i bundan büyükse nonprod'da ilk kurulum yapılamaz, bu yüzden sözlük
-  Excel'inin boyutu ilk kurulumdan önce ölçülür.
+  kesildi" olur (question-analysis, list-search).
+- İlk nonprod dağıtımı fabrika chart'ına gelecek iki seçeneğe (güncelleme stratejisi ve ingress
+  açıklamaları) bağlıdır (Decision 22); seçenekler gecikirse nonprod dağıtımı da gecikir.
 - Giriş denetleyicisinin süre ve tamponlama varsayılanları kümede doğrulanmadı; Acceptance 4 bunları
   gerçek akışla ölçer.
-- Model sunucusunun adresi bilinmediği sürece nonprod'da analiz yapılamaz (Açık soru 3); adres veya
-  IP değişirse çıkış kuralı çağrıları keser ve kural yeniden yazılmalıdır.
+- Model sunucusunun adresi doğrulanmadan çıkış kuralı yazılmaz ve nonprod'da analiz yapılamaz
+  (aşağıdaki bekleyen bilgi); adres veya IP değişirse çıkış kuralı çağrıları keser ve kural yeniden
+  yazılmalıdır.
 - Pod tanımı süreç sayısı sınırı taşımaz; kaynaktaki 256 süreç sınırının karşılığı düğüm ayarına
   bağlıdır.
 - Azure gizli değişkeni dağıtım adımının ortamına eşlenmezse kanca onu görmez ve `admin` açılmaz; kanca
@@ -610,3 +610,16 @@ Belirtim → Plan → Görevler → Uygulama
 - Düzeltmesi yayımlanmamış zafiyetler (ör. Python çalışma ortamında) istisna kaydıyla taşınır; her taban
   imaj güncellemesinde yeniden değerlendirilir.
 - Geri almada şema geri inmez; genişletici olmayan bir göç önceki sürümü bozar.
+- **Bekleyen bilgi:** Bu depo için Azure dağıtım işinin (her birleşmede
+  `helm/dwhnavigator/deploy.sh`'ı argümansız çağıran otomatik adım) açılıp açılmadığı bilinmiyor;
+  bilgi ve gerekirse işin açılması işletim ekibinden beklenir. İş, DWH Code Review'daki gibi
+  `kt-vibecoding/kt-dwhnavigator` deposunun `main` dalına her birleşmede çalışmalı, `KUBECONFIG`'i
+  sağlamalı, namespace'te Secret okuyup yazabilmeli ve Deployment'ı yeniden başlatabilmelidir;
+  `DWHNAVIGATOR_ADMIN_PASSWORD` gizli değişkeni bu işin dağıtım adımının ortamına aynı adla eşlenir.
+  İş açılmadan nonprod dağıtımı ve Acceptance 4 yapılamaz.
+- **Bekleyen bilgi:** Kümeden RunAI model ucuna çıkış kuralının adresi ve portu işletim ve ağ
+  ekibinden doğrulanmayı bekliyor: DWH Code Review'da nonprod'da çalışan kural `10.14.3.99/32`, TCP
+  443'tür ve dağıtımdan önce yeniden doğrulanır. Doğrulanmadan Requirement 10'daki model kuralı
+  yazılmaz; o sürede nonprod'da her analiz "Analiz yapılamadı" ile biter ve Acceptance 4'ün model
+  adımı ile [llm-connection](../../../data-dictionary/PRDs/003-llm-connection/PRD.md) Acceptance 8
+  yapılamaz.

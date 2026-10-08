@@ -4,5 +4,5 @@ Her satır bağımsız teslim edilebilir bir yeteneği kabul edilmiş PRD'sine b
 
 | Sıra | Yetenek | PRD | Durum |
 |---:|---|---|---|
-| 001 | user-accounts | [PRD](PRDs/001-user-accounts/PRD.md) | Draft |
-| 002 | kubernetes-delivery | [PRD](PRDs/002-kubernetes-delivery/PRD.md) | Draft |
+| 001 | user-accounts | [PRD](PRDs/001-user-accounts/PRD.md) | Accepted |
+| 002 | kubernetes-delivery | [PRD](PRDs/002-kubernetes-delivery/PRD.md) | Accepted |

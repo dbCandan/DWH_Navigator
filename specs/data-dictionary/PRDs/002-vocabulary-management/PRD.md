@@ -1,10 +1,15 @@
 # PRD — vocabulary-management
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -94,14 +99,14 @@ maddede yazılıdır.
 - **Yönetim uçları** (`web/server.py`): `GET /api/admin/words` iki listeyi ve dosya yollarını
   döndürür. `POST /api/admin/words/terms` ve `/api/admin/words/stopwords` `{"items": [...]}` ile
   listenin tamamını değiştirir: `check_terms` / `check_stopwords` denetler, `write_jsonl` dosyayı
-  bütün olarak yazar ve öncekini `.bak` olarak saklar, ardından `App.reindex()` indeksi yeniden kurar;
-  yanıt kayıt sayısı, geçen süre ve iki listenin son hâlidir. Hata yanıtı HTTP 400 ve
+  bütün olarak yazar ve öncekini `.bak` olarak saklar, ardından `App.reindex()` indeksi yeniden
+  kurar; yanıt kayıt sayısı, geçen süre ve iki listenin son hâlidir. Hata yanıtı HTTP 400 ve
   `{"error": "<Türkçe ileti>"}`; bilinmeyen liste adı 404 `Kayıt bulunamadı`. Eşzamanlı iki kayıtta
   son yazan kazanır. `reindex()` analiz kilidini beklediği için süren bir analiz (dakikalar) kaydı
   bekletir; kurulum hata verirse dosya yazılmış, motor eski kalır ve ikisi ayrışır. **Hedefte:**
-  `/vocabulary/{list}` uçları (API sözleşmesi), revizyonla çakışma denetimi (Requirement 5), listenin
-  yeni indeksle birlikte ya hep ya hiç yazılması; `.bak` yerine yazılımsal silinmiş eski satırlar
-  (Decision 4).
+  `/vocabulary/{list}` uçları (API sözleşmesi); eşzamanlı iki kayıtta yine son yazan kazanır
+  (Requirement 5, Decision 5); liste yeni indeksle birlikte ya hep ya hiç yazılır; `.bak` yerine
+  yazılımsal silinmiş eski satırlar (Decision 4).
 - **Terim denetimi** (`loader.py` `check_terms`): girdi nesne listesi değilse `Liste bekleniyordu`,
   5.000'den çok kayıtsa `En fazla 5000 kayıt`. Her kayıtta terim, eşdeğerler, alan ve not kırpılır;
   metin olmayan alan boş sayılır; eşdeğerlerden birebir aynı olanlar atılır, sıra korunur (katlama
@@ -111,10 +116,11 @@ maddede yazılıdır.
   **Hedefte:** aynı kurallar ve iletiler; ek uzunluk sınırları ve katı alan türleri (Requirement 3).
 - **Durak kelime denetimi** (`check_stopwords`): boş kelimeli kayıt sessizce atlanır; boşluk içeren
   kelime `“{kelime}”: durak kelime tek kelime olmalı` ile reddedilir; Türkçe katlamada aynı olan
-  kelimelerden ilki (kendi grubuyla) kalır, sonrakiler sessizce atılır. Başlangıç listesinde `mi`/`mı`
-  ve `mu`/`mü` katlamada aynıdır: liste ilk kaydedişte 106 satırdan 104 satıra iner, motorun 124
-  biçimlik kümesi değişmez (kaynak testi `test_lists_go_to_excel_and_come_back` bunu not eder).
-  **Hedefte:** aynı kurallar; başlangıç listesi de bu denetimden geçer (Requirement 9, Açık soru 1).
+  kelimelerden ilki (kendi grubuyla) kalır, sonrakiler sessizce atılır. Başlangıç listesinde
+  `mi`/`mı` ve `mu`/`mü` katlamada aynıdır: liste ilk kaydedişte 106 satırdan 104 satıra iner,
+  motorun 124 biçimlik kümesi değişmez (kaynak testi `test_lists_go_to_excel_and_come_back` bunu not
+  eder). **Hedefte:** aynı kurallar; başlangıç listesi kaynaktaki gibi 106 satırla, denetimden
+  geçmeden yüklenir ve ilk kaydedişte 104 satıra iner (Requirement 9, Decision 10).
 - **Excel** (`WORD_SHEETS`, `words_to_workbook`, `words_from_workbook`): biçim Requirement 6 ve 7'de.
   Dosya ham istek gövdesi ve `X-Filename` başlığıyla gelir; 20 MB sınırı (413
   `Dosya çok büyük (en fazla 20 MB)`); openpyxl salt okunur kipte ve `defusedxml` (XML saldırılarına
@@ -126,7 +132,7 @@ maddede yazılıdır.
   açıklamaları dosya yolunu yazar (`Dosya: data/terms.jsonl`), içe aktarma onayı
   `Önceki liste .bak olarak saklanır` der, sayfanın altında “Dosya ayarları” bölümü vardır. Yönetim
   sayfaları arasında gezinirken düzenlemeler bellekte kalır; sayfa kapanırken tarayıcı onay ister.
-  **Hedefte:** dosyaya değinen metinler ve bölüm kalkar (Requirement 13).
+  **Hedefte:** aynı düzen ve görünüm; dosyaya değinen metinler ve bölüm kalkar (Requirement 13).
 - **Kayıtlı cevaplara etkisi** (ADR-035): her terim listesi değişikliği parmak izini değiştirir;
   yalnız `domain` veya `note` değişse de değiştirir (bu alanlar cevabı etkilemez). Durak kelimede
   parmak izine kelime kümesi girer: kümeyi değiştirmeyen grup değişikliği parmak izini değiştirmez.
@@ -163,20 +169,20 @@ boşluk içeren kelime reddedilir, Türkçe katlamada aynı olanlardan ilki grub
 `“{kelime}”: grup adı en fazla 200 karakter olabilir`. Liste en çok 5.000 kayıttır. Grup aramayı
 etkilemez; yalnız listeyi düzenler ve kelimenin neden listede olduğunu gösterir.
 
-Requirement 5: Kaydetme (`PUT /vocabulary/{list}`) istemcinin gördüğü revizyonu (`base_revision`) ve
-listenin tamamını taşır. Önce liste denetlenir (Requirement 3–4); sonra istek
-[search-settings](../009-search-settings/PRD.md) değişiklik sırasına girer ve sırası gelince güncel
-kayda karşı şu adımlarla işlenir: (1) denetlenmiş içerik saklanan içerikle aynıysa hiçbir şey yazılmaz,
-revizyon değişmez, indeks yeniden kurulmaz ve yanıt `changed: false` ile 200 döner (aynı isteğin
-tekrarı, `base_revision` eskimiş olsa da, aynı sonucu verir); (2) `base_revision` güncel değilse 409
-`vocabulary_revision_conflict` ve `Liste başka biri tarafından değiştirildi; sayfayı yenileyin.`;
-(3) yeni listeyle motor kurulur; kurulum başarılıysa tek veritabanı işleminde (hep ya da hiç yazılan
-işlem) eski öğe satırları yazılımsal silinir, yeni satırlar eklenir, başlık kaydının revizyonu bir
-artar, özet, kaynak `ekran`, yapan ve zaman yazılır ve yeni motor hizmete alınır. Kurulum ya da yazma
-hata verirse hiçbir satır değişmez, eski motor hizmette kalır ve yanıt 500 `search_index_build_failed`
+Requirement 5: Kaydetme (`PUT /vocabulary/{list}`) listenin tamamını taşır. Önce liste denetlenir
+(Requirement 3–4); sonra istek [search-settings](../009-search-settings/PRD.md) değişiklik sırasına
+girer ve sırası gelince güncel kayda karşı şu adımlarla işlenir: (1) denetlenmiş içerik saklanan
+içerikle aynıysa hiçbir şey yazılmaz, revizyon değişmez, indeks yeniden kurulmaz ve yanıt
+`changed: false` ile 200 döner (aynı isteğin tekrarı aynı sonucu verir); (2) yeni listeyle motor
+kurulur; kurulum başarılıysa tek veritabanı işleminde (hep ya da hiç yazılan işlem) eski öğe
+satırları yazılımsal silinir, yeni satırlar eklenir, başlık kaydının revizyonu bir artar, özet,
+kaynak `ekran`, yapan ve zaman yazılır ve yeni motor hizmete alınır. Kurulum ya da yazma hata
+verirse hiçbir satır değişmez, eski motor hizmette kalır ve yanıt 500 `search_index_build_failed`
 olur. Sırada bekleme sınırını ([search-settings](../009-search-settings/PRD.md) Requirement 11) aşan
-istek hiçbir şey yazılmadan 503 `search_change_busy` alır.
-Başarılı yanıt listenin yeni hâlini, `changed`, toplam süreyi (`elapsed_ms`) ve indeks durumunu taşır.
+istek hiçbir şey yazılmadan 503 `search_change_busy` alır. İki yönetici aynı listeyi aynı anda
+kaydederse kayıtlar sırayla işlenir ve sonraki kayıt öncekinin yerini alır (kaynakla aynı, Decision
+5). Başarılı yanıt listenin yeni hâlini, `changed`, toplam süreyi (`elapsed_ms`) ve indeks durumunu
+taşır.
 
 Requirement 6: Dışa aktarma (`GET /vocabulary/{list}/export`) kaydedilmiş listeyi tek sayfalı Excel
 olarak verir: sayfa adı `Terimler` ya da `DurakKelimeler`; ilk satır kalın başlık (`Terim`,
@@ -209,24 +215,26 @@ Kayıt kalmazsa 422 `vocabulary_workbook_empty` (`“Terimler” sayfasında kay
 `“DurakKelimeler” sayfasında kayıt yok.`).
 
 Requirement 8: İçe aktarılan kayıtlar Requirement 5'teki denetim ve değiştirme yolundan geçer; tek
-farkları `base_revision` istememesi (dosya bilerek listenin yerini alır) ve kaynağın `excel`
-yazılmasıdır. Dışa aktarılan dosya değiştirilmeden içe aktarılırsa sonuç `changed: false` olur.
+farkı kaynağın `excel` yazılmasıdır. Dışa aktarılan dosya değiştirilmeden içe aktarılırsa sonuç
+`changed: false` olur.
 
 Requirement 9: Başlangıç listeleri bir veri göçüyle (Alembic) yüklenir. Göç, kaynak `76e21a3`'teki
-`data/terms.jsonl` (SHA-256
-`5d8e48cb8372814f34097ca76fe457831980b729181c939dac234852856e078b`, 45 satır) ve
-`data/stopwords.jsonl` (SHA-256
+`data/terms.jsonl` (SHA-256 `5d8e48cb8372814f34097ca76fe457831980b729181c939dac234852856e078b`, 45
+satır) ve `data/stopwords.jsonl` (SHA-256
 `0e9096525c2a6ba6d843cc23563dae8b3337c0c4ce77f52766aae8edd862595d`, 106 satır) dosyalarının depoya
-alınmış birebir kopyalarını okur; parmak izi tutmazsa hata verip durur. Satırları Requirement 3–4
-denetiminden geçirir ve sonucu revizyon 1, kaynak `baslangic`, yapan boş olarak yazar: 45 terim
-grubu ve 104 durak kelime (`mı` ve `mü`, katlamada aynı olan `mi` ve `mu` satırlarına birleşir;
-Açık soru 1). Bir listenin başlık kaydı zaten varsa (liste boş olsa da) o liste için hiçbir şey
-yazmaz. Uygulama açılışı listeleri hiçbir zaman yüklemez veya değiştirmez.
+alınmış birebir kopyalarını okur; parmak izi tutmazsa hata verip durur. Satırları kaynaktaki gibi
+denetimden geçirmeden, dosyadaki sırayla ve olduğu gibi revizyon 1, kaynak `baslangic`, yapan boş
+olarak yazar: 45 terim grubu ve 106 durak kelime (Decision 10). Katlamada aynı olan `mi`/`mı` ve
+`mu`/`mü` satırları ayrı kalır; liste ekrandan ya da Excel'den ilk kaydedildiğinde Requirement 4
+denetimiyle 104 satıra iner (kaynakla aynı). Bir listenin başlık kaydı zaten varsa (liste boş olsa
+da) o liste için hiçbir şey yazmaz. Uygulama açılışı listeleri hiçbir zaman yüklemez veya
+değiştirmez.
 
-Requirement 10: Kelimeler sayfası (`/admin/kelimeler`, yalnız `yonetici`) iki kart gösterir: üstte
-terim sözlüğü, altta durak kelimeler; masaüstünde sayfa yüksekliğini 3'e 2 paylaşırlar ve listeleri
-kendi içinde kayar ([search-settings](../009-search-settings/PRD.md) tek ekran düzeni). Sayfa başlığı
-`Kelimeler`, açıklaması
+Requirement 10: Kelimeler sayfası (`/admin/kelimeler`, yalnız `yonetici`) kaynaktaki `admin.html`
+ile birebir aynı görünür ([search-settings](../009-search-settings/PRD.md) Decision 11) ve iki kart
+gösterir: üstte terim sözlüğü, altta durak kelimeler; masaüstünde sayfa yüksekliğini 3'e 2
+paylaşırlar ve listeleri kendi içinde kayar ([search-settings](../009-search-settings/PRD.md) tek
+ekran düzeni). Sayfa başlığı `Kelimeler`, açıklaması
 `Terim sözlüğü sorguyu iş biriminin kelimeleriyle genişletir; durak kelimeler aramada yok sayılır.`.
 Terim kartı: başlık `Terim sözlüğü · N` (arama süzerken `Terim sözlüğü · gösterilen / N`), arama
 kutusu `Terim ya da eşdeğer ara…` (terim, eşdeğer, alan ve notta Türkçe katlamayla arar), düğmeler
@@ -262,9 +270,8 @@ Requirement 13: Değişiklikler kartta birikir. Kaydedilmemiş değişikliği ol
 ve `Kaydet ve indeksi kur` düğmeleri görünür. Kayıt başarılıysa `Terim sözlüğü kaydedildi` /
 `Durak kelimeler kaydedildi` başlığı ve `N kayıt; indeks yeniden kuruldu (X sn).` satırı,
 `changed: false` ise `N kayıt; değişiklik yok.` satırı; hata varsa `Kaydedilemedi` ve sunucunun
-iletisi; 409'da ileti ve kaydedilmemiş değişiklikleri atıp güncel listeyi getiren
-`Listeyi yeniden yükle` seçeneği gösterilir. İçe aktarmada yalnız `.xlsx` seçilebilir (başka
-uzantıda `Excel (.xlsx) dosyası seçin`); onay penceresi
+iletisi gösterilir. İçe aktarmada yalnız `.xlsx` seçilebilir (başka
+uzantıda `Excel (.xlsx) dosyası seçin`); kaynaktaki gibi tarayıcının onay penceresi
 `“{dosya}” terim sözlüğünün yerini alsın mı?` (durak kelimede `durak kelime listesinin`) sorar,
 kaydedilmemiş değişiklik varsa `Kaydedilmemiş değişiklikler atılır.` ekler ve
 `Önceki liste ekrandan geri yüklenemez; gerekirse önce “Excel'e aktar” ile saklayın. Arama indeksi yeniden kurulur (~10 sn).`
@@ -298,7 +305,7 @@ değişiklikte güncellenir. Hata gövdesi tek hata zarfıdır: `{"detail":{"cod
 | Yöntem ve yol | İstek özü | Yanıt özü | Hatalar |
 |---|---|---|---|
 | `GET /vocabulary/{list}` | — | `list`, `revision`, `items[]` | 401, 403, 404 |
-| `PUT /vocabulary/{list}` | `base_revision`, `items[]` | `list`, `revision`, `items[]`, `changed`, `elapsed_ms`, `index` | 409 `vocabulary_revision_conflict`; 422 denetim kodları; 500 `search_index_build_failed`; 503 `search_change_busy` |
+| `PUT /vocabulary/{list}` | `items[]` | `list`, `revision`, `items[]`, `changed`, `elapsed_ms`, `index` | 422 denetim kodları; 500 `search_index_build_failed`; 503 `search_change_busy` |
 | `GET /vocabulary/{list}/export` | — | `.xlsx` dosyası, `Content-Disposition: attachment` | 401, 403, 404 |
 | `POST /vocabulary/{list}/import` | ham Excel gövdesi, `X-Filename` | `PUT` ile aynı | 413 `upload_too_large`; 415 `unsupported_media_type`; 422 `vocabulary_file_empty`, `vocabulary_workbook_unreadable`, `vocabulary_workbook_too_many_rows`, `vocabulary_workbook_column_missing`, `vocabulary_workbook_empty` ve denetim kodları; 500 `search_index_build_failed`; 503 `search_change_busy` |
 
@@ -341,11 +348,13 @@ cümledir; ekran onu olduğu gibi gösterir (Decision 6).
     metin dizisi), `domain`, `note` ve zorunlu blok.
   - `vocabulary_stopword`: `position`, `word`, `word_key` (Türkçe katlanmış kelime), `group_name` ve
     zorunlu blok.
-- Silinmemiş satırlarda kiracı içinde `term_key`, `word_key` ve her tabloda `position` tekildir
-  (silinmemiş satırlara kısmi tekil dizin). Öğe satırları dışarıdan adreslenmez ve `public_id`
+- Silinmemiş satırlarda kiracı içinde `term_key` ve her tabloda `position` tekildir (silinmemiş
+  satırlara kısmi tekil dizin). `word_key` tekil değildir: başlangıç listesi katlamada aynı olan
+  kelimeleri ayrı satırlarda taşır (Decision 10); ekrandan ve Excel'den gelen liste Requirement 4
+  denetiminden geçtiği için tekrar içermez. Öğe satırları dışarıdan adreslenmez ve `public_id`
   taşımaz (rules/41'den bilinçli sapma, Decision 3). Liste değişince eski öğe satırları yazılımsal
-  silinir (`is_deleted`, `deleted_at`, `deleted_by`); bu satırlar okunmaz, ekranda gösterilmez ve geri
-  yüklenmez (Decision 4).
+  silinir (`is_deleted`, `deleted_at`, `deleted_by`); bu satırlar okunmaz, ekranda gösterilmez ve
+  geri yüklenmez (Decision 4).
 - Tablo ve sütun açıklamaları (rules/43) göçe girer: tabloların amacı ve sahibi bu PRD, `last_source`
   değerleri, `*_key` sütunlarının Türkçe katlama anlamı ve `position` sırasının anlamı.
 - Başlangıç verisi Requirement 9 göçüdür. Kaynak dosyaların birebir kopyaları göçün yanında
@@ -363,7 +372,7 @@ cümledir; ekran onu olduğu gibi gösterir (Decision 6).
 - Yeni ölçüm (metrik) eklenmez. Liste değişikliğinin indeks kurulumu
   [search-settings](../009-search-settings/PRD.md) ölçümlerine `terms` / `stopwords` tetikleyicisiyle
   girer.
-- 409, 413 ve 422 yanıtları kodlarıyla standart istek loguna düşer.
+- 413 ve 422 yanıtları kodlarıyla standart istek loguna düşer.
 
 ## Dağıtım etkisi
 
@@ -388,16 +397,19 @@ cümledir; ekran onu olduğu gibi gösterir (Decision 6).
   `TermGroup` dizisi ve durak kelime kümesi kaynağın `load_term_dictionary` ve `load_stopword_file`
   sonucuyla aynıdır; başlangıç listeleriyle 45 grup ve 124 biçim; aynı listeyle kaynağın
   `check_terms` / `check_stopwords` çıktısı ve hata iletisi hedefinkiyle aynıdır.
-- **Gerçek PostgreSQL:** başlangıç göçünün üç durumu (boş veritabanı: 45 grup ve 104 kelime, revizyon
-  1; başlık kaydı varken: hiçbir şey yazmaz; parmak izi tutmayan kopya: göç durur); kaydetmenin hep ya
-  da hiç yazması (kurulum ve yazma hatası enjekte edilince satır ve revizyon değişmez, eski motor
-  hizmettedir); aynı içerikte `changed: false`; 409; eski satırların yazılımsal silinmesi ve
-  okunmaması; içe aktarma hata kodları; 401 ve 403; kiracı kapsamı.
+- **Gerçek PostgreSQL:** başlangıç göçünün üç durumu (boş veritabanı: 45 grup ve 106 kelime,
+  revizyon 1; başlık kaydı varken: hiçbir şey yazmaz; parmak izi tutmayan kopya: göç durur);
+  başlangıç listesinin ilk kaydedişte 104 satıra inmesi; kaydetmenin hep ya da hiç yazması (kurulum
+  ve yazma hatası enjekte edilince satır ve revizyon değişmez, eski motor hizmettedir); aynı
+  içerikte `changed: false`; art arda iki kayıtta sonrakinin geçerli olması; eski satırların
+  yazılımsal silinmesi ve okunmaması; içe aktarma hata kodları; 401 ve 403; kiracı kapsamı.
 - **Ön yüz (Vitest):** terim arama ve süzme sayısı, çekmecede ekleme, düzenleme, silme ve ekran
   denetimleri, durak kelime ekleme, çıkarma ve yeni grup, kaydedilmemiş değişiklik çubuğu ve
-  `Geri al`, kayıt ve içe aktarma bildirimleri, onay penceresi metni, 409 iletisi ve
-  `Listeyi yeniden yükle`, bir listenin kaydında ötekinin taslağının korunması, satırın klavyeyle
-  açılması.
+  `Geri al`, kayıt ve içe aktarma bildirimleri, onay penceresi metni, bir listenin kaydında ötekinin
+  taslağının korunması, satırın klavyeyle açılması.
+- **Görsel eşdeğerlik:** kaynak `76e21a3` ve hedef aynı başlangıç listeleriyle yan yana
+  çalıştırılır; Kelimeler sayfası ve terim çekmecesinin ekran görüntüleri aynı ekran boyutlarında
+  karşılaştırılır (Acceptance 5).
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
 
@@ -415,20 +427,26 @@ cümledir; ekran onu olduğu gibi gösterir (Decision 6).
   paketle yan yana fark testleri geçer; başlangıç listeleriyle motorun gördüğü 45 grup ve 124 biçim
   kaynakla bayt bayt aynıdır.
 - [ ] Acceptance 2: L1 — Otomatik testlerden geçti: Requirement 1, 5, 8, 9, 14 ve 15 gerçek
-  PostgreSQL ve API testleri geçer (göçün üç durumu, hep ya da hiç yazma, `changed: false`, 409,
-  yazılımsal silme, hata kodları, 401/403); OpenAPI ve üretilmiş tipler günceldir; tam kalite kapısı
-  geçer.
+  PostgreSQL ve API testleri geçer (göçün üç durumu, hep ya da hiç yazma, `changed: false`, son
+  yazanın kazanması, yazılımsal silme, hata kodları, 401/403); OpenAPI ve üretilmiş tipler
+  günceldir; tam kalite kapısı geçer.
 - [ ] Acceptance 3: L1 — Otomatik testlerden geçti: Kelimeler sayfasının Vitest testleri
   Requirement 10–13'ü doğrular; yerelleştirme anahtar eşliği testi geçer.
 - [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı: yerel Docker Compose ve PostgreSQL ile
-  boş veritabanında Kelimeler sayfası 45 terim grubu ve 104 durak kelime gösterir; yönetici bir terim
-  grubu ekleyip kaydeder, `indeks yeniden kuruldu` bildirimini görür ve sözlük gezgininin içerik
-  araması ([dictionary-explorer](../007-dictionary-explorer/PRD.md)) yeni eşdeğerle grubun terimine
-  bağlı kolonları bulur; listeyi Excel'e aktarıp değiştirmeden içe aktarınca `değişiklik yok` görür;
-  çok kelimeli durak kelime içeren Excel'i yükleyince satır değişmeden ret iletisi görür; ikinci
-  tarayıcı oturumundaki eski revizyonla kayıt 409 iletisini gösterir; `kullanici` oturumu sayfayı
-  göremez ve uçlardan 403 alır (Requirement 5, 7–10, 13–15). Sözlük gezgini adımı dictionary-explorer
-  PRD'si uygulanmadan açık kalır.
+  boş veritabanında Kelimeler sayfası 45 terim grubu ve 106 durak kelime gösterir; yönetici bir
+  terim grubu ekleyip kaydeder, `indeks yeniden kuruldu` bildirimini görür ve sözlük gezgininin
+  içerik araması ([dictionary-explorer](../007-dictionary-explorer/PRD.md)) yeni eşdeğerle grubun
+  terimine bağlı kolonları bulur; listeyi Excel'e aktarıp değiştirmeden içe aktarınca
+  `değişiklik yok` görür; çok kelimeli durak kelime içeren Excel'i yükleyince satır değişmeden ret
+  iletisi görür; iki tarayıcı oturumundan art arda yapılan kayıtta sonuncusu geçerli olur;
+  `kullanici` oturumu sayfayı göremez ve uçlardan 403 alır (Requirement 5, 7–10, 13–15). Sözlük
+  gezgini adımı dictionary-explorer PRD'si uygulanmadan açık kalır.
+- [ ] Acceptance 5: L2 — Gerçek istemci/ortamda doğrulandı: görsel eşdeğerlik. Yerel Compose'da
+  hedef ile kaynak `76e21a3` aynı başlangıç listeleriyle çalıştırılır; Kelimeler sayfası (iki kart,
+  kaydedilmemiş değişiklik çubuğu) ve terim çekmecesinin ekran görüntüleri masaüstü (1440×900) ve
+  telefon genişliğinde (390×844 piksel) yan yana karşılaştırılır. Fark yalnız dosya deposunun
+  kalkmasından doğan metinlerde ("Dosya: …", "Dosya ayarları") ve fabrikanın zorunlu kıldığı oturum
+  alanında kabul edilir (Requirement 10–13).
 
 ## Kararlar
 
@@ -442,11 +460,10 @@ yazılımsal silinmiş olarak tabloda kalır (rules/41). Ekrandan geri yükleme 
 yanlış bir içe aktarmadan dönüş için önerilen yol, değişiklikten önce `Excel'e aktar` ile kopya
 almaktır ve onay penceresi bunu söyler.
 
-Decision 5: Kayıt istemcinin gördüğü revizyonu taşır ve güncel değilse 409 döner (Requirement 5;
-Açık soru 2). Kaynakta son yazan kazanıyordu ve iki yöneticiden birinin değişikliği sessizce
-kayboluyordu; kardeş proje DWH Code Review'un kabul edilmiş kural yönetimi aynı deseni kullanır.
-Excel içe aktarma revizyon istemez, çünkü dosya bilerek listenin yerini alır ve onay penceresinden
-geçer.
+Decision 5: Eşzamanlı iki kayıtta kaynaktaki gibi son yazan kazanır; kayıt revizyon denetimi yapmaz
+(Requirement 5). Kayıtlar search-settings değişiklik sırasında tek tek işlendiği için iki kayıt
+birbirine karışmaz; sonraki kayıt öncekinin yerini alır. Revizyon numarası yalnız bilgi ve olay
+kaydı içindir.
 
 Decision 6: Denetim iletileri sunucuda, kaynaktaki Türkçe metinle kurulur ve yalnız yöneticinin
 gönderdiği içerikten (terim, kelime, satır numarası) oluşur; uygulama ayrıntısı taşımaz. Ekran bu
@@ -466,16 +483,10 @@ Decision 9: Liste uçları sayfalama yapmaz: liste ekranda bütün olarak düzen
 öğedir. Bu, rules/21'deki liste uçlarında sayfalama kuralının bilinçli istisnasıdır; uç bir koleksiyon
 değil tek bir belge (liste) döndürür.
 
-## Açık sorular
-
-1. Başlangıç durak kelime listesi kaydetme denetiminden geçirilerek 104 satırla mı yüklensin?
-   Kaynak dosya 106 satırdır; `mı` ile `mi` ve `mü` ile `mu` Türkçe katlamada aynı olduğundan kaynakta
-   da ilk kayıtta 104 satıra iner ve motorun kullandığı 124 biçimlik küme iki durumda da aynıdır.
-   Öneri: 104 satırla yüklensin; böylece veritabanındaki liste her zaman kaydetme kurallarına uyar ve
-   katlanmış kelimeye tekil dizin konabilir.
-2. İki yönetici aynı listeyi aynı anda düzenlerse ikinci kayıt 409 ile reddedilsin mi? Kaynakta son
-   kaydeden öncekinin değişikliğini sessizce siliyordu. Öneri: evet; ekran iletiyi ve
-   `Listeyi yeniden yükle` seçeneğini gösterir, Excel içe aktarma bu denetime girmez.
+Decision 10: Başlangıç listeleri kaynak dosyalarındaki gibi, denetimden geçmeden yüklenir: durak
+kelimeler 106 satırdır. Gerekçe: kaynakta da başlangıç dosyası olduğu gibi kullanılır ve ilk
+kaydedişte 104 satıra iner; motorun kullandığı 124 biçimlik küme iki durumda da aynıdır. Bu yüzden
+katlanmış durak kelimeye tekil dizin konmaz.
 
 ## Teslim akışı
 
@@ -483,6 +494,8 @@ Belirtim → Plan → Görevler → Uygulama ([Plan](plan.md), [Görevler](tasks
 
 ## Riskler
 
+- **Eşzamanlı düzenleme:** İki yönetici aynı listeyi aynı anda düzenlerse son kaydeden öncekinin
+  değişikliğini uyarısız siler (kaynakla aynı, Decision 5).
 - **Yanlış içe aktarma:** Yanlış bir Excel listenin tamamının yerini alır. Onay penceresi ve önceden
   `Excel'e aktar` önerisi bunu azaltır; ekrandan geri yükleme yoktur, eski satırlar yalnız veritabanında
   yazılımsal silinmiş olarak kalır.

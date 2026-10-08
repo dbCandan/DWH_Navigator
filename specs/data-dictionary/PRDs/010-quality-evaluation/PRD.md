@@ -1,10 +1,15 @@
 # PRD — quality-evaluation
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -25,7 +30,7 @@ betikle gösterilir.
 - **Proje sahibi:** Yeni modelin, istemin ya da ağırlığın devreye alınmasına geçmiş satırlarına bakarak
   karar verir.
 - **Referans set ve gerçek sözlük sahibi:** Büyük referans seti, onu ölçen betikleri ve gerçek sözlüğü
-  depo dışından sağlar (Açık soru 1 ve 3).
+  depo dışından sağlar (Riskler'deki bekleyen bilgi).
 - **[question-analysis](../004-question-analysis/PRD.md):** Ölçülen analiz akışının sahibidir. Taşımanın
   kaynakla bayt bayt aynı davrandığını kanıtlayan fark testi (kaynak paketle hedefi aynı girdilerle
   yan yana çalıştırıp çıktıları karşılaştıran test), düzeneği ve girdileri orada tanımlıdır.
@@ -121,7 +126,8 @@ değişikliktir.
   işçiyle, soru başına yaklaşık 45 saniyede alınır. Ölçüm anlatımları: ADR-040 (67 soruluk set),
   ADR-042 (294 soru; 101 soruluk ön kontrol), ADR-043 (31 soru), ADR-044 (40 koruma sorusu;
   değişiklik reddedildi), ADR-045 (160 soru; 294'te dürüst tahmin %89,8, sızıntılı sürüm %90,5; kör
-  set %90,0; hızlı set 9/10). **Hedefte:** Requirement 11–13, Açık soru 3.
+  set %90,0; hızlı set 9/10). **Hedefte:** Requirement 11–13; set ve betiklerin alınması bekleyen
+  bilgidir (Riskler).
 - **Bayt bayt karşılaştırma** (ADR-046, ADR-050, ADR-053): 129 soruda (altın set ve referans setler)
   sözlük çıktısı, kural sıralaması, modele giden istemlerin tamamı ve sahte modelle analist cevabı
   değişiklikten önce ve sonra aynıdır. **Hedefte:** taşımanın bayt bayt kanıtı question-analysis'tedir;
@@ -246,13 +252,13 @@ set klasörü depo dışında olmalı." yazılır ve çıkış kodu 2'dir. `blin
 Requirement 12: Referans kipi her soruyu Requirement 3–4'teki akışla ölçer; etkin model yoksa ya da
 sunucu yanıt vermiyorsa çıkış kodu 2'dir. İşçi sayısı varsayılan 1'dir; 1'den büyük değer yalnız
 `--save` olmadan kabul edilir. Puanlama kuralı ve dosya alanları kaynak koşturucununkidir
-(`run_eval.py`, `final_report.py`; Açık soru 3). Kaynaktaki ADR-042…045 anlatımı, cevaplanabilir
-soruda birinci önerinin referansın kabul ettiği tablolardan biri olmasının, negatif soruda
-BULUNAMADI'nın doğru sayıldığını düşündürür; kesin kural koşturucu kodundadır. Soru başına sonuç
-(kimlik, sonuç, ilk tablolar, doğru/yanlış, süre) `--dir` altında zaman damgalı bir dosyaya yazılır;
-depoya hiçbir şey yazılmaz. Terminale her soru için yalnız kimlik, doğru/yanlış ve süre yazılır,
-soru metni yazılmaz. Sonda doğru/toplam ve yüzde; cevaplanabilir ve negatif sorular ayrı ayrı; dosya
-başına sonuç yazılır.
+(`run_eval.py`, `final_report.py`; alınmaları Riskler'deki bekleyen bilgidir). Kaynaktaki
+ADR-042…045 anlatımı, cevaplanabilir soruda birinci önerinin referansın kabul ettiği tablolardan
+biri olmasının, negatif soruda BULUNAMADI'nın doğru sayıldığını düşündürür; kesin kural koşturucu
+kodundadır. Soru başına sonuç (kimlik, sonuç, ilk tablolar, doğru/yanlış, süre) `--dir` altında
+zaman damgalı bir dosyaya yazılır; depoya hiçbir şey yazılmaz. Terminale her soru için yalnız
+kimlik, doğru/yanlış ve süre yazılır, soru metni yazılmaz. Sonda doğru/toplam ve yüzde;
+cevaplanabilir ve negatif sorular ayrı ayrı; dosya başına sonuç yazılır.
 
 Requirement 13: Referans kipinde `--save` yalnız `full`, `blind` ve `smoke` için çalışır (`ids:` ile
 çıkış kodu 2). Satırın `metrics` alanı `reference.<küme>.n`, `reference.<küme>.correct`,
@@ -317,8 +323,8 @@ hatasında çıkış kodu 2'dir (kaynaktaki gibi), Ctrl+C'de 130.
   (`b001` taşınmaz, Decision 14).
 - Kaynaktaki `eval/history.jsonl` taşınmaz; kaynak deponun `76e21a3` sürümünde başvuru olarak kalır.
   Hedefteki geçmiş, taşıma sonrası ilk ölçümlerle başlar (Acceptance 4–6, Decision 6).
-- Büyük referans set ve gerçek sözlük geliştirici makinesinde depo dışında durur; nasıl sağlanacağı
-  Açık soru 1 ve 3'tedir.
+- Büyük referans set ve gerçek sözlük geliştirici makinesinde depo dışında durur; sağlanmaları
+  Riskler'deki bekleyen bilgidir.
 
 ## Gözlemlenebilirlik
 
@@ -383,16 +389,17 @@ sonuç dosyasıdır.
   sözlükle çalıştırılan kaynak `vsa eval` (`76e21a3`) ile aynıdır; `DWHNAVIGATOR_PARITY_DICTIONARY`
   verilerek çalıştırılan kabul testi geçer (Requirement 14–16).
 - [ ] Acceptance 5: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da gerçek sözlük ve
-  kaynağın ölçüm modeliyle (Açık soru 2) ve kaynaktan taşınan koşturucuyla (Açık soru 3), seri
-  çalışmada `golden --save --label "taşıma tabanı"` iki kez aynı metrikleri verir;
-  `reference --set smoke` ve `reference --set blind --final-check --save` çalışır ve kör set sonucu
-  kaynaktaki ölçümle aynıdır (50 soruda 45 doğru, %90,0); koşumdan sonra çalışma kopyasında yalnız
-  `history.jsonl` değişmiştir, referans çıktıları depo dışındadır (Requirement 8, 11–13, Decision
-  3).
+  kaynağın ölçüm modeliyle (DGX Spark'taki `gemma-4-31b`) ve kaynaktan taşınan koşturucuyla (ikisi
+  de Riskler'deki bekleyen bilgiye bağlıdır), seri çalışmada `golden --save --label "taşıma tabanı"`
+  iki kez aynı metrikleri verir; `reference --set smoke` ve
+  `reference --set blind --final-check --save` çalışır ve kör set sonucu kaynaktaki ölçümle aynıdır
+  (50 soruda 45 doğru, %90,0); koşumdan sonra çalışma kopyasında yalnız `history.jsonl` değişmiştir,
+  referans çıktıları depo dışındadır (Requirement 8, 11–13, Decision 3).
 - [ ] Acceptance 6: L2 — Gerçek istemci/ortamda doğrulandı — nonprod modeli: nonprod'da
-  etkinleştirilecek sohbet modeli kullanıcılara açılmadan önce yerelde aynı gerçek sözlükle altın
-  set ve kör setle ölçülür; sonuçlar model adıyla geçmişe yazılır ve proje sahibine sunulur (alan
-  değişmezi: model değişikliği önce ölçülür).
+  etkinleştirilecek sohbet modeli (RunAI'deki `qwen36-35b-a3b-fp8`,
+  [llm-connection](../003-llm-connection/PRD.md) Decision 18) kullanıcılara açılmadan önce yerelde
+  aynı gerçek sözlükle altın set ve kör setle ölçülür; sonuçlar model adıyla geçmişe yazılır ve
+  proje sahibine sunulur (alan değişmezi: model değişikliği önce ölçülür).
 
 ## Kararlar
 
@@ -432,39 +439,12 @@ sonuç dosyasıdır.
   kaynak deponun `76e21a3` sürümünde kalır. "Maddeler silinmez, yalnız eklenir" kuralı (alan
   değişmezi) hedef setteki ölçülebilir maddeler için geçerlidir. Gerekçe: madde ADR-033'ten beri
   ölçülmüyor; hedefe almak, ölçüm betiğinde kaldırılmış bir kipi tanıyıp atlayan kod bırakmak demektir.
-
-## Açık sorular
-
-1. **Gerçek sözlük kimden ve nasıl alınacak?** Ölçüm ve kabul testi gerçek sözlüğü (kaynakta
-   `data/VeriSozlugu.xlsx`, yaklaşık 11 bin kolon) gerektirir; dosya kurum içi veridir, depoda ve
-   sunucudaki otomatik testlerde (CI) yoktur. Öneri: dosyayı kaynak uygulamanın geliştiricisi Git
-   dışındaki kurum içi güvenli bir kanalla versin; geliştirici makinesinde depo dışındaki bir
-   klasörde dursun, yerel yığına Sözlük sayfasından içe aktarılsın ve içe aktarılan sözlüğün sürümü
-   taşıma tabanının geçmiş satırında yazsın.
-2. **Ölçüm hangi model sunucusu ve modelle yapılacak, geliştirici makinesi ona nasıl erişecek?**
-   Kaynağın %89,8 ve %90,0 sonuçları ekibin DGX Spark sunucusundaki LM Studio'da (model çalıştırma
-   programı) `gemma-4-31b` ile seri çalışmayla alındı; nonprod ise kurum içi RunAI (model çalıştırma
-   hizmeti) ucunu
-   (`https://runai.gpudtx.kuveytturk.com.tr/inference/qwen36-35b-a3b-fp8/v1`) kullanıyor ve bu model
-   kaynakta hiç ölçülmedi. Öneri: taşıma tabanı kaynağın ölçüm ortamıyla (DGX LM Studio,
-   `gemma-4-31b`, paralel istek kapalı) alınıp kaynakla karşılaştırılsın (Acceptance 5); nonprod
-   modeli kullanıcılara açılmadan önce aynı setlerle ayrıca ölçülsün (Acceptance 6). DGX'e erişim
-   bilgisi ve ağ izni ile RunAI ucunun istekleri sırayla mı paralel mi işlediği ekipten öğrenilsin;
-   bilinmiyorsa RunAI ölçümü iki kez alınıp sonuçların aynı olduğu doğrulansın.
-3. **Büyük referans set ve onu ölçen betikler kimden, nasıl alınacak; koşturucu kodu depoya taşınsın
-   mı?** `run_eval.py` ve `final_report.py` kaynakta git'in yok saydığı veri klasöründe durduğu için
-   puanlama kuralı depoda görünmüyor; hedefte koşturucu kaynaktaki `vsa` paketini değil yeni backend'i
-   çağırmak zorunda. Öneri: dört referans dosyası kaynak geliştiriciden Git dışındaki kurum içi güvenli
-   bir kanalla alınıp depo dışında tutulsun; iki betiğin kodu (veri olmadan) Requirement 11–13'teki
-   `reference` kipine taşınsın ve sentetik referans dosyalarıyla CI'da test edilsin; betikler
-   alınamazsa puanlama kuralı yeniden yazılıp proje sahibinin onayına sunulsun.
-4. **Önce/sonra ölçümü otomatik denetlensin mi?** Alan değişmezi ağırlık, istem ve model
-   değişikliğinin önce ve sonra ölçülmesini istiyor; gerçek sözlük ve model sunucudaki otomatik
-   denetimde (CI) olmadığı için ölçüm yalnız geliştiricinin elinde. Öneri: kalite kapısı, çekirdek
-   motorun, istemlerin ya da ölçülmüş varsayılan ayarların dosyaları değişen bir değişiklikte
-   `history.jsonl`'e en az bir yeni satır eklenmesini istesin, eklenmemişse başarısız olsun. Yönetim
-   ekranından yapılan model değişikliği bu denetimin dışında kalır; onun için Acceptance 6'daki
-   kural geçerlidir.
+- Decision 15: Ağırlık, istem, ölçülmüş varsayılan ayar ya da model değişikliğinin önce ve sonra
+  ölçülmesi kaynaktaki gibi yazılı bir kuraldır (alan değişmezi); otomatik kalite kapısıyla zorunlu
+  kılınmaz. Uyulup uyulmadığı kod incelemesinde `history.jsonl` satırlarına bakılarak görülür;
+  yönetim ekranından yapılan model değişikliği için Acceptance 6'daki kural geçerlidir. Gerekçe:
+  proje sahibinin kararı; gerçek sözlük ve model sunucudaki otomatik denetimde (CI) yoktur, ölçüm
+  geliştiricinin makinesinde yapılır.
 
 ## Teslim akışı
 
@@ -473,10 +453,29 @@ Belirtim → Plan → Görevler → Uygulama ([Plan](plan.md), [Görevler](tasks
 ## Riskler
 
 - **Ölçüm geliştiriciye bağlı:** Gerçek sözlük ve model sunucudaki otomatik denetimde (CI)
-  olmadığından ölçüm atlanırsa gerileme fark
-  edilmeden geçebilir (Açık soru 4).
-- **Ölçülmemiş nonprod modeli:** Nonprod'daki model kaynakta hiç ölçülmedi; kalite %89,8'in altında
-  kalabilir (Acceptance 6).
+  olmadığından ve otomatik kapı bulunmadığından (Decision 15) ölçüm atlanırsa gerileme fark
+  edilmeden geçebilir; kod incelemesi geçmiş satırlarını denetler.
+- **Ölçülmemiş nonprod modeli:** Nonprod'daki model (RunAI'deki `qwen36-35b-a3b-fp8`) kaynakta hiç
+  ölçülmedi; kalite %89,8'in altında kalabilir (Acceptance 6).
+- **Bekleyen bilgi:** Gerçek sözlük Excel'i (kaynakta `data/VeriSozlugu.xlsx`, yaklaşık 11 bin
+  kolon, kurum içi veri) kaynak uygulamanın geliştiricisinden beklenir. Git dışındaki kurum içi
+  güvenli bir kanalla verilir, geliştirici makinesinde depo dışındaki bir klasörde durur, yerel
+  yığına Sözlük sayfasından içe aktarılır ve içe aktarılan sözlüğün sürümü taşıma tabanının geçmiş
+  satırına yazılır. Gelene kadar gerçek sözlük isteyen ölçümler ve kabul maddeleri (Acceptance 4–6)
+  yapılamaz.
+- **Bekleyen bilgi:** Kaynağın ölçüm ortamına (ekibin DGX Spark sunucusundaki LM Studio,
+  `gemma-4-31b`, paralel istek kapalı) geliştirici makinesinden erişim bilgisi ve ağ izni ekipten
+  beklenir; RunAI ucunun istekleri sırayla mı paralel mi işlediği RunAI'yi işleten ekipten
+  öğrenilir. Erişim gelene kadar taşıma tabanı kaynağın ölçüm ortamıyla alınamaz (Acceptance 5).
+  RunAI'nin davranışı öğrenilemezse RunAI ölçümü iki kez alınıp sonuçların aynı olduğu doğrulanır
+  (Acceptance 6).
+- **Bekleyen bilgi:** Büyük referans set (dört dosya: 294 soru ve 50 soruluk kör set) ve onu ölçen
+  iki betik (`run_eval.py`, `final_report.py`) kaynak uygulamanın geliştiricisinden Git dışındaki
+  kurum içi güvenli bir kanalla beklenir. Referans dosyaları depo dışında tutulur; iki betiğin kodu
+  (veri olmadan) Requirement 11–13'teki `reference` kipine taşınır ve sentetik referans dosyalarıyla
+  CI'da test edilir. Gelene kadar `reference` kipi kaynağın puanlama kuralıyla kurulamaz ve
+  Acceptance 5 yapılamaz; betikler alınamazsa puanlama kuralı yeniden yazılıp proje sahibinin
+  onayına sunulur.
 - **Koşturucu kodu yok:** Kaynak betikler alınamaz ve puanlama kuralı yeniden yazılırsa hedefin
   sonuçları kaynağın %89,8 ve %90,0'ıyla doğrudan karşılaştırılamaz.
 - **Süre:** Seri ölçüm uzundur; soru başına yaklaşık 45 saniyeyle 294 soru yaklaşık 3,7 saat, kör set

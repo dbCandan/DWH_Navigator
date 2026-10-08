@@ -1,10 +1,15 @@
 # PRD — answer-feedback
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -98,14 +103,14 @@ davranışı söyler.
   okunur (Requirement 18).
 - **Oy arayüzü** (`index.html` `voteBar`, `tableVote`, `voteBadge`, `ring`, `resultCard`,
   `foundBlock`, `crowdSections`, `answerVote`, `answerView`): Requirement 11–13'teki öğeler ve
-  metinler. **Hedefte:** React'te aynı öğeler ve metinler (Requirement 11–13).
+  metinler. **Hedefte:** React'te aynı öğeler, görünüm ve metinler (Requirement 11–13).
 - **Cevap oyunun görünmesi** (`answerView`): "Bu cevap işinize yaradı mı?" yalnız cevapta tablo
-  önerisi ya da kullanıcıların uygun bulmadığı tablo varsa gösterilir; tablo önermeyen ("Bulunamadı")
-  analist cevabına cevap oyu verilemez, bu yüzden yanlış bir "Bulunamadı" kayıtlı cevabı oyla
-  silinemez. **Hedefte:** analistin yazdığı "Bulunamadı" cevabında da gösterilir; "Analiz
-  yapılamadı" cevabında gösterilmez (Requirement 13, Açık soru 3).
-- **Saklama:** Oylar süresiz tutulur; dosya yalnız büyür. **Hedefte:** 730 günü geçen oylar silinir
-  (Requirement 16, Açık soru 1).
+  önerisi ya da kullanıcıların uygun bulmadığı tablo varsa gösterilir; tablo önermeyen
+  ("Bulunamadı") analist cevabına cevap oyu verilemez, bu yüzden yanlış bir "Bulunamadı" kayıtlı
+  cevabı oyla silinemez. **Hedefte:** aynı; "Analiz yapılamadı" cevabında da gösterilmez
+  (Requirement 13, Decision 12).
+- **Saklama:** Oylar süresiz tutulur; dosya yalnız büyür. **Hedefte:** aynı; oylar veritabanında
+  süresiz saklanır (Requirement 16, Decision 13).
 - **Raporlar** (`src/vsa/report/excel.py`): Excel raporları cevabı oylar uygulanmadan, yazıldığı
   gibi kullanır. **Hedefte:** aynı (Requirement 9).
 - **Kaldırılmış araç:** Oylardan altın set adayı çıkaran `vsa feedback` komutu ADR-053 ile
@@ -223,6 +228,9 @@ etiketsiz kullanılır. Metinler kaynaktaki gibi `app/frontend/src/locales/tr.js
 
 Requirement 12: Oy rozetleri ve işaretleri kaynaktaki metinlerledir:
 
+- Oy öğelerinin görünümü kaynakla birebir aynıdır
+  ([dictionary-explorer](../007-dictionary-explorer/PRD.md) Decision 3; görsel eşdeğerlik kanıtı
+  orada Acceptance 5).
 - Rozet: doğrulanmış tablo "✓ {n} kişi doğruladı"; reddedilmiş "✕ {n} kişi uygun bulmadı"; şüpheli
   "⚠ {n} kişi uygun bulmadı"; karışık "Görüşler karışık · {a} 👍 {b} 👎"; diğer oylu tablo
   "{a} 👍 {b} 👎"; önerilere katılmış yakın aday "↑ Kullanıcı onayıyla eklendi". Rozetin açıklaması
@@ -246,8 +254,9 @@ Requirement 13: Cevap görünümünde:
   faydalı, {b} yetersiz buldu."; oy sonrasında kayıtlı cevap silindiyse "Bu cevabı birden fazla kişi
   yetersiz buldu: kayıtlı cevap silindi, bu soru bir dahaki sefere yeniden analiz edilecek.",
   silinmediyse ve oy 👎 ise "Not alındı. Tablo kartlarındaki 👍/👎 hangi önerinin yanlış olduğunu da
-  gösterir.". Bölüm tablo önerisi ya da reddedilmiş tablo olan cevapta ve analistin yazdığı
-  "Bulunamadı" cevabında gösterilir; "Analiz yapılamadı" cevabında gösterilmez (Açık soru 3).
+  gösterir.". Bölüm yalnız tablo önerisi ya da reddedilmiş tablo olan cevapta gösterilir; tablo
+  önermeyen ("Bulunamadı") analist cevabında ve "Analiz yapılamadı" cevabında gösterilmez (kaynakla
+  aynı, Decision 12).
 - Kayıtlı cevap gösteriliyor ve cevap reddedilmiş görünüyorsa cevabın üstünde "Bu kayıtlı cevabı
   kullanıcılar yetersiz buldu; “Yeniden analiz et” ile güncel bir analiz alın." uyarısı çıkar.
 
@@ -255,14 +264,13 @@ Requirement 14: Liste teriminin ayrıntısında verilen oy, o terimin metniyle s
 verilmiş oy gibidir; liste terimleri ve tek sorular birbirinin oylarından aynı kurallarla etkilenir.
 
 Requirement 15: Ham oy kayıtları (kim, hangi soruda, hangi tabloya, ne oy verdi) hiçbir uçtan dönmez
-ve yönetim ekranında gösterilmez (Açık soru 2). Cevaplarda yalnız kişi sayıları, destek, durum, adsız
-en çok 3 gerekçe ve oturumdaki kullanıcının kendi oyları bulunur. Gerekçeler arayüzde düz metin
-olarak gösterilir, biçimlendirme ya da bağlantı olarak yorumlanmaz.
+ve yönetim ekranında gösterilmez (kaynaktaki ekranla aynı, Decision 10). Cevaplarda yalnız kişi
+sayıları, destek, durum, adsız en çok 3 gerekçe ve oturumdaki kullanıcının kendi oyları bulunur.
+Gerekçeler arayüzde düz metin olarak gösterilir, biçimlendirme ya da bağlantı olarak yorumlanmaz.
 
-Requirement 16: Verilişinden bu yana saklama süresi geçen oylar günde en az bir kez kalıcı silinir;
-süre `DWHNAVIGATOR_FEEDBACK_RETENTION_DAYS` ayarıyla 180–3.650 gün arasında verilir, varsayılanı
-730 gündür (Açık soru 1). Silme işi başarısız olursa cevaplar etkilenmez; iş bir sonraki çalışmada
-yeniden dener.
+Requirement 16: Oylar süresiz saklanır; hiçbir oy yaşı yüzünden kendiliğinden silinmez (kaynakla
+aynı). Saklama süresi ayarı ve zamanlanmış silme işi yoktur; eski oyların etkisi Requirement 4'teki
+yaş çarpanıyla azalır (Decision 13).
 
 Requirement 17: Ağırlıklandırma ve uygulama (`assess`, `apply` ve sabitleri) ağ, veritabanı ve dosya
 erişimi yapmayan saf işlevler olarak taşınır. Aynı oy satırları (tarayıcı kimliği yerine kullanıcı
@@ -316,10 +324,9 @@ Kaldırılan: kaynaktaki `POST /api/feedback`, `voter` alanı ve `?voter=` param
   anahtarı (cevap oyunda boş), oy (`up`, `down`), gerekçe (boş olabilir), sözlük sürümü ve ortak
   zorunlu sütunlar. Tablo yalnız eklenen bir akıştır: satır güncellenmez ve dışa açık kimlik
   (`public_id`) taşımaz (rules/41'deki yalnız eklenen akış istisnası; Decision 3). Dizinler: kiracı ve
-  metin anahtarı; kiracı ve anlam anahtarı (yalnız boş olmayanlar); oy zamanı (saklama silmesi).
+  metin anahtarı; kiracı ve anlam anahtarı (yalnız boş olmayanlar).
   Tablo ve sütun açıklamaları göçle veritabanına yazılır (rules/43).
-- Saklama silmesi kalıcıdır, yazılımsal silme (satırı silindi diye işaretleyip tutma) değildir: amaç
-  verinin tutulmamasıdır (Requirement 16).
+- Oylar süresiz saklanır; silme işi yoktur (Requirement 16).
 - Kayıtlı cevaplar bu PRD'nin tablosu değildir; silme question-analysis'in hizmetiyle yapılır.
 - Kaynaktaki `data/feedback.jsonl` taşınmaz (kurulu bir kaynak sürüm yoktur); oylar boş başlar.
 - Şemanın sahibi SQLAlchemy modelleridir; değişiklik Alembic göçüyle (veritabanı yapısını sürüm
@@ -329,15 +336,11 @@ Kaldırılan: kaynaktaki `POST /api/feedback`, `voter` alanı ve `?voter=` param
 
 - Yapılandırılmış günlük olayları: `feedback.vote_recorded` (kapsam, oy, gerekçe var mı, kullanıcının
   dışa açık kimliği), `feedback.saved_answers_forgotten` (silinen kayıtlı cevap sayısı),
-  `feedback.apply_failed` (yalnız hata sınıfının adı), `feedback.retention_run` (silinen oy sayısı,
-  süre, sonuç). Soru metni, tablo anahtarı ve gerekçe yazılmaz.
+  `feedback.apply_failed` (yalnız hata sınıfının adı). Soru metni, tablo anahtarı ve gerekçe yazılmaz.
 - Ölçümler: verilen oylar `dwhnavigator_feedback_votes_total{scope,vote}` (`scope`: `table`,
   `answer`; `vote`: `up`, `down`); cevap reddiyle silinen kayıtlı cevaplar
   `dwhnavigator_feedback_saved_answers_forgotten_total`; oyları uygulama hataları
-  `dwhnavigator_feedback_apply_failures_total`; saklama işinin sildiği oylar
-  `dwhnavigator_feedback_retention_deleted_votes_total`; saklama işinin son başarılı çalışma zamanı
-  `dwhnavigator_feedback_retention_last_success_timestamp_seconds` (1970'ten bu yana geçen saniye;
-  48 saatten eskiyse iş durmuş demektir). Kullanıcı, soru ve tablo ölçüme girmez.
+  `dwhnavigator_feedback_apply_failures_total`. Kullanıcı, soru ve tablo ölçüme girmez.
 - İz: ayrı iz aralığı yoktur; oy isteği sunucunun istek aralığına bağlıdır. Ortak kurallar ve saklama
   süresi [application-foundation alanında](../../../application-foundation/DOMAIN.md) tanımlıdır.
   Tüketen test: `app/backend/tests/integration/test_telemetry_signals.py`.
@@ -345,15 +348,9 @@ Kaldırılan: kaynaktaki `POST /api/feedback`, `voter` alanı ve `?voter=` param
 ## Dağıtım etkisi
 
 - Yeni göç (`answer_vote`).
-- Yeni ortam ayarı `DWHNAVIGATOR_FEEDBACK_RETENTION_DAYS` (varsayılan 730, 180–3.650); sır değildir,
-  `app/backend/.env.example`, yerel Compose ortam bloğu ve Kubernetes kurulum paketinin (chart) proje
-  değer dosyası `helm/dwhnavigator/values-project.yaml` (`backend.config`) birlikte güncellenir;
-  `python3 scripts/check-config-sync.py` geçer.
-- Saklama işi sunucu sürecinin içinde çalışır; backend tek kopya çalıştığı ve güncellemede eski ve
-  yeni süreç birlikte çalışmadığı için
-  ([kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md)
-  Decision 5) iş tek süreçte yürür ve ayrı kilit gerekmez; aynı silme tekrarlanırsa aynı sonucu verir.
-- Yeni sır, yeni ağ çıkışı ve kurulum paketinde yeni nesne yoktur.
+- Yeni ortam ayarı, sır, ağ çıkışı ve kurulum paketinde
+  ([kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md)) yeni
+  nesne yoktur.
 
 ## Test stratejisi
 
@@ -379,12 +376,13 @@ Kaldırılan: kaynaktaki `POST /api/feedback`, `voter` alanı ve `?voter=` param
   uygulanması; uygulamaya hata sokulduğunda cevabın oysuz dönmesi ve ölçümün artması; tek soru ve
   liste raporunun oylardan önce ve sonra aynı hücreleri taşıması; liste anlık durumundaki en iyi
   tablonun değişmemesi.
-- **Saklama işi:** süreyi bir gün aşan oyun silinmesi, bir gün kalan oyun kalması, işin
-  tekrarlanmasının aynı sonucu vermesi, iş hatasının cevapları etkilememesi.
+- **Saklama:** iki yıldan eski oyun backend yeniden açıldıktan sonra yerinde kalması ve yaş
+  çarpanıyla sayılması (Requirement 4, 16).
 - **Ön yüz testleri (Vitest):** düğmelerin basılı durumu, 👍 ve 👎 iletileri, gerekçe paneli ve hazır
   gerekçeler, Enter ve "Gönder", hata iletisi, rozet metinleri ve açıklamaları, satır işaretleri,
-  `endorsed` ve `rejected` bölümleri, cevap oyu bölümünün görünme koşulları ve oy sonrası iletileri,
-  kayıtlı cevap uyarısı, tarayıcı deposuna yazılmaması.
+  `endorsed` ve `rejected` bölümleri, cevap oyu bölümünün görünme koşulları (tablo önermeyen
+  "Bulunamadı" ve "Analiz yapılamadı" cevabında görünmemesi) ve oy sonrası iletileri, kayıtlı cevap
+  uyarısı, tarayıcı deposuna yazılmaması.
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
 
@@ -411,7 +409,7 @@ aramasını ADR-039 ile kaldırdı.
 - [ ] Acceptance 3: L1 — Otomatik testlerden geçti: cevap uçlarında oyların uygulanması, hata
   dayanıklılığı, raporların ve liste satırının oylardan etkilenmemesi ve liste terimi oylarının tek
   soruyu etkilemesi doğrulanır (Requirement 8, 9, 14).
-- [ ] Acceptance 4: L1 — Otomatik testlerden geçti: saklama işi testleri ve telemetri testi geçer
+- [ ] Acceptance 4: L1 — Otomatik testlerden geçti: süresiz saklama testi ve telemetri testi geçer
   (Requirement 16; Gözlemlenebilirlik).
 - [ ] Acceptance 5: L1 — Otomatik testlerden geçti: ön yüz testleri ve tip sapması kapısı geçer
   (Requirement 11–13).
@@ -438,8 +436,8 @@ aramasını ADR-039 ile kaldırdı.
   tutup okurken seçiyordu; satırı kişi ve soru başına güncellemek, aynı soru metninin anlam anahtarı
   terim sözlüğüyle değiştiğinde eski "aynı anlam" eşleşmesini silerek sonucu kaynaktan ayırırdı.
 - Decision 4: İstemci sorunun metnini ve cevabın yazıldığı anı gönderir; anahtarları sunucu hesaplar
-  (kaynakla aynı). Gerekçe: oyu analiz kaydının kimliğine bağlamak oyları analiz kaydının saklama
-  süresine ve biçimine bağımlı kılardı; kimliği belli bir kullanıcının bir soruya oy vermesi, o
+  (kaynakla aynı). Gerekçe: oyu analiz kaydının kimliğine bağlamak oyları analiz kaydının
+  silinmesine ve biçimine bağımlı kılardı; kimliği belli bir kullanıcının bir soruya oy vermesi, o
   soruyu sorup oy vermesinden farklı bir etki doğurmaz.
 - Decision 5: `rank`, `score`, `analyst`, `reused` ve `report_id` saklanmaz. Gerekçe: hiçbir hesap
   bunları okumaz; okuyan `vsa feedback` ADR-053 ile kaldırıldı; gereksiz veri tutulmaz.
@@ -453,28 +451,17 @@ aramasını ADR-039 ile kaldırdı.
   gönderilen belgedir ve analizin kendisini yansıtmalıdır; oylar zamanla değişir.
 - Decision 9: Oyları uygulamadaki hata cevabı düşürmez. Gerekçe: oylar yardımcıdır; cevap dakikalar
   süren bir analizin sonucudur.
-- Decision 10: Ham oy kayıtları hiçbir uçtan dönmez (Açık soru 2). Gerekçe: kimin hangi tabloyu
-  uygun bulmadığı kişisel bir değerlendirmedir; görünümü şekillendirmek için kişi sayısı ve gerekçe
-  yeterlidir.
+- Decision 10: Ham oy kayıtları hiçbir uçtan dönmez; kullanıcılar ve yöneticiler kaynaktaki ekranda
+  olduğu gibi yalnız kişi sayılarını, durumu ve adsız gerekçeleri görür; yönetim ekranında oy
+  sayfası yoktur. Gerekçe: kimin hangi tabloyu uygun bulmadığı kişisel bir değerlendirmedir;
+  görünümü şekillendirmek için kişi sayısı ve gerekçe yeterlidir.
 - Decision 11: Anahtarlar sorunun tam metninden hesaplanır. Gerekçe: kaynakta 2.000 karakterde
   kesilmiş metinden hesaplanıyordu; daha uzun sorularda oy, cevabın anahtarına hiç eşleşmiyordu.
-
-## Açık sorular
-
-1. **Oylar ne kadar saklansın?** Kaynakta oylar süresiz tutuluyordu; bir oyun ağırlığı 180 günde
-   yarıya, iki yılda on altıda birin altına iner. Öneri: 730 gün (iki yıl); süre
-   `DWHNAVIGATOR_FEEDBACK_RETENTION_DAYS` ayarıyla 180–3.650 gün arasında değiştirilebilir; daha eski
-   oylar günde bir silinir (Requirement 16).
-2. **Kim neye ne oy verdi bilgisini kim görebilsin?** Kaynakta oylar adsız tarayıcı kimliğiyle
-   tutuluyor ve yalnız toplamlar gösteriliyordu; hedefte her oy gerçek bir kullanıcıya bağlıdır.
-   Öneri: arayüzde ve uçlarda kimse görmez; kullanıcılar ve yöneticiler yalnız kişi sayılarını,
-   durumu ve adsız gerekçeleri görür; ham kayıt yalnız veritabanındadır ve yönetim ekranına oy
-   sayfası eklenmez (Requirement 15).
-3. **Tablo önermeyen ("Bulunamadı") analist cevabına da "Bu cevap işinize yaradı mı?" sorulsun mu?**
-   Kaynakta bu cevaplara oy verilemiyor; yanlış bir "Bulunamadı" kayıtlı cevap olarak (en çok 30 gün)
-   herkese yeniden verilebiliyor ve ancak biri "Yeniden analiz et" derse yenileniyor. Öneri: Evet;
-   analistin yazdığı "Bulunamadı" cevabında da sorulur ve iki kişinin 👎'si kayıtlı cevabı siler;
-   "Analiz yapılamadı" cevabında sorulmaz (Requirement 13).
+- Decision 12: "Bu cevap işinize yaradı mı?" yalnız tablo önerisi ya da reddedilmiş tablo olan
+  cevapta gösterilir; tablo önermeyen ("Bulunamadı") analist cevabında ve "Analiz yapılamadı"
+  cevabında gösterilmez (kaynaktaki ekranla aynı).
+- Decision 13: Oylar süresiz saklanır; silme işi yoktur (kaynakla aynı). Gerekçe: proje sahibinin
+  kararı; eski oyun ağırlığı yaş çarpanıyla 180 günde yarıya iner.
 
 ## Teslim akışı
 
@@ -495,5 +482,8 @@ Belirtim → Plan → Görevler → Uygulama
   rapordakinden farklı olabilir.
 - **Dakika hassasiyeti.** Cevabın yazıldığı dakika içinde önceki cevaba verilmiş bir oy yeni cevaba
   da sayılabilir.
-- **Süresiz saklama seçilirse** (Açık soru 1 kabul edilmezse) oy tablosu yalnız büyür; okuma dizinle
-  sınırlı kalır ama veritabanı büyür ve kişiye bağlı veri süresiz tutulur.
+- **Oy tablosu süresiz büyür.** Oylar silinmediği için tablo yalnız büyür; okuma dizinle sınırlı
+  kalır ama veritabanı büyür ve kişiye bağlı veri süresiz tutulur (Decision 13).
+- **Yanlış "Bulunamadı" oyla silinemez.** Tablo önermeyen analist cevabına cevap oyu verilemediği
+  için yanlış bir "Bulunamadı" kayıtlı cevap olarak (en çok 30 gün) herkese yeniden verilebilir;
+  ancak biri "Yeniden analiz et" derse yenilenir (kaynakla aynı, Decision 12).

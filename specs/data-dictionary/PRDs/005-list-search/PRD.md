@@ -1,10 +1,15 @@
 # PRD — list-search
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [data-dictionary](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -23,10 +28,10 @@ liste ve o ana kadarki cevaplar kaybolmaz.
   ya da güvenli bir hata iletisi saklanır; 200 terimlik bir listenin bütün terimleri tek Excel
   raporunda (Özet · Öneriler) terim başına bir satırla görünür; sunucu yeniden başladıktan sonra
   sürdürülen listede daha önce cevaplanmış hiçbir terim yeniden sorulmaz.
-- **Yönetici (`yonetici`):** Kullanıcının yapabildiklerine ek olarak herkesin listelerini salt
-  okunur görür, raporlarını indirir ve çalışan bir listeyi durdurur (Decision 8). Ölçülebilir
-  sonuç: kurumda aynı anda tek liste çalışabildiği için herkesi bekleten bir liste yönetici
-  tarafından durdurulabilir.
+- **Yönetici (`yonetici`):** Toplu aramada kullanıcıyla aynı yetkidedir: yalnız kendi listelerini
+  görür, durdurur ve sürdürür; başkasının listesini göremez (Decision 8, kaynakla aynı).
+  Başkalarının terim analizlerini [analysis-records](../008-analysis-records/PRD.md)'ın Analizler
+  sayfasında görür.
 - **İşletim ekibi:** Dağıtımı yapar; yeniden başlatma listeyi silmez, yarıda keser. Uygulama içi
   rol değildir.
 
@@ -40,15 +45,14 @@ liste ve o ana kadarki cevaplar kaybolmaz.
   başlamada yarıda kesilme, ara ve son rapor, listelerin saklanması ve ana ekrandaki liste arayüzü.
 - Oylar ve oyların cevaba uygulanması [answer-feedback](../006-answer-feedback/PRD.md)
   PRD'sindedir; terim ayrıntısı o PRD'nin uygulama adımından geçer.
-- Analiz kaydının veri modeli ve saklama süresi [analysis-records](../008-analysis-records/PRD.md)
+- Analiz kaydının veri modeli [analysis-records](../008-analysis-records/PRD.md)
   PRD'sindedir. Kayıtlı cevapların açık ya da kapalı olması, "aynı anlam" eşleşmesi ve en çok yaşı
   [search-settings](../009-search-settings/PRD.md) ayarlarıdır. Sözlük sürümü
   [dictionary-management](../001-dictionary-management/PRD.md) PRD'sindedir. Giriş ve roller
   [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) PRD'sindedir.
 - Kurumda aynı anda en çok bir liste çalışır; kural kullanıcıdan bağımsızdır (Decision 3).
-- Bir liste onu yükleyen kullanıcıya aittir. Listeyi yalnız sahibi ve `yonetici` görür; durdurmayı
-  sahibi ve `yonetici`, sürdürmeyi yalnız sahibi yapar (Decision 8). Başka kullanıcının listesi için
-  yanıt, liste yokmuş gibi 404'tür.
+- Bir liste onu yükleyen kullanıcıya aittir. Listeyi yalnız sahibi görür, durdurur ve sürdürür
+  (Decision 8). Başka her kullanıcı için (`yonetici` dahil) yanıt, liste yokmuş gibi 404'tür.
 - Yüklenen Excel dosyası saklanmaz ve kalıcı olarak hiçbir yere yazılmaz; yalnız terimler, başlık,
   okuma notları ve dosya adı saklanır (Decision 9). Dosya
   [dictionary-management](../001-dictionary-management/PRD.md)'ın ortak güvenli Excel okuyucusuyla ve
@@ -107,28 +111,27 @@ davranışı söyler.
   hatasında yalnız güvenli Türkçe ileti (Requirement 7, 18).
 - **Durdurma** (`App.list_cancel`, `src/vsa/cancel.py` `Token`): Durdurma listenin iptal belirtecini
   tetikler; çalışan terimin model bağlantıları kesilir, kilit bekleyen terim beklemeden çıkar.
-  Durdurulan terim cevapsız kalır, hata sayılmaz. **Hedefte:** aynı; durdurmayı sahibi ve yönetici
-  yapar; süre sınırı 5 saniyedir (Requirement 8).
+  Durdurulan terim cevapsız kalır, hata sayılmaz. **Hedefte:** aynı; durdurmayı yalnız sahibi yapar;
+  süre sınırı 5 saniyedir (Requirement 8).
 - **Sürdürme** (`App.list_resume`): Cevabı olan terimler korunur; cevapsız ve hatalı terimler
   sırayla yeniden sorulur; duraklama geçen süreye sayılmaz; her terimi cevaplanmış listede "Bu
   listenin bütün terimleri cevaplandı; devam edecek terim yok." döner. "Analiz yapılamadı" sonucu
-  cevap sayılır, yeniden sorulmaz; ekran "Model çalışınca bu terimleri yeniden arayın." der.
-  "▶ Devam et" düğmesi yalnız durdurulmuş ve cevapsız terimi kalmış listede görünür; durdurulmadan
-  bitmiş ama hatalı terimi olan listede görünmez. **Hedefte:** sürdürmeyi yalnız sahibi yapar;
-  "Analiz yapılamadı" terimleri de yeniden sorulur; düğme, çalışmayan ve yeniden sorulacak terimi
-  olan her listede görünür (Requirement 9, Açık soru 5).
-- **Saklama** (`App.lists`, `MAX_LISTS = 5`): Listeler bellektedir; çalışmayan en çok 5 liste,
-  kimin olduğuna bakılmadan tutulur; sunucu yeniden başlayınca hepsi kaybolur. Listeleri sıralayan
+  cevap sayılır, yeniden sorulmaz; ekran "Model çalışınca bu terimleri yeniden arayın." der. "▶
+  Devam et" düğmesi yalnız durdurulmuş ve cevapsız terimi kalmış listede görünür; durdurulmadan
+  bitmiş ama hatalı terimi olan listede görünmez. **Hedefte:** aynı kurallar ve aynı düğme;
+  sürdürmeyi yalnız sahibi yapar; yarıda kesilen liste durdurulmuş liste gibi sürdürülür
+  (Requirement 9, 17).
+- **Saklama** (`App.lists`, `MAX_LISTS = 5`): Listeler bellektedir; çalışmayan en çok 5 liste, kimin
+  olduğuna bakılmadan tutulur; sunucu yeniden başlayınca hepsi kaybolur. Listeleri sıralayan
   `GET /api/list` ucu ADR-053 ile kaldırılmıştır; sayfa yenilenince liste bir daha bulunamaz.
-  **Hedefte:** listeler veritabanında, kişi başına en yeni 5 liste ve analiz kayıtlarının saklama
-  süresi kadar tutulur; kullanıcı kendi listelerini seçip açar (Requirement 15, 16, Açık soru 4).
+  **Hedefte:** listeler veritabanında kalıcıdır; kişi başına en yeni 5 liste tutulur; ana ekran
+  sayfa açılışında kullanıcının en yeni listesini bulur (Requirement 15, 16, Decision 14).
 - **Sayfadan ayrılma** (`src/vsa/web/static/index.html` `Bulk`, `pagehide` olayında
   `navigator.sendBeacon(".../cancel")`): Sayfa kapanınca ya da yenilenince çalışan liste durdurulur;
-  sayfa listenin tek sahibidir. **Hedefte:** liste sayfadan bağımsız sürer (Requirement 11, Açık
-  soru 2).
+  sayfa listenin tek sahibidir. **Hedefte:** liste sayfadan bağımsız sürer (Requirement 11, Decision 13).
 - **Yeniden başlama:** Sunucu yeniden başlayınca çalışan liste ve bütün cevapları kaybolur.
   **Hedefte:** liste "yarıda kesildi" olur, cevaplanmış terimler korunur, sahibi sürdürür
-  (Requirement 10, Açık soru 1).
+  (Requirement 10, Decision 2).
 - **Terim ayrıntısı** (`App.list_item`, `GET /api/list/<id>/item/<n>?voter=`): Cevaplanmış terimin
   tam cevabı tek soru cevabıyla aynı biçimde döner; oylar istemcinin gönderdiği `voter` kimliğiyle
   uygulanır; terimin tek soru raporu bellekte tutulan en çok 50 rapordan (`MAX_REPORTS`) birine
@@ -143,11 +146,11 @@ davranışı söyler.
 - **Komut satırı** (`src/vsa/cli.py` `vsa ask -i`, `_ask_list`): Aynı listeyi terminalde sırayla
   cevaplar ve rapor yazar; kayıtlı cevap kullanmaz, analiz kaydı yazmaz. **Hedefte:** kaldırılır
   (Decision 11).
-- **Arayüz** (`index.html` `Bulk`): Arama çubuğundaki Excel düğmesi ve sayfaya sürükle-bırak,
-  ret açıklaması, liste görünümü, 1,5 saniyede bir yoklama, terim ayrıntısı, üst çubukta "Liste"
-  hapı. Sürdürme hatası tarayıcının açılır uyarı penceresiyle (`alert`) gösterilir. **Hedefte:**
-  React'te aynı işlev ve metinler; hata satır içinde gösterilir; sayfa açılışında kullanıcının
-  listesi hapla bulunur; "Önceki listeler" eklenir (Requirement 17).
+- **Arayüz** (`index.html` `Bulk`): Arama çubuğundaki Excel düğmesi ve sayfaya sürükle-bırak, ret
+  açıklaması, liste görünümü, 1,5 saniyede bir yoklama, terim ayrıntısı, üst çubukta "Liste" hapı.
+  Sürdürme hatası tarayıcının açılır uyarı penceresiyle (`alert`) gösterilir. **Hedefte:** React'te
+  aynı işlev, görünüm ve metinler; sayfa açılışında kullanıcının en yeni listesi hapla bulunur
+  (Requirement 17).
 
 ## İşlevsel gereksinimler
 
@@ -208,7 +211,7 @@ alır. İleti, çalışan liste isteği yapanınsa "Bir liste zaten çalışıyo
 durdurun.", başkasınınsa "Başka bir kullanıcının listesi çalışıyor; bitince yeniden deneyin."
 olur; başkasının listesinin adı ve sahibi söylenmez. Okuma başarılıysa tek işlemde liste kaydı
 (dışa açık kimlik `public_id`, sahip olarak oturumdaki kullanıcı, dosya adı, başlık, okuma notları,
-terim sayısı, başlangıçtaki sözlük sürümü ve sözlüğün kaynak dosya adı, durum "sürüyor",
+terim sayısı, başlangıçtaki sözlük sürümü, durum "sürüyor",
 başlangıç zamanı) ve terimleri sırayla yazılır; yanıt 201 ve Requirement 7'deki anlık durumdur;
 liste hemen yürümeye başlar. İki başlatma isteği aynı anda gelse de en çok biri başarılı olur;
 diğeri 409 alır (Decision 3).
@@ -248,7 +251,7 @@ tablo (anahtar, ad, güven, seviye; oylardan etkilenmemiş ilk öneri), cevabın
 (`analyst`, `reused`, `unavailable`) ve süreyi taşır; terimin tam cevabını taşımaz. Anlık durum en
 çok 200 terim satırı içerdiği için sayfalanmaz.
 
-Requirement 8: Sahip ya da `yonetici` "Durdur" dediğinde liste "durdurma istendi" olur; 5 saniye
+Requirement 8: Sahip "Durdur" dediğinde liste "durdurma istendi" olur; 5 saniye
 içinde listenin yeni bir model çağrısı başlamaz, çalışan terimin model çağrıları kesilir (iptal
 mekanizması [question-analysis](../004-question-analysis/PRD.md) PRD'sindedir) ve liste
 "durduruldu" olur. Durdurma anında çalışan terim cevapsız kalır, hata sayılmaz; o ana kadar
@@ -256,12 +259,12 @@ cevaplanan terimler saklı kalır. Çalışmayan listeyi durdurmak hiçbir şeyi
 durumu döndürür.
 
 Requirement 9: Sahip, çalışmayan (durdurulmuş, yarıda kesilmiş ya da tamamlanmış) listesini
-sürdürür. Cevabı olan terimler korunur ve yeniden sorulmaz; cevapsız (durdurulmuş), hatalı ve
-"Analiz yapılamadı" sonuçlu terimler dosya sırasıyla yeniden sorulur (Açık soru 5). Kurumda başka
-çalışan liste varsa 409 `term_list_running`; yeniden sorulacak terim yoksa 409
-`term_list_nothing_to_resume` ("Bu listenin bütün terimleri cevaplandı; devam edecek terim yok.")
-döner; liste zaten çalışıyorsa anlık durum değişmeden döner. Sürdürülen listenin geçen süresine
-aradaki bekleme eklenmez. Yönetici başkasının listesini sürdüremez (403 `term_list_not_owner`).
+sürdürür. Cevabı olan terimler korunur ve yeniden sorulmaz; "Analiz yapılamadı" sonucu da cevap
+sayılır ve yeniden sorulmaz. Cevapsız (durdurulmuş ya da yarıda kesilmiş) ve hatalı terimler dosya
+sırasıyla yeniden sorulur (kaynakla aynı, `App.list_resume`). Kurumda başka çalışan liste varsa 409
+`term_list_running`; yeniden sorulacak terim yoksa 409 `term_list_nothing_to_resume` ("Bu listenin
+bütün terimleri cevaplandı; devam edecek terim yok.") döner; liste zaten çalışıyorsa anlık durum
+değişmeden döner. Sürdürülen listenin geçen süresine aradaki bekleme eklenmez.
 
 Requirement 10: Sunucu süreci kapatılırken (dağıtım, yeniden başlatma) çalışan liste "yarıda
 kesildi" olarak işaretlenir ve çalışan terim cevapsız kalır. Süreç beklenmedik biçimde ölürse
@@ -276,8 +279,8 @@ Yarıda kesilen liste kendiliğinden sürdürülmez; sahibi onu
 kaybolmaz.
 
 Requirement 11: Liste sayfadan bağımsızdır: sayfayı kapatmak ya da yenilemek, oturum süresinin
-dolması veya tarayıcının ağdan düşmesi listeyi durdurmaz (Açık soru 2). Kullanıcı yeniden girdiğinde
-listesini üst çubuktaki "Liste" hapından ya da "Önceki listeler"den açar (Requirement 15, 17).
+dolması veya tarayıcının ağdan düşmesi listeyi durdurmaz (Decision 13). Kullanıcı yeniden girdiğinde
+en yeni listesini üst çubuktaki "Liste" hapından açar (Requirement 15, 17).
 
 Requirement 12: Terim ayrıntısı, cevaplanmış terimin tam cevabını tek soru cevabıyla aynı biçimde ve
 aynı görünümle döndürür; dönmeden önce oylar oturumdaki kullanıcıyla uygulanır
@@ -291,14 +294,15 @@ Requirement 13: Liste raporu tek çalışma kitabıdır ve kaynaktaki `write_lis
 ve biçimdedir:
 
 - **Özet** sayfası: başlık "Veri Ambarı Veri Sözlüğü – Toplu Talep Analizi"; "Liste" (dosya adı),
-  "Kaynak sözlük" (listenin başladığı andaki sözlüğün kaynak dosya adı ve sürümü), "Üretim",
-  "Sonuç" ("{n} terim: {a} VAR, {b} KISMEN VAR, {c} BULUNAMADI"; cevapsız terim varsa ", {k}
-  cevapsız", liste durdurulmuş ya da yarıda kesilmişse " — liste durduruldu, rapor yarım"),
-  "Cevabı üreten" ("{n} terim analist (dil modeli)"; analiz edilemeyen terim varsa uyarı rengiyle
-  ", {m} terim analiz edilemedi — model bağlı değil ya da çalışamadı (Yöntem sütunu)"), okuma notu
-  varsa notları yan yana yazan "Dosya" satırı; altında terim başına bir satır: #, Terim (Öneriler
-  sayfasındaki ilk satırına bağlantı), Sonuç, En İyi Tablo, Güven, Seviye, Özet, Yöntem
-  ("Analist", "Yapılamadı" ya da "-"), Süre (sn), Eksik Bilgi.
+  "Kaynak sözlük" (kaynaktaki gibi `dictionary.jsonl` ve listenin başladığı andaki sözlük sürümü;
+  [dictionary-management](../001-dictionary-management/PRD.md) Requirement 17), "Üretim", "Sonuç"
+  ("{n} terim: {a} VAR, {b} KISMEN VAR, {c} BULUNAMADI"; cevapsız terim varsa ", {k} cevapsız",
+  liste durdurulmuş ya da yarıda kesilmişse " — liste durduruldu, rapor yarım"), "Cevabı üreten"
+  ("{n} terim analist (dil modeli)"; analiz edilemeyen terim varsa uyarı rengiyle ", {m} terim
+  analiz edilemedi — model bağlı değil ya da çalışamadı (Yöntem sütunu)"), okuma notu varsa notları
+  yan yana yazan "Dosya" satırı; altında terim başına bir satır: #, Terim (Öneriler sayfasındaki ilk
+  satırına bağlantı), Sonuç, En İyi Tablo, Güven, Seviye, Özet, Yöntem ("Analist", "Yapılamadı" ya
+  da "-"), Süre (sn), Eksik Bilgi.
 - **Öneriler** sayfası: bütün terimlerin önerileri alt alta; sütunlar #, Terim, Sıra,
   Veritabanı.Şema.Obje, Veri Seti Grubu, Kapsadığı Bilgi, İlgili Alanlar, Gerekçe, Kısıt / Dikkat,
   Güven, Seviye, Kullanım Önerisi; önerisi olmayan terim tek satırdır ve Gerekçe sütununda cevabın
@@ -312,22 +316,20 @@ ve biçimdedir:
 - Oylar raporu değiştirmez. Her metin hücreye metin olarak yazılır.
 
 Requirement 14: Bütün uçlar oturum ve `kullanici` ya da `yonetici` rolü ister. Anlık durum, terim
-ayrıntısı, raporlar ve durdurma listenin sahibine ve `yonetici`'ye açıktır; sürdürme yalnız
-sahibinindir. Başka kullanıcının listesine erişen `kullanici` liste yokmuş gibi 404
-`term_list_not_found` alır. Sahiplik ve rol her istekte sunucuda, etkin kiracı (kurum) kapsamında
-denetlenir.
+ayrıntısı, raporlar, durdurma ve sürdürme yalnız listenin sahibine açıktır. Başka kullanıcının
+listesine erişen herkes (`yonetici` dahil) liste yokmuş gibi 404 `term_list_not_found` alır.
+Sahiplik ve rol her istekte sunucuda, etkin kiracı (kurum) kapsamında denetlenir.
 
-Requirement 15: Listeler ucu, kullanıcının saklanan listelerini en yeni üstte (aynı zamanda
-yüklenenler kimliğe göre) döndürür. `yonetici` "tüm listeler" kapsamıyla herkesin listelerini
-sahibin görünen adıyla görür; `kullanici` bu kapsamı isterse 403 `term_list_scope_forbidden` alır.
-Yanıt sayfalıdır (varsayılan 20, en çok 100 satır) ve her satır kimlik, dosya adı, sahip, durum,
-durdurma istendi bayrağı, toplam, biten, yükleme ve bitiş zamanını taşır.
+Requirement 15: Listeler ucu, yalnız oturumdaki kullanıcının saklanan listelerini en yeni üstte
+(aynı zamanda yüklenenler kimliğe göre) döndürür; ana ekran sayfa açılışında hap için en yeni
+listeyi buradan bulur. Yanıt sayfalıdır (varsayılan 20, en çok 100 satır) ve her satır kimlik, dosya
+adı, sahip, durum, durdurma istendi bayrağı, toplam, biten, yükleme ve bitiş zamanını taşır.
 
-Requirement 16: Bir kullanıcının çalışmayan listelerinden en yeni 5'i saklanır; yeni liste
-yüklenince 5'i aşan en eski listeleri terimleriyle birlikte kalıcı silinir. Ayrıca bitişinden bu
-yana analiz kayıtlarının saklama süresi ([analysis-records](../008-analysis-records/PRD.md)) geçmiş
-listeler günde en az bir kez kalıcı silinir. Çalışan liste silinmez. Liste silmek o listenin
-terimleriyle yapılmış analiz kayıtlarını silmez (Açık soru 4).
+Requirement 16: Her kullanıcının en yeni 5 listesi veritabanında kalıcı olarak saklanır. Kullanıcı
+altıncı listesini yüklediğinde en eski listesi terimleriyle birlikte, yeni listenin yazıldığı
+işlemde kalıcı silinir (Decision 14). Süreye bağlı silme yoktur. Liste silmek o listenin
+terimleriyle yapılmış analiz kayıtlarını silmez; terimlerin cevapları
+[analysis-records](../008-analysis-records/PRD.md)'ta kalır.
 
 Requirement 17: Ana ekranın liste arayüzü kaynaktaki işlevle React'te kurulur; kaynaktaki metinler
 aynen `app/frontend/src/locales/tr.json`'a taşınır:
@@ -341,12 +343,11 @@ aynen `app/frontend/src/locales/tr.json`'a taşınır:
 - Liste görünümü: dosya adı; ilerleme ("{n}/{N} terim tamamlandı" ve tahmin varsa " · kalan ≈
   {süre}"; "Durduruldu · {n}/{N} terim cevaplandı"; yeni "Yarıda kesildi · {n}/{N} terim
   cevaplandı"; "Tamamlandı · {N} terim, {süre}") ve " · başlık: “{başlık}”"; "■ Durdur" (liste
-  çalışırken), "▶ Devam et" (liste çalışmıyorsa, yeniden sorulacak terim varsa ve kullanıcı
-  sahibiyse; ipucu "Cevaplanan terimler korunur; kalan terimler sırayla aranır"), en az bir terim
-  bitmişse "⬇ Şimdiye kadarki rapor" (çalışırken) ya da "⬇ Excel raporu"; ilerleme çubuğu; "ℹ"
-  işaretli okuma notları; analiz edilemeyen terim varsa "{n} terim analiz edilemedi (model bağlı
-  değil ya da çalışamadı). Model çalışınca “Devam et” ile bu terimleri yeniden arayın." (kaynakta
-  cümle "Model çalışınca bu terimleri yeniden arayın." idi).
+  çalışırken), "▶ Devam et" (liste durdurulmuş ya da yarıda kesilmişse ve cevapsız terimi kalmışsa,
+  kaynakla aynı koşul; ipucu "Cevaplanan terimler korunur; kalan terimler sırayla aranır"), en az
+  bir terim bitmişse "⬇ Şimdiye kadarki rapor" (çalışırken) ya da "⬇ Excel raporu"; ilerleme çubuğu;
+  "ℹ" işaretli okuma notları; analiz edilemeyen terim varsa "{n} terim analiz edilemedi (model bağlı
+  değil ya da çalışamadı). Model çalışınca bu terimleri yeniden arayın."
 - Terim satırı: sıra; terim; "ÖNCEKİ CEVAP" ("Bu terim daha önce analiz edilmişti; kayıtlı cevap
   kullanıldı") ya da "YAPILAMADI" ("Bu terim analiz edilemedi (model bağlı değil ya da
   çalışamadı)") etiketi; en iyi tablo ve güveni; "eksik: …"; hata iletisi; durum (sonuç adı ya da
@@ -358,11 +359,11 @@ aynen `app/frontend/src/locales/tr.json`'a taşınır:
 - Hap: liste görünümü açık değilken üst çubukta "Liste {n}/{N}" (çalışırken yanan noktayla) ya da
   "Liste sonucu" görünür ("Toplu aramaya dön"); tıklayınca listeye döner. Sayfa açılışında
   kullanıcının saklanan listesi varsa hap en yenisi için görünür.
-- Yeni "Önceki listeler": liste görünümünde kullanıcının saklanan listeleri (dosya adı, yükleme
-  zamanı, durum, {n}/{N}) seçilip açılır; `yonetici` "Tüm kullanıcılar" seçeneğiyle herkesinkini
-  sahibin adıyla görür; başkasının listesinde "▶ Devam et" görünmez.
-- Durdurma ve sürdürme hataları açılır uyarı penceresi yerine liste başlığında satır içinde
-  gösterilir.
+- Sürdürme hatası kaynaktaki gibi tarayıcının uyarı penceresiyle (`alert`) gösterilir; durdurma
+  isteği başarısız olursa ileti gösterilmez, liste görünümü yenilenir.
+- Liste arayüzünün görünümü kaynakla birebir aynıdır; görünür yeni öğe eklenmez
+  ([dictionary-explorer](../007-dictionary-explorer/PRD.md) Decision 3; görsel eşdeğerlik kanıtı
+  orada Acceptance 5).
 - İlerleme çubuğunun genişliği gibi dinamik değerler tarayıcının stil nesnesi (CSSOM) ile verilir;
   çalışırken `<style>` öğesi ekleyen bileşen kullanılmaz
   ([user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) Requirement 14).
@@ -388,13 +389,13 @@ okuyucusundadır.
 | Uç | Yetki | Başarı | Hatalar |
 |---|---|---|---|
 | `POST /term-lists` (ham Excel gövdesi, `X-Filename`) | `kullanici`, `yonetici` | 201 → anlık durum (Requirement 7) | 401; 403 rol; 409 `term_list_running`; 413 `upload_too_large`; 415 `unsupported_media_type`; 422 `term_list_not_xlsx`, `term_list_too_large_unpacked`, `term_list_too_many_rows`, `term_list_layout_invalid`, `term_list_term_too_long`, `term_list_too_many_terms` |
-| `GET /term-lists?scope=mine\|all&page=&page_size=` | `kullanici` (yalnız `mine`), `yonetici` | 200 → satırlar (`id`, `name`, `owner`, `status`, `stop_requested`, `total`, `done`, `created_at`, `finished_at`) ve sayfa bilgisi (`page`, `page_size`, `total`) | 401; 403 `term_list_scope_forbidden`; 422 |
-| `GET /term-lists/{list_id}` | sahip; `yonetici` | 200 → anlık durum | 401; 404 `term_list_not_found` |
-| `GET /term-lists/{list_id}/items/{position}` | sahip; `yonetici` | 200 → terimin tam cevabı (question-analysis cevap biçimi ve answer-feedback alanları) | 401; 404 `term_list_not_found`, `term_list_item_not_answered` |
-| `GET /term-lists/{list_id}/items/{position}/report` | sahip; `yonetici` | 200 → terimin tek soru Excel raporu (indirme dosyası) | 401; 404 `term_list_not_found`, `term_list_item_not_answered` |
-| `GET /term-lists/{list_id}/report` | sahip; `yonetici` | 200 → liste Excel raporu (indirme dosyası) | 401; 404 `term_list_not_found` |
-| `POST /term-lists/{list_id}/cancel` | sahip; `yonetici` | 200 → anlık durum (`stop_requested: true`; çalışmayan listede değişmeden) | 401; 404 `term_list_not_found` |
-| `POST /term-lists/{list_id}/resume` | sahip | 200 → anlık durum (zaten çalışıyorsa değişmeden) | 401; 403 `term_list_not_owner`; 404 `term_list_not_found`; 409 `term_list_running`, `term_list_nothing_to_resume` |
+| `GET /term-lists?page=&page_size=` | `kullanici`, `yonetici` (yalnız kendi listeleri) | 200 → satırlar (`id`, `name`, `owner`, `status`, `stop_requested`, `total`, `done`, `created_at`, `finished_at`) ve sayfa bilgisi (`page`, `page_size`, `total`) | 401; 422 |
+| `GET /term-lists/{list_id}` | sahip | 200 → anlık durum | 401; 404 `term_list_not_found` |
+| `GET /term-lists/{list_id}/items/{position}` | sahip | 200 → terimin tam cevabı (question-analysis cevap biçimi ve answer-feedback alanları) | 401; 404 `term_list_not_found`, `term_list_item_not_answered` |
+| `GET /term-lists/{list_id}/items/{position}/report` | sahip | 200 → terimin tek soru Excel raporu (indirme dosyası) | 401; 404 `term_list_not_found`, `term_list_item_not_answered` |
+| `GET /term-lists/{list_id}/report` | sahip | 200 → liste Excel raporu (indirme dosyası) | 401; 404 `term_list_not_found` |
+| `POST /term-lists/{list_id}/cancel` | sahip | 200 → anlık durum (`stop_requested: true`; çalışmayan listede değişmeden) | 401; 404 `term_list_not_found` |
+| `POST /term-lists/{list_id}/resume` | sahip | 200 → anlık durum (zaten çalışıyorsa değişmeden) | 401; 404 `term_list_not_found`; 409 `term_list_running`, `term_list_nothing_to_resume` |
 
 Anlık durum alanları: `id`, `name`, `owner` (`public_id`, `display_name`), `header`, `notes[]`,
 `status` (`running`, `completed`, `cancelled`, `interrupted`), `stop_requested`, `total`, `done`,
@@ -410,8 +411,8 @@ Kaldırılan uçlar: kaynaktaki `POST /api/list`, `GET /api/list/<id>`,
 
 ## Güvenlik ve yetkilendirme
 
-- Görme, durdurma, sürdürme ve indirme yetkisi her istekte sunucuda, sahipliğe ve role göre
-  denetlenir; sorgular etkin kiracı kapsamındadır. Görme yetkisi olmayan liste 404 alır.
+- Görme, durdurma, sürdürme ve indirme yetkisi her istekte sunucuda, sahipliğe göre denetlenir;
+  sorgular etkin kiracı kapsamındadır. Görme yetkisi olmayan liste 404 alır.
 - Yüklenen dosya yalnız isteğin işlendiği süre boyunca bellekte tutulur (dosya sistemine yazılmaz),
   istek bitince bırakılır; kalıcı olarak hiçbir yere yazılmaz. Dosya adı yalnız ad
   kısmıyla saklanır, hiçbir yol ya da komut kurmaz (Decision 12).
@@ -425,26 +426,27 @@ Kaldırılan uçlar: kaynaktaki `POST /api/list`, `GET /api/list/<id>`,
   Requirement 12).
 - Hata iletileri istisna metni, sunucu yolu, model adresi ya da başka kullanıcının listesi
   hakkında bilgi içermez (Requirement 4, 18).
-- Terimlerin analizleri liste sahibinin adına yapılır ve analiz kaydına onun adıyla yazılır;
-  yönetici başkasının listesini sürdüremediği için başkası adına analiz başlatamaz.
+- Terimlerin analizleri liste sahibinin adına yapılır ve analiz kaydına onun adıyla yazılır; listeyi
+  yalnız sahibi sürdürebildiği için kimse başkası adına analiz başlatamaz.
 
 ## Veri ve geçiş
 
 - Yeni tablo `term_list` (bu PRD'nin): dışa açık kimlik, kiracı, sahip kullanıcı (kullanıcı
   tablosuna bağ), dosya adı, başlık, okuma notları, durum (`running`, `completed`, `cancelled`,
   `interrupted`), durdurma istendi bayrağı, çalışan terimin sırası (boş olabilir), terim sayısı,
-  başlangıçtaki sözlük sürümü ve sözlüğün kaynak dosya adı, son çalışma diliminin başlangıcı,
+  başlangıçtaki sözlük sürümü, son çalışma diliminin başlangıcı,
   önceki dilimlerin toplam süresi, bitiş zamanı ve ortak zorunlu sütunlar (rules/41). Kiracı başına
   yalnız bir "sürüyor" satırına izin veren kısmi benzersiz dizin (yalnız `running` satırlarına
   uygulanan tekillik kuralı; Decision 3); sahip ve yükleme zamanı üzerinde dizin (listeleme ve kişi
-  başına 5 liste kuralı); bitiş zamanı üzerinde dizin (saklama silmesi).
+  başına 5 liste kuralı).
 - Yeni tablo `term_list_item` (bu PRD'nin): listeye bağ ve terimin sırası (ikisi birlikte birincil
   anahtardır; dışa açık kimlik yoktur, rules/41'deki bağlı satır istisnası), terim, cevap
   (kendi içinde tam cevap; JSONB: PostgreSQL'in yapılandırılmış veri sütunu), cevabın nasıl
   üretildiği (`analyst`, `reused`, `unavailable`), sonuç, hata kodu ve güvenli iletisi, süre, bitiş
   zamanı. Sütun ve tablo açıklamaları göçle veritabanına yazılır (rules/43).
-- Liste silinince terimleri aynı işlemde silinir. Saklama silmesi kalıcıdır, yazılımsal silme
-  (satırı silindi diye işaretleyip tutma) değildir: amaç verinin tutulmamasıdır (Requirement 16).
+- Liste silinince terimleri aynı işlemde silinir. En eski listenin silinmesi kalıcıdır, yazılımsal
+  silme (satırı silindi diye işaretleyip tutma) değildir: amaç verinin tutulmamasıdır (Requirement
+  16).
 - Terimin analiz kaydı ([analysis-records](../008-analysis-records/PRD.md)) listeye ve sıraya
   değer olarak işaret eder; o alanın sahibi analysis-records PRD'sidir. Liste silinmesi analiz
   kaydını silmez.
@@ -455,12 +457,12 @@ Kaldırılan uçlar: kaynaktaki `POST /api/list`, `GET /api/list/<id>`,
 ## Gözlemlenebilirlik
 
 - Yapılandırılmış günlük olayları: `term_list.started` (liste kimliği, sahibin dışa açık kimliği,
-  terim sayısı), `term_list.stop_requested` (liste kimliği, isteyen `owner` ya da `admin`),
+  terim sayısı), `term_list.stop_requested` (liste kimliği),
   `term_list.resumed` (liste kimliği, yeniden sorulacak terim sayısı), `term_list.finished` (liste
   kimliği, durum, analist, kayıtlı cevap, analiz yapılamadı ve hata sayıları, çalışma süresi),
   `term_list.interrupted` (liste kimliği, sebep `shutdown`, `startup` ya da `check`),
   `term_list.upload_rejected` (hata kodu), `term_list.report_downloaded` (liste kimliği, tür `list`
-  ya da `item`), `term_list.retention_run` (silinen liste sayısı, süre, sonuç). Terim metni, dosya
+  ya da `item`). Terim metni, dosya
   adı, başlık, cevap, tablo ve kolon adı yazılmaz.
 - Ölçümler: başlatılan listeler `dwhnavigator_term_lists_started_total`; biten listeler
   `dwhnavigator_term_lists_finished_total{status}` (`status`: `completed`, `cancelled`,
@@ -469,8 +471,8 @@ Kaldırılan uçlar: kaynaktaki `POST /api/list`, `GET /api/list/<id>`,
   `dwhnavigator_term_list_uploads_rejected_total{reason}` (`reason`: Requirement 2 ve 3'teki hata
   kodları, `term_list_running`; kümede olmayan değer `other`); çalışan liste sayısı
   `dwhnavigator_term_lists_running` (0 ya da 1); indirilen raporlar
-  `dwhnavigator_term_list_reports_total{kind}` (`kind`: `list`, `item`); saklama silmesi
-  `dwhnavigator_term_list_retention_deleted_total`. Kullanıcı, liste ve terim ölçüme girmez.
+  `dwhnavigator_term_list_reports_total{kind}` (`kind`: `list`, `item`). Kullanıcı, liste ve terim
+  ölçüme girmez.
 - İz: listeye ait ayrı iz aralığı yoktur; her terimin analizi question-analysis PRD'sindeki analiz
   izini üretir. Ortak kurallar ve saklama süresi
   [application-foundation alanında](../../../application-foundation/DOMAIN.md) tanımlıdır. Tüketen
@@ -511,19 +513,21 @@ Kaldırılan uçlar: kaynaktaki `POST /api/list`, `GET /api/list/<id>`,
   girmesi ve liste sürerken sorulan tek sorunun en çok bir terim beklemesi; her terimden sonra
   kalıcı yazma; durdurmada 5 saniye içinde yeni model çağrısı olmaması; sürdürmede cevaplanmış
   terimin yeniden sorulmaması (kaynaktaki `test_term_list_resumes_after_stop` senaryosu dahil);
-  "Analiz yapılamadı" terimlerinin yeniden sorulması; kapanışta ve açılış denetiminde "yarıda
-  kesildi"; süreçte görevi olmayan "sürüyor" listenin dakikalık denetimle "yarıda kesildi" olması;
-  iki başlatma isteğinin yarışında tek kazanan; kayıtlı cevap kullanımı ve "önceki cevap" işareti;
-  sözlük yeniden içe aktarıldıktan sonra terim ayrıntısının ve raporun açılması; beklenmeyen hatada
-  güvenli ileti.
-- **Sunucu ucu (API) testleri:** 401, 403, 404, 409, 413, 422 kodları; sahip, başka kullanıcı ve
-  yönetici görünürlüğü; yöneticinin durdurabilmesi ama sürdürememesi; sayfalama ve sıralama; kişi
-  başına 5 liste ve süreye bağlı silme; kaynaktaki `test_term_list_end_to_end` ve
-  `test_term_list_rejects_bad_files` senaryoları; günlükte terim metni ve dosya adı bulunmaması.
+  "Analiz yapılamadı" terimlerinin yeniden sorulmaması, hatalı terimlerin yeniden sorulması;
+  kapanışta ve açılış denetiminde "yarıda kesildi"; süreçte görevi olmayan "sürüyor" listenin
+  dakikalık denetimle "yarıda kesildi" olması; iki başlatma isteğinin yarışında tek kazanan; kayıtlı
+  cevap kullanımı ve "önceki cevap" işareti; sözlük yeniden içe aktarıldıktan sonra terim
+  ayrıntısının ve raporun açılması; beklenmeyen hatada güvenli ileti.
+- **Sunucu ucu (API) testleri:** 401, 403, 404, 409, 413, 422 kodları; sahibin görmesi, başka
+  kullanıcının ve yöneticinin bütün liste uçlarında 404 alması; sayfalama ve sıralama; kişi başına
+  en yeni 5 liste (altıncı yüklenince en eskisinin silinmesi, analiz kayıtlarının kalması);
+  kaynaktaki `test_term_list_end_to_end` ve `test_term_list_rejects_bad_files` senaryoları; günlükte
+  terim metni ve dosya adı bulunmaması.
 - **Ön yüz testleri (Vitest):** Excel düğmesi ve sürükle-bırak, ret açıklaması, ilerleme metinleri,
   düğmelerin görünme koşulları, satır etiketleri ve durumları, yalnız değişen satırın yeniden
   çizilmesi, ayrıntının açılıp kapanması, yoklamanın liste bitince durması, hap ve sayfa açılışında
-  geri gelmesi, "Önceki listeler" ve yöneticinin "Tüm kullanıcılar" seçeneği, satır içi hata.
+  en yeni listeyle geri gelmesi, "Devam et" düğmesinin kaynaktaki koşulla görünmesi, sürdürme
+  hatasının uyarı penceresiyle gösterilmesi.
 - **API tanım dosyası (OpenAPI):** kayıtlı yapıtla aynıdır; ön yüz tipleri ondan üretilir.
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
@@ -550,7 +554,7 @@ aramasını ADR-039 ile kaldırdı.
   tek çalışan listeyi, kendi içinde tam cevabı ve güvenli hata iletisini doğrular (Requirement 4–10,
   18, 19).
 - [ ] Acceptance 4: L1 — Otomatik testlerden geçti: sunucu ucu (API) testleri yetki, görünürlük,
-  listeleme, terim ayrıntısı, terim raporu ve saklama kurallarını doğrular; API tanım dosyası
+  listeleme, terim ayrıntısı, terim raporu ve kişi başına 5 liste kuralını doğrular; API tanım dosyası
   kayıtlı yapıtla aynıdır (Requirement 4, 12, 14–16).
 - [ ] Acceptance 5: L1 — Otomatik testlerden geçti: ön yüz testleri ve tip sapması kapısı geçer
   (Requirement 17); telemetri testi Gözlemlenebilirlik bölümündeki sinyalleri ve günlükte terim
@@ -566,9 +570,9 @@ aramasını ADR-039 ile kaldırdı.
   "Yarıda kesildi" görünür; "Devam et" sonrası analiz kayıtları cevaplanmış hiçbir terimin yeniden
   sorulmadığını gösterir (Requirement 6, 10, 11).
 - [ ] Acceptance 8: L2 — Gerçek istemci/ortamda doğrulandı: iki kullanıcı ve bir yöneticiyle ikinci
-  kullanıcı birincinin listesini göremez (404) ve kendi listesini başlatamaz (409, başkasının
-  listesi iletisiyle); yönetici "Tüm kullanıcılar"da listeyi görür, raporunu indirir, durdurur ama
-  sürdüremez (Requirement 4, 8, 9, 14, 15).
+  kullanıcı ve yönetici birincinin listesini göremez, raporunu indiremez, durduramaz ve sürdüremez
+  (404); ikinci kullanıcı kendi listesini başlatamaz (409, başkasının listesi iletisiyle)
+  (Requirement 4, 8, 9, 14, 15).
 - [ ] Acceptance 9: L2 — Gerçek istemci/ortamda doğrulandı, nonprod: canlı olmayan test kümesinde
   (nonprod) giriş kapısı (ingress) üzerinden liste yüklenir, yoklama çalışır ve liste tamamlanır;
   liste sürerken yapılan dağıtım listeyi "Yarıda kesildi" yapar ve liste sürdürülerek tamamlanır
@@ -581,7 +585,7 @@ aramasını ADR-039 ile kaldırdı.
   ayrı bakım ve ayrı ölçüm ister.
 - Decision 2: Liste kalıcıdır: liste ve her terimin cevabı terim bitince veritabanına yazılır;
   sunucu yeniden başlayınca liste "yarıda kesildi" olur ve kendiliğinden sürdürülmez, sahibi
-  "Devam et" ile sürdürür (Açık soru 1). Gerekçe: her dağıtım sunucuyu yeniden başlatır ve 200
+  "Devam et" ile sürdürür. Gerekçe: her dağıtım sunucuyu yeniden başlatır ve 200
   terimlik liste yaklaşık iki buçuk saat sürer; bellekte tutmak (kaynak) emeği kaybettirir.
   Kendiliğinden sürdürme, dağıtımdan sonra kimse izlemezken model sunucusunu saatlerce meşgul eder
   ve süreci düşüren bir hata varsa her açılışta yeniden düşürür.
@@ -603,11 +607,11 @@ aramasını ADR-039 ile kaldırdı.
   gönderdiği bağlantı) kullanılmaz. Gerekçe: liste sayfadan bağımsız ve saatlerce sürer; uzun
   bağlantılar vekil sunucu zaman aşımına takılır ve sayfa her açıldığında yeniden kurulmalıdır;
   anlık durum küçük ve sınırlıdır (en çok 200 satır); kaynak da yokluyordu.
-- Decision 8: Liste sahibine aittir; `yonetici` herkesin listesini salt okunur görür ve durdurur,
-  sürdüremez (Açık soru 3). Gerekçe: terimler ve cevaplar kullanıcının iş talepleridir, diğer
-  kullanıcılara açılmaz; yönetici analiz kayıtlarında herkesin sorularını zaten görür; tek çalışan
-  liste kuralı yüzünden bir liste herkesi bekletebilir; sürdürme analizleri sahibin adına başlattığı
-  için yalnız sahibindir.
+- Decision 8: Liste sahibine aittir; yalnız sahibi görür, durdurur ve sürdürür; `yonetici` rolünün
+  listeler üzerinde ayrı bir yetkisi ve yönetici görünümü yoktur (kaynakla aynı). Gerekçe: kaynakta
+  listeyi yalnız onu başlatan sayfa görüyordu; terimler ve cevaplar kullanıcının iş talepleridir;
+  yönetici analiz kayıtlarında herkesin terim analizlerini zaten görür; sürdürme analizleri sahibin
+  adına başlatır.
 - Decision 9: Yüklenen dosya saklanmaz; açılmış boyutu 100 MB ile sınırlıdır. Gerekçe: Excel kurum
   içi veridir ve kapsayıcıda dosya deposu yoktur; 20 MB'lık sıkıştırılmış bir dosya açılınca
   gigabaytlarca yer tutabilir (sıkıştırma bombası). Kurala uyan en büyük liste (2.000 satır × 500
@@ -625,31 +629,14 @@ aramasını ADR-039 ile kaldırdı.
   çıkarılır, en çok 255 karakterdir; boş kalırsa `liste.xlsx` olur. Gerekçe: ad yalnız gösterilir ve
   rapor adına kısaltılarak girer; tarayıcının gönderdiği ad güvenilmez girdidir.
 
-## Açık sorular
-
-1. **Liste veritabanında kalıcı olsun ve sunucu yeniden başlayınca "yarıda kesildi" olup sahibince
-   sürdürülsün mü?** Kaynakta liste bellekteydi; her dağıtım ya da yeniden başlatma listeleri ve o
-   ana kadarki cevapları siliyordu. Öneri: Evet; liste ve her terimin cevabı terim bitince saklanır,
-   yeniden başlamada liste "yarıda kesildi" olur ve sahibi "Devam et" ile kaldığı yerden sürdürür;
-   kendiliğinden sürdürme yapılmaz (Decision 2, Requirement 6, 10).
-2. **Sayfa kapanınca liste sürsün mü?** Kaynakta sayfadan ayrılmak ya da sayfayı yenilemek çalışan
-   listeyi durduruyordu, çünkü liste başka yoldan bulunamıyordu. Öneri: Evet; liste sayfadan
-   bağımsız sürer, kullanıcı yeniden girince üst çubuktaki "Liste" hapından ya da "Önceki
-   listeler"den bulur (Requirement 11, 17).
-3. **Yönetici başkalarının listelerini görüp durdurabilsin mi?** Kaynakta liste yalnız onu başlatan
-   sayfada görünüyordu; hedefte tek çalışan liste kuralı bir kullanıcının listesinin herkesi
-   saatlerce bekletmesine yol açabilir. Öneri: Evet; `yonetici` herkesin listesini, terim
-   cevaplarını ve raporlarını salt okunur görür ve çalışan listeyi durdurur; sürdürmeyi yalnız
-   sahibi yapar; `kullanici` yalnız kendi listelerini görür (Decision 8, Requirement 14).
-4. **Listeler ne kadar saklansın?** Kaynakta en çok 5 bitmiş liste, kimin olduğuna bakılmadan ve
-   yalnız sunucu çalıştıkça tutuluyordu; hedefte terimler ve cevaplar veritabanında kalıcıdır.
-   Öneri: kişi başına en yeni 5 liste ve en çok analiz kayıtlarının saklama süresi kadar
-   ([analysis-records](../008-analysis-records/PRD.md)); hangisi önce dolarsa (Requirement 16).
-5. **"Devam et", "Analiz yapılamadı" sonuçlu terimleri de yeniden sorsun mu?** Kaynakta model bağlı
-   değilken ya da çalışamazken işlenen terimler cevaplanmış sayılıyor, ekran "Model çalışınca bu
-   terimleri yeniden arayın." diyordu ve terimleri tek tek yeniden sormak gerekiyordu. Öneri: Evet;
-   sürdürme cevapsız ve hatalı terimlerle birlikte "Analiz yapılamadı" terimlerini de yeniden sorar;
-   "Devam et" düğmesi bu terimler kaldıkça bitmiş listede de görünür (Requirement 9, 17).
+- Decision 13: Liste sayfadan bağımsız sürer: sayfayı kapatmak ya da yenilemek listeyi durdurmaz;
+  kaynaktaki sayfa kapanınca durdurma (`pagehide` olayında `sendBeacon`) kalkar. Gerekçe: liste
+  veritabanında kalıcıdır ve kullanıcı onu yeniden girişte haptan bulur; kaynakta liste başka yoldan
+  bulunamadığı için sayfa kapanınca durduruluyordu.
+- Decision 14: Her kullanıcının en yeni 5 listesi saklanır; altıncı liste yüklenince en eskisi
+  silinir ve süreye bağlı silme yoktur. Gerekçe: kaynakta da en çok 5 bitmiş liste tutuluyordu
+  (`MAX_LISTS`); hedefte sınır kişi başınadır ve liste yeniden başlatmada kaybolmaz. Silinen
+  listenin terim cevapları analiz kayıtlarında kalır.
 
 ## Teslim akışı
 
@@ -659,8 +646,9 @@ Belirtim → Plan → Görevler → Uygulama
 
 - **Uzun süre ve bekleme.** Model sunucusu seri çalıştığı için 200 terimlik liste yaklaşık iki buçuk
   saat sürer (terim başına yaklaşık 45 saniye). Tek çalışan liste kuralı yüzünden başka kullanıcının
-  listesi bu süre boyunca başlatılamaz; tek sorular terimlerin arasına girer ama her biri bir terim
-  kadar bekleyebilir.
+  listesi bu süre boyunca başlatılamaz; listeyi yalnız sahibi durdurabildiği için yönetici de
+  bekleyen kullanıcı adına onu durduramaz (Decision 8). Tek sorular terimlerin arasına girer ama her
+  biri bir terim kadar bekleyebilir.
 - **Kalan süre tahmini yanıltabilir.** Kayıtlı cevapla saniyede biten terimler ortalamayı düşürür;
   tahmin, analiz gerektiren terimler kaldığında gerçek süreden kısa görünür.
 - **Liste sürerken sözlük değişirse** sonraki terimler yeni sözlükle cevaplanır; rapordaki "Kaynak
@@ -668,7 +656,10 @@ Belirtim → Plan → Görevler → Uygulama
 - **Yeniden başlatmada boşa giden çağrı.** Kapanış anında süren terimin model çağrısı kesilir ve
   sürdürmede baştan sorulur; yarıda kesilen liste sahibi dönüp "Devam et" demedikçe yarım kalır.
 - **Veritabanı büyür.** Cevaplar tam saklandığı için liste başına birkaç MB yer tutar; kişi başına 5
-  liste sınırı ve saklama süresi büyümeyi sınırlar.
+  liste sınırı büyümeyi sınırlar.
+- **Eski listelere ekrandan ulaşılamaz.** Ana ekran yalnız kullanıcının en yeni listesini haptan
+  açar; saklanan öteki dört liste yalnız API'den okunur (kaynakta da sayfa yenilenince liste
+  bulunamıyordu).
 - **Katı biçim.** İlk satır her zaman başlıktır; başlıksız yüklenen listenin ilk terimi aranmaz (not
   gösterilir). 50. sütunun ötesindeki veri hiç okunmaz; yalnız orada veri taşıyan dosya "boş"
   sayılır. Satır sınırı ikinci sayfalara da uygulandığı için büyük bir ikinci sayfa "çok fazla

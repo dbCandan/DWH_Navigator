@@ -1,10 +1,15 @@
 # PRD — user-accounts
 
-Status: Draft
+Status: Accepted
 
-Version: 0.1.0
+Version: 1.0.0
+
+Acceptance date: 2026-10-08
 
 Domain: [application-foundation](../../DOMAIN.md)
+
+Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
+korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
 
 ## Amaç
 
@@ -331,15 +336,18 @@ Requirement 16: Ön yüz:
 - Giriş ekranı kullanıcı adı ve parola ister; hata iletisi kullanıcı adının mı parolanın mı yanlış
   olduğunu ayırt etmez; 429'da ne kadar bekleneceğini, `user_inactive`'te "Hesabınız pasif; uygulama
   yöneticisine başvurun.", `one_time_password_expired`'da "Tek kullanımlık parolanızın süresi doldu;
-  uygulama yöneticisinden yenisini isteyin." der. Giriş ekranının ana ekranla aynı renk
-  belirteçlerini kullanıp kullanmayacağı
-  [dictionary-explorer](../../../data-dictionary/PRDs/007-dictionary-explorer/PRD.md) Açık soru 4'e
-  bağlıdır.
+  uygulama yöneticisinden yenisini isteyin." der.
+- Fabrikanın zorunlu kıldığı yeni ekranlar (giriş, parola değiştirme ve süper yöneticinin
+  Kullanıcılar sayfası) kaynağın aynı belirteçleri ve bileşen görünümüyle yapılır: koyu "Evren"
+  paleti ve yönetim ekranının kart, form, düğme, tablo ve bildirim görünümü. İskeletin kendi
+  varsayılan (açık renkli) görünümü kullanılmaz
+  ([dictionary-explorer](../../../data-dictionary/PRDs/007-dictionary-explorer/PRD.md) Decision 17).
 - `password_change_required` gelince aynı ekranda "Yeni parola belirleyin" adımı açılır: yeni
   parola, tekrarı ve politikanın sade açıklaması; gönderim `POST /auth/password` iledir ve başarıda
   kişi doğrudan uygulamaya girer.
 - Ana ekranın ve yönetim ekranının kabuğunda oturumdaki kişinin görünen adı, "Parolamı değiştir"
-  (şimdiki, yeni ve yeni tekrar) ve "Çıkış" bulunur; kabukların düzeni data-dictionary alanının
+  (şimdiki, yeni ve yeni tekrar) ve "Çıkış" bulunur; bu oturum alanı kaynağın üst çubuk ve kenar
+  çubuğu biçimine en az müdahaleyle yerleşir; kabukların düzeni data-dictionary alanının
   [dictionary-explorer](../../../data-dictionary/PRDs/007-dictionary-explorer/PRD.md) ve
   [search-settings](../../../data-dictionary/PRDs/009-search-settings/PRD.md) PRD'lerindedir.
 - Yönetim ekranı yolları yalnız `yonetici` ve süper yöneticiye görünür; `kullanici` adresi yazarsa
@@ -349,7 +357,8 @@ Requirement 16: Ön yüz:
   (kullanıcı adı, görünen ad, rol), rol değiştirme, pasifleştirme ve etkinleştirme ve "Parolayı
   sıfırla". Açılışta ve sıfırlamada tek kullanımlık parola, kopyalama düğmesi ve bitiş zamanıyla bir
   kez gösterilir; pencere kapanınca bir daha gösterilmez ve ekran bunu önceden söyler.
-  Pasifleştirme, rol değiştirme ve sıfırlama onay ister.
+  Pasifleştirme, rol değiştirme ve sıfırlama, yönetim ekranının öteki onayları gibi tarayıcının onay
+  penceresiyle onay ister.
 - Oturum bittiğinde (yenileme 401) giriş ekranına dönülür. Bütün metinler
   `app/frontend/src/locales/tr.json`'dadır.
 
@@ -359,7 +368,7 @@ açılışta `DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_PASSWORD` doluysa
 hiçbir hesap yoksa onu etkin ve `super_admin` rollü açar. Açılış elle komutla (Requirement 18) aynı
 kod yolunu kullanır: aynı ad kuralı, aynı parola politikası (Requirement 3) ve aynı parola özeti.
 Açılan hesabın başlangıç parolası tek kullanımlık sayılır ve süresizdir: hesap ilk girişte yeni
-parola belirler (Açık soru 1). Bu adla bir hesap varsa (etkin, pasif ya da başka rollü olsa da)
+parola belirler (Decision 21). Bu adla bir hesap varsa (etkin, pasif ya da başka rollü olsa da)
 hiçbir alanına dokunulmaz; süper yöneticinin sonradan belirlediği parola yeniden dağıtımda korunur.
 Parola politikaya uymuyor
 veya ad geçersizse hesap açılmaz; backend çalışmaya devam eder ve yalnız neden sınıfını loglar.
@@ -376,7 +385,7 @@ kullanmaz (iskeletin bugünkü önceliği kalkar). Hesap adını `--username`'de
 `DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_USERNAME`'den alır. Hesap yoksa açar; varsa parolasını sıfırlar,
 hesabı etkinleştirir ve `super_admin` atamasını geri getirir. Parola politikası (Requirement 3)
 uygulanır; değişen her alan değişiklik kaydına yazılır ve hesabın açık yenileme oturumları kapanır.
-Parolası bu komutla verilen hesap ilk girişte yeni parola belirler (Açık soru 1). Komut yerelde
+Parolası bu komutla verilen hesap ilk girişte yeni parola belirler (Decision 21). Komut yerelde
 `scripts/create-super-admin.sh` ile, kümede işletim ekibinin backend podunda çalıştırmasıyla
 kullanılır; süper yönetici parolasını sıfırlamanın uygulamada başka yolu yoktur.
 
@@ -602,6 +611,12 @@ olaylarının geçmişi ayrıca değişiklik kaydı tablosunda kalıcı saklanı
   403); süper yönetici rolü değiştirir, parolayı sıfırlar ve hesabı pasifleştirir, değişiklik hemen
   yansır; sayfa ve API yanıtlarında Requirement 14 başlıkları görülür, konsolda CSP ihlali yoktur;
   başka kökenden gönderilen POST 403 alır (Requirement 2–5, 7, 8, 10, 13, 14, 16).
+- [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı: görünüm. Yerel Compose'da giriş ekranı,
+  ilk girişteki "Yeni parola belirleyin" adımı, "Parolamı değiştir" ve Kullanıcılar sayfasının ekran
+  görüntüleri masaüstü (1440×900) ve telefon genişliğinde (390×844 piksel) alınır; ekranlar kaynağın
+  koyu paletini ve yönetim ekranının kart, form, düğme ve tablo görünümünü taşır, iskeletin
+  varsayılan açık görünümü görülmez; ana ekranın üst çubuğundaki ve yönetim ekranının kenar
+  çubuğundaki oturum alanı kaynağın öteki öğeleriyle aynı görünümdedir (Requirement 16).
 - [ ] Acceptance 3: L2 — Nonprod kümede doğrulandı (yerel kanıttan ayrı raporlanır):
   `DWHNAVIGATOR_ADMIN_PASSWORD` tanımlıyken ilk dağıtımdan sonra `admin` girer ve logda
   `auth.super_admin.bootstrap` olayı `created`, sonraki dağıtımda `exists` görünür ve parola değişmez;
@@ -658,15 +673,12 @@ olaylarının geçmişi ayrıca değişiklik kaydı tablosunda kalıcı saklanı
   durumunu her istekte veritabanından okur (`rules/21`: güncel yetki gereken uç iddiaları yeniden
   okur). Sözlük içe aktarma, model bağlantısı değiştirme ve kayıt silme gibi işlemler, rolü alınmış
   veya pasifleştirilmiş kişiye 15 dakika açık kalmaz.
-
-## Açık sorular
-
-1. Süper yönetici ilk girişte parolasını değiştirmek zorunda olsun mu? Açılışta Azure gizli
-   değişkeninden ya da elle komutla verilen süper yönetici parolası Azure'da ve kümedeki runtime
-   Secret'ta düz durur; DWH Code Review'da değişiklik zorunlu değildi, bu yüzden Secret'ı okuyabilen
-   herkes `admin` olarak girebiliyordu. Öneri: Evet; hesap DWH'deki gibi bir kez açılır, yalnız ilk
-   girişte (süre sınırı olmadan) yeni parola istenir; böylece Azure'daki ve kümedeki kopya ilk
-   girişten sonra işe yaramaz (Requirement 17 ve 18 bu öneriyle yazıldı).
+- Decision 21: Süper yönetici ilk girişte parolasını değiştirmek zorundadır. Hesap DWH Code
+  Review'daki gibi bir kez açılır; açılışta ya da elle komutla verilen parola tek kullanımlık ve
+  süresizdir, yalnız ilk girişte yeni parola istenir (Requirement 17 ve 18). Gerekçe: başlangıç
+  parolası Azure gizli değişkeninde ve kümedeki runtime Secret'ta düz durur; DWH Code Review'da
+  değişiklik zorunlu olmadığı için Secret'ı okuyabilen herkes `admin` olarak girebiliyordu. İlk
+  girişten sonra bu kopyalar işe yaramaz.
 
 ## Teslim akışı
 
@@ -682,8 +694,9 @@ Belirtim → Plan → Görevler → Uygulama
   karakter alt sınırı ve liste reddi riski düşürür, süren denemeler log ve ölçümle izlenir.
 - Süper yönetici parolası kaybolursa hesap yönetimi durur; sıfırlama işletim ekibinin küme erişimine
   bağlıdır.
-- Açık soru 1 kabul edilmezse Azure'daki ve runtime Secret'taki başlangıç parolasını okuyabilen kişi
-  `admin` olarak girebilir.
+- Süper yönetici ilk girişini yapıp parolasını değiştirene kadar Azure'daki ve runtime Secret'taki
+  başlangıç parolasını okuyabilen kişi `admin` olarak girebilir (Decision 21); ilk giriş dağıtımdan
+  hemen sonra yapılmalıdır.
 - Azure gizli değişkeni dağıtım adımının ortamına eşlenmezse `admin` açılmaz (DWH Code Review'da
   yaşandı); o durumda süper yönetici elle komutla açılır (Requirement 18).
 - Katı CSP, çalışırken `<style>` ekleyen bir arayüz kütüphanesini bozar; ihlal tarayıcı konsolunda
