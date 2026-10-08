@@ -5,7 +5,7 @@ uyumlu API) çıkar; başka hiçbir adrese bağlanmaz, dış kaynak (CDN, font, 
 
 | | |
 |---|---|
-| İmaj | `dwh-navigator:0.1.0` — Alpine 3.24 + Python 3.12, ~119 MB |
+| İmaj | `dwh-navigator:0.2.0` — Alpine 3.24 + Python 3.12, ~119 MB |
 | Port | `8765` (HTTP; TLS önündeki ters vekilde) |
 | Kullanıcı | `vsa` (uid/gid `10001`), kök değil |
 | Yazılabilir alan | yalnız `/app/data` (birim) ve `/tmp` |
@@ -16,14 +16,14 @@ uyumlu API) çıkar; başka hiçbir adrese bağlanmaz, dış kaynak (CDN, font, 
 **İnternete çıkabilen bir makinede derleyip** şirket ağına taşımak en kolayıdır:
 
 ```bash
-docker build -t dwh-navigator:0.1.0 .
-docker save dwh-navigator:0.1.0 | gzip > dwh-navigator-0.1.0.tar.gz
+docker build -t dwh-navigator:0.2.0 .
+docker save dwh-navigator:0.2.0 | gzip > dwh-navigator-0.2.0.tar.gz
 ```
 
 Şirket ağındaki sunucuda:
 
 ```bash
-docker load -i dwh-navigator-0.1.0.tar.gz
+docker load -i dwh-navigator-0.2.0.tar.gz
 ```
 
 Kurum içi bir kayıt defteri (Harbor, Nexus, Artifactory…) varsa `docker tag` + `docker push`
@@ -89,7 +89,7 @@ Compose yoksa aynısı:
 docker run -d --name dwh-navigator --restart unless-stopped -p 8765:8765 \
   -e VSA_ADMIN_PASSWORD=... -v "$PWD/data:/app/data" \
   --read-only --tmpfs /tmp:size=64m --cap-drop ALL --security-opt no-new-privileges:true \
-  dwh-navigator:0.1.0
+  dwh-navigator:0.2.0
 ```
 
 ## 5. Model bağlantısı

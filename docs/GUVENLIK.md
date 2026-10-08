@@ -46,7 +46,7 @@ Karşılaştırma: aynı uygulama Debian 13 (`python:3.12-slim-trixie`) tabanın
 
 Web sunucusu ve model istemcisi Python standart kütüphanesidir (`http.server`, `urllib`);
 web arayüzü tek HTML dosyasıdır, dış kaynak (CDN, font, analitik) yüklemez.
-Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.1.0`.
+Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.2.0`.
 
 ## Bu denetimde kapatılan bulgular
 
@@ -73,7 +73,7 @@ Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.1.0
 - `cap_drop: ALL`, `no-new-privileges`, bellek (2 GB) ve süreç (256) sınırı.
 - Taban imaj özetle (digest), Python paketleri sürüm + SHA-256 ile sabit (`--require-hashes`,
   yalnız wheel). pip ve setuptools çalışma imajında yok.
-- İmaja yalnız uygulama kodu ve iki yapılandırma dosyası girer (`.dockerignore` beyaz liste):
+- İmaja yalnız uygulama kodu ve iki kelime listesi girer (`.dockerignore` beyaz liste):
   sözlük, kurum içi veri, API anahtarları, testler, Windows betikleri (`baslat.bat`) girmez.
 - `HEALTHCHECK` `/healthz` ile (modele çağrı yapmaz).
 
@@ -99,8 +99,8 @@ Tam SBOM: `trivy image --format cyclonedx --output sbom.json dwh-navigator:0.1.0
 ## Taramaları tekrarlamak
 
 ```bash
-docker build -t dwh-navigator:0.1.0 .
-docker save dwh-navigator:0.1.0 -o image.tar
+docker build -t dwh-navigator:0.2.0 .
+docker save dwh-navigator:0.2.0 -o image.tar
 docker run --rm -v "$PWD:/scan" aquasec/trivy image --input /scan/image.tar \
   --scanners vuln,secret,misconfig --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
 docker run --rm -v "$PWD:/src" aquasec/trivy config /src
@@ -117,7 +117,7 @@ Dinamik tarama (uygulama ayrı bir Docker ağında, parolalı):
 ```bash
 docker network create vsa-scan
 docker run -d --name vsa-scan-app --network vsa-scan -e VSA_ADMIN_PASSWORD=... \
-  -v "$PWD/data:/app/data" dwh-navigator:0.1.0
+  -v "$PWD/data:/app/data" dwh-navigator:0.2.0
 docker run --rm --network vsa-scan -v "$PWD:/zap/wrk:rw" zaproxy/zap-stable \
   zap-baseline.py -t http://vsa-scan-app:8765 -r zap.html
 docker run --rm --network vsa-scan projectdiscovery/nuclei -u http://vsa-scan-app:8765 \

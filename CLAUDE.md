@@ -131,7 +131,7 @@ vsa serve                              # indeks yoksa / sözlük değiştiyse ö
 vsa dictionary import data/VeriSozlugu.xlsx   # sözlüğün yerini alır, indeks kurulur
 vsa dictionary export sozluk.xlsx [--template]
 
-docker build -t dwh-navigator:0.1.0 .  # üretim imajı (docs/KURULUM.md)
+docker build -t dwh-navigator:0.2.0 .  # üretim imajı (docs/KURULUM.md)
 docker compose up -d                   # .env: VSA_ADMIN_PASSWORD; sonra /admin → Sözlük → içe aktar
 ```
 Bağımlılık eklenirse `requirements.lock` Linux konteynerinde hash'lerle yeniden üretilir ve

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # DWH Navigator (VSA) — üretim imajı.
-#   docker build -t dwh-navigator:0.1.0 .
+#   docker build -t dwh-navigator:0.2.0 .
 # Ayrıntı: docs/KURULUM.md. İmaja yalnız uygulama kodu, terim sözlüğü ve durak kelimeler
 # girer (bkz. .dockerignore); sözlük, ayarlar ve kayıtlar /app/data birimindedir.
 
@@ -21,7 +21,7 @@ RUN python -m venv /opt/venv \
 FROM ${PYTHON_IMAGE}
 LABEL org.opencontainers.image.title="DWH Navigator" \
       org.opencontainers.image.description="Veri Sözlüğü Asistanı" \
-      org.opencontainers.image.version="0.1.0"
+      org.opencontainers.image.version="0.2.0"
 
 # İşletim sistemi yamaları; imajın kendi pip'i çalışma anında gerekmez (zafiyet yüzeyi).
 RUN set -eux; \
