@@ -71,7 +71,8 @@ services:
       # secret generation provides it. Empty means no setting can be stored encrypted.
       DWHNAVIGATOR_SETTINGS_ENCRYPTION_KEY: "${DWHNAVIGATOR_SETTINGS_ENCRYPTION_KEY:-}"
       # Model server connections are entered on the AI page (data-dictionary/PRDs/003-llm-connection).
-      # The default local network has no egress. Empty trust store: the image's system trust store.
+      # The default local network has no egress; a model server is reached only through the opt-in
+      # local-egress gate below. Empty trust store: the image's system trust store.
       DWHNAVIGATOR_LLM_CA_BUNDLE: ""
       DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: "2"
       # OpenTelemetry export stays off here; the observability overlay sets its collector address.
@@ -86,9 +87,70 @@ services:
       - ../backend:/workspace/app/backend
       - ../../schema:/workspace/schema
       - ../../specs:/workspace/specs
+    networks:
+      - default
+      - host-gate
     depends_on:
       postgres:
         condition: service_healthy
+    restart: unless-stopped
+
+  # Opt-in local egress (specs/application-foundation/PRDs/002-kubernetes-delivery Requirement 17,
+  # Decision 14): starts only when app/infra/.env sets COMPOSE_PROFILES=local-egress. The gate
+  # forwards one port to one model server: LOCAL_EGRESS_MODEL_PORT on LOCAL_EGRESS_MODEL_ADDRESS
+  # (an IPv4 address; empty is this computer). The backend reaches it on the internal host-gate
+  # network under LOCAL_EGRESS_MODEL_HOST (default host.docker.internal), the host name of the
+  # integration's address, so a TLS certificate is still checked against that name. Without the
+  # profile the name does not resolve in the backend and nothing leaves the stack.
+  local-egress:
+    profiles: ["local-egress"]
+    image: ${NGINX_IMAGE:-nginx:1.31.6-alpine-slim@sha256:f761b94f2cb9e8e05e2943d5f773609596113ef69b54e2433a996d109a8f78b7}
+    environment:
+      MODEL_PORT: "${LOCAL_EGRESS_MODEL_PORT:-}"
+      MODEL_ADDRESS: "${LOCAL_EGRESS_MODEL_ADDRESS:-}"
+    # Docker maps host.docker.internal to an IPv4 and an IPv6 address of this computer, but the
+    # egress bridge has no IPv6 route; the gate forwards to an IPv4 address only.
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        case "$$MODEL_PORT" in
+          ''|*[!0-9]*) echo "local-egress: LOCAL_EGRESS_MODEL_PORT must be a port number" >&2; exit 1 ;;
+        esac
+        if [ "$$MODEL_PORT" -lt 1 ] || [ "$$MODEL_PORT" -gt 65535 ]; then
+          echo "local-egress: LOCAL_EGRESS_MODEL_PORT must be 1-65535" >&2; exit 1
+        fi
+        address="$$MODEL_ADDRESS"
+        if [ -z "$$address" ]; then
+          address="$$(awk '$$2 == "host.docker.internal" && $$1 !~ /:/ { print $$1; exit }' /etc/hosts)"
+        fi
+        if ! printf '%s\n' "$$address" | grep -Eq '^([0-9]{1,3}[.]){3}[0-9]{1,3}$$'; then
+          echo "local-egress: LOCAL_EGRESS_MODEL_ADDRESS must be an IPv4 address" >&2; exit 1
+        fi
+        sed -e "s/MODEL_ADDRESS/$$address/" -e "s/MODEL_PORT/$$MODEL_PORT/g" \
+          /etc/nginx/local-egress.conf > /tmp/local-egress.conf
+        exec nginx -c /tmp/local-egress.conf -g "daemon off;"
+    user: "101:101"
+    read_only: true
+    cap_drop: ["ALL"]
+    security_opt: ["no-new-privileges:true"]
+    # The model server may listen on a port below 1024 (https on 443); the unprivileged user may
+    # bind it inside the gate's own network namespace only.
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: "0"
+    tmpfs:
+      - /tmp
+    volumes:
+      - ./nginx/nginx.local-egress.conf:/etc/nginx/local-egress.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    dns:
+      - 127.0.0.1
+    networks:
+      host-gate:
+        aliases:
+          - ${LOCAL_EGRESS_MODEL_HOST:-host.docker.internal}
+      egress: {}
     restart: unless-stopped
 
   frontend:
@@ -143,4 +205,10 @@ networks:
   # Docker Desktop does not publish ports from an internal-only bridge. Only the
   # reverse proxy joins this host-facing bridge; application and data services do not.
   edge:
+    driver: bridge
+  # Only the backend and the opt-in local-egress gate join this network.
+  host-gate:
+    internal: true
+  # Only the local-egress gate joins this outbound bridge; it exists only with the profile.
+  egress:
     driver: bridge
