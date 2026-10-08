@@ -12,6 +12,72 @@
         ],
         "type": "object"
       },
+      "ActiveDictionaryVersion": {
+        "properties": {
+          "channel": {
+            "enum": [
+              "arayuz",
+              "betik"
+            ],
+            "type": "string"
+          },
+          "column_count": {
+            "type": "integer"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "imported_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DictionaryImporter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "object_count": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "row_count": {
+            "type": "integer"
+          },
+          "source_name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "warning_count": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "public_id",
+          "version",
+          "source_name",
+          "imported_at",
+          "imported_by",
+          "channel",
+          "object_count",
+          "column_count",
+          "row_count",
+          "warning_count",
+          "warnings"
+        ],
+        "type": "object"
+      },
       "AuthenticatedUser": {
         "properties": {
           "display_name": {
@@ -68,6 +134,235 @@
         ],
         "type": "object"
       },
+      "DictionaryImported": {
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          },
+          "index": {
+            "$ref": "#/components/schemas/SearchIndexState"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DictionaryVersionSummary"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "changed",
+          "version",
+          "warnings",
+          "index"
+        ],
+        "type": "object"
+      },
+      "DictionaryImporter": {
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "public_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "display_name"
+        ],
+        "type": "object"
+      },
+      "DictionaryState": {
+        "properties": {
+          "active": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveDictionaryVersion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "index_dictionary_version": {
+            "type": "string"
+          },
+          "previous": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DictionaryVersionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "active",
+          "previous",
+          "index_dictionary_version"
+        ],
+        "type": "object"
+      },
+      "DictionaryTable": {
+        "properties": {
+          "columns": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "grain": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "group",
+          "domain",
+          "description",
+          "grain",
+          "columns"
+        ],
+        "type": "object"
+      },
+      "DictionaryTableRecords": {
+        "properties": {
+          "columns": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "object": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "key",
+          "object",
+          "columns"
+        ],
+        "type": "object"
+      },
+      "DictionaryTablesPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/DictionaryTable"
+            },
+            "type": "array"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "type": "object"
+      },
+      "DictionaryVersionSummary": {
+        "properties": {
+          "channel": {
+            "enum": [
+              "arayuz",
+              "betik"
+            ],
+            "type": "string"
+          },
+          "column_count": {
+            "type": "integer"
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "imported_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DictionaryImporter"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "object_count": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "row_count": {
+            "type": "integer"
+          },
+          "source_name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "warning_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "public_id",
+          "version",
+          "source_name",
+          "imported_at",
+          "imported_by",
+          "channel",
+          "object_count",
+          "column_count",
+          "row_count",
+          "warning_count"
+        ],
+        "type": "object"
+      },
       "ErrorDetail": {
         "properties": {
           "code": {
@@ -91,6 +386,41 @@
         },
         "required": [
           "detail"
+        ],
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "IndexChange": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "trigger": {
+            "enum": [
+              "startup",
+              "dictionary",
+              "terms",
+              "stopwords",
+              "settings",
+              "manual"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "trigger",
+          "at"
         ],
         "type": "object"
       },
@@ -1181,6 +1511,494 @@
         ],
         "type": "object"
       },
+      "SearchIndexRebuilt": {
+        "properties": {
+          "build_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "columns": {
+            "type": "integer"
+          },
+          "dictionary_version": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "integer"
+          },
+          "last_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "objects": {
+            "type": "integer"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stale_inputs": {
+            "items": {
+              "enum": [
+                "dictionary",
+                "terms",
+                "stopwords",
+                "settings"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "building",
+              "ready",
+              "stale"
+            ],
+            "type": "string"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "enum": [
+                  "startup",
+                  "dictionary",
+                  "terms",
+                  "stopwords",
+                  "settings",
+                  "manual"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "stale_inputs",
+          "columns",
+          "objects",
+          "dictionary_version",
+          "built_at",
+          "build_ms",
+          "trigger",
+          "running",
+          "last_failure",
+          "elapsed_ms"
+        ],
+        "type": "object"
+      },
+      "SearchIndexState": {
+        "description": "``GET /search-index`` (Requirement 15); no error text and no content.",
+        "properties": {
+          "build_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "built_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "columns": {
+            "type": "integer"
+          },
+          "dictionary_version": {
+            "type": "string"
+          },
+          "last_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "objects": {
+            "type": "integer"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexChange"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stale_inputs": {
+            "items": {
+              "enum": [
+                "dictionary",
+                "terms",
+                "stopwords",
+                "settings"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "building",
+              "ready",
+              "stale"
+            ],
+            "type": "string"
+          },
+          "trigger": {
+            "anyOf": [
+              {
+                "enum": [
+                  "startup",
+                  "dictionary",
+                  "terms",
+                  "stopwords",
+                  "settings",
+                  "manual"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "state",
+          "stale_inputs",
+          "columns",
+          "objects",
+          "dictionary_version",
+          "built_at",
+          "build_ms",
+          "trigger",
+          "running",
+          "last_failure"
+        ],
+        "type": "object"
+      },
+      "SearchSettingField": {
+        "properties": {
+          "advanced": {
+            "type": "boolean"
+          },
+          "effect": {
+            "enum": [
+              "immediate",
+              "reindex"
+            ],
+            "type": "string"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "const": "pct",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "help": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "max": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "step": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "enum": [
+              "bool",
+              "int",
+              "float"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "help",
+          "type",
+          "format",
+          "min",
+          "max",
+          "step",
+          "effect",
+          "advanced"
+        ],
+        "type": "object"
+      },
+      "SearchSettingSection": {
+        "properties": {
+          "advanced": {
+            "type": "boolean"
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/SearchSettingField"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "intro": {
+            "type": "string"
+          },
+          "page": {
+            "enum": [
+              "search",
+              "data"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "page",
+          "title",
+          "intro",
+          "advanced",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "SearchSettings": {
+        "properties": {
+          "defaults": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "type": "object"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/SearchSettingSection"
+            },
+            "type": "array"
+          },
+          "values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "sections",
+          "values",
+          "defaults"
+        ],
+        "type": "object"
+      },
+      "SearchSettingsPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "values": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "values"
+        ],
+        "type": "object"
+      },
+      "SearchSettingsSaved": {
+        "properties": {
+          "changed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "elapsed_ms": {
+            "type": "integer"
+          },
+          "index": {
+            "$ref": "#/components/schemas/SearchIndexState"
+          },
+          "values": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "changed",
+          "values",
+          "elapsed_ms",
+          "index"
+        ],
+        "type": "object"
+      },
+      "StopwordItem": {
+        "properties": {
+          "group": {
+            "type": "string"
+          },
+          "word": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "word",
+          "group"
+        ],
+        "type": "object"
+      },
+      "TermItem": {
+        "properties": {
+          "domain": {
+            "type": "string"
+          },
+          "equivalents": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "note": {
+            "type": "string"
+          },
+          "term": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "term",
+          "equivalents",
+          "domain",
+          "note"
+        ],
+        "type": "object"
+      },
       "UserCreateRequest": {
         "properties": {
           "display_name": {
@@ -1308,6 +2126,130 @@
           "password_change_required",
           "last_login_at",
           "created_at"
+        ],
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "type": "object"
+          },
+          "input": {},
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array"
+          },
+          "msg": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "type": "object"
+      },
+      "VocabularyListSave": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {}
+        },
+        "type": "object"
+      },
+      "VocabularyListSaved": {
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          },
+          "elapsed_ms": {
+            "type": "integer"
+          },
+          "index": {
+            "$ref": "#/components/schemas/SearchIndexState"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TermItem"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StopwordItem"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "list": {
+            "enum": [
+              "terms",
+              "stopwords"
+            ],
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "list",
+          "revision",
+          "items",
+          "changed",
+          "elapsed_ms",
+          "index"
+        ],
+        "type": "object"
+      },
+      "VocabularyListState": {
+        "properties": {
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/TermItem"
+                },
+                "type": "array"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/StopwordItem"
+                },
+                "type": "array"
+              }
+            ]
+          },
+          "list": {
+            "enum": [
+              "terms",
+              "stopwords"
+            ],
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "list",
+          "revision",
+          "items"
         ],
         "type": "object"
       }
@@ -2084,6 +3026,477 @@
         ]
       }
     },
+    "/api/dwhnavigator/v1/dictionary": {
+      "get": {
+        "description": "The active and previous version summaries and the serving index's dictionary version.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionaryState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Dictionary State",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/export": {
+      "get": {
+        "description": "The active version in the template, named after the Istanbul time.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "dictionary_not_imported: etkin s\u00f6zl\u00fck s\u00fcr\u00fcm\u00fc yok"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Export Dictionary",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/imports": {
+      "post": {
+        "description": "Import a workbook in the template; 201 with a new version, 200 when the content is the\nactive version's (Requirement 7).",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Filename",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            },
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionaryImported"
+                }
+              }
+            },
+            "description": "\u0130\u00e7erik etkin s\u00fcr\u00fcmle ayn\u0131"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionaryImported"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "dictionary_import_in_progress: ba\u015fka bir i\u00e7e aktarma yaz\u0131yor"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "upload_too_large: g\u00f6vde 20 MB'tan b\u00fcy\u00fck"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unsupported_media_type: g\u00f6vde Excel de\u011fil"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "dictionary_file_empty: g\u00f6vde bo\u015f; dictionary_workbook_invalid: dosya \u015fablona uymuyor"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_index_build_failed: indeks kurulamad\u0131, hi\u00e7bir \u015fey yaz\u0131lmad\u0131"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_change_busy: ba\u015fka bir de\u011fi\u015fiklik uygulan\u0131yor"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Import Dictionary",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/tables": {
+      "get": {
+        "description": "Tables of the active version as imported, by ``DB.\u015eema.Obje`` in code point order.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 1000,
+              "maximum": 1000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionaryTablesPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "dictionary_not_imported: etkin s\u00f6zl\u00fck s\u00fcr\u00fcm\u00fc yok"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request: sayfa de\u011ferleri"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Dictionary Tables",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/tables/{table_key}": {
+      "get": {
+        "description": "One table's Objeler record and Kolonlar records as imported, in sheet order.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionaryTableRecords"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "dictionary_not_imported: etkin s\u00f6zl\u00fck s\u00fcr\u00fcm\u00fc yok; dictionary_table_not_found: anahtar i\u00e7in Kolonlar kayd\u0131 yok"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Dictionary Table",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/template": {
+      "get": {
+        "description": "The empty template: both sheets with their header rows.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Dictionary Template",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
     "/api/dwhnavigator/v1/liveness": {
       "get": {
         "description": "The process can serve requests.",
@@ -2725,7 +4138,7 @@
     },
     "/api/dwhnavigator/v1/readiness": {
       "get": {
-        "description": "Return 503 until the runtime role connects and the schema reaches the image's head.",
+        "description": "Return 503 until the database is ready and the first search index serves.",
         "responses": {
           "200": {
             "content": {
@@ -2739,6 +4152,661 @@
         "summary": "Readiness",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/search-index": {
+      "get": {
+        "description": "The serving index, a change in progress and the last failed attempt; no content.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchIndexState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Search Index State",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/search-index/rebuilds": {
+      "post": {
+        "description": "Build the index again from the current inputs, even when they did not change.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchIndexRebuilt"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_index_build_failed: indeks kurulamad\u0131, hi\u00e7bir \u015fey yaz\u0131lmad\u0131"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_change_busy: ba\u015fka bir de\u011fi\u015fiklik uygulan\u0131yor"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Rebuild Search Index",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/search-settings": {
+      "get": {
+        "description": "The settings schema, the 24 effective values and their defaults.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Read Settings",
+        "tags": [
+          "search"
+        ]
+      },
+      "patch": {
+        "description": "Save the changed values; the engine is built with them before they are written.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchSettingsPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchSettingsSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_setting_unknown: \u015femada olmayan anahtar; search_setting_invalid: t\u00fcr ya da aral\u0131k; invalid_request: bozuk g\u00f6vde"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_index_build_failed: indeks kurulamad\u0131, hi\u00e7bir \u015fey yaz\u0131lmad\u0131"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_change_busy: ba\u015fka bir de\u011fi\u015fiklik uygulan\u0131yor"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Save Settings",
+        "tags": [
+          "search"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/vocabulary/{list_name}": {
+      "get": {
+        "description": "The list's items in their stored order and its revision.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VocabularyListState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "vocabulary_list_not_found: liste ad\u0131 terms ya da stopwords de\u011fil"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Read List",
+        "tags": [
+          "vocabulary"
+        ]
+      },
+      "put": {
+        "description": "Replace the whole list; the index is rebuilt with it before it is written.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VocabularyListSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VocabularyListSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "vocabulary_list_not_found: liste ad\u0131 terms ya da stopwords de\u011fil"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "vocabulary_items_invalid, vocabulary_too_many_items, vocabulary_term_empty, vocabulary_term_without_equivalents, vocabulary_term_duplicate, vocabulary_stopword_not_single_word, vocabulary_value_too_long, vocabulary_too_many_equivalents: liste denetimi; invalid_request: alan t\u00fcr\u00fc"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_index_build_failed: indeks kurulamad\u0131, hi\u00e7bir \u015fey yaz\u0131lmad\u0131"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_change_busy: ba\u015fka bir de\u011fi\u015fiklik uygulan\u0131yor"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Save List",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/vocabulary/{list_name}/export": {
+      "get": {
+        "description": "The saved list as a one-sheet workbook, named after the Istanbul time.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "vocabulary_list_not_found: liste ad\u0131 terms ya da stopwords de\u011fil"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Export List",
+        "tags": [
+          "vocabulary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/vocabulary/{list_name}/import": {
+      "post": {
+        "description": "Replace the list with a workbook's rows, checked like a save.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "list_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Filename",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            },
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VocabularyListSaved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "vocabulary_list_not_found: liste ad\u0131 terms ya da stopwords de\u011fil"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "upload_too_large: g\u00f6vde 20 MB'tan b\u00fcy\u00fck"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unsupported_media_type: g\u00f6vde Excel de\u011fil"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "vocabulary_file_empty, vocabulary_workbook_unreadable, vocabulary_workbook_too_many_rows, vocabulary_workbook_column_missing, vocabulary_workbook_empty: dosya; vocabulary_items_invalid, vocabulary_too_many_items, vocabulary_term_empty, vocabulary_term_without_equivalents, vocabulary_term_duplicate, vocabulary_stopword_not_single_word, vocabulary_value_too_long, vocabulary_too_many_equivalents: liste denetimi; invalid_request: alan t\u00fcr\u00fc"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_index_build_failed: indeks kurulamad\u0131, hi\u00e7bir \u015fey yaz\u0131lmad\u0131"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_change_busy: ba\u015fka bir de\u011fi\u015fiklik uygulan\u0131yor"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Import List",
+        "tags": [
+          "vocabulary"
         ]
       }
     }

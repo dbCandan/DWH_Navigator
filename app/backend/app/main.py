@@ -8,6 +8,7 @@ from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.health import database_readiness
 from app.api.router import router
 from app.core.config import Settings, get_settings
 from app.core.errors import install_error_handlers
@@ -19,12 +20,13 @@ from app.middleware.cross_site import CrossSiteRequestMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.tenant_context import TenantContextMiddleware
+from app.services.search_index import SearchIndex
 from app.services.super_admin_service import run_super_admin_bootstrap
 
 
 def _lifespan(settings: Settings) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
     @asynccontextmanager
-    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         # Readiness compares the database with the migration head shipped in this image; reading
         # it at startup stops an image without its migrations before it serves.
         packaged_schema()
@@ -32,12 +34,17 @@ def _lifespan(settings: Settings) -> Callable[[FastAPI], AbstractAsyncContextMan
         # application-foundation 001 Requirement 17: creates the configured super admin once; it
         # retries in the background while a first installation is still migrating.
         bootstrap = asyncio.create_task(run_super_admin_bootstrap(async_session_factory, settings))
+        # data-dictionary 009-search-settings Requirement 10: the process listens at once; the
+        # first search index is built in the background once the database is ready.
+        search_index: SearchIndex = application.state.search_index
+        index_startup = asyncio.create_task(search_index.run_startup(database_readiness.is_ready))
         try:
             yield
         finally:
-            bootstrap.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await bootstrap
+            for task in (bootstrap, index_startup):
+                task.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await task
             await engine.dispose()
             if telemetry_export is not None:
                 telemetry_export.shutdown()
@@ -56,6 +63,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         openapi_url="/openapi.json",
         lifespan=_lifespan(settings),
     )
+    application.state.search_index = SearchIndex(async_session_factory)
     # Starlette makes the middleware added last the outermost. From the outside in: security
     # headers and the 500 envelope, request logging and tracing, CORS, the cross-site guard (before
     # any tenant or session check) and the tenant context.

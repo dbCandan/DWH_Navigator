@@ -1,0 +1,2796 @@
+{
+ "checks": {
+  "seed_stopwords": {
+   "result": [
+    {
+     "group": "Genel",
+     "word": "ve"
+    },
+    {
+     "group": "Genel",
+     "word": "veya"
+    },
+    {
+     "group": "Genel",
+     "word": "ile"
+    },
+    {
+     "group": "Genel",
+     "word": "için"
+    },
+    {
+     "group": "Genel",
+     "word": "bir"
+    },
+    {
+     "group": "Genel",
+     "word": "bu"
+    },
+    {
+     "group": "Genel",
+     "word": "şu"
+    },
+    {
+     "group": "Genel",
+     "word": "mi"
+    },
+    {
+     "group": "Genel",
+     "word": "mu"
+    },
+    {
+     "group": "Genel",
+     "word": "var"
+    },
+    {
+     "group": "Genel",
+     "word": "yok"
+    },
+    {
+     "group": "Genel",
+     "word": "olan"
+    },
+    {
+     "group": "Genel",
+     "word": "gibi"
+    },
+    {
+     "group": "Genel",
+     "word": "göre"
+    },
+    {
+     "group": "Genel",
+     "word": "bazında"
+    },
+    {
+     "group": "Genel",
+     "word": "bazlı"
+    },
+    {
+     "group": "Genel",
+     "word": "üzerinden"
+    },
+    {
+     "group": "Genel",
+     "word": "bilgisi"
+    },
+    {
+     "group": "Genel",
+     "word": "bilgileri"
+    },
+    {
+     "group": "Genel",
+     "word": "bilgilerini"
+    },
+    {
+     "group": "Genel",
+     "word": "verisi"
+    },
+    {
+     "group": "Genel",
+     "word": "verileri"
+    },
+    {
+     "group": "Genel",
+     "word": "tablo"
+    },
+    {
+     "group": "Genel",
+     "word": "tabloda"
+    },
+    {
+     "group": "Genel",
+     "word": "tablosu"
+    },
+    {
+     "group": "Genel",
+     "word": "hangi"
+    },
+    {
+     "group": "Genel",
+     "word": "nedir"
+    },
+    {
+     "group": "Genel",
+     "word": "mevcut"
+    },
+    {
+     "group": "Genel",
+     "word": "midir"
+    },
+    {
+     "group": "Genel",
+     "word": "mudur"
+    },
+    {
+     "group": "Genel",
+     "word": "de"
+    },
+    {
+     "group": "Genel",
+     "word": "da"
+    },
+    {
+     "group": "Genel",
+     "word": "ki"
+    },
+    {
+     "group": "Genel",
+     "word": "vb"
+    },
+    {
+     "group": "Genel",
+     "word": "vs"
+    },
+    {
+     "group": "İngilizce",
+     "word": "and"
+    },
+    {
+     "group": "İngilizce",
+     "word": "or"
+    },
+    {
+     "group": "İngilizce",
+     "word": "with"
+    },
+    {
+     "group": "İngilizce",
+     "word": "for"
+    },
+    {
+     "group": "İngilizce",
+     "word": "a"
+    },
+    {
+     "group": "İngilizce",
+     "word": "an"
+    },
+    {
+     "group": "İngilizce",
+     "word": "the"
+    },
+    {
+     "group": "İngilizce",
+     "word": "is"
+    },
+    {
+     "group": "İngilizce",
+     "word": "are"
+    },
+    {
+     "group": "İngilizce",
+     "word": "of"
+    },
+    {
+     "group": "İngilizce",
+     "word": "in"
+    },
+    {
+     "group": "İngilizce",
+     "word": "on"
+    },
+    {
+     "group": "İngilizce",
+     "word": "by"
+    },
+    {
+     "group": "İngilizce",
+     "word": "per"
+    },
+    {
+     "group": "İngilizce",
+     "word": "which"
+    },
+    {
+     "group": "İngilizce",
+     "word": "what"
+    },
+    {
+     "group": "İngilizce",
+     "word": "table"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "gösteren"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "olarak"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "bazda"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "ihtiyacımız"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "duyuyoruz"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "nerede"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "istiyoruz"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "lazım"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "içeren"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "hakkında"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "bulunan"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "oluşan"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "alan"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "alanı"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "elimizde"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "şeklinde"
+    },
+    {
+     "group": "Talep cümlelerindeki dolgu kelimeleri",
+     "word": "yer"
+    },
+    {
+     "group": "Talep açıklamalarındaki biçim/talimat kelimeleri",
+     "word": "belirtir"
+    },
+    {
+     "group": "Talep açıklamalarındaki biçim/talimat kelimeleri",
+     "word": "örn"
+    },
+    {
+     "group": "Talep açıklamalarındaki biçim/talimat kelimeleri",
+     "word": "örneğin"
+    },
+    {
+     "group": "Talep açıklamalarındaki biçim/talimat kelimeleri",
+     "word": "virgül"
+    },
+    {
+     "group": "Talep açıklamalarındaki biçim/talimat kelimeleri",
+     "word": "ayrılacak"
+    },
+    {
+     "group": "Talep açıklamalarındaki biçim/talimat kelimeleri",
+     "word": "sadece"
+    },
+    {
+     "group": "Talep cümlelerindeki bağlaç işlevli fiiller",
+     "word": "kullanan"
+    },
+    {
+     "group": "Talep cümlelerindeki bağlaç işlevli fiiller",
+     "word": "kullanılan"
+    },
+    {
+     "group": "Talep cümlelerindeki bağlaç işlevli fiiller",
+     "word": "yapan"
+    },
+    {
+     "group": "Talep cümlelerindeki bağlaç işlevli fiiller",
+     "word": "yapılan"
+    },
+    {
+     "group": "Talep cümlelerindeki bağlaç işlevli fiiller",
+     "word": "sahip"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "ne"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "kadar"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "kadarı"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "kadarının"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "tüm"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "bütün"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "yalnız"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "yalnızca"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "ayrı"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "ayrıca"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "birlikte"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "hem"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "gerekli"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "gereken"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "görmek"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "istiyorum"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "aynı"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "yani"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "nereden"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "bulurum"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "alabilirim"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "ulaşabilirim"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "listesi"
+    },
+    {
+     "group": "Soru kalıbı ve kapsam belirten dolgu kelimeleri",
+     "word": "liste"
+    }
+   ]
+  },
+  "seed_terms": {
+   "result": [
+    {
+     "domain": "katılım",
+     "equivalents": [
+      "kredi",
+      "finansman",
+      "loan",
+      "credit",
+      "kullandırım"
+     ],
+     "note": "Katılım bankacılığında kredinin karşılığı",
+     "term": "fon kullandırım"
+    },
+    {
+     "domain": "katılım",
+     "equivalents": [
+      "faiz",
+      "getiri",
+      "profit share",
+      "interest",
+      "kar payı"
+     ],
+     "note": "",
+     "term": "kâr payı"
+    },
+    {
+     "domain": "katılım",
+     "equivalents": [
+      "leasing",
+      "finansal kiralama",
+      "ijara",
+      "kiralama"
+     ],
+     "note": "",
+     "term": "icare"
+    },
+    {
+     "domain": "katılım",
+     "equivalents": [
+      "vadeli satış",
+      "cost plus financing"
+     ],
+     "note": "",
+     "term": "murabaha"
+    },
+    {
+     "domain": "katılım",
+     "equivalents": [
+      "kira sertifikası",
+      "islamic bond"
+     ],
+     "note": "",
+     "term": "sukuk"
+    },
+    {
+     "domain": "katılım",
+     "equivalents": [
+      "mevduat",
+      "vadeli hesap",
+      "participation account"
+     ],
+     "note": "",
+     "term": "katılma hesabı"
+    },
+    {
+     "domain": "kredi",
+     "equivalents": [
+      "limit",
+      "kredi limiti",
+      "allotment",
+      "facility"
+     ],
+     "note": "",
+     "term": "tahsis"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "risk merkezi",
+      "TBB risk merkezi",
+      "toplam risk"
+     ],
+     "note": "",
+     "term": "memzuç"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "takipteki alacak",
+      "NPL",
+      "non performing",
+      "tahsili gecikmiş"
+     ],
+     "note": "",
+     "term": "donuk alacak"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "performing",
+      "aktif risk",
+      "live risk"
+     ],
+     "note": "",
+     "term": "canlı risk"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "cash risk",
+      "nakit kredi riski"
+     ],
+     "note": "",
+     "term": "nakdi risk"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "non cash risk",
+      "teminat mektubu riski",
+      "gayri nakdi"
+     ],
+     "note": "",
+     "term": "gayrinakdi risk"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "TM",
+      "letter of guarantee",
+      "garanti mektubu"
+     ],
+     "note": "",
+     "term": "teminat mektubu"
+    },
+    {
+     "domain": "kart",
+     "equivalents": [
+      "kullanım oranı",
+      "utilization",
+      "fullness",
+      "limit kullanımı",
+      "limit doluluk"
+     ],
+     "note": "",
+     "term": "doluluk oranı"
+    },
+    {
+     "domain": "kart",
+     "equivalents": [
+      "tanımlı limit",
+      "credit limit",
+      "card limit"
+     ],
+     "note": "",
+     "term": "limit"
+    },
+    {
+     "domain": "kart",
+     "equivalents": [
+      "KK",
+      "credit card",
+      "kart"
+     ],
+     "note": "",
+     "term": "kredi kartı"
+    },
+    {
+     "domain": "kart",
+     "equivalents": [
+      "debit card",
+      "debit kart"
+     ],
+     "note": "",
+     "term": "banka kartı"
+    },
+    {
+     "domain": "kart",
+     "equivalents": [
+      "cash advance",
+      "nakit çekim"
+     ],
+     "note": "",
+     "term": "nakit avans"
+    },
+    {
+     "domain": "ürün",
+     "equivalents": [
+      "tüketici kredisi",
+      "consumer loan",
+      "ihtiyaç finansmanı",
+      "bireysel kredi"
+     ],
+     "note": "",
+     "term": "ihtiyaç kredisi"
+    },
+    {
+     "domain": "ürün",
+     "equivalents": [
+      "mortgage",
+      "housing finance",
+      "konut finansmanı"
+     ],
+     "note": "",
+     "term": "konut kredisi"
+    },
+    {
+     "domain": "ürün",
+     "equivalents": [
+      "araç kredisi",
+      "vehicle loan",
+      "otomobil kredisi"
+     ],
+     "note": "",
+     "term": "taşıt kredisi"
+    },
+    {
+     "domain": "ürün",
+     "equivalents": [
+      "kredili mevduat hesabı",
+      "overdraft",
+      "artı para"
+     ],
+     "note": "",
+     "term": "KMH"
+    },
+    {
+     "domain": "anahtar",
+     "equivalents": [
+      "hesap numarası",
+      "CIF",
+      "müşteri no",
+      "hesap no",
+      "customer id",
+      "customer number",
+      "account number",
+      "müşteri kimlik no"
+     ],
+     "note": "Kurum kararı: müşteri no ve hesap no aynı kavram (ADR-009)",
+     "term": "müşteri numarası"
+    },
+    {
+     "domain": "anahtar",
+     "equivalents": [
+      "customer party id",
+      "party id",
+      "DWH müşteri no",
+      "surrogate key"
+     ],
+     "note": "",
+     "term": "müşteri SKEY"
+    },
+    {
+     "domain": "zaman",
+     "equivalents": [
+      "dönem",
+      "ay yıl",
+      "YYYYMM",
+      "period",
+      "month"
+     ],
+     "note": "",
+     "term": "periyot"
+    },
+    {
+     "domain": "zaman",
+     "equivalents": [
+      "data date",
+      "rapor tarihi",
+      "iş tarihi",
+      "dönem sonu"
+     ],
+     "note": "",
+     "term": "veri tarihi"
+    },
+    {
+     "domain": "zaman",
+     "equivalents": [
+      "transaction date",
+      "tran date",
+      "transfer date"
+     ],
+     "note": "",
+     "term": "işlem tarihi"
+    },
+    {
+     "domain": "işlem",
+     "equivalents": [
+      "EFT",
+      "havale",
+      "money transfer",
+      "transfer",
+      "gönderim"
+     ],
+     "note": "",
+     "term": "para transferi"
+    },
+    {
+     "domain": "işlem",
+     "equivalents": [
+      "anlık transfer",
+      "instant transfer",
+      "fonların anlık ve sürekli transferi"
+     ],
+     "note": "",
+     "term": "FAST"
+    },
+    {
+     "domain": "işlem",
+     "equivalents": [
+      "hesaplar arası transfer",
+      "kendi hesabına transfer",
+      "kendi hesabına para transferi",
+      "kendi hesabı transfer",
+      "internal transfer"
+     ],
+     "note": "Kapsam: virman yalnızca banka içi hesaplar arası transferi kapsar; başka bankadaki kendi hesabına yapılan transferler dahil değildir (Ek A.3).",
+     "term": "virman"
+    },
+    {
+     "domain": "işlem",
+     "equivalents": [
+      "uluslararası transfer",
+      "yurt dışı transfer",
+      "international transfer"
+     ],
+     "note": "",
+     "term": "SWIFT"
+    },
+    {
+     "domain": "işlem",
+     "equivalents": [
+      "karşı taraf",
+      "receiver",
+      "beneficiary",
+      "lehtar"
+     ],
+     "note": "",
+     "term": "alıcı"
+    },
+    {
+     "domain": "işlem",
+     "equivalents": [
+      "sender",
+      "gönderici",
+      "remitter"
+     ],
+     "note": "",
+     "term": "gönderen"
+    },
+    {
+     "domain": "finansal",
+     "equivalents": [
+      "balance",
+      "tutar",
+      "meblağ"
+     ],
+     "note": "",
+     "term": "bakiye"
+    },
+    {
+     "domain": "finansal",
+     "equivalents": [
+      "amount",
+      "meblağ",
+      "toplam"
+     ],
+     "note": "",
+     "term": "tutar"
+    },
+    {
+     "domain": "finansal",
+     "equivalents": [
+      "sayı",
+      "count",
+      "işlem adedi",
+      "sayısı"
+     ],
+     "note": "",
+     "term": "adet"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "DPD",
+      "days past due",
+      "overdue day"
+     ],
+     "note": "",
+     "term": "gecikme gün sayısı"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "PD",
+      "probability of default"
+     ],
+     "note": "",
+     "term": "temerrüt olasılığı"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "rating",
+      "IDM",
+      "internal rating",
+      "not"
+     ],
+     "note": "",
+     "term": "içsel derecelendirme"
+    },
+    {
+     "domain": "risk",
+     "equivalents": [
+      "stage",
+      "UFRS 9",
+      "evre"
+     ],
+     "note": "",
+     "term": "IFRS 9 aşaması"
+    },
+    {
+     "domain": "dış veri",
+     "equivalents": [
+      "kredi kayıt bürosu",
+      "credit bureau",
+      "findeks"
+     ],
+     "note": "",
+     "term": "KKB"
+    },
+    {
+     "domain": "dış veri",
+     "equivalents": [
+      "kredi referans sistemi"
+     ],
+     "note": "",
+     "term": "KRS"
+    },
+    {
+     "domain": "müşteri",
+     "equivalents": [
+      "müşteri sınıfı",
+      "customer class",
+      "sınıf",
+      "bireysel kobi ticari kurumsal"
+     ],
+     "note": "",
+     "term": "segment"
+    },
+    {
+     "domain": "organizasyon",
+     "equivalents": [
+      "branch",
+      "şube kodu"
+     ],
+     "note": "",
+     "term": "şube"
+    },
+    {
+     "domain": "organizasyon",
+     "equivalents": [
+      "channel",
+      "işlem kanalı",
+      "dijital şube ATM"
+     ],
+     "note": "",
+     "term": "kanal"
+    }
+   ]
+  },
+  "stopwords": [
+   {
+    "error": "Liste bekleniyordu"
+   },
+   {
+    "result": [
+     {
+      "group": "",
+      "word": "Ve"
+     },
+     {
+      "group": "Soru",
+      "word": "mı"
+     }
+    ]
+   },
+   {
+    "error": "“iki kelime”: durak kelime tek kelime olmalı"
+   },
+   {
+    "result": [
+     {
+      "group": "A",
+      "word": "mi"
+     },
+     {
+      "group": "",
+      "word": "MU"
+     }
+    ]
+   },
+   {
+    "result": [
+     {
+      "group": "Genel",
+      "word": "ile"
+     }
+    ]
+   },
+   {
+    "error": "En fazla 5000 kayıt"
+   }
+  ],
+  "terms": [
+   {
+    "error": "Liste bekleniyordu"
+   },
+   {
+    "error": "Liste bekleniyordu"
+   },
+   {
+    "result": []
+   },
+   {
+    "result": [
+     {
+      "domain": "d",
+      "equivalents": [
+       "b",
+       "c"
+      ],
+      "note": "n",
+      "term": "a"
+     }
+    ]
+   },
+   {
+    "error": "Satır 1: terim boş"
+   },
+   {
+    "error": "Satır 2: terim boş"
+   },
+   {
+    "error": "“x”: en az bir eşdeğer gerekli"
+   },
+   {
+    "error": "“x”: en az bir eşdeğer gerekli"
+   },
+   {
+    "error": "“x”: en az bir eşdeğer gerekli"
+   },
+   {
+    "error": "“islem” iki kez var (satır 1 ve 3)"
+   },
+   {
+    "error": "“ışık” iki kez var (satır 1 ve 2)"
+   },
+   {
+    "error": "“kar” iki kez var (satır 1 ve 2)"
+   },
+   {
+    "error": "En fazla 5000 kayıt"
+   }
+  ]
+ },
+ "engine_reading": {
+  "stopword_forms": [
+   "a",
+   "alabilirim",
+   "alan",
+   "alani",
+   "an",
+   "and",
+   "are",
+   "ayni",
+   "ayri",
+   "ayric",
+   "ayrica",
+   "ayrilacak",
+   "bazd",
+   "bazda",
+   "bazi",
+   "bazinda",
+   "bazl",
+   "bazli",
+   "belir",
+   "belirtir",
+   "bilg",
+   "bilgileri",
+   "bilgilerini",
+   "bilgisi",
+   "bir",
+   "birlik",
+   "birlikte",
+   "bu",
+   "bulunan",
+   "bulurum",
+   "butun",
+   "by",
+   "da",
+   "de",
+   "duyuyoruz",
+   "elimiz",
+   "elimizde",
+   "for",
+   "gereken",
+   "gerekl",
+   "gerekli",
+   "gibi",
+   "gore",
+   "gormek",
+   "gosteren",
+   "hakk",
+   "hakkinda",
+   "hang",
+   "hangi",
+   "hem",
+   "iceren",
+   "icin",
+   "ihtiyacimiz",
+   "ile",
+   "in",
+   "is",
+   "istiyorum",
+   "istiyoruz",
+   "kadar",
+   "kadari",
+   "kadarinin",
+   "ki",
+   "kullanan",
+   "kullanilan",
+   "lazim",
+   "list",
+   "liste",
+   "listesi",
+   "mevcut",
+   "mi",
+   "midir",
+   "mu",
+   "mudur",
+   "ne",
+   "nedir",
+   "nere",
+   "nerede",
+   "nereden",
+   "of",
+   "olan",
+   "olarak",
+   "olusan",
+   "on",
+   "or",
+   "orn",
+   "orneg",
+   "ornegin",
+   "per",
+   "sadec",
+   "sadece",
+   "sahip",
+   "sekl",
+   "seklinde",
+   "su",
+   "tabl",
+   "table",
+   "tablo",
+   "tabloda",
+   "tablosu",
+   "the",
+   "tum",
+   "ulasabilirim",
+   "uzer",
+   "uzerinden",
+   "var",
+   "vb",
+   "ve",
+   "veri",
+   "verileri",
+   "verisi",
+   "veya",
+   "virgul",
+   "vs",
+   "what",
+   "which",
+   "with",
+   "yalniz",
+   "yalnizc",
+   "yalnizca",
+   "yani",
+   "yapan",
+   "yapilan",
+   "yer",
+   "yok"
+  ],
+  "term_groups": [
+   {
+    "domain": "katılım",
+    "equivalents": [
+     "kredi",
+     "finansman",
+     "loan",
+     "credit",
+     "kullandırım"
+    ],
+    "note": "Katılım bankacılığında kredinin karşılığı",
+    "term": "fon kullandırım"
+   },
+   {
+    "domain": "katılım",
+    "equivalents": [
+     "faiz",
+     "getiri",
+     "profit share",
+     "interest",
+     "kar payı"
+    ],
+    "note": "",
+    "term": "kâr payı"
+   },
+   {
+    "domain": "katılım",
+    "equivalents": [
+     "leasing",
+     "finansal kiralama",
+     "ijara",
+     "kiralama"
+    ],
+    "note": "",
+    "term": "icare"
+   },
+   {
+    "domain": "katılım",
+    "equivalents": [
+     "vadeli satış",
+     "cost plus financing"
+    ],
+    "note": "",
+    "term": "murabaha"
+   },
+   {
+    "domain": "katılım",
+    "equivalents": [
+     "kira sertifikası",
+     "islamic bond"
+    ],
+    "note": "",
+    "term": "sukuk"
+   },
+   {
+    "domain": "katılım",
+    "equivalents": [
+     "mevduat",
+     "vadeli hesap",
+     "participation account"
+    ],
+    "note": "",
+    "term": "katılma hesabı"
+   },
+   {
+    "domain": "kredi",
+    "equivalents": [
+     "limit",
+     "kredi limiti",
+     "allotment",
+     "facility"
+    ],
+    "note": "",
+    "term": "tahsis"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "risk merkezi",
+     "TBB risk merkezi",
+     "toplam risk"
+    ],
+    "note": "",
+    "term": "memzuç"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "takipteki alacak",
+     "NPL",
+     "non performing",
+     "tahsili gecikmiş"
+    ],
+    "note": "",
+    "term": "donuk alacak"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "performing",
+     "aktif risk",
+     "live risk"
+    ],
+    "note": "",
+    "term": "canlı risk"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "cash risk",
+     "nakit kredi riski"
+    ],
+    "note": "",
+    "term": "nakdi risk"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "non cash risk",
+     "teminat mektubu riski",
+     "gayri nakdi"
+    ],
+    "note": "",
+    "term": "gayrinakdi risk"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "TM",
+     "letter of guarantee",
+     "garanti mektubu"
+    ],
+    "note": "",
+    "term": "teminat mektubu"
+   },
+   {
+    "domain": "kart",
+    "equivalents": [
+     "kullanım oranı",
+     "utilization",
+     "fullness",
+     "limit kullanımı",
+     "limit doluluk"
+    ],
+    "note": "",
+    "term": "doluluk oranı"
+   },
+   {
+    "domain": "kart",
+    "equivalents": [
+     "tanımlı limit",
+     "credit limit",
+     "card limit"
+    ],
+    "note": "",
+    "term": "limit"
+   },
+   {
+    "domain": "kart",
+    "equivalents": [
+     "KK",
+     "credit card",
+     "kart"
+    ],
+    "note": "",
+    "term": "kredi kartı"
+   },
+   {
+    "domain": "kart",
+    "equivalents": [
+     "debit card",
+     "debit kart"
+    ],
+    "note": "",
+    "term": "banka kartı"
+   },
+   {
+    "domain": "kart",
+    "equivalents": [
+     "cash advance",
+     "nakit çekim"
+    ],
+    "note": "",
+    "term": "nakit avans"
+   },
+   {
+    "domain": "ürün",
+    "equivalents": [
+     "tüketici kredisi",
+     "consumer loan",
+     "ihtiyaç finansmanı",
+     "bireysel kredi"
+    ],
+    "note": "",
+    "term": "ihtiyaç kredisi"
+   },
+   {
+    "domain": "ürün",
+    "equivalents": [
+     "mortgage",
+     "housing finance",
+     "konut finansmanı"
+    ],
+    "note": "",
+    "term": "konut kredisi"
+   },
+   {
+    "domain": "ürün",
+    "equivalents": [
+     "araç kredisi",
+     "vehicle loan",
+     "otomobil kredisi"
+    ],
+    "note": "",
+    "term": "taşıt kredisi"
+   },
+   {
+    "domain": "ürün",
+    "equivalents": [
+     "kredili mevduat hesabı",
+     "overdraft",
+     "artı para"
+    ],
+    "note": "",
+    "term": "KMH"
+   },
+   {
+    "domain": "anahtar",
+    "equivalents": [
+     "hesap numarası",
+     "CIF",
+     "müşteri no",
+     "hesap no",
+     "customer id",
+     "customer number",
+     "account number",
+     "müşteri kimlik no"
+    ],
+    "note": "Kurum kararı: müşteri no ve hesap no aynı kavram (ADR-009)",
+    "term": "müşteri numarası"
+   },
+   {
+    "domain": "anahtar",
+    "equivalents": [
+     "customer party id",
+     "party id",
+     "DWH müşteri no",
+     "surrogate key"
+    ],
+    "note": "",
+    "term": "müşteri SKEY"
+   },
+   {
+    "domain": "zaman",
+    "equivalents": [
+     "dönem",
+     "ay yıl",
+     "YYYYMM",
+     "period",
+     "month"
+    ],
+    "note": "",
+    "term": "periyot"
+   },
+   {
+    "domain": "zaman",
+    "equivalents": [
+     "data date",
+     "rapor tarihi",
+     "iş tarihi",
+     "dönem sonu"
+    ],
+    "note": "",
+    "term": "veri tarihi"
+   },
+   {
+    "domain": "zaman",
+    "equivalents": [
+     "transaction date",
+     "tran date",
+     "transfer date"
+    ],
+    "note": "",
+    "term": "işlem tarihi"
+   },
+   {
+    "domain": "işlem",
+    "equivalents": [
+     "EFT",
+     "havale",
+     "money transfer",
+     "transfer",
+     "gönderim"
+    ],
+    "note": "",
+    "term": "para transferi"
+   },
+   {
+    "domain": "işlem",
+    "equivalents": [
+     "anlık transfer",
+     "instant transfer",
+     "fonların anlık ve sürekli transferi"
+    ],
+    "note": "",
+    "term": "FAST"
+   },
+   {
+    "domain": "işlem",
+    "equivalents": [
+     "hesaplar arası transfer",
+     "kendi hesabına transfer",
+     "kendi hesabına para transferi",
+     "kendi hesabı transfer",
+     "internal transfer"
+    ],
+    "note": "Kapsam: virman yalnızca banka içi hesaplar arası transferi kapsar; başka bankadaki kendi hesabına yapılan transferler dahil değildir (Ek A.3).",
+    "term": "virman"
+   },
+   {
+    "domain": "işlem",
+    "equivalents": [
+     "uluslararası transfer",
+     "yurt dışı transfer",
+     "international transfer"
+    ],
+    "note": "",
+    "term": "SWIFT"
+   },
+   {
+    "domain": "işlem",
+    "equivalents": [
+     "karşı taraf",
+     "receiver",
+     "beneficiary",
+     "lehtar"
+    ],
+    "note": "",
+    "term": "alıcı"
+   },
+   {
+    "domain": "işlem",
+    "equivalents": [
+     "sender",
+     "gönderici",
+     "remitter"
+    ],
+    "note": "",
+    "term": "gönderen"
+   },
+   {
+    "domain": "finansal",
+    "equivalents": [
+     "balance",
+     "tutar",
+     "meblağ"
+    ],
+    "note": "",
+    "term": "bakiye"
+   },
+   {
+    "domain": "finansal",
+    "equivalents": [
+     "amount",
+     "meblağ",
+     "toplam"
+    ],
+    "note": "",
+    "term": "tutar"
+   },
+   {
+    "domain": "finansal",
+    "equivalents": [
+     "sayı",
+     "count",
+     "işlem adedi",
+     "sayısı"
+    ],
+    "note": "",
+    "term": "adet"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "DPD",
+     "days past due",
+     "overdue day"
+    ],
+    "note": "",
+    "term": "gecikme gün sayısı"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "PD",
+     "probability of default"
+    ],
+    "note": "",
+    "term": "temerrüt olasılığı"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "rating",
+     "IDM",
+     "internal rating",
+     "not"
+    ],
+    "note": "",
+    "term": "içsel derecelendirme"
+   },
+   {
+    "domain": "risk",
+    "equivalents": [
+     "stage",
+     "UFRS 9",
+     "evre"
+    ],
+    "note": "",
+    "term": "IFRS 9 aşaması"
+   },
+   {
+    "domain": "dış veri",
+    "equivalents": [
+     "kredi kayıt bürosu",
+     "credit bureau",
+     "findeks"
+    ],
+    "note": "",
+    "term": "KKB"
+   },
+   {
+    "domain": "dış veri",
+    "equivalents": [
+     "kredi referans sistemi"
+    ],
+    "note": "",
+    "term": "KRS"
+   },
+   {
+    "domain": "müşteri",
+    "equivalents": [
+     "müşteri sınıfı",
+     "customer class",
+     "sınıf",
+     "bireysel kobi ticari kurumsal"
+    ],
+    "note": "",
+    "term": "segment"
+   },
+   {
+    "domain": "organizasyon",
+    "equivalents": [
+     "branch",
+     "şube kodu"
+    ],
+    "note": "",
+    "term": "şube"
+   },
+   {
+    "domain": "organizasyon",
+    "equivalents": [
+     "channel",
+     "işlem kanalı",
+     "dijital şube ATM"
+    ],
+    "note": "",
+    "term": "kanal"
+   }
+  ]
+ },
+ "settings": {
+  "defaults": {
+   "analyst.detail_columns": 8,
+   "analyst.max_tokens": 8000,
+   "analyst.min_confidence": 0.5,
+   "analyst.shortlist": 14,
+   "cache.enabled": true,
+   "cache.max_age_days": 30,
+   "cache.meaning": true,
+   "dictionary.store": "data/dictionary.jsonl",
+   "expansion.enabled": true,
+   "expansion.stopwords": "data/stopwords.jsonl",
+   "expansion.synonyms": true,
+   "expansion.term_dictionary": "data/terms.jsonl",
+   "expansion.weight": 0.6,
+   "index.dir": "data/index",
+   "report.out_dir": "data/out",
+   "scoring.min_candidate_score": 0.5,
+   "scoring.object.best_column": 0.35,
+   "scoring.object.coverage": 0.21,
+   "scoring.object.granularity": 0.07,
+   "scoring.object.time": 0.07,
+   "scoring.object.topic": 0.3,
+   "search.bm25.b": 0.75,
+   "search.bm25.k1": 1.2,
+   "search.candidate_object_columns": 1000,
+   "search.field_weights.description": 1.0,
+   "search.field_weights.name": 3.0,
+   "search.field_weights.object": 1.0,
+   "search.field_weights.synonyms": 2.0,
+   "search.top_k_objects": 20
+  },
+  "sections": [
+   {
+    "fields": [
+     {
+      "effect": "anında",
+      "help": "1. adımda modelin seçebileceği en fazla tablo.",
+      "key": "analyst.shortlist",
+      "label": "Kolonları okunacak aday tablo sayısı",
+      "max": 30,
+      "min": 3,
+      "step": 1,
+      "type": "int"
+     },
+     {
+      "effect": "anında",
+      "help": "En ilgili bu kadar kolon tam açıklamayla, kalanı “Ad [Rol]: özet” olarak gider.",
+      "key": "analyst.detail_columns",
+      "label": "Tam açıklamasıyla okunan kolon sayısı (tablo başına)",
+      "max": 60,
+      "min": 0,
+      "step": 1,
+      "type": "int"
+     },
+     {
+      "effect": "anında",
+      "format": "pct",
+      "help": "Modelin bundan az emin olduğu tablolar önerilmez (“bulunamadı” geçerli cevap).",
+      "key": "analyst.min_confidence",
+      "label": "Gösterilecek en düşük model güveni",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     },
+     {
+      "advanced": true,
+      "effect": "anında",
+      "help": "2. adımda modelin yazabileceği en uzun cevap.",
+      "key": "analyst.max_tokens",
+      "label": "Cevap için en fazla token",
+      "max": 32000,
+      "min": 1000,
+      "step": 500,
+      "type": "int"
+     }
+    ],
+    "id": "analyst",
+    "intro": "Cevabı sohbet modeli yazar: katalogdan aday seçer, sonra adayların kolonlarını okur; malzeme büyüdükçe yavaşlar.",
+    "page": "search",
+    "title": "Analist"
+   },
+   {
+    "fields": [
+     {
+      "effect": "anında",
+      "help": "Katılım bankacılığı terimleri ve kısaltmalar (data/terms.jsonl).",
+      "key": "expansion.enabled",
+      "label": "Kurumsal terim sözlüğünü kullan",
+      "type": "bool"
+     },
+     {
+      "effect": "anında",
+      "help": "Sözlüğün Synonyms kolonundaki eş anlamlılar.",
+      "key": "expansion.synonyms",
+      "label": "Sözlüğün eş anlamlılarını kullan",
+      "type": "bool"
+     },
+     {
+      "advanced": true,
+      "effect": "anında",
+      "format": "pct",
+      "help": "Kullanıcının kendi yazdığı kelimeler %100 sayılır.",
+      "key": "expansion.weight",
+      "label": "Eş anlamlı terimlerin ağırlığı",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     }
+    ],
+    "id": "terms",
+    "intro": "İş biriminin kelimelerini sözlüğe bağlar: “kredi” arayan “fon kullandırım”ı da bulur.",
+    "page": "search",
+    "title": "Eş anlamlılar ve terimler"
+   },
+   {
+    "advanced": true,
+    "fields": [
+     {
+      "effect": "anında",
+      "help": "Tablodaki en iyi kolonun talebe uyumu.",
+      "key": "scoring.object.best_column",
+      "label": "En iyi eşleşen kolon",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     },
+     {
+      "effect": "anında",
+      "help": "Talepteki kavramların kaçı aynı tabloda.",
+      "key": "scoring.object.coverage",
+      "label": "Kavramları birlikte taşıma",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     },
+     {
+      "effect": "anında",
+      "help": "Tablonun bütün olarak talebin konusu olması; çok geniş tabloları dengeler.",
+      "key": "scoring.object.topic",
+      "label": "Konu uyumu",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     },
+     {
+      "effect": "anında",
+      "help": "“Aylık”, “günlük” istenirse dönem/tarih kolonu var mı. İstenmezse sayılmaz.",
+      "key": "scoring.object.time",
+      "label": "Zaman kolonu",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     },
+     {
+      "effect": "anında",
+      "help": "Müşteri bazlı talepte müşteri anahtarı var mı.",
+      "key": "scoring.object.granularity",
+      "label": "Müşteri seviyesi",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     },
+     {
+      "effect": "anında",
+      "help": "Soru başına kural motorunun sıraladığı tablo sayısı (ipucu havuzu).",
+      "key": "search.top_k_objects",
+      "label": "Değerlendirilen tablo sayısı",
+      "max": 50,
+      "min": 3,
+      "step": 1,
+      "type": "int"
+     },
+     {
+      "effect": "anında",
+      "format": "pct",
+      "help": "Bunun altındaki tablolar modele ipucu olarak gösterilmez.",
+      "key": "scoring.min_candidate_score",
+      "label": "İpucu listesine girecek en düşük kural puanı",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     }
+    ],
+    "id": "ranking",
+    "intro": "Kural puanı (beş parça) modele ipucu olur, cevap yazmaz; değiştirmeden önce ve sonra `vsa eval --save` ile ölçün.",
+    "page": "search",
+    "title": "Kural ipuçları (tablo sıralaması)"
+   },
+   {
+    "advanced": true,
+    "fields": [
+     {
+      "effect": "indeks",
+      "help": "",
+      "key": "search.field_weights.name",
+      "label": "Kolon adı ağırlığı",
+      "max": 10,
+      "min": 0,
+      "step": 0.5,
+      "type": "float"
+     },
+     {
+      "effect": "indeks",
+      "help": "",
+      "key": "search.field_weights.synonyms",
+      "label": "Eş anlamlılar ağırlığı",
+      "max": 10,
+      "min": 0,
+      "step": 0.5,
+      "type": "float"
+     },
+     {
+      "effect": "indeks",
+      "help": "",
+      "key": "search.field_weights.description",
+      "label": "Açıklama ağırlığı",
+      "max": 10,
+      "min": 0,
+      "step": 0.5,
+      "type": "float"
+     },
+     {
+      "effect": "indeks",
+      "help": "",
+      "key": "search.field_weights.object",
+      "label": "Tablo adı ağırlığı",
+      "max": 10,
+      "min": 0,
+      "step": 0.5,
+      "type": "float"
+     },
+     {
+      "effect": "anında",
+      "help": "Kavramları birlikte taşıyan tablolar kaçmasın diye geniş tutulur.",
+      "key": "search.candidate_object_columns",
+      "label": "Aday tablo için taranan kolon",
+      "max": 3000,
+      "min": 50,
+      "step": 50,
+      "type": "int"
+     },
+     {
+      "effect": "indeks",
+      "help": "Aynı kelimenin tekrarı ne kadar sayılsın.",
+      "key": "search.bm25.k1",
+      "label": "BM25 k1",
+      "max": 3,
+      "min": 0.1,
+      "step": 0.1,
+      "type": "float"
+     },
+     {
+      "effect": "indeks",
+      "help": "Uzun açıklamalar ne kadar dengelensin.",
+      "key": "search.bm25.b",
+      "label": "BM25 b",
+      "max": 1,
+      "min": 0,
+      "step": 0.05,
+      "type": "float"
+     }
+    ],
+    "id": "words",
+    "intro": "Kolon adı, eş anlamlı ve açıklamalarda BM25 araması; değerler indekse gömülü, değişince indeks yeniden kurulur.",
+    "page": "search",
+    "title": "Kelime araması"
+   },
+   {
+    "fields": [
+     {
+      "effect": "indeks",
+      "help": "İçe aktarılan sözlüğün saklandığı yer (data/dictionary.jsonl).",
+      "key": "dictionary.store",
+      "label": "Sözlük dosyası",
+      "type": "str"
+     }
+    ],
+    "id": "dictionary",
+    "intro": "Sözlük dosyasının yeri; değişirse indeks yeniden kurulmalı.",
+    "page": "dictionary",
+    "title": "Dosya ayarları"
+   },
+   {
+    "fields": [
+     {
+      "effect": "indeks",
+      "help": "jsonl, satır başına bir grup: term, equivalents, domain, note.",
+      "key": "expansion.term_dictionary",
+      "label": "Terim sözlüğü dosyası",
+      "type": "str"
+     },
+     {
+      "effect": "indeks",
+      "help": "jsonl, satır başına bir kelime: word, group.",
+      "key": "expansion.stopwords",
+      "label": "Durak kelimeler dosyası",
+      "type": "str"
+     }
+    ],
+    "id": "words",
+    "intro": "Kelime listelerinin yerleri; değişirse indeks yeniden kurulmalı.",
+    "page": "words",
+    "title": "Dosya ayarları"
+   },
+   {
+    "fields": [
+     {
+      "effect": "anında",
+      "help": "Kapalıyken her soru baştan analiz edilir; cevaplar yine saklanır.",
+      "key": "cache.enabled",
+      "label": "Önceki cevapları kullan",
+      "type": "bool"
+     },
+     {
+      "effect": "anında",
+      "help": "Kelimesi farklı, kavramı aynı soru (ör. “müşteri no” / “hesap no”); kapalıyken yalnız aynı kelimeler.",
+      "key": "cache.meaning",
+      "label": "Aynı anlama gelen sorularda da kullan",
+      "type": "bool"
+     },
+     {
+      "advanced": true,
+      "effect": "anında",
+      "help": "Daha eski cevaplar yeniden analiz edilir. 0 = süre sınırı yok.",
+      "key": "cache.max_age_days",
+      "label": "Cevap kaç gün geçerli",
+      "max": 365,
+      "min": 0,
+      "step": 1,
+      "type": "int"
+     }
+    ],
+    "id": "cache",
+    "intro": "Aynı ya da aynı anlamdaki soru analiz yerine kayıtlı cevabı alır; sözlük, model ya da ayar değişince eskiler kullanılmaz.",
+    "page": "data",
+    "title": "Önceki cevaplar"
+   },
+   {
+    "fields": [
+     {
+      "effect": "anında",
+      "help": "İndirilen Excel raporları buraya da yazılır.",
+      "key": "report.out_dir",
+      "label": "Rapor klasörü",
+      "type": "str"
+     },
+     {
+      "advanced": true,
+      "effect": "indeks",
+      "help": "",
+      "key": "index.dir",
+      "label": "İndeks klasörü",
+      "type": "str"
+     }
+    ],
+    "id": "places",
+    "intro": "",
+    "page": "data",
+    "title": "Klasörler"
+   }
+  ]
+ },
+ "workbooks": {
+  "read": [
+   {
+    "result": [
+     {
+      "domain": "test",
+      "equivalents": [
+       "panzer",
+       "tank",
+       "=zırh",
+       "kale",
+       "kule"
+      ],
+      "note": "",
+      "term": "zırhlı araç"
+     },
+     {
+      "domain": "",
+      "equivalents": [
+       "12"
+      ],
+      "note": "not",
+      "term": "5"
+     }
+    ]
+   },
+   {
+    "result": [
+     {
+      "equivalents": [
+       "b"
+      ],
+      "note": "c",
+      "term": "a"
+     }
+    ]
+   },
+   {
+    "error": "“Terim” sütunu bulunamadı; dışa aktarılan dosyanın başlıklarını koruyun (Terim, Eşdeğerler, Alan, Not)."
+   },
+   {
+    "error": "“Terimler” sayfasında kayıt yok."
+   },
+   {
+    "result": [
+     {
+      "group": "Genel",
+      "word": "ve"
+     },
+     {
+      "group": "",
+      "word": "iki kelime"
+     }
+    ]
+   },
+   {
+    "error": "“Kelime” sütunu bulunamadı; dışa aktarılan dosyanın başlıklarını koruyun (Kelime, Grup)."
+   },
+   {
+    "error": "Dosyada çok fazla satır var (en fazla 5000)."
+   },
+   {
+    "result": 5000
+   }
+  ],
+  "write": {
+   "formula": {
+    "bold": [
+     true,
+     true,
+     true,
+     true
+    ],
+    "freeze": "A2",
+    "rows": [
+     [
+      "Terim",
+      "Eşdeğerler",
+      "Alan",
+      "Not"
+     ],
+     [
+      "=x",
+      "=y, z",
+      null,
+      "=1+1"
+     ]
+    ],
+    "title": "Terimler",
+    "types": [
+     "n",
+     "s"
+    ],
+    "widths": {
+     "A": 28.0,
+     "B": 70.0,
+     "C": 16.0,
+     "D": 50.0
+    }
+   },
+   "stopwords": {
+    "bold": [
+     true,
+     true
+    ],
+    "freeze": "A2",
+    "rows": [
+     [
+      "Kelime",
+      "Grup"
+     ],
+     [
+      "ve",
+      "Genel"
+     ],
+     [
+      "veya",
+      "Genel"
+     ],
+     [
+      "ile",
+      "Genel"
+     ],
+     [
+      "için",
+      "Genel"
+     ],
+     [
+      "bir",
+      "Genel"
+     ],
+     [
+      "bu",
+      "Genel"
+     ],
+     [
+      "şu",
+      "Genel"
+     ],
+     [
+      "mi",
+      "Genel"
+     ],
+     [
+      "mu",
+      "Genel"
+     ],
+     [
+      "var",
+      "Genel"
+     ],
+     [
+      "yok",
+      "Genel"
+     ],
+     [
+      "olan",
+      "Genel"
+     ],
+     [
+      "gibi",
+      "Genel"
+     ],
+     [
+      "göre",
+      "Genel"
+     ],
+     [
+      "bazında",
+      "Genel"
+     ],
+     [
+      "bazlı",
+      "Genel"
+     ],
+     [
+      "üzerinden",
+      "Genel"
+     ],
+     [
+      "bilgisi",
+      "Genel"
+     ],
+     [
+      "bilgileri",
+      "Genel"
+     ],
+     [
+      "bilgilerini",
+      "Genel"
+     ],
+     [
+      "verisi",
+      "Genel"
+     ],
+     [
+      "verileri",
+      "Genel"
+     ],
+     [
+      "tablo",
+      "Genel"
+     ],
+     [
+      "tabloda",
+      "Genel"
+     ],
+     [
+      "tablosu",
+      "Genel"
+     ],
+     [
+      "hangi",
+      "Genel"
+     ],
+     [
+      "nedir",
+      "Genel"
+     ],
+     [
+      "mevcut",
+      "Genel"
+     ],
+     [
+      "midir",
+      "Genel"
+     ],
+     [
+      "mudur",
+      "Genel"
+     ],
+     [
+      "de",
+      "Genel"
+     ],
+     [
+      "da",
+      "Genel"
+     ],
+     [
+      "ki",
+      "Genel"
+     ],
+     [
+      "vb",
+      "Genel"
+     ],
+     [
+      "vs",
+      "Genel"
+     ],
+     [
+      "and",
+      "İngilizce"
+     ],
+     [
+      "or",
+      "İngilizce"
+     ],
+     [
+      "with",
+      "İngilizce"
+     ],
+     [
+      "for",
+      "İngilizce"
+     ],
+     [
+      "a",
+      "İngilizce"
+     ],
+     [
+      "an",
+      "İngilizce"
+     ],
+     [
+      "the",
+      "İngilizce"
+     ],
+     [
+      "is",
+      "İngilizce"
+     ],
+     [
+      "are",
+      "İngilizce"
+     ],
+     [
+      "of",
+      "İngilizce"
+     ],
+     [
+      "in",
+      "İngilizce"
+     ],
+     [
+      "on",
+      "İngilizce"
+     ],
+     [
+      "by",
+      "İngilizce"
+     ],
+     [
+      "per",
+      "İngilizce"
+     ],
+     [
+      "which",
+      "İngilizce"
+     ],
+     [
+      "what",
+      "İngilizce"
+     ],
+     [
+      "table",
+      "İngilizce"
+     ],
+     [
+      "gösteren",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "olarak",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "bazda",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "ihtiyacımız",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "duyuyoruz",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "nerede",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "istiyoruz",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "lazım",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "içeren",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "hakkında",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "bulunan",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "oluşan",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "alan",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "alanı",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "elimizde",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "şeklinde",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "yer",
+      "Talep cümlelerindeki dolgu kelimeleri"
+     ],
+     [
+      "belirtir",
+      "Talep açıklamalarındaki biçim/talimat kelimeleri"
+     ],
+     [
+      "örn",
+      "Talep açıklamalarındaki biçim/talimat kelimeleri"
+     ],
+     [
+      "örneğin",
+      "Talep açıklamalarındaki biçim/talimat kelimeleri"
+     ],
+     [
+      "virgül",
+      "Talep açıklamalarındaki biçim/talimat kelimeleri"
+     ],
+     [
+      "ayrılacak",
+      "Talep açıklamalarındaki biçim/talimat kelimeleri"
+     ],
+     [
+      "sadece",
+      "Talep açıklamalarındaki biçim/talimat kelimeleri"
+     ],
+     [
+      "kullanan",
+      "Talep cümlelerindeki bağlaç işlevli fiiller"
+     ],
+     [
+      "kullanılan",
+      "Talep cümlelerindeki bağlaç işlevli fiiller"
+     ],
+     [
+      "yapan",
+      "Talep cümlelerindeki bağlaç işlevli fiiller"
+     ],
+     [
+      "yapılan",
+      "Talep cümlelerindeki bağlaç işlevli fiiller"
+     ],
+     [
+      "sahip",
+      "Talep cümlelerindeki bağlaç işlevli fiiller"
+     ],
+     [
+      "ne",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "kadar",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "kadarı",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "kadarının",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "tüm",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "bütün",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "yalnız",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "yalnızca",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "ayrı",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "ayrıca",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "birlikte",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "hem",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "gerekli",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "gereken",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "görmek",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "istiyorum",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "aynı",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "yani",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "nereden",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "bulurum",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "alabilirim",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "ulaşabilirim",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "listesi",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ],
+     [
+      "liste",
+      "Soru kalıbı ve kapsam belirten dolgu kelimeleri"
+     ]
+    ],
+    "title": "DurakKelimeler",
+    "types": [
+     "s"
+    ],
+    "widths": {
+     "A": 24.0,
+     "B": 24.0
+    }
+   },
+   "terms": {
+    "bold": [
+     true,
+     true,
+     true,
+     true
+    ],
+    "freeze": "A2",
+    "rows": [
+     [
+      "Terim",
+      "Eşdeğerler",
+      "Alan",
+      "Not"
+     ],
+     [
+      "fon kullandırım",
+      "kredi, finansman, loan, credit, kullandırım",
+      "katılım",
+      "Katılım bankacılığında kredinin karşılığı"
+     ],
+     [
+      "kâr payı",
+      "faiz, getiri, profit share, interest, kar payı",
+      "katılım",
+      null
+     ],
+     [
+      "icare",
+      "leasing, finansal kiralama, ijara, kiralama",
+      "katılım",
+      null
+     ],
+     [
+      "murabaha",
+      "vadeli satış, cost plus financing",
+      "katılım",
+      null
+     ],
+     [
+      "sukuk",
+      "kira sertifikası, islamic bond",
+      "katılım",
+      null
+     ],
+     [
+      "katılma hesabı",
+      "mevduat, vadeli hesap, participation account",
+      "katılım",
+      null
+     ],
+     [
+      "tahsis",
+      "limit, kredi limiti, allotment, facility",
+      "kredi",
+      null
+     ],
+     [
+      "memzuç",
+      "risk merkezi, TBB risk merkezi, toplam risk",
+      "risk",
+      null
+     ],
+     [
+      "donuk alacak",
+      "takipteki alacak, NPL, non performing, tahsili gecikmiş",
+      "risk",
+      null
+     ],
+     [
+      "canlı risk",
+      "performing, aktif risk, live risk",
+      "risk",
+      null
+     ],
+     [
+      "nakdi risk",
+      "cash risk, nakit kredi riski",
+      "risk",
+      null
+     ],
+     [
+      "gayrinakdi risk",
+      "non cash risk, teminat mektubu riski, gayri nakdi",
+      "risk",
+      null
+     ],
+     [
+      "teminat mektubu",
+      "TM, letter of guarantee, garanti mektubu",
+      "risk",
+      null
+     ],
+     [
+      "doluluk oranı",
+      "kullanım oranı, utilization, fullness, limit kullanımı, limit doluluk",
+      "kart",
+      null
+     ],
+     [
+      "limit",
+      "tanımlı limit, credit limit, card limit",
+      "kart",
+      null
+     ],
+     [
+      "kredi kartı",
+      "KK, credit card, kart",
+      "kart",
+      null
+     ],
+     [
+      "banka kartı",
+      "debit card, debit kart",
+      "kart",
+      null
+     ],
+     [
+      "nakit avans",
+      "cash advance, nakit çekim",
+      "kart",
+      null
+     ],
+     [
+      "ihtiyaç kredisi",
+      "tüketici kredisi, consumer loan, ihtiyaç finansmanı, bireysel kredi",
+      "ürün",
+      null
+     ],
+     [
+      "konut kredisi",
+      "mortgage, housing finance, konut finansmanı",
+      "ürün",
+      null
+     ],
+     [
+      "taşıt kredisi",
+      "araç kredisi, vehicle loan, otomobil kredisi",
+      "ürün",
+      null
+     ],
+     [
+      "KMH",
+      "kredili mevduat hesabı, overdraft, artı para",
+      "ürün",
+      null
+     ],
+     [
+      "müşteri numarası",
+      "hesap numarası, CIF, müşteri no, hesap no, customer id, customer number, account number, müşteri kimlik no",
+      "anahtar",
+      "Kurum kararı: müşteri no ve hesap no aynı kavram (ADR-009)"
+     ],
+     [
+      "müşteri SKEY",
+      "customer party id, party id, DWH müşteri no, surrogate key",
+      "anahtar",
+      null
+     ],
+     [
+      "periyot",
+      "dönem, ay yıl, YYYYMM, period, month",
+      "zaman",
+      null
+     ],
+     [
+      "veri tarihi",
+      "data date, rapor tarihi, iş tarihi, dönem sonu",
+      "zaman",
+      null
+     ],
+     [
+      "işlem tarihi",
+      "transaction date, tran date, transfer date",
+      "zaman",
+      null
+     ],
+     [
+      "para transferi",
+      "EFT, havale, money transfer, transfer, gönderim",
+      "işlem",
+      null
+     ],
+     [
+      "FAST",
+      "anlık transfer, instant transfer, fonların anlık ve sürekli transferi",
+      "işlem",
+      null
+     ],
+     [
+      "virman",
+      "hesaplar arası transfer, kendi hesabına transfer, kendi hesabına para transferi, kendi hesabı transfer, internal transfer",
+      "işlem",
+      "Kapsam: virman yalnızca banka içi hesaplar arası transferi kapsar; başka bankadaki kendi hesabına yapılan transferler dahil değildir (Ek A.3)."
+     ],
+     [
+      "SWIFT",
+      "uluslararası transfer, yurt dışı transfer, international transfer",
+      "işlem",
+      null
+     ],
+     [
+      "alıcı",
+      "karşı taraf, receiver, beneficiary, lehtar",
+      "işlem",
+      null
+     ],
+     [
+      "gönderen",
+      "sender, gönderici, remitter",
+      "işlem",
+      null
+     ],
+     [
+      "bakiye",
+      "balance, tutar, meblağ",
+      "finansal",
+      null
+     ],
+     [
+      "tutar",
+      "amount, meblağ, toplam",
+      "finansal",
+      null
+     ],
+     [
+      "adet",
+      "sayı, count, işlem adedi, sayısı",
+      "finansal",
+      null
+     ],
+     [
+      "gecikme gün sayısı",
+      "DPD, days past due, overdue day",
+      "risk",
+      null
+     ],
+     [
+      "temerrüt olasılığı",
+      "PD, probability of default",
+      "risk",
+      null
+     ],
+     [
+      "içsel derecelendirme",
+      "rating, IDM, internal rating, not",
+      "risk",
+      null
+     ],
+     [
+      "IFRS 9 aşaması",
+      "stage, UFRS 9, evre",
+      "risk",
+      null
+     ],
+     [
+      "KKB",
+      "kredi kayıt bürosu, credit bureau, findeks",
+      "dış veri",
+      null
+     ],
+     [
+      "KRS",
+      "kredi referans sistemi",
+      "dış veri",
+      null
+     ],
+     [
+      "segment",
+      "müşteri sınıfı, customer class, sınıf, bireysel kobi ticari kurumsal",
+      "müşteri",
+      null
+     ],
+     [
+      "şube",
+      "branch, şube kodu",
+      "organizasyon",
+      null
+     ],
+     [
+      "kanal",
+      "channel, işlem kanalı, dijital şube ATM",
+      "organizasyon",
+      null
+     ]
+    ],
+    "title": "Terimler",
+    "types": [
+     "n",
+     "s"
+    ],
+    "widths": {
+     "A": 28.0,
+     "B": 70.0,
+     "C": 16.0,
+     "D": 50.0
+    }
+   }
+  }
+ }
+}
