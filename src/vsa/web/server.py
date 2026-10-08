@@ -698,7 +698,7 @@ class App:
         header = (
             "# DWH Navigator ayarları — Yönetim ekranından kaydedildi "
             f"({datetime.now().isoformat(timespec='seconds')}).\n"
-            "# Elle de düzenlenebilir; anlamları için: docs/settings.example.yaml\n"
+            "# Elle de düzenlenebilir; yazılmayan ayar varsayılandır.\n"
         )
         self.settings_path.write_text(
             header + yaml.safe_dump(tree, allow_unicode=True, sort_keys=False), encoding="utf-8"

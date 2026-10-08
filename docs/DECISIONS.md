@@ -180,3 +180,23 @@ yalnız `terms.jsonl` ve `stopwords.jsonl` izlenir (kurum verisi değil, kodla b
 kopyalar, var olana dokunmaz. Geçiş: `config/` kaldırıldı; `config/settings.yaml` taşınana kadar
 okunur, eski `.csv`/`.txt` yolları jsonl varsayılanına çevrilir; ayar örneği
 `docs/settings.example.yaml`.
+
+## ADR-053 — En az kurulum: 4 paket, ayar dosyası ve giriş betiği yok, tek katalog yolu (ADR-052'nin geçiş kısmının yerine) (2026-10-08)
+Kurum ağına kurulumda her paket ve her dosya ayrı onay ve tarama demekti. Çalışma bağımlılığı 11
+paketten 4'e indi (openpyxl, et-xmlfile, defusedxml, PyYAML): komut satırı `argparse` ile, düz
+metin çıktı; typer, rich ve beş dolaylı paketi çıktı. Koddaki varsayılanlar ölçülen ayarlardır
+(2026-10-07, 294 soru) — yeni kurulum ayar dosyası istemez; `docker/settings.yaml` ve
+`docs/settings.example.yaml` kaldırıldı, `data/settings.yaml` yalnız yönetim ekranından bir ayar
+değişince yazılır. Yalnız kural cevabını (ölçüm, ADR-038) şekillendiren üç eşik eski değerinde
+kaldı. Konteynerde giriş betiği yok: `ENTRYPOINT vsa`; eksik terim sözlüğü / durak kelime dosyası
+imajdaki kopyadan (`src/vsa/defaults/`, yalnız imajda) komut satırınca yazılır. `vsa serve`
+indeksi her açılışta denetler, yoksa ya da sözlük değiştiyse kurar (`--auto-index` kalktı);
+`vsa feedback` (golden aday dışa aktarımı) kaldırıldı. Ölçülen ayarlarla hiç çalışmayan yollar
+silindi: kataloğu parçalı okuma ve uzlaştırma (`catalog_chunks` > 1), katalogda kolon adları
+(`catalog_columns`), "hepsi tam açıklama" (`detail_columns = -1`). Eski dosyalarla uyumluluk
+kaldırıldı: emekli ayar anahtarları artık "Bilinmeyen ayar" hatasıdır, `config/` yolu ve
+`.csv`/`.txt` listeler okunmaz, indeks formatı 2 (eskisi açılışta yeniden kurulur), kayıtlı
+cevaplar başka biçimdeyse kullanılmaz (CACHE_FORMAT 3), eski oylar bir kez `text_key` ile
+tamamlandı. Ekranların okumadığı yanıt alanları, `GET /api/list` ve hiçbir yerden çağrılmayan kod
+silindi. Doğrulama: 129 soruda sıralama, modele giden promptlar ve (sahte modelle) analist cevabı
+önceki anlık görüntüyle aynı (silinen alanlar dışında).

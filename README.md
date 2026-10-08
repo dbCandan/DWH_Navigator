@@ -41,9 +41,7 @@ verilir (ADR-035); 👍/👎 sonraki cevapları şekillendirir (ADR-036).
 ```bash
 python -m venv .venv
 .venv\Scripts\pip install -e ".[dev]"
-copy docs\settings.example.yaml data\settings.yaml
-.venv\Scripts\vsa index
-.venv\Scripts\vsa serve --open      # ya da baslat.bat
+.venv\Scripts\vsa serve --open      # ya da baslat.bat; indeks yoksa önce kurulur
 ```
 
 ```bash
@@ -53,8 +51,11 @@ mypy src
 vsa eval --save --label "ne değişti"   # ağırlık / model değişikliğinden önce ve sonra
 ```
 
-Komutlar: `vsa index`, `vsa serve [--auto-index]`, `vsa ask "…"`, `vsa ask -i liste.xlsx`,
-`vsa eval`, `vsa feedback`, `vsa dictionary import|export`.
+Komutlar: `vsa serve`, `vsa index`, `vsa ask "…"`, `vsa ask -i liste.xlsx`, `vsa eval`,
+`vsa dictionary import|export`. Ayar dosyası gerekmez: varsayılanlar ölçülen ayarlardır;
+yönetim ekranında değiştirilen ayar `data/settings.yaml`'a yazılır.
+
+Çalışma bağımlılıkları dört pakettir: openpyxl (+ et-xmlfile), defusedxml, PyYAML.
 
 Uygulamanın tek sözlüğü `data/dictionary.jsonl`'dir. Excel yalnız aktarım içindir: şablondaki
 Excel yönetim ekranının **Sözlük** sekmesinden (ya da `vsa dictionary import`) içe aktarılınca

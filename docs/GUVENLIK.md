@@ -11,7 +11,7 @@ komutlarla tekrarlanabilir; her sürümde ve taban imaj güncellendiğinde yenid
 | Konteyner imajı — Python paketleri | Trivy 0.72.0 | **0** zafiyet |
 | Konteyner imajı — gömülü sır (anahtar, parola, token) | Trivy secret | **0** bulgu |
 | Dockerfile yapılandırması | Trivy misconfig | **0** bulgu |
-| Bağımlılık kilidi (`requirements.lock`, 11 paket) | pip-audit 2.10.1 (PyPI + OSV) | **0** zafiyet |
+| Bağımlılık kilidi (`requirements.lock`, 4 paket) | pip-audit 2.10.1 (PyPI + OSV) | **0** zafiyet |
 | Uygulama kaynak kodu (7.4 bin satır) | Bandit 1.9.4 | **0** bulgu (tüm önem seviyeleri) |
 | Kaynak kod, Docker dosyaları (46 dosya) | Semgrep (p/python, p/security-audit, p/owasp-top-ten, p/secrets) | **0** bulgu |
 | Git geçmişi (54 commit) ve çalışma ağacı | Gitleaks 8.30.1 | **0** sızıntı |
@@ -43,8 +43,6 @@ Karşılaştırma: aynı uygulama Debian 13 (`python:3.12-slim-trixie`) tabanın
 | et-xmlfile | 2.0.0 | openpyxl bağımlılığı |
 | defusedxml | 0.7.1 | yüklenen Excel'lerin XML'i güvenli ayrıştırılır |
 | PyYAML | 6.0.3 | ayar dosyaları (yalnız `safe_load`) |
-| typer, annotated-doc, shellingham | 0.27.3, 0.0.5, 1.5.4 | komut satırı |
-| rich, markdown-it-py, mdurl, Pygments | 15.0.0, 4.2.0, 0.1.2, 2.21.0 | terminal çıktısı |
 
 Web sunucusu ve model istemcisi Python standart kütüphanesidir (`http.server`, `urllib`);
 web arayüzü tek HTML dosyasıdır, dış kaynak (CDN, font, analitik) yüklemez.

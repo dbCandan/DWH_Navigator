@@ -1,8 +1,7 @@
 # CLAUDE.md — Veri Sözlüğü Asistanı (VSA)
 
-Kararlar: `docs/DECISIONS.md` (ADR-037 ve sonrası; ADR-001…036'nın özetleri aşağıda). Koddaki
-"HANDOVER §x" atıfları kaldırılmış eski spesifikasyona aittir; tasarım sorularında ADR'lere
-atıf yap. Kurulum: `docs/KURULUM.md` (Docker), güvenlik ve tarama: `docs/GUVENLIK.md`.
+Kararlar: `docs/DECISIONS.md` (ADR-037 ve sonrası; ADR-001…036'nın özetleri aşağıda). Tasarım
+sorularında ADR'lere atıf yap. Kurulum: `docs/KURULUM.md` (Docker), güvenlik ve tarama: `docs/GUVENLIK.md`.
 
 ## Ne yapar
 İş biriminin doğal dildeki veri talebini, veri sözlüğüne (11.158 kolon, 389 obje) karşı
@@ -59,8 +58,8 @@ bulut desteği ve model laboratuvarı kaldırıldı.
 - **Tek klasör `data/`** (ADR-052): sözlük, `terms.jsonl` (terim sözlüğü), `stopwords.jsonl`
   (durak kelimeler), `settings.yaml`, `llm_integrations.yaml`, indeks, önbellek, kayıtlar. Terim
   sözlüğü ve durak kelimeler jsonl'dir, `/admin` → Kelimeler'den düzenlenir (kayıt indeksi kurar).
-  `config/` klasörü yok (eski `config/settings.yaml` taşınana kadar okunur; eski `.csv`/`.txt`
-  yolları jsonl varsayılanına çevrilir). Ayar örneği `docs/settings.example.yaml`.
+  `config/` klasörü yok. Ayar dosyası gerekmez: koddaki varsayılanlar ölçülen ayarlardır
+  (ADR-053); `data/settings.yaml` yalnız değiştirilen ayarları taşır.
 - `data/`, `out/` ve tüm `.xlsx` dosyaları gitignore'da — **kurum içi veri, asla commit edilmez**;
   istisna `data/terms.jsonl` ve `data/stopwords.jsonl` (kurum verisi değil, kodla gelişir).
   Testler gerçek sözlüğe ihtiyaç duyarsa sözlük yoksa `skip` etmeli.
@@ -90,7 +89,9 @@ ADR-030'un "korumasız" kısmının yerine), ADR-048 (Alpine Docker imajı, 0 bi
 depo; Yönetim → Sözlük'ten içe/dışa aktarma; aynı içerik aynı sürüm), ADR-050 (Excel'den okuma
 kaldırıldı: tek sözlük jsonl, Excel yalnız aktarım; sözlüksüz açılış), ADR-051 (yönetim ekranı
 baştan: 7 sayfa, Ctrl K, çekmeceler), ADR-052 (her şey `data/`'da; terim sözlüğü ve durak
-kelimeler jsonl, Kelimeler sayfasından düzenlenir).
+kelimeler jsonl, Kelimeler sayfasından düzenlenir), ADR-053 (en az kurulum: 4 çalışma paketi,
+ayar dosyası ve giriş betiği yok, ölçülen ayarlarla çalışmayan yollar ve eski dosya uyumluluğu
+kaldırıldı).
 
 ## Golden set
 `tests/golden_set.yaml` — maddeler silinmez, yalnızca eklenir. Ağırlık değişikliğinden
@@ -126,7 +127,7 @@ vsa index
 vsa ask "kredi kartı limit doluluk oranı"
 vsa ask -i terimler.xlsx               # ilk sütundaki her terim ayrı aranır, tek rapor
 vsa eval --save --label "ne değişti"   # ağırlık değişikliğinden önce/sonra
-vsa serve --auto-index                 # indeks yoksa / sözlük değiştiyse önce kurar
+vsa serve                              # indeks yoksa / sözlük değiştiyse önce kurar
 vsa dictionary import data/VeriSozlugu.xlsx   # sözlüğün yerini alır, indeks kurulur
 vsa dictionary export sozluk.xlsx [--template]
 
@@ -159,7 +160,7 @@ gömülü); Kelimeler sayfasından kaydetmek indeksi kendisi kurar.
       Ctrl K komut paleti, `#/sayfa/öğe` derin bağlantılar, ayrıntılar çekmecede); uygulamadan bağlantı yok;
       parola `VSA_ADMIN_PASSWORD`, yoksa yalnız sunucunun kendisinden (ADR-047). **Tasarım kararları
       Claude'da** (kullanıcı "beni şaşırt" dedi); seçenek menüsü sunma.
-- [~] M7 — Geri bildirim: 👍/👎 → `data/feedback.jsonl` → `vsa feedback` golden adayları.
+- [~] M7 — Geri bildirim: 👍/👎 → `data/feedback.jsonl`.
       Oylar sonraki cevaplara yansır (ADR-036); arayüzde "Bir bakışta" panosu ve kapsama matrisi.
       Eş anlamlı zenginleştirme akışı henüz yok.
 - [x] M8 — Analist akışı (ADR-029): `ask` cevabını LLM yazar (katalog → aday → kolon okuma →
@@ -175,6 +176,5 @@ gömülü); Kelimeler sayfasından kaydetmek indeksi kendisi kurar.
 Modeller ekibin DGX Spark sunucularında, OpenAI uyumlu API ile (ADR-031); bu makinede model
 çalıştırılmaz, `baslat.bat` LM Studio açmaz. Bağlantı `/admin` → Yapay zekâ sayfasından
 (ADR-032): entegrasyonlar `data/llm_integrations.yaml` (repoda yok, API anahtarı içerir). Dosya
-yoksa `data/settings.yaml` → `llm:` geçerli. Analist okuma ayarları (aday sayısı, `detail_columns`,
-`catalog_chunks`, `catalog_columns`) `/admin` → Arama ve cevap → Analist'te. Model
+yoksa `data/settings.yaml` → `llm:` geçerli. Analist okuma ayarları (aday sayısı, `detail_columns`) `/admin` → Arama ve cevap → Analist'te. Model
 değişikliğinden önce ve sonra `vsa eval --save`.
