@@ -775,6 +775,600 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/llm-integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Integrations
+         * @description Integrations in creation order, the active chat model and its state.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmIntegrationsState"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_request: bozuk gövde ya da bilinmeyen alan */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * Create Integration
+         * @description Add an integration; it stays inactive unless ``activate`` is true.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LlmIntegrationCreate"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmIntegrationCreated"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_name_taken: aynı ad; llm_integration_limit: en çok 50 entegrasyon; llm_chat_role_taken: başka bir entegrasyon aktif */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_invalid: alan biçimi; llm_endpoint_unresolved: ad çözülemedi; llm_endpoint_not_private: kurum ağı dışı; llm_chat_model_required: sohbet modeli yok; llm_key_storage_unavailable: şifreleme anahtarı yok; invalid_request: bozuk gövde */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/llm-integrations/inventory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Inventory
+         * @description Every integration's models, at most eight servers at once and 50 seconds in total.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmInventory"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_request: bozuk gövde ya da bilinmeyen alan */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/llm-integrations/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * List Models
+         * @description The models of one server; a server failure is ``ok: false`` with its class.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LlmModelsRequest"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmModelsResult"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_not_found: entegrasyon yok ya da silinmiş */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_invalid: adres yok ya da biçimi geçersiz */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/llm-integrations/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Test Connection
+         * @description Server and chat-model steps with the form's values; nothing is saved but ``record``.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LlmTestRequest"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmTestResult"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_not_found: entegrasyon yok ya da silinmiş */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_invalid: alan biçimi; invalid_request: record başka alanla */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/llm-integrations/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Update Integration
+         * @description Change the given fields; repeating the same body changes nothing.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    public_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LlmIntegrationUpdate"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmIntegrationUpdated"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_not_found: entegrasyon yok ya da silinmiş */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_name_taken: aynı ad; llm_integration_limit: en çok 50 entegrasyon; llm_chat_role_taken: başka bir entegrasyon aktif */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_invalid: alan biçimi; llm_endpoint_unresolved: ad çözülemedi; llm_endpoint_not_private: kurum ağı dışı; llm_chat_model_required: sohbet modeli yok; llm_key_storage_unavailable: şifreleme anahtarı yok; invalid_request: bozuk gövde */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        /**
+         * Delete Integration
+         * @description Soft-delete the integration and empty its stored key.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    public_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmIntegrationsState"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_not_found: entegrasyon yok ya da silinmiş */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_request: bozuk gövde ya da bilinmeyen alan */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/llm-integrations/{public_id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Active
+         * @description Make the integration the chat model or turn it off; ``replace`` takes over the role.
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    public_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["LlmActiveChange"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmIntegrationsState"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_integration_not_found: entegrasyon yok ya da silinmiş */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_chat_role_taken: başka bir entegrasyon aktif */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_chat_model_required: sohbet modeli yok */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/readiness": {
         parameters: {
             query?: never;
@@ -840,6 +1434,171 @@ export interface components {
         };
         ErrorResponse: {
             detail: components["schemas"]["ErrorDetail"];
+        };
+        LlmActiveChange: {
+            active: boolean;
+            /** @default false */
+            replace: boolean;
+        };
+        LlmActiveIntegration: {
+            model: string;
+            name: string;
+            /** Format: uuid */
+            public_id: string;
+        };
+        /** @description A new integration: name and address; every other field takes its default. */
+        LlmIntegrationCreate: {
+            activate?: boolean | null;
+            api_key?: string | null;
+            chat_model?: string | null;
+            endpoint: string;
+            name: string;
+            reasoning_effort?: string | null;
+            /** @default false */
+            replace: boolean;
+            seed?: number | string | null;
+            temperature?: number | string | null;
+            timeout_seconds?: number | string | null;
+        };
+        LlmIntegrationCreated: {
+            accepts_http: boolean;
+            active: components["schemas"]["LlmActiveIntegration"] | null;
+            /** @enum {string} */
+            environment: "local" | "nonprod";
+            item: components["schemas"]["LlmIntegrationItem"];
+            items: components["schemas"]["LlmIntegrationItem"][];
+            key_storage: boolean;
+            model_state: components["schemas"]["LlmModelState"];
+            total: number;
+        };
+        LlmIntegrationItem: {
+            active: boolean;
+            chat_model: string;
+            /** Format: date-time */
+            created_at: string;
+            endpoint: string;
+            has_key: boolean;
+            last_test: components["schemas"]["LlmLastTest"] | null;
+            name: string;
+            /** Format: uuid */
+            public_id: string;
+            reasoning_effort: string;
+            seed: number;
+            temperature: number;
+            timeout_seconds: number;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        /** @description A partial update: an absent field keeps its value; ``api_key`` ``""`` deletes the key. */
+        LlmIntegrationUpdate: {
+            activate?: boolean | null;
+            api_key?: string | null;
+            chat_model?: string | null;
+            endpoint?: string | null;
+            name?: string | null;
+            reasoning_effort?: string | null;
+            /** @default false */
+            replace: boolean;
+            seed?: number | string | null;
+            temperature?: number | string | null;
+            timeout_seconds?: number | string | null;
+        };
+        LlmIntegrationUpdated: {
+            accepts_http: boolean;
+            active: components["schemas"]["LlmActiveIntegration"] | null;
+            /** @enum {string} */
+            environment: "local" | "nonprod";
+            item: components["schemas"]["LlmIntegrationItem"];
+            items: components["schemas"]["LlmIntegrationItem"][];
+            key_cleared: boolean;
+            key_storage: boolean;
+            model_state: components["schemas"]["LlmModelState"];
+            total: number;
+        };
+        LlmIntegrationsState: {
+            accepts_http: boolean;
+            active: components["schemas"]["LlmActiveIntegration"] | null;
+            /** @enum {string} */
+            environment: "local" | "nonprod";
+            items: components["schemas"]["LlmIntegrationItem"][];
+            key_storage: boolean;
+            model_state: components["schemas"]["LlmModelState"];
+            total: number;
+        };
+        LlmInventory: {
+            servers: components["schemas"]["LlmInventoryServer"][];
+        };
+        LlmInventoryServer: {
+            active: boolean;
+            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "invalid_json" | "response_too_large" | "cancelled") | null;
+            message: string;
+            models: components["schemas"]["LlmModelRow"][];
+            name: string;
+            ok: boolean;
+            /** Format: uuid */
+            public_id: string;
+        };
+        LlmLastTest: {
+            /** Format: date-time */
+            at: string;
+            ok: boolean;
+            summary: string;
+        };
+        LlmModelRow: {
+            context: number | null;
+            id: string;
+            in_use: boolean;
+            loaded: boolean | null;
+            owner: string;
+            quant: string;
+            type: string;
+        };
+        /** @description Requirement 12; ``name`` is the active integration's name on the AI page. */
+        LlmModelState: {
+            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "invalid_json" | "response_too_large" | "cancelled") | null;
+            model: string;
+            name: string | null;
+            reason: string;
+            /** @enum {string} */
+            state: "ok" | "none" | "down";
+        };
+        /** @description A saved integration, form values, or both; a form key replaces the saved one. */
+        LlmModelsRequest: {
+            api_key?: string | null;
+            endpoint?: string | null;
+            public_id?: string | null;
+        };
+        LlmModelsResult: {
+            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "invalid_json" | "response_too_large" | "cancelled") | null;
+            message: string;
+            models: components["schemas"]["LlmModelRow"][];
+            ms: number;
+            ok: boolean;
+        };
+        /** @description Form values over a saved integration; ``record`` only with ``public_id`` alone. */
+        LlmTestRequest: {
+            api_key?: string | null;
+            chat_model?: string | null;
+            endpoint?: string | null;
+            name?: string | null;
+            public_id?: string | null;
+            reasoning_effort?: string | null;
+            /** @default false */
+            record: boolean;
+            seed?: number | string | null;
+            temperature?: number | string | null;
+            timeout_seconds?: number | string | null;
+        };
+        LlmTestResult: {
+            ok: boolean;
+            steps: components["schemas"]["LlmTestStep"][];
+        };
+        LlmTestStep: {
+            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "invalid_json" | "response_too_large" | "cancelled") | null;
+            detail: string;
+            ms: number;
+            name: string;
+            ok: boolean;
         };
         LoginRequest: {
             /** Format: password */

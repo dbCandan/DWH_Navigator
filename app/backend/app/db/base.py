@@ -3,6 +3,7 @@
 from app.db.base_class import Base  # noqa: F401
 
 # Alembic imports this module to populate Base.metadata. Keep the imports here.
+from app.domain.models.llm_integration import LlmIntegration  # noqa: F401
 from app.domain.models.permission import Permission, RolePermission  # noqa: F401
 from app.domain.models.refresh_session import RefreshSession  # noqa: F401
 from app.domain.models.role import Role, UserRole  # noqa: F401

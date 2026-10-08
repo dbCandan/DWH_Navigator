@@ -1,0 +1,336 @@
+{
+ "scenarios": {
+  "anahtarli": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "art_arda_ret_ve_hafiza": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"user\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\\n\\nM\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"user\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\\n\\nM\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"user\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\\n\\nM\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"seed\": 42}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"user\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\\n\\n\\u0130kinci soru: \\u015fube m\\u00fcd\\u00fcr\\u00fc kim?\"}], \"temperature\": 0.0, \"max_tokens\": 8000, \"seed\": 42}"
+   ],
+   "errors": [
+    "",
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    },
+    {
+     "tablolar": [
+      "DWH.SUBE"
+     ]
+    }
+   ]
+  },
+  "baglam_asimi_400": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    "/chat/completions: HTTP 400: {\"error\": {\"message\": \"This model's maximum context length is 65536 tokens; the request (70212 tokens) exceeds the context size\"}}"
+   ],
+   "values": [
+    null
+   ]
+  },
+  "baglanti_testi": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"K\\u0131sa ve do\\u011fru cevap ver. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"T\\u00fcrkiye'nin ba\\u015fkenti neresidir?\"}], \"temperature\": 0.0, \"max_tokens\": 60, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"cevap\": {\"type\": \"string\"}}, \"required\": [\"cevap\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "cevap": "Ankara"
+    }
+   ]
+  },
+  "choices_yok": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    "beklenmeyen yanıt ('choices')"
+   ],
+   "values": [
+    null
+   ]
+  },
+  "dizi_yanit": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    "/chat/completions: beklenmeyen yanıt"
+   ],
+   "values": [
+    null
+   ]
+  },
+  "dort_ret_siniri": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"user\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\\n\\nM\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"user\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\\n\\nM\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"user\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\\n\\nM\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"seed\": 42}"
+   ],
+   "errors": [
+    "/chat/completions: HTTP 400: {\"error\": {\"message\": \"unsupported parameter: seed\"}}"
+   ],
+   "values": [
+    null
+   ]
+  },
+  "dusunme_reddi": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "duz_yanit": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "gecit_504": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    "/chat/completions: HTTP 504: {\"error\": {\"message\": \"upstream timed out\"}}"
+   ],
+   "values": [
+    null
+   ]
+  },
+  "iki_kez_json_olmayan": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}, {\"role\": \"assistant\", \"content\": \"d\\u00fcz metin\"}, {\"role\": \"user\", \"content\": \"Yan\\u0131t\\u0131n ge\\u00e7erli JSON de\\u011fil. SADECE \\u015femaya uyan JSON d\\u00f6nd\\u00fcr.\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    "model geçerli JSON üretmedi"
+   ],
+   "values": [
+    null
+   ]
+  },
+  "json_olmayan_ve_onarim": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}, {\"role\": \"assistant\", \"content\": \"Tabii, cevap \\u015fu: tablo yok\"}, {\"role\": \"user\", \"content\": \"Yan\\u0131t\\u0131n ge\\u00e7erli JSON de\\u011fil. SADECE \\u015femaya uyan JSON d\\u00f6nd\\u00fcr.\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "kod_citli_ve_think": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": []
+    }
+   ]
+  },
+  "onarimda_ret": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}, {\"role\": \"assistant\", \"content\": \"JSON de\\u011fil\"}, {\"role\": \"user\", \"content\": \"Yan\\u0131t\\u0131n ge\\u00e7erli JSON de\\u011fil. SADECE \\u015femaya uyan JSON d\\u00f6nd\\u00fcr.\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}, {\"role\": \"assistant\", \"content\": \"JSON de\\u011fil\"}, {\"role\": \"user\", \"content\": \"Yan\\u0131t\\u0131n ge\\u00e7erli JSON de\\u011fil. SADECE \\u015femaya uyan JSON d\\u00f6nd\\u00fcr.\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "ret_sonra_onarim": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}, {\"role\": \"assistant\", \"content\": \"JSON de\\u011fil\"}, {\"role\": \"user\", \"content\": \"Yan\\u0131t\\u0131n ge\\u00e7erli JSON de\\u011fil. SADECE \\u015femaya uyan JSON d\\u00f6nd\\u00fcr.\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "seed_eksi_bir_ve_bos_dusunme": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "seed_reddi": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "sema_reddi": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "sistem_reddi": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"user\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\\n\\nM\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "sunucu_500": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    "/chat/completions: HTTP 500: {\"error\": {\"message\": \"internal server error\"}}"
+   ],
+   "values": [
+    null
+   ]
+  },
+  "thought_blogu": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "secim": 1
+    }
+   ]
+  },
+  "turkce_icerik_sicaklik_ve_uzun_onarim": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"T\\u00fcrk\\u00e7e sistem istemi: \\u011e\\u00dc\\u015e\\u0130\\u00d6\\u00c7 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u201ct\\u0131rnak\\u201d\"}, {\"role\": \"user\", \"content\": \"I\\u015f\\u0131k ve \\u0130\\u011fne\"}], \"temperature\": 0.7, \"max_tokens\": 2500, \"reasoning_effort\": \"low\", \"seed\": 7, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}",
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"T\\u00fcrk\\u00e7e sistem istemi: \\u011e\\u00dc\\u015e\\u0130\\u00d6\\u00c7 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u201ct\\u0131rnak\\u201d\"}, {\"role\": \"user\", \"content\": \"I\\u015f\\u0131k ve \\u0130\\u011fne\"}, {\"role\": \"assistant\", \"content\": \"\\u015e\\u00f6yle d\\u00fc\\u015f\\u00fcnd\\u00fcm: \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\\u00f6\\u00e7 \\u0130 \\u011f\\u00fc\\u015f\\u0131\"}, {\"role\": \"user\", \"content\": \"Yan\\u0131t\\u0131n ge\\u00e7erli JSON de\\u011fil. SADECE \\u015femaya uyan JSON d\\u00f6nd\\u00fcr.\"}], \"temperature\": 0.7, \"max_tokens\": 2500, \"reasoning_effort\": \"low\", \"seed\": 7, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    ""
+   ],
+   "values": [
+    {
+     "tablolar": [
+      "DWH.KART_LIMIT"
+     ]
+    }
+   ]
+  },
+  "yetkisiz_401": {
+   "bodies": [
+    "{\"model\": \"gemma-4-31b\", \"messages\": [{\"role\": \"system\", \"content\": \"Sen bir veri s\\u00f6zl\\u00fc\\u011f\\u00fc analistisin. SADECE JSON d\\u00f6nd\\u00fcr.\"}, {\"role\": \"user\", \"content\": \"M\\u00fc\\u015fterinin \\u015fube baz\\u0131nda \\u0130STANBUL kredi kart\\u0131 limiti hangi tabloda?\"}], \"temperature\": 0.0, \"max_tokens\": 2500, \"reasoning_effort\": \"none\", \"seed\": 42, \"response_format\": {\"type\": \"json_schema\", \"json_schema\": {\"name\": \"result\", \"strict\": true, \"schema\": {\"type\": \"object\", \"properties\": {\"tablolar\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"gerek\\u00e7e\": {\"type\": \"string\", \"description\": \"K\\u0131sa a\\u00e7\\u0131klama; m\\u00fc\\u015fteri ve \\u015fube\"}}, \"required\": [\"tablolar\"], \"additionalProperties\": false}}}}"
+   ],
+   "errors": [
+    "/chat/completions: HTTP 401: {\"error\": {\"message\": \"invalid api key\"}}"
+   ],
+   "values": [
+    null
+   ]
+  }
+ },
+ "source_commit": "76e21a3a52264f7d7da4d930100a7c69212e4916"
+}

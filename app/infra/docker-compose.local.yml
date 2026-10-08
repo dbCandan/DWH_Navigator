@@ -70,6 +70,10 @@ services:
       # Secret; supplied from the shell or the Git-ignored app/infra/.env until the factory's local
       # secret generation provides it. Empty means no setting can be stored encrypted.
       DWHNAVIGATOR_SETTINGS_ENCRYPTION_KEY: "${DWHNAVIGATOR_SETTINGS_ENCRYPTION_KEY:-}"
+      # Model server connections are entered on the AI page (data-dictionary/PRDs/003-llm-connection).
+      # The default local network has no egress. Empty trust store: the image's system trust store.
+      DWHNAVIGATOR_LLM_CA_BUNDLE: ""
+      DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: "2"
       # OpenTelemetry export stays off here; the observability overlay sets its collector address.
       DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT: "${DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
       DWHNAVIGATOR_OTEL_SERVICE_NAME: "dwhnavigator-backend"

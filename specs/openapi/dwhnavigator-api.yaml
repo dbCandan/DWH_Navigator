@@ -94,6 +94,989 @@
         ],
         "type": "object"
       },
+      "LlmActiveChange": {
+        "additionalProperties": false,
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "replace": {
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active"
+        ],
+        "type": "object"
+      },
+      "LlmActiveIntegration": {
+        "properties": {
+          "model": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "public_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "name",
+          "model"
+        ],
+        "type": "object"
+      },
+      "LlmIntegrationCreate": {
+        "additionalProperties": false,
+        "description": "A new integration: name and address; every other field takes its default.",
+        "properties": {
+          "activate": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "chat_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "replace": {
+            "default": false,
+            "type": "boolean"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeout_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "endpoint"
+        ],
+        "type": "object"
+      },
+      "LlmIntegrationCreated": {
+        "properties": {
+          "accepts_http": {
+            "type": "boolean"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LlmActiveIntegration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "environment": {
+            "enum": [
+              "local",
+              "nonprod"
+            ],
+            "type": "string"
+          },
+          "item": {
+            "$ref": "#/components/schemas/LlmIntegrationItem"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LlmIntegrationItem"
+            },
+            "type": "array"
+          },
+          "key_storage": {
+            "type": "boolean"
+          },
+          "model_state": {
+            "$ref": "#/components/schemas/LlmModelState"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "active",
+          "model_state",
+          "environment",
+          "accepts_http",
+          "key_storage",
+          "item"
+        ],
+        "type": "object"
+      },
+      "LlmIntegrationItem": {
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "chat_model": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "endpoint": {
+            "type": "string"
+          },
+          "has_key": {
+            "type": "boolean"
+          },
+          "last_test": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LlmLastTest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "public_id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "reasoning_effort": {
+            "type": "string"
+          },
+          "seed": {
+            "type": "integer"
+          },
+          "temperature": {
+            "type": "number"
+          },
+          "timeout_seconds": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "name",
+          "endpoint",
+          "has_key",
+          "active",
+          "chat_model",
+          "temperature",
+          "timeout_seconds",
+          "reasoning_effort",
+          "seed",
+          "last_test",
+          "created_at",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "LlmIntegrationUpdate": {
+        "additionalProperties": false,
+        "description": "A partial update: an absent field keeps its value; ``api_key`` ``\"\"`` deletes the key.",
+        "properties": {
+          "activate": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "chat_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "replace": {
+            "default": false,
+            "type": "boolean"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeout_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "LlmIntegrationUpdated": {
+        "properties": {
+          "accepts_http": {
+            "type": "boolean"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LlmActiveIntegration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "environment": {
+            "enum": [
+              "local",
+              "nonprod"
+            ],
+            "type": "string"
+          },
+          "item": {
+            "$ref": "#/components/schemas/LlmIntegrationItem"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LlmIntegrationItem"
+            },
+            "type": "array"
+          },
+          "key_cleared": {
+            "type": "boolean"
+          },
+          "key_storage": {
+            "type": "boolean"
+          },
+          "model_state": {
+            "$ref": "#/components/schemas/LlmModelState"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "active",
+          "model_state",
+          "environment",
+          "accepts_http",
+          "key_storage",
+          "item",
+          "key_cleared"
+        ],
+        "type": "object"
+      },
+      "LlmIntegrationsState": {
+        "properties": {
+          "accepts_http": {
+            "type": "boolean"
+          },
+          "active": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LlmActiveIntegration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "environment": {
+            "enum": [
+              "local",
+              "nonprod"
+            ],
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/LlmIntegrationItem"
+            },
+            "type": "array"
+          },
+          "key_storage": {
+            "type": "boolean"
+          },
+          "model_state": {
+            "$ref": "#/components/schemas/LlmModelState"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "active",
+          "model_state",
+          "environment",
+          "accepts_http",
+          "key_storage"
+        ],
+        "type": "object"
+      },
+      "LlmInventory": {
+        "properties": {
+          "servers": {
+            "items": {
+              "$ref": "#/components/schemas/LlmInventoryServer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "servers"
+        ],
+        "type": "object"
+      },
+      "LlmInventoryServer": {
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_configured",
+                  "key_unreadable",
+                  "network_policy_denied",
+                  "name_unresolved",
+                  "connect_refused",
+                  "connect_error",
+                  "tls_error",
+                  "timeout",
+                  "unauthorized",
+                  "context_exceeded",
+                  "upstream_status",
+                  "invalid_response",
+                  "invalid_json",
+                  "response_too_large",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/LlmModelRow"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "public_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "name",
+          "active",
+          "ok",
+          "code",
+          "message",
+          "models"
+        ],
+        "type": "object"
+      },
+      "LlmLastTest": {
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "ok",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "LlmModelRow": {
+        "properties": {
+          "context": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "in_use": {
+            "type": "boolean"
+          },
+          "loaded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "owner": {
+            "type": "string"
+          },
+          "quant": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "loaded",
+          "context",
+          "owner",
+          "quant",
+          "in_use"
+        ],
+        "type": "object"
+      },
+      "LlmModelState": {
+        "description": "Requirement 12; ``name`` is the active integration's name on the AI page.",
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_configured",
+                  "key_unreadable",
+                  "network_policy_denied",
+                  "name_unresolved",
+                  "connect_refused",
+                  "connect_error",
+                  "tls_error",
+                  "timeout",
+                  "unauthorized",
+                  "context_exceeded",
+                  "upstream_status",
+                  "invalid_response",
+                  "invalid_json",
+                  "response_too_large",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "none",
+              "down"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "model",
+          "code",
+          "reason",
+          "name"
+        ],
+        "type": "object"
+      },
+      "LlmModelsRequest": {
+        "additionalProperties": false,
+        "description": "A saved integration, form values, or both; a form key replaces the saved one.",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "public_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "LlmModelsResult": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_configured",
+                  "key_unreadable",
+                  "network_policy_denied",
+                  "name_unresolved",
+                  "connect_refused",
+                  "connect_error",
+                  "tls_error",
+                  "timeout",
+                  "unauthorized",
+                  "context_exceeded",
+                  "upstream_status",
+                  "invalid_response",
+                  "invalid_json",
+                  "response_too_large",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/LlmModelRow"
+            },
+            "type": "array"
+          },
+          "ms": {
+            "type": "integer"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "code",
+          "message",
+          "models",
+          "ms"
+        ],
+        "type": "object"
+      },
+      "LlmTestRequest": {
+        "additionalProperties": false,
+        "description": "Form values over a saved integration; ``record`` only with ``public_id`` alone.",
+        "properties": {
+          "api_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "chat_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "public_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "record": {
+            "default": false,
+            "type": "boolean"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeout_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "LlmTestResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/LlmTestStep"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "steps"
+        ],
+        "type": "object"
+      },
+      "LlmTestStep": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_configured",
+                  "key_unreadable",
+                  "network_policy_denied",
+                  "name_unresolved",
+                  "connect_refused",
+                  "connect_error",
+                  "tls_error",
+                  "timeout",
+                  "unauthorized",
+                  "context_exceeded",
+                  "upstream_status",
+                  "invalid_response",
+                  "invalid_json",
+                  "response_too_large",
+                  "cancelled"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "ms": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "ok",
+          "code",
+          "detail",
+          "ms"
+        ],
+        "type": "object"
+      },
       "LoginRequest": {
         "properties": {
           "password": {
@@ -1122,6 +2105,621 @@
         "summary": "Liveness",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/llm-integrations": {
+      "get": {
+        "description": "Integrations in creation order, the active chat model and its state.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmIntegrationsState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request: bozuk g\u00f6vde ya da bilinmeyen alan"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "List Integrations",
+        "tags": [
+          "llm-integrations"
+        ]
+      },
+      "post": {
+        "description": "Add an integration; it stays inactive unless ``activate`` is true.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmIntegrationCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmIntegrationCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_name_taken: ayn\u0131 ad; llm_integration_limit: en \u00e7ok 50 entegrasyon; llm_chat_role_taken: ba\u015fka bir entegrasyon aktif"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_invalid: alan bi\u00e7imi; llm_endpoint_unresolved: ad \u00e7\u00f6z\u00fclemedi; llm_endpoint_not_private: kurum a\u011f\u0131 d\u0131\u015f\u0131; llm_chat_model_required: sohbet modeli yok; llm_key_storage_unavailable: \u015fifreleme anahtar\u0131 yok; invalid_request: bozuk g\u00f6vde"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Create Integration",
+        "tags": [
+          "llm-integrations"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/llm-integrations/inventory": {
+      "get": {
+        "description": "Every integration's models, at most eight servers at once and 50 seconds in total.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmInventory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request: bozuk g\u00f6vde ya da bilinmeyen alan"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Inventory",
+        "tags": [
+          "llm-integrations"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/llm-integrations/models": {
+      "post": {
+        "description": "The models of one server; a server failure is ``ok: false`` with its class.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmModelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmModelsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_not_found: entegrasyon yok ya da silinmi\u015f"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_invalid: adres yok ya da bi\u00e7imi ge\u00e7ersiz"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "List Models",
+        "tags": [
+          "llm-integrations"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/llm-integrations/test": {
+      "post": {
+        "description": "Server and chat-model steps with the form's values; nothing is saved but ``record``.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmTestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmTestResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_not_found: entegrasyon yok ya da silinmi\u015f"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_invalid: alan bi\u00e7imi; invalid_request: record ba\u015fka alanla"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Test Connection",
+        "tags": [
+          "llm-integrations"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/llm-integrations/{public_id}": {
+      "delete": {
+        "description": "Soft-delete the integration and empty its stored key.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmIntegrationsState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_not_found: entegrasyon yok ya da silinmi\u015f"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request: bozuk g\u00f6vde ya da bilinmeyen alan"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Delete Integration",
+        "tags": [
+          "llm-integrations"
+        ]
+      },
+      "put": {
+        "description": "Change the given fields; repeating the same body changes nothing.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmIntegrationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmIntegrationUpdated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_not_found: entegrasyon yok ya da silinmi\u015f"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_name_taken: ayn\u0131 ad; llm_integration_limit: en \u00e7ok 50 entegrasyon; llm_chat_role_taken: ba\u015fka bir entegrasyon aktif"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_invalid: alan bi\u00e7imi; llm_endpoint_unresolved: ad \u00e7\u00f6z\u00fclemedi; llm_endpoint_not_private: kurum a\u011f\u0131 d\u0131\u015f\u0131; llm_chat_model_required: sohbet modeli yok; llm_key_storage_unavailable: \u015fifreleme anahtar\u0131 yok; invalid_request: bozuk g\u00f6vde"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Update Integration",
+        "tags": [
+          "llm-integrations"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/llm-integrations/{public_id}/active": {
+      "put": {
+        "description": "Make the integration the chat model or turn it off; ``replace`` takes over the role.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LlmActiveChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmIntegrationsState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_integration_not_found: entegrasyon yok ya da silinmi\u015f"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_chat_role_taken: ba\u015fka bir entegrasyon aktif"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_chat_model_required: sohbet modeli yok"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Set Active",
+        "tags": [
+          "llm-integrations"
         ]
       }
     },

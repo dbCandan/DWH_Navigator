@@ -55,6 +55,34 @@ PASSWORD_CHANGE_OUTCOMES = frozenset(
     }
 )
 HTTP_METHODS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
+# Fixed label sets of data-dictionary/PRDs/003-llm-connection (Gözlemlenebilirlik).
+LLM_PURPOSES = frozenset({"analysis", "connection_test", "evaluation"})
+LLM_OUTCOMES = frozenset(
+    {
+        "ok",
+        "not_configured",
+        "key_unreadable",
+        "network_policy_denied",
+        "name_unresolved",
+        "connect_refused",
+        "connect_error",
+        "tls_error",
+        "timeout",
+        "unauthorized",
+        "context_exceeded",
+        "upstream_status",
+        "invalid_response",
+        "invalid_json",
+        "response_too_large",
+        "cancelled",
+    }
+)
+LLM_PROBE_OPERATIONS = frozenset({"health", "models", "inventory"})
+LLM_TOKEN_KINDS = frozenset({"prompt", "completion"})
+LLM_FEATURES = frozenset({"system_role", "response_format", "reasoning_effort", "seed"})
+
+# A chat call reads for up to timeout_seconds (at most 3600 s) after waiting for a slot.
+_LLM_BUCKETS = (0.25, 0.5, 1, 2.5, 5, 10, 20, 30, 60, 120, 300, 600, 900, 1800, 2700, 3600)
 
 # An unreachable collector delays the flush at shutdown by at most this long per signal.
 _EXPORT_TIMEOUT_SECONDS = 5
@@ -81,6 +109,43 @@ class _Instruments:
             "dwhnavigator_auth_password_change_attempts_total",
             unit="{attempt}",
             description="Password change attempts by outcome class",
+        )
+        # data-dictionary/PRDs/003-llm-connection
+        self.llm_calls = meter.create_counter(
+            "dwhnavigator_llm_calls_total",
+            unit="{call}",
+            description="Chat calls to the model server by purpose and outcome class",
+        )
+        self.llm_call_duration = meter.create_histogram(
+            "dwhnavigator_llm_call_duration_seconds",
+            unit="s",
+            description="Duration of chat calls, slot wait included, by purpose and outcome class",
+            explicit_bucket_boundaries_advisory=_LLM_BUCKETS,
+        )
+        self.llm_inflight_calls = meter.create_up_down_counter(
+            "dwhnavigator_llm_inflight_calls",
+            unit="{call}",
+            description="Chat requests holding a slot",
+        )
+        self.llm_waiting_calls = meter.create_up_down_counter(
+            "dwhnavigator_llm_waiting_calls",
+            unit="{call}",
+            description="Chat calls waiting for a slot",
+        )
+        self.llm_tokens = meter.create_counter(
+            "dwhnavigator_llm_tokens_total",
+            unit="{token}",
+            description="Prompt and completion tokens the model server reported",
+        )
+        self.llm_adaptations = meter.create_counter(
+            "dwhnavigator_llm_adaptations_total",
+            unit="{adaptation}",
+            description="Request features dropped after the server refused them",
+        )
+        self.llm_probes = meter.create_counter(
+            "dwhnavigator_llm_probes_total",
+            unit="{probe}",
+            description="Model server /models reads by operation and outcome class",
         )
 
 
@@ -220,4 +285,115 @@ def record_login_attempt(outcome: str) -> None:
 def record_password_change_attempt(outcome: str) -> None:
     _signals.instruments.auth_password_change_attempts.add(
         1, {"outcome": bounded(outcome, PASSWORD_CHANGE_OUTCOMES)}
+    )
+
+
+# --- Model calls (data-dictionary/PRDs/003-llm-connection) --------------------------------------
+
+
+@dataclass
+class LlmChatRecord:
+    """What a chat span reports at its end; classes and counts only."""
+
+    outcome: str = ""
+    http_status: int | None = None
+    requests: int = 0
+    adaptations: int = 0
+    repaired: bool = False
+
+
+@dataclass
+class LlmProbeRecord:
+    outcome: str = ""
+    cached: bool = False
+
+
+def _fails(outcome: str) -> bool:
+    return outcome not in ("ok", "cancelled")
+
+
+@contextmanager
+def llm_chat_span(purpose: str) -> Iterator[LlmChatRecord]:
+    """The ``llm chat`` span: purpose, outcome, HTTP status, request, adaptation and repair counts.
+
+    No address, model, prompt, reply or error text reaches it.
+    """
+
+    record = LlmChatRecord()
+    with _content_free_span(
+        "llm chat",
+        SpanKind.CLIENT,
+        {"dwhnavigator.llm.purpose": bounded(purpose, LLM_PURPOSES)},
+    ) as span:
+        try:
+            yield record
+        finally:
+            outcome = bounded(record.outcome, LLM_OUTCOMES)
+            span.set_attribute("dwhnavigator.llm.outcome", outcome)
+            if record.http_status is not None:
+                span.set_attribute("http.response.status_code", record.http_status)
+            span.set_attribute("dwhnavigator.llm.requests", record.requests)
+            span.set_attribute("dwhnavigator.llm.adaptations", record.adaptations)
+            span.set_attribute("dwhnavigator.llm.repaired", record.repaired)
+            if _fails(outcome):
+                span.set_status(Status(StatusCode.ERROR))
+
+
+@contextmanager
+def llm_probe_span(operation: str) -> Iterator[LlmProbeRecord]:
+    """The ``llm probe`` span of one ``/models`` read: operation, outcome and cache use."""
+
+    record = LlmProbeRecord()
+    with _content_free_span(
+        "llm probe",
+        SpanKind.CLIENT,
+        {"dwhnavigator.llm.operation": bounded(operation, LLM_PROBE_OPERATIONS)},
+    ) as span:
+        try:
+            yield record
+        finally:
+            outcome = bounded(record.outcome, LLM_OUTCOMES)
+            span.set_attribute("dwhnavigator.llm.outcome", outcome)
+            span.set_attribute("dwhnavigator.llm.cached", record.cached)
+            if _fails(outcome):
+                span.set_status(Status(StatusCode.ERROR))
+
+
+def record_llm_call(
+    *,
+    purpose: str,
+    outcome: str,
+    duration_seconds: float,
+    prompt_tokens: int,
+    completion_tokens: int,
+) -> None:
+    labels = {"purpose": bounded(purpose, LLM_PURPOSES), "outcome": bounded(outcome, LLM_OUTCOMES)}
+    instruments = _signals.instruments
+    instruments.llm_calls.add(1, labels)
+    instruments.llm_call_duration.record(duration_seconds, labels)
+    if prompt_tokens:
+        instruments.llm_tokens.add(prompt_tokens, {"kind": "prompt"})
+    if completion_tokens:
+        instruments.llm_tokens.add(completion_tokens, {"kind": "completion"})
+
+
+def llm_waiting_changed(delta: int) -> None:
+    _signals.instruments.llm_waiting_calls.add(delta)
+
+
+def llm_inflight_changed(delta: int) -> None:
+    _signals.instruments.llm_inflight_calls.add(delta)
+
+
+def record_llm_adaptation(feature: str) -> None:
+    _signals.instruments.llm_adaptations.add(1, {"feature": bounded(feature, LLM_FEATURES)})
+
+
+def record_llm_probe(*, operation: str, outcome: str) -> None:
+    _signals.instruments.llm_probes.add(
+        1,
+        {
+            "operation": bounded(operation, LLM_PROBE_OPERATIONS),
+            "outcome": bounded(outcome, LLM_OUTCOMES),
+        },
     )
