@@ -41,6 +41,8 @@ screen, CSRF and response headers: ``vsa.web.security``. TLS is the reverse prox
     GET  /api/admin/words       term dictionary and stopwords as the screen edits them
     POST /api/admin/words/terms     {"items": [{term, equivalents, domain, note}]} replaces
     POST /api/admin/words/stopwords {"items": [{word, group}]} the list; index rebuilt (ADR-052)
+    GET  /api/admin/words/<terms|stopwords>/export   one list as Excel
+    POST /api/admin/words/<terms|stopwords>/import   that Excel (edited) replaces the list
     GET  /api/settings          pages, sections and current values (search, scoring, files)
     POST /api/settings          {"values": {...}} validate, write data/settings.yaml, reload
     POST /api/reindex           rebuild the BM25 index with the saved settings
@@ -76,11 +78,14 @@ from vsa import feedback as fb
 from vsa.config import load_settings
 from vsa.config import settings_path as resolve_settings_path
 from vsa.loader import (
+    WORD_SHEETS,
     check_stopwords,
     check_terms,
     load_term_list,
     read_stopwords,
     read_terms,
+    words_from_workbook,
+    words_to_workbook,
     write_jsonl,
 )
 from vsa.models import AnalysisResult, ListItem, ListResult
@@ -799,6 +804,8 @@ class App:
         """Replace one word list; both are in the index (BM25), so it is rebuilt at once.
         Answers kept under the old term dictionary stop matching by themselves (ADR-035)."""
         started = time.perf_counter()
+        if kind not in WORD_SHEETS:
+            raise KeyError(kind)
         rows = (check_terms if kind == "terms" else check_stopwords)(body.get("items"))
         write_jsonl(self._word_paths()[kind], rows)
         self.reindex()
@@ -808,6 +815,28 @@ class App:
             "elapsed_ms": round((time.perf_counter() - started) * 1000),
             "state": self.words_state(),
         }
+
+    def words_export(self, kind: str) -> tuple[str, bytes]:
+        """(file name, workbook bytes): one word list as the screen shows it."""
+        if kind not in WORD_SHEETS:
+            raise KeyError(kind)
+        items = self.words_state()[kind]["items"]
+        stamp = datetime.now().strftime("%Y%m%d_%H%M")
+        name = f"{'TerimSozlugu' if kind == 'terms' else 'DurakKelimeler'}_{stamp}.xlsx"
+        with tempfile.TemporaryDirectory() as tmp:
+            return name, words_to_workbook(kind, items, Path(tmp) / name).read_bytes()
+
+    def words_import(self, kind: str, raw: bytes) -> dict[str, Any]:
+        """An exported (maybe edited) workbook replaces the list, checked like a save."""
+        if kind not in WORD_SHEETS:
+            raise KeyError(kind)
+        if not raw:
+            raise ValueError("Dosya boş")
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "liste.xlsx"
+            path.write_bytes(raw)
+            items = words_from_workbook(kind, path)
+        return self.words_save(kind, {"items": items})
 
     def reindex(self) -> dict[str, Any]:
         """Rebuild the BM25 index from the dictionary with the saved settings (~10 s)."""
@@ -1058,6 +1087,8 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                     self._json(app.words_state())
                 elif url.path.startswith("/api/admin/dictionary/table/"):
                     self._json(app.dictionary_table(unquote(url.path.rsplit("/", 1)[-1])))
+                elif url.path.startswith("/api/admin/words/") and url.path.endswith("/export"):
+                    self._xlsx_bytes(*app.words_export(url.path.split("/")[4]))
                 elif url.path in ("/api/admin/dictionary/export", "/api/admin/dictionary/template"):
                     self._xlsx_bytes(*app.dictionary_export(url.path.endswith("template")))
                 elif url.path.startswith("/api/admin/analysis/"):
@@ -1127,6 +1158,8 @@ def make_handler(app: App, guard: AdminGuard | None = None) -> type[BaseHTTPRequ
                     self._json(app.dictionary_import(raw, name))
                 elif url.path in ("/api/admin/words/terms", "/api/admin/words/stopwords"):
                     self._json(app.words_save(url.path.rsplit("/", 1)[-1], _json_body(raw)))
+                elif url.path.startswith("/api/admin/words/") and url.path.endswith("/import"):
+                    self._json(app.words_import(url.path.split("/")[4], raw))
                 elif url.path == "/api/list":
                     name = unquote(self.headers.get("X-Filename", "liste.xlsx"))
                     self._json(app.list_start(raw, name, self.client_address[0]))

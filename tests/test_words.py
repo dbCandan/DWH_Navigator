@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import shutil
 import threading
@@ -13,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from openpyxl import Workbook, load_workbook
 
 from vsa.config import load_settings
 from vsa.loader import check_stopwords, check_terms, load_term_dictionary
@@ -96,3 +98,58 @@ def test_checks() -> None:
     ]
     (row,) = check_terms([{"term": " a ", "equivalents": ["b", "b", ""], "note": 3}])
     assert row == {"term": "a", "equivalents": ["b"], "domain": "", "note": ""}
+
+
+def fetch(url: str) -> bytes:
+    with urllib.request.urlopen(url, timeout=60) as r:
+        assert r.headers["Content-Type"].startswith("application/vnd.openxmlformats")
+        return bytes(r.read())
+
+
+def upload(url: str, data: bytes) -> tuple[int, dict[str, Any]]:
+    req = urllib.request.Request(url, data=data, headers={"X-Filename": "liste.xlsx"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read())
+
+
+def test_lists_go_to_excel_and_come_back(server: tuple[str, App], tmp_path: Path) -> None:
+    url, app = server
+    for kind in ("terms", "stopwords"):
+        # what a save of the current list keeps (the file may hold folded repeats: mi / mı)
+        check = check_terms if kind == "terms" else check_stopwords
+        before = check(app.words_state()[kind]["items"])
+        base = f"{url}/api/admin/words/{kind}"
+        status, r = upload(base + "/import", fetch(base + "/export"))
+        assert status == 200 and r["state"][kind]["items"] == before  # round trip is lossless
+
+    # the exported sheet edited in Excel: a row added, equivalents typed with ; and ,
+    book = load_workbook(io.BytesIO(fetch(url + "/api/admin/words/terms/export")))
+    ws = book["Terimler"]
+    ws.append(["zırhlı araç", "panzer; tank, =zırh", "test", None])
+    buf = io.BytesIO()
+    book.save(buf)
+    status, r = upload(url + "/api/admin/words/terms/import", buf.getvalue())
+    assert status == 200
+    added = next(t for t in r["state"]["terms"]["items"] if t["term"] == "zırhlı araç")
+    assert added["equivalents"] == ["panzer", "tank", "=zırh"]
+    assert any(g.term == "zırhlı araç" for g in app.engine.resources.term_groups)
+
+
+def test_bad_workbooks_are_refused(server: tuple[str, App], tmp_path: Path) -> None:
+    url, _ = server
+    before = (tmp_path / "stopwords.jsonl").read_bytes()
+    status, r = upload(url + "/api/admin/words/stopwords/import", b"not excel")
+    assert status == 400 and "okunamadı" in r["error"]
+    book = Workbook()
+    book.active.append(["Başka", "Sütun"])
+    book.active.append(["x", "y"])
+    buf = io.BytesIO()
+    book.save(buf)
+    status, r = upload(url + "/api/admin/words/stopwords/import", buf.getvalue())
+    assert status == 400 and "Kelime" in r["error"]
+    status, _ = upload(url + "/api/admin/words/other/import", buf.getvalue())
+    assert status == 404
+    assert (tmp_path / "stopwords.jsonl").read_bytes() == before  # nothing written

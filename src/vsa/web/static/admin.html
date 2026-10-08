@@ -481,8 +481,8 @@ const ICONS = {
   sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
   wrench: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4z"/>',
   search: '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/>',
-  upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v4h16v-4"/>',
-  download: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M4 16v4h16v-4"/>',
+  import: '<path d="M12 3v12M7 10l5 5 5-5"/><path d="M4 15v5h16v-5"/>',  // into the app
+  export: '<path d="M12 15V3M7 8l5-5 5 5"/><path d="M4 15v5h16v-5"/>',  // out of the app
   file: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
@@ -1117,8 +1117,8 @@ const Dict = PAGES.sozluk = {
   render() {
     const D = DATA.dict, d = dictState(), ix = indexState();
     const acts = [
-      h("button", { class: "btn primary", type: "button", onclick: () => pickFile() }, icon("upload"), "Excel'den içe aktar…"),
-      d.meta ? h("a", { class: "btn", href: "/api/admin/dictionary/export", download: "" }, icon("download"), "Excel olarak dışa aktar") : null,
+      h("button", { class: "btn primary", type: "button", onclick: () => pickFile() }, icon("import"), "Excel'den içe aktar…"),
+      d.meta ? h("a", { class: "btn", href: "/api/admin/dictionary/export", download: "" }, icon("export"), "Excel olarak dışa aktar") : null,
       h("a", { class: "btn ghost", href: "/api/admin/dictionary/template", download: "" }, icon("file"), "Boş şablon")];
     const head = pageHead("Sözlük", `Tek sözlük: ${D.store.path}; Excel yalnız içe ve dışa aktarım içindir.`, acts);
     const settingsCard = fileSettings("sozluk");
@@ -1126,7 +1126,7 @@ const Dict = PAGES.sozluk = {
       put($("#p-sozluk"), head, D.error ? h("div", { class: "msg bad" }, D.error) : null,
         h("section", { class: "card" },
           h("div", { class: "dz", role: "button", tabindex: "0", onclick: () => pickFile(), onkeydown: e => { if (e.key === "Enter") pickFile(); } },
-            icon("upload"), h("b", {}, "Sözlük henüz yok — şablondaki Excel'i buraya bırakın ya da tıklayıp seçin"),
+            icon("import"), h("b", {}, "Sözlük henüz yok — şablondaki Excel'i buraya bırakın ya da tıklayıp seçin"),
             h("div", { class: "muted" }, "İçe aktarılınca arama indeksi kurulur ve sorular bu sözlükle cevaplanır."))),
         h("section", { class: "card" }, h("h2", {}, "Şablon"),
           h("p", { class: "intro" }, "İki sayfalık bir Excel: ", h("b", {}, "Objeler"), " (ObjectKey, ObjectDescription, Grain, KeyColumns, TimeColumns, BusinessDomain, DatasetGroup) ve ",
@@ -1212,11 +1212,12 @@ async function importDictionary(f) {
 $("#file").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) importDictionary(f); };
 // Drag an .xlsx anywhere on the page to import it.
 let dragDepth = 0;
-addEventListener("dragenter", e => { if ([...(e.dataTransfer.types || [])].includes("Files")) { dragDepth++; $("#dropzone").hidden = false; } });
+// Not on Kelimeler: a workbook dropped there is not a dictionary.
+addEventListener("dragenter", e => { if (CURRENT !== "kelimeler" && [...(e.dataTransfer.types || [])].includes("Files")) { dragDepth++; $("#dropzone").hidden = false; } });
 addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) $("#dropzone").hidden = true; });
-addEventListener("dragover", e => { if ([...(e.dataTransfer.types || [])].includes("Files")) e.preventDefault(); });
+addEventListener("dragover", e => { if (CURRENT !== "kelimeler" && [...(e.dataTransfer.types || [])].includes("Files")) e.preventDefault(); });
 addEventListener("drop", e => {
-  if (!e.dataTransfer.files.length) return;
+  if (!e.dataTransfer.files.length || CURRENT === "kelimeler") return;
   e.preventDefault(); dragDepth = 0; $("#dropzone").hidden = true;
   importDictionary(e.dataTransfer.files[0]);
 });
@@ -1257,20 +1258,50 @@ const Words = PAGES.kelimeler = {
   async save(kind, btn) {
     const done = busy(btn, "Kaydediliyor…");
     try {
-      const r = await post("/api/admin/words/" + kind, { items: kind === "terms" ? this.terms : this.stops });
-      const terms = this.terms, stops = this.stops;  // the other list keeps its own edits
-      this.adopt(r.state);
-      if (kind === "terms") this.stops = stops; else this.terms = terms;
-      toast(kind === "terms" ? "Terim sözlüğü kaydedildi" : "Durak kelimeler kaydedildi", [`${num(r.count)} kayıt; indeks yeniden kuruldu (${msText(r.elapsed_ms)}).`]);
-      LOAD.settings().catch(() => {}); LOAD.dict().catch(() => {});
-      if (CURRENT === "kelimeler") this.render();
+      this.landed(kind, await post("/api/admin/words/" + kind, { items: kind === "terms" ? this.terms : this.stops }), "kaydedildi");
     } catch (e) { toast("Kaydedilemedi", [e.message], true); done(); }
+  },
+  // A list written on the server (saved or imported from Excel); the other list keeps its own edits.
+  landed(kind, r, verb) {
+    const terms = this.terms, stops = this.stops;
+    this.adopt(r.state);
+    if (kind === "terms") this.stops = stops; else this.terms = terms;
+    toast(`${kind === "terms" ? "Terim sözlüğü" : "Durak kelimeler"} ${verb}`, [`${num(r.count)} kayıt; indeks yeniden kuruldu (${msText(r.elapsed_ms)}).`]);
+    LOAD.settings().catch(() => {}); LOAD.dict().catch(() => {});
+    if (CURRENT === "kelimeler") this.render();
+  },
+  // Excel round trip (ADR-052): the saved list goes out as one sheet; that sheet, edited, replaces it.
+  xlsxActs(kind) {
+    const pick = () => {
+      const inp = document.createElement("input");
+      inp.type = "file"; inp.accept = ".xlsx";
+      inp.onchange = () => { if (inp.files[0]) this.importFile(kind, inp.files[0]); };
+      inp.click();
+    };
+    return [
+      h("button", { class: "btn sm", type: "button", title: "Excel'deki liste bu listenin yerini alır", onclick: pick }, icon("import"), "Excel'den içe aktar…"),
+      h("a", { class: "btn sm", href: `/api/admin/words/${kind}/export`, download: "", title: "Kaydedilmiş liste; düzenleyip geri içe aktarabilirsiniz" }, icon("export"), "Excel'e aktar")];
+  },
+  async importFile(kind, f) {
+    if (!/\.xlsx$/i.test(f.name)) { toast("Excel (.xlsx) dosyası seçin", [f.name], true); return; }
+    const what = kind === "terms" ? "terim sözlüğünün" : "durak kelime listesinin";
+    const dirty = kind === "terms" ? this.dirtyTerms() : this.dirtyStops();
+    if (!confirm(`“${f.name}” ${what} yerini alsın mı?\n\n${dirty ? "Kaydedilmemiş değişiklikler atılır. " : ""}Önceki liste .bak olarak saklanır; arama indeksi yeniden kurulur (~10 sn).`)) return;
+    const t = h("div", { class: "toast" }, h("b", {}, "İçe aktarılıyor…"), h("div", {}, `${f.name} okunuyor, denetleniyor ve indeks kuruluyor.`));
+    $("#toasts").append(t);
+    try {
+      const r = await api(`/api/admin/words/${kind}/import`, { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name) }, body: f });
+      t.remove();
+      if (kind === "terms") this.terms = copyTerms(r.state.terms.items); else this.stops = r.state.stopwords.items.map(s => ({ ...s }));
+      this.landed(kind, r, "içe aktarıldı");
+    } catch (e) { t.remove(); toast("İçe aktarılamadı", [e.message], true); }
   },
   termCard() {
     const search = h("input", { type: "search", value: this.q, placeholder: "Terim ya da eşdeğer ara…", "aria-label": "Terim ara", oninput: e => { this.q = e.target.value.trim(); this.termList(); } });
     const intro = `Bir gruptaki her kelime ötekileri de aratır: “kredi” arayan “fon kullandırım”ı da bulur. Dosya: ${this.saved.terms.path}`;
     return h("section", { class: "card grow w-terms" },
       h("div", { class: "card-h" }, h("h2", { id: "w-title" }, "Terim sözlüğü"), search,
+        this.xlsxActs("terms"),
         h("button", { class: "btn sm primary", type: "button", onclick: () => this.editTerm(-1) }, icon("plus"), "Yeni terim")),
       h("p", { class: "intro", title: intro }, intro),
       this.pending("terms"),
@@ -1348,7 +1379,7 @@ const Words = PAGES.kelimeler = {
     nw.onkeydown = e => { if (e.key === "Enter") addGroup(); };
     const intro = `Aramada yok sayılan tek kelimeler; talep cümlesinin dolgusu kavram sanılmasın diye. Dosya: ${this.saved.stopwords.path}`;
     return h("section", { class: "card grow w-stops" },
-      h("div", { class: "card-h" }, h("h2", {}, `Durak kelimeler · ${num(this.stops.length)}`)),
+      h("div", { class: "card-h" }, h("h2", {}, `Durak kelimeler · ${num(this.stops.length)}`), this.xlsxActs("stopwords")),
       h("p", { class: "intro", title: intro }, intro),
       this.pending("stopwords"),
       h("div", { class: "w-scroll", id: "w-stops" }, [...groups].map(([g, items]) => block(g, items))),
@@ -1609,8 +1640,8 @@ const Palette = {
     const out = [];
     for (const n of NAV) if (n.id) out.push({ grp: "Sayfalar", icon: n.icon, t: n.label, s: n.desc, run: () => go(n.id) });
     const acts = [
-      ["upload", "Sözlüğü Excel'den içe aktar", "Şablondaki Excel sözlüğün yerini alır", () => pickFile()],
-      ["download", "Sözlüğü Excel olarak dışa aktar", "Şablona uygun Excel", () => { location.href = "/api/admin/dictionary/export"; }],
+      ["import", "Sözlüğü Excel'den içe aktar", "Şablondaki Excel sözlüğün yerini alır", () => pickFile()],
+      ["export", "Sözlüğü Excel olarak dışa aktar", "Şablona uygun Excel", () => { location.href = "/api/admin/dictionary/export"; }],
       ["file", "Boş sözlük şablonunu indir", "Objeler · Kolonlar", () => { location.href = "/api/admin/dictionary/template"; }],
       ["refresh", "Arama indeksini yeniden kur", "birkaç saniye", () => reindex()],
       ["plus", "Yeni model entegrasyonu", "Yapay zekâ", () => { go("yapay-zeka"); setTimeout(() => AI.editor(null), 150); }],

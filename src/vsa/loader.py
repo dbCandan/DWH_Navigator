@@ -17,7 +17,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 
 from vsa.models import DictColumn, ObjectProfile, TermGroup
 from vsa.text.normalize import fold, load_stopwords
@@ -341,6 +343,85 @@ def check_stopwords(items: object) -> list[dict[str, str]]:
             continue
         seen.add(key)
         out.append({"word": word, "group": _text(rec.get("group"))})
+    return out
+
+
+# Each list goes out to Excel and comes back the same way: one sheet, one record per row;
+# a term's equivalents share one cell, comma-separated (the screen splits them the same way).
+WORD_SHEETS: dict[str, tuple[str, tuple[tuple[str, str, tuple[str, ...]], ...]]] = {
+    "terms": ("Terimler", (
+        ("term", "Terim", ("terim", "term")),
+        ("equivalents", "Eşdeğerler", ("esdegerler", "esdeger", "equivalents")),
+        ("domain", "Alan", ("alan", "domain")),
+        ("note", "Not", ("not", "note", "aciklama")),
+    )),
+    "stopwords": ("DurakKelimeler", (
+        ("word", "Kelime", ("kelime", "word", "durakkelime")),
+        ("group", "Grup", ("grup", "group")),
+    )),
+}  # fmt: skip
+_EQUIVALENT_SPLIT = re.compile(r"[,;|\n]")
+
+
+def words_from_workbook(kind: str, path: Path) -> list[dict[str, Any]]:
+    """A word list exported to Excel (and maybe edited) back as records for
+    ``check_terms`` / ``check_stopwords``. Raises ValueError (Turkish) when it does not fit."""
+    title, fields = WORD_SHEETS[kind]
+    try:
+        sheets = read_workbook(path, MAX_LIST_ITEMS + 1, max_cols=20)
+    except TooManyRows:
+        raise ValueError(f"Dosyada çok fazla satır var (en fazla {MAX_LIST_ITEMS}).") from None
+    except Exception as exc:  # not an Excel file, a damaged one…
+        raise ValueError("Dosya Excel (.xlsx) olarak okunamadı.") from exc
+    rows = sheets.get(title) or next(iter(sheets.values()), [])
+    header = {fold(_cell(h)).replace(" ", ""): i for i, h in enumerate(rows[0] if rows else [])}
+    where: dict[str, int] = {}
+    for key, name, aliases in fields:
+        col = next((header[a] for a in aliases if a in header), None)
+        if col is not None:
+            where[key] = col
+        elif key in ("term", "equivalents", "word"):
+            raise ValueError(f"“{name}” sütunu bulunamadı; dışa aktarılan dosyanın başlıklarını "
+                             f"koruyun ({', '.join(f[1] for f in fields)}).")  # fmt: skip
+    out: list[dict[str, Any]] = []
+    for row in rows[1:]:
+        rec: dict[str, Any] = {k: _cell(row[i]) if i < len(row) else "" for k, i in where.items()}
+        if not any(rec.values()):
+            continue
+        if kind == "terms":
+            parts = _EQUIVALENT_SPLIT.split(str(rec.get("equivalents", "")))
+            rec["equivalents"] = [p.strip() for p in parts if p.strip()]
+        out.append(rec)
+    if not out:
+        raise ValueError(f"“{title}” sayfasında kayıt yok.")
+    return out
+
+
+def words_to_workbook(kind: str, items: Sequence[Mapping[str, Any]], out: Path) -> Path:
+    """One word list as a one-sheet workbook that ``words_from_workbook`` reads back."""
+    title, fields = WORD_SHEETS[kind]
+    wb = Workbook()
+    wb.remove(wb.worksheets[0])
+    ws = wb.create_sheet(title)
+    ws.append([name for _, name, _ in fields])
+    for rec in items:
+        ws.append([
+            ", ".join(v) if isinstance(v := rec.get(key), list) else (v or None)
+            for key, _, _ in fields
+        ])  # fmt: skip
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.data_type == "f":  # a text starting with "=" stays a text
+                cell.data_type = "s"
+    for row in ws.iter_rows(max_row=1):
+        for cell in row:
+            cell.font = Font(bold=True)
+    widths = {"Terim": 28, "Eşdeğerler": 70, "Alan": 16, "Not": 50, "Kelime": 24, "Grup": 24}
+    for i, (_, name, _) in enumerate(fields, 1):
+        ws.column_dimensions[get_column_letter(i)].width = widths.get(name, 20)
+    ws.freeze_panes = "A2"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(out)
     return out
 
 
