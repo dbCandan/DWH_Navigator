@@ -5,7 +5,7 @@ uyumlu API) çıkar; başka hiçbir adrese bağlanmaz, dış kaynak (CDN, font, 
 
 | | |
 |---|---|
-| İmaj | `dwh-navigator:0.2.0` — Alpine 3.24 + Python 3.12, ~119 MB |
+| İmaj | `dwh-navigator:0.2.0` — Alpine 3.24 + Python 3.12, ~100 MB |
 | Port | `8765` (HTTP; TLS önündeki ters vekilde) |
 | Kullanıcı | `vsa` (uid/gid `10001`), kök değil |
 | Yazılabilir alan | yalnız `/app/data` (birim) ve `/tmp` |

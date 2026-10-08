@@ -1,4 +1,4 @@
-# Güvenlik — ön zafiyet taraması ve sertleştirme (2026-10-07; imaj taraması 2026-10-08 yenilendi)
+# Güvenlik — ön zafiyet taraması ve sertleştirme (0.2.0, 2026-10-08)
 
 Şirket ağına entegrasyon taramasından önce yapılan iç denetimin özeti. Taramalar aşağıdaki
 komutlarla tekrarlanabilir; her sürümde ve taban imaj güncellendiğinde yeniden çalıştırın.
@@ -7,18 +7,18 @@ komutlarla tekrarlanabilir; her sürümde ve taban imaj güncellendiğinde yenid
 
 | Kapsam | Araç | Sonuç |
 |---|---|---|
-| Konteyner imajı — işletim sistemi paketleri (Alpine 3.24.2) | Trivy 0.72.0, DB 2026-10-07 | **0** zafiyet |
+| Konteyner imajı — işletim sistemi paketleri (Alpine 3.24.2) | Trivy 0.72.0, DB 2026-10-08 | **0** zafiyet |
 | Konteyner imajı — Python paketleri | Trivy 0.72.0 | **0** zafiyet |
 | Konteyner imajı — gömülü sır (anahtar, parola, token) | Trivy secret | **0** bulgu |
 | Dockerfile yapılandırması | Trivy misconfig | **0** bulgu |
 | Bağımlılık kilidi (`requirements.lock`, 4 paket) | pip-audit 2.10.1 (PyPI + OSV) | **0** zafiyet |
-| Uygulama kaynak kodu (7.4 bin satır) | Bandit 1.9.4 | **0** bulgu (tüm önem seviyeleri) |
-| Kaynak kod, Docker dosyaları (46 dosya) | Semgrep (p/python, p/security-audit, p/owasp-top-ten, p/secrets) | **0** bulgu |
-| Git geçmişi (54 commit) ve çalışma ağacı | Gitleaks 8.30.1 | **0** sızıntı |
-| Çalışan uygulama — pasif DAST | OWASP ZAP baseline (stable) | **0 FAIL**, 65 PASS; 1 bilgi uyarısı (aşağıda) |
-| Çalışan uygulama — şablon taraması | Nuclei 3.11.0 (10.532 şablon çalıştı; dos/fuzz/intrusive hariç) | **0** zafiyet; 5 bilgi eşleşmesi (aşağıda) |
+| Uygulama kaynak kodu (`src/vsa`) | Bandit 1.9.4 | **0** bulgu (tüm önem seviyeleri) |
+| Kaynak kod, Docker dosyaları (45 dosya) | Semgrep 1.171 (p/python, p/security-audit, p/owasp-top-ten, p/secrets) | **0** bulgu |
+| Git geçmişi (68 commit) ve çalışma ağacı | Gitleaks 8.30.1 | **0** sızıntı |
+| Çalışan uygulama — pasif DAST | OWASP ZAP baseline (stable) | **0 FAIL**, 66 PASS; 1 bilgi uyarısı (aşağıda) |
+| Çalışan uygulama — şablon taraması | Nuclei (10.542 şablon; dos/fuzz/intrusive hariç) | **0** zafiyet; 5 bilgi eşleşmesi (aşağıda) |
 | Lint / tip | ruff, mypy --strict | temiz |
-| Testler | pytest | 248 test geçti |
+| Testler | pytest | 240 test geçti |
 
 Nuclei'nin 5 eşleşmesi bilgi düzeyindedir: teknoloji tespitleri (`addEventListener`, `/healthz`),
 dosya yükleme formunun varlığı (Excel listesi; sınırları bulgu 5'te), eksik
@@ -30,7 +30,7 @@ no-store` taşır — cevaplar ve raporlar tarayıcıda/vekilde önbelleğe alı
 
 Karşılaştırma: aynı uygulama Debian 13 (`python:3.12-slim-trixie`) tabanında 165 OS zafiyeti
 (44 HIGH, hiçbirinin yaması yok) veriyordu; Alpine'e geçilerek sıfırlandı ve imaj 212 MB'tan
-119 MB'a indi.
+119 MB'a, komut satırı paketleri çıkınca (0.2.0, ADR-053) 100 MB'a indi.
 
 ## Bileşen envanteri (SBOM özeti)
 
