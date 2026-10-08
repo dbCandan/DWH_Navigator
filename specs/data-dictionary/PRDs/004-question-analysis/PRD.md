@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.0
+Version: 1.0.1
 
 Acceptance date: 2026-10-08
 
@@ -166,7 +166,9 @@ değiştiğini ya da aynen kaldığını söyler.
   parçalanır (`split_camel`: `CardLimitFullnessToday`, `IFRSStage`, `KKB_DATE`); 2 harften kısa parça
   ve durak kelime (katlanmış ve gövdelenmiş biçimiyle) atılır; basit ek atma uygulanır (`stem`: en uzun
   ek, kök en az 4 harf, en çok 3 tur); birleşik ad ayrıca tek parça olarak kalır. Başka modülde
-  `.lower()`, `.upper()`, `.casefold()` yoktur (test denetler). **Hedefte:** aynen.
+  `.lower()`, `.upper()`, `.casefold()` yoktur (test denetler). **Hedefte:** aynı davranış; harf
+  çevirisi ve katlama uygulamanın tek Türkçe metin yardımcısındadır (`app/domain/turkish_text.py`),
+  normalleştirme ve parola politikası onu kullanır.
 - **Terim genişletme** (`src/vsa/expansion/query_expander.py` `QueryExpander.expand`): Terim sözlüğü
   grupları iki yönlüdür; talepte en uzun ifade önce eşleşir (eşitlikte grubun kendi terimi). Eşleşen
   grubun diğer üyeleri kelime aramasına 0,6 ağırlıkla eklenir (yalnız yeni parçalar; kaynak kararı
@@ -421,8 +423,8 @@ taşıyan olaya dönüşmesi; (d) parmak izinin ayarları search-settings ve llm
 okuması (Requirement 13); (e) "Analiz yapılamadı" sebeplerinin eşlemesi (Requirement 5); (f) rapor
 yazıcısının dosya yerine bayt üretmesi; (g) adım kaydının analiz kaydına yazılması; (h) model
 istemcisinin llm-connection portuyla değişmesi (Requirement 24). Bu modüllerin büyük harfli bütün
-sabitleri kaynakla aynı değeri taşır (sabit fark testi). Taşınan kodda `.lower()`, `.upper()` ve
-`.casefold()` yalnız normalleştirme modülündedir.
+sabitleri kaynakla aynı değeri taşır (sabit fark testi). Backend'de `.lower()`, `.upper()` ve
+`.casefold()` yalnız uygulamanın tek Türkçe metin yardımcısındadır (`app/domain/turkish_text.py`).
 
 Requirement 2: Aynı sözlük içeriği (kolonlar, sıraları, kimlikleri ve profilleri; sürüm dizgesi ve
 kaynak adı iki tarafa aynı verilir), terim sözlüğü, durak kelimeler, ayarlar ve sahte model
