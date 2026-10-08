@@ -1,0 +1,45 @@
+{"term": "fon kullandırım", "equivalents": ["kredi", "finansman", "loan", "credit", "kullandırım"], "domain": "katılım", "note": "Katılım bankacılığında kredinin karşılığı"}
+{"term": "kâr payı", "equivalents": ["faiz", "getiri", "profit share", "interest", "kar payı"], "domain": "katılım", "note": ""}
+{"term": "icare", "equivalents": ["leasing", "finansal kiralama", "ijara", "kiralama"], "domain": "katılım", "note": ""}
+{"term": "murabaha", "equivalents": ["vadeli satış", "cost plus financing"], "domain": "katılım", "note": ""}
+{"term": "sukuk", "equivalents": ["kira sertifikası", "islamic bond"], "domain": "katılım", "note": ""}
+{"term": "katılma hesabı", "equivalents": ["mevduat", "vadeli hesap", "participation account"], "domain": "katılım", "note": ""}
+{"term": "tahsis", "equivalents": ["limit", "kredi limiti", "allotment", "facility"], "domain": "kredi", "note": ""}
+{"term": "memzuç", "equivalents": ["risk merkezi", "TBB risk merkezi", "toplam risk"], "domain": "risk", "note": ""}
+{"term": "donuk alacak", "equivalents": ["takipteki alacak", "NPL", "non performing", "tahsili gecikmiş"], "domain": "risk", "note": ""}
+{"term": "canlı risk", "equivalents": ["performing", "aktif risk", "live risk"], "domain": "risk", "note": ""}
+{"term": "nakdi risk", "equivalents": ["cash risk", "nakit kredi riski"], "domain": "risk", "note": ""}
+{"term": "gayrinakdi risk", "equivalents": ["non cash risk", "teminat mektubu riski", "gayri nakdi"], "domain": "risk", "note": ""}
+{"term": "teminat mektubu", "equivalents": ["TM", "letter of guarantee", "garanti mektubu"], "domain": "risk", "note": ""}
+{"term": "doluluk oranı", "equivalents": ["kullanım oranı", "utilization", "fullness", "limit kullanımı", "limit doluluk"], "domain": "kart", "note": ""}
+{"term": "limit", "equivalents": ["tanımlı limit", "credit limit", "card limit"], "domain": "kart", "note": ""}
+{"term": "kredi kartı", "equivalents": ["KK", "credit card", "kart"], "domain": "kart", "note": ""}
+{"term": "banka kartı", "equivalents": ["debit card", "debit kart"], "domain": "kart", "note": ""}
+{"term": "nakit avans", "equivalents": ["cash advance", "nakit çekim"], "domain": "kart", "note": ""}
+{"term": "ihtiyaç kredisi", "equivalents": ["tüketici kredisi", "consumer loan", "ihtiyaç finansmanı", "bireysel kredi"], "domain": "ürün", "note": ""}
+{"term": "konut kredisi", "equivalents": ["mortgage", "housing finance", "konut finansmanı"], "domain": "ürün", "note": ""}
+{"term": "taşıt kredisi", "equivalents": ["araç kredisi", "vehicle loan", "otomobil kredisi"], "domain": "ürün", "note": ""}
+{"term": "KMH", "equivalents": ["kredili mevduat hesabı", "overdraft", "artı para"], "domain": "ürün", "note": ""}
+{"term": "müşteri numarası", "equivalents": ["hesap numarası", "CIF", "müşteri no", "hesap no", "customer id", "customer number", "account number", "müşteri kimlik no"], "domain": "anahtar", "note": "Kurum kararı: müşteri no ve hesap no aynı kavram (ADR-009)"}
+{"term": "müşteri SKEY", "equivalents": ["customer party id", "party id", "DWH müşteri no", "surrogate key"], "domain": "anahtar", "note": ""}
+{"term": "periyot", "equivalents": ["dönem", "ay yıl", "YYYYMM", "period", "month"], "domain": "zaman", "note": ""}
+{"term": "veri tarihi", "equivalents": ["data date", "rapor tarihi", "iş tarihi", "dönem sonu"], "domain": "zaman", "note": ""}
+{"term": "işlem tarihi", "equivalents": ["transaction date", "tran date", "transfer date"], "domain": "zaman", "note": ""}
+{"term": "para transferi", "equivalents": ["EFT", "havale", "money transfer", "transfer", "gönderim"], "domain": "işlem", "note": ""}
+{"term": "FAST", "equivalents": ["anlık transfer", "instant transfer", "fonların anlık ve sürekli transferi"], "domain": "işlem", "note": ""}
+{"term": "virman", "equivalents": ["hesaplar arası transfer", "kendi hesabına transfer", "kendi hesabına para transferi", "kendi hesabı transfer", "internal transfer"], "domain": "işlem", "note": "Kapsam: virman yalnızca banka içi hesaplar arası transferi kapsar; başka bankadaki kendi hesabına yapılan transferler dahil değildir (Ek A.3)."}
+{"term": "SWIFT", "equivalents": ["uluslararası transfer", "yurt dışı transfer", "international transfer"], "domain": "işlem", "note": ""}
+{"term": "alıcı", "equivalents": ["karşı taraf", "receiver", "beneficiary", "lehtar"], "domain": "işlem", "note": ""}
+{"term": "gönderen", "equivalents": ["sender", "gönderici", "remitter"], "domain": "işlem", "note": ""}
+{"term": "bakiye", "equivalents": ["balance", "tutar", "meblağ"], "domain": "finansal", "note": ""}
+{"term": "tutar", "equivalents": ["amount", "meblağ", "toplam"], "domain": "finansal", "note": ""}
+{"term": "adet", "equivalents": ["sayı", "count", "işlem adedi", "sayısı"], "domain": "finansal", "note": ""}
+{"term": "gecikme gün sayısı", "equivalents": ["DPD", "days past due", "overdue day"], "domain": "risk", "note": ""}
+{"term": "temerrüt olasılığı", "equivalents": ["PD", "probability of default"], "domain": "risk", "note": ""}
+{"term": "içsel derecelendirme", "equivalents": ["rating", "IDM", "internal rating", "not"], "domain": "risk", "note": ""}
+{"term": "IFRS 9 aşaması", "equivalents": ["stage", "UFRS 9", "evre"], "domain": "risk", "note": ""}
+{"term": "KKB", "equivalents": ["kredi kayıt bürosu", "credit bureau", "findeks"], "domain": "dış veri", "note": ""}
+{"term": "KRS", "equivalents": ["kredi referans sistemi"], "domain": "dış veri", "note": ""}
+{"term": "segment", "equivalents": ["müşteri sınıfı", "customer class", "sınıf", "bireysel kobi ticari kurumsal"], "domain": "müşteri", "note": ""}
+{"term": "şube", "equivalents": ["branch", "şube kodu"], "domain": "organizasyon", "note": ""}
+{"term": "kanal", "equivalents": ["channel", "işlem kanalı", "dijital şube ATM"], "domain": "organizasyon", "note": ""}

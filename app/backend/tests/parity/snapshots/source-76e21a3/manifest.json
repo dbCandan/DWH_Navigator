@@ -1,0 +1,39 @@
+{
+ "hash_seed": "0",
+ "inputs": {
+  "app/backend/tests/fixtures/parity/ek_terim_gruplari.jsonl": "2ddf640ea4545c800ac8c71dc107f67ea058709e9c3b04ecc5b534e47a22ff57",
+  "app/backend/tests/fixtures/parity/sorular.yaml": "bfdad5c13edf1d2719e4a80ff989938be98880227966c2a335d65fd0b4b63a91",
+  "app/backend/tests/fixtures/parity/sozluk_sentetik.xlsx": "d5ec2ed6fbcebde689a4a1375448821795175990587d0e9b9bbddcbb1f659ba3",
+  "schema/alembic/seed/vocabulary/stopwords.jsonl": "0e9096525c2a6ba6d843cc23563dae8b3337c0c4ce77f52766aae8edd862595d",
+  "schema/alembic/seed/vocabulary/terms.jsonl": "5d8e48cb8372814f34097ca76fe457831980b729181c939dac234852856e078b"
+ },
+ "outputs": [
+  "expansion",
+  "rank_60",
+  "rank_default",
+  "relevance",
+  "rule_answer",
+  "hints",
+  "prompts",
+  "answer",
+  "keys",
+  "excel"
+ ],
+ "questions": 170,
+ "source_commit": "76e21a3",
+ "source_environment": {
+  "defusedxml": "0.7.1",
+  "openpyxl": "3.1.5",
+  "python": "3.12",
+  "yaml": "6.0.3"
+ },
+ "source_tree": "b499981ef340d5c54ba4ead74ee20b2ac6c75f33",
+ "variants": [
+  "defaults",
+  "expansion_off",
+  "topic_zero",
+  "detail0_shortlist6",
+  "pool50_threshold03",
+  "top3"
+ ]
+}

@@ -1,0 +1,137 @@
+from __future__ import annotations
+
+import re
+from pathlib import Path
+
+import pytest
+
+from app.domain.turkish_text import ascii_fold, fold, tr_lower
+from app.services.analysis.text.normalize import (
+    load_stopwords,
+    split_camel,
+    stem,
+    tokenize,
+)
+
+pytestmark = pytest.mark.unit
+
+STOP = load_stopwords(["ve", "bilgisi", "verisi", "için", "tablo", ""])
+
+
+class TestTurkishCase:
+    def test_dotted_capital_i(self) -> None:
+        assert tr_lower("İHTİYAÇ") == "ihtiyaç"
+
+    def test_dotless_capital_i(self) -> None:
+        assert tr_lower("KIRILIM") == "kırılım"
+
+    def test_python_lower_is_wrong(self) -> None:
+        # Documents why the module exists: plain lower() yields a combining dot.
+        assert "İ".lower() != "i"
+        assert tr_lower("İ") == "i"
+
+    def test_all_turkish_capitals(self) -> None:
+        assert tr_lower("IİŞĞÜÖÇ") == "ıişğüöç"
+
+
+class TestAsciiFold:
+    def test_fold_chars(self) -> None:
+        assert ascii_fold("ışğüöçâîû") == "isguocaiu"
+
+    def test_fold_full(self) -> None:
+        assert fold("Müşteri İhtiyaç Kâr") == "musteri ihtiyac kar"
+
+    def test_user_typed_ascii_matches(self) -> None:
+        assert fold("ihtiyac kredisi") == fold("İhtiyaç Kredisi")
+
+
+class TestCamelCase:
+    @pytest.mark.parametrize(
+        ("word", "expected"),
+        [
+            ("CardLimitFullnessToday", ["Card", "Limit", "Fullness", "Today"]),
+            ("IFRSStage", ["IFRS", "Stage"]),
+            ("TOTALOUTSTANDINGBALANCE", ["TOTALOUTSTANDINGBALANCE"]),
+            ("KKB_DATE", ["KKB", "DATE"]),
+            ("CustomerPartyId", ["Customer", "Party", "Id"]),
+            ("Avg30d", ["Avg", "30", "d"]),
+            ("vPRCArrayAllotment", ["v", "PRC", "Array", "Allotment"]),
+            ("SWIFTCountL12M", ["SWIFT", "Count", "L", "12", "M"]),
+            ("müşteri", ["müşteri"]),
+        ],
+    )
+    def test_split(self, word: str, expected: list[str]) -> None:
+        assert split_camel(word) == expected
+
+
+class TestStem:
+    @pytest.mark.parametrize(
+        ("variants", "root"),
+        [
+            (["transferi", "transferler", "transferlerin", "transferlerinin"], "transfer"),
+            (["kredisi", "kredileri", "kredilerin"], None),
+            (["musteri", "musterinin", "musterilerin", "musteriler"], None),
+            (["kartlar", "kartlarin", "kart"], "kart"),
+        ],
+    )
+    def test_variants_share_stem(self, variants: list[str], root: str | None) -> None:
+        stems = {stem(v) for v in variants}
+        assert len(stems) == 1, stems
+        if root is not None:
+            assert stems == {root}
+
+    def test_min_root_length(self) -> None:
+        assert stem("data") == "data"
+        assert stem("risk") == "risk"
+
+    def test_digits_untouched(self) -> None:
+        assert stem("2024") == "2024"
+
+
+class TestTokenize:
+    def test_stopwords_token_level(self) -> None:
+        # "bilgisi" is a stopword but "risk" must survive.
+        assert tokenize("risk bilgisi", stopwords=STOP) == ["risk"]
+
+    def test_camel_with_compound(self) -> None:
+        toks = tokenize("CardLimitFullnessToday", do_stem=False)
+        assert toks == ["card", "limit", "fullness", "today", "cardlimitfullnesstoday"]
+
+    def test_exact_identifier_query_matches_index(self) -> None:
+        q = tokenize("CreditCardLimitRate")
+        doc = tokenize("CreditCardLimitRate")
+        assert set(q) == set(doc)
+        assert "creditcardlimitrate" in {t for t in q}
+
+    def test_ascii_and_turkish_query_equal(self) -> None:
+        assert tokenize("ihtiyac kredisi", stopwords=STOP) == tokenize(
+            "İHTİYAÇ KREDİSİ", stopwords=STOP
+        )
+
+    def test_punctuation_and_single_letters_dropped(self) -> None:
+        assert tokenize("a, (b) — kart.", do_stem=False) == ["kart"]
+
+    def test_underscore_splits(self) -> None:
+        assert tokenize("KKB_DATE", do_stem=False) == ["kkb", "date", "kkbdate"]
+
+
+class TestStopwords:
+    def test_stopwords_file(self) -> None:
+        assert "icin" in STOP  # folded
+        assert "# yorum" not in STOP
+
+
+def test_no_direct_lower_calls_outside_the_folding_helper() -> None:
+    """No module of the analysis package may call .lower()/.upper()/.casefold() directly; case
+    folding is app.domain.turkish_text's alone."""
+    app = Path(__file__).resolve().parents[3] / "app"
+    files = [*(app / "services" / "analysis").rglob("*.py"), app / "domain" / "analysis.py"]
+    assert len(files) > 20
+    pattern = re.compile(r"\.(lower|upper|casefold)\(\)")
+    offenders = [
+        f"{p.relative_to(app)}:{i}"
+        for p in files
+        for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1)
+        if pattern.search(line)
+    ]
+    assert offenders == []

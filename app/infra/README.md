@@ -47,6 +47,29 @@ kimliğini açıkça beyan eder, salt okunur kök dosya sistemi kullanır, büt�
 sırlarını verir (`scripts/README.md`). Compose bu sırları `stack.sh` olmadan başlatıldığında açık
 hatayla durur.
 
+## Model sunucusuna yerel erişim (`local-egress`)
+
+Yerel yığın varsayılan olarak dışarı çıkmaz; arka uç model sunucusuna ulaşamaz. Git'in yok saydığı
+`app/infra/.env` dosyasına `COMPOSE_PROFILES=local-egress` yazılınca `local-egress` geçidi başlar
+(application-foundation `002-kubernetes-delivery` Requirement 17, Decision 14):
+
+- Geçit, sabitlenmiş nginx imajıyla çalışan TCP aktarıcısıdır (`nginx/nginx.local-egress.conf`).
+  Yalnız tek bir model sunucusuna, tek bir porta aktarır: `LOCAL_EGRESS_MODEL_PORT` portunu
+  `LOCAL_EGRESS_MODEL_ADDRESS` adresine (IPv4 adresi; boşsa bu bilgisayar) iletir. Başka port ve
+  başka hedef yoktur; port ya da adres geçersizse geçit açılmaz ve nedenini yazar.
+- Arka uç yine yalnız iç ağlardadır. Geçit, yalnız arka uçla paylaştığı iç `host-gate` ağında
+  `LOCAL_EGRESS_MODEL_HOST` adıyla (varsayılan `host.docker.internal`) görünür; dışa çıkan `egress`
+  köprüsüne yalnız geçit katılır. Yapay zekâ sayfasındaki API adresi bu adı ve portu kullanır (ör.
+  `http://host.docker.internal:1234/v1`). Aktarım TCP düzeyinde olduğu için `https` adreste
+  sertifika bu adla uçtan uca doğrulanır.
+- Geçit port yayımlamaz; salt okunur kök dosya sistemiyle, kök olmayan kullanıcıyla ve bütün Linux
+  yetenekleri düşürülmüş çalışır; ad çözmez, hedefi yalnız adres olarak alır.
+- Profil kapalıyken model adı arka uçta çözülmez. Ayarı kapattıktan sonra çalışan geçidi
+  `scripts/stack.sh rm --stop --force local-egress` kaldırır (Compose, profili kapatılan servisi
+  `up` ile kendiliğinden durdurmaz).
+- Uygulamanın özel ağ denetimi değişmez: geçidin adresi iç ağ adresi olduğu için kabul edilir.
+- Yapısal denetim: `tests/infra/local-egress.test.sh`.
+
 ## Aynı projenin ikinci kopyası
 
 Compose proje adı, yığının kapsayıcı, ağ, veri birimi ve derlenen imaj adlarının önüne gelir. Varsayılan

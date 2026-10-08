@@ -4,9 +4,9 @@ application-foundation/PRDs/001-user-accounts Requirement 3 and Decision 19. Aft
 password counts Unicode characters: 15 at least, 128 at most; spaces and Turkish letters stay as
 entered and no character class is required. A password is refused when it is on the offline list
 of common and breached passwords or repeats one short unit, or when it contains the username, a
-display-name word of four or more characters or the product name. The comparison folds case with
-Turkish rules (``I`` to ``ı``, ``İ`` to ``i``) and Turkish letters to ASCII, so ``IŞIK`` and
-``ışık`` match ``isik``. Whether the password equals the account's current or one-time password is
+display-name word of four or more characters or the product name. The comparison uses the
+application's Turkish folding helper (``app.domain.turkish_text.fold``), so ``IŞIK`` and ``ışık``
+match ``isik``. Whether the password equals the account's current or one-time password is
 checked by the caller against the stored hash (``reused``).
 """
 
@@ -15,6 +15,8 @@ import unicodedata
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
+
+from app.domain.turkish_text import fold
 
 PASSWORD_MIN_LENGTH = 15
 PASSWORD_MAX_LENGTH = 128
@@ -25,20 +27,6 @@ PRODUCT_NAMES = ("dwhnavigator", "navigator")
 # 001-user-accounts/plan.md and dependency-admission.json.
 COMMON_PASSWORDS_FILE = Path(__file__).with_name("common_passwords.txt")
 
-_TURKISH_LOWER = str.maketrans({"I": "ı", "İ": "i"})
-_ASCII_FOLD = str.maketrans(
-    {
-        "ı": "i",
-        "ş": "s",
-        "ğ": "g",
-        "ü": "u",
-        "ö": "o",
-        "ç": "c",
-        "â": "a",
-        "î": "i",
-        "û": "u",
-    }
-)
 _WORD_RE = re.compile(r"[^\W_]+")
 
 
@@ -86,16 +74,10 @@ def normalize_password(raw: str) -> str:
     return unicodedata.normalize("NFKC", raw)
 
 
-def turkish_fold(text: str) -> str:
-    """Lower-case with Turkish rules, then fold Turkish letters to ASCII."""
-
-    return text.translate(_TURKISH_LOWER).lower().translate(_ASCII_FOLD)
-
-
 @lru_cache(maxsize=1)
 def common_passwords() -> frozenset[str]:
     lines = COMMON_PASSWORDS_FILE.read_text(encoding="utf-8").splitlines()
-    return frozenset(turkish_fold(line) for line in lines if line)
+    return frozenset(fold(line) for line in lines if line)
 
 
 def _repeats_a_short_unit(value: str) -> bool:
@@ -108,10 +90,10 @@ def _repeats_a_short_unit(value: str) -> bool:
 
 
 def _account_words(username: str, display_name: str) -> list[str]:
-    words = [turkish_fold(username)] if username else []
+    words = [fold(username)] if username else []
     words += [
         word
-        for word in _WORD_RE.findall(turkish_fold(display_name))
+        for word in _WORD_RE.findall(fold(display_name))
         if len(word) >= DISPLAY_NAME_WORD_MIN_LENGTH
     ]
     words += list(PRODUCT_NAMES)
@@ -129,7 +111,7 @@ def check_password_policy(password: str, *, username: str, display_name: str) ->
         raise PasswordPolicyViolation(PasswordPolicyReason.TOO_SHORT)
     if len(normalized) > PASSWORD_MAX_LENGTH:
         raise PasswordPolicyViolation(PasswordPolicyReason.TOO_LONG)
-    folded = turkish_fold(normalized)
+    folded = fold(normalized)
     if folded in common_passwords() or _repeats_a_short_unit(folded):
         raise PasswordPolicyViolation(PasswordPolicyReason.COMMON)
     if any(word and word in folded for word in _account_words(username, display_name)):

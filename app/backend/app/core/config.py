@@ -2,6 +2,7 @@
 
 import os
 import re
+import ssl
 from functools import cached_property, lru_cache
 from ipaddress import IPv4Network, IPv6Network, ip_network
 from typing import Annotated, Literal
@@ -126,6 +127,12 @@ class Settings(BaseSettings):
     # Encrypts settings the application stores in PostgreSQL (data-dictionary/PRDs/003-llm-connection
     # Requirement 1): standard base64 of 32 random bytes. Empty means nothing can be encrypted.
     settings_encryption_key: SecretStr | None = None
+    # Trust store that verifies the model server's certificate (data-dictionary/PRDs/
+    # 003-llm-connection Requirement 1 and 10); empty uses the image's system trust store. A file
+    # that cannot be read as certificates stops startup. Verification itself cannot be turned off.
+    llm_ca_bundle: str = ""
+    # Process-wide limit of concurrent /chat/completions requests (Requirement 17, Decision 11).
+    llm_max_concurrent_calls: Annotated[int, Field(ge=1, le=8)] = 2
 
     # OpenTelemetry traces and metrics over OTLP/gRPC (app/core/telemetry.py). Empty disables
     # export; the local observability Compose overlay points it at its collector. Only these typed
@@ -212,6 +219,17 @@ class Settings(BaseSettings):
             except ValueError:
                 raise ValueError("settings_encryption_key must be base64 of 32 bytes") from None
         return value
+
+    @field_validator("llm_ca_bundle")
+    @classmethod
+    def validate_llm_ca_bundle(cls, value: str) -> str:
+        path = value.strip()
+        if path:
+            try:
+                ssl.create_default_context(cafile=path)
+            except (OSError, ssl.SSLError, ValueError):
+                raise ValueError("llm_ca_bundle must name a readable certificate file") from None
+        return path
 
     @field_validator("otel_exporter_otlp_endpoint")
     @classmethod

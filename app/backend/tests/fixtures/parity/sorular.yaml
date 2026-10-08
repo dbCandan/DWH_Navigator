@@ -1,0 +1,356 @@
+# Fark testi soruları (question-analysis PRD, Test stratejisi): kaynak altın setinin 8
+# sorusu (batch maddesi b001 hariç), negatif setin 5 sorusu, sentetik sözlüğe yazılmış
+# sorular ve senaryolu sorular. tests/parity/generate_fixtures.py üretir; elle düzenlemeyin.
+- id: g-q001
+  query: "Müşterilerin risk bilgilerini aylık bazda ve kırılımlı olarak (kredi kartı, gayrimenkul, ihtiyaç kredisi vb.) gösteren bir tablo mevcut mudur?"
+- id: g-q002
+  query: "Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?"
+- id: g-q003
+  query: "Müşteri bazında aylık para transferi özeti: transfer tipi, transfer adedi, toplam transfer tutarı TL, işlem yapılan farklı kişi sayısı, farklı banka sayısı, kendi hesabına transfer adedi ve tutarı"
+- id: g-q001-kapsam
+  query: "Müşterilerin risk bilgilerini aylık bazda ve kırılımlı olarak (kredi kartı, gayrimenkul, ihtiyaç kredisi vb.) gösteren bir tablo mevcut mudur?"
+- id: g-q004
+  query: "Müşterinin kredi kartlarının bilgisi"
+- id: g-q005
+  query: "Müşterinin sektör bazlı mevduat dağılımı"
+- id: g-q006
+  query: "Müşterinin kredi risk skoru"
+- id: g-q007
+  query: "Müşterinin müşterilik yaşı"
+- id: n-n001
+  query: "Uzay gemisi yakıt seviyesi"
+- id: n-n002
+  query: "Futbol maçlarının skorları ve gol atan oyuncular"
+- id: n-n003
+  query: "Şehirlere göre günlük hava sıcaklığı tahmini"
+- id: n-n004
+  query: "Çalışanların yemekhane menü tercihleri"
+- id: n-n005
+  query: "Tarladaki buğday hasat nem ölçümü sensör verisi"
+- id: s001
+  query: "Aylık kredi kartı harcama tutarı"
+- id: s002
+  query: "Günlük mevduat bakiyesi nerede?"
+- id: s003
+  query: "Haftalık ATM çekim adedi"
+- id: s004
+  query: "Yıllık müşteri karlılığı"
+- id: s005
+  query: "Çeyreklik risk raporu"
+- id: s006
+  query: "Dönemsel şube performansı"
+- id: s007
+  query: "Ay sonu katılma hesabı bakiyesi"
+- id: s008
+  query: "monthly card spend amount"
+- id: s009
+  query: "daily deposit balance per customer"
+- id: s010
+  query: "Periyodik kampanya yanıtları"
+- id: s011
+  query: "Ürün kırılımlı aylık risk (kredi kartı, konut kredisi, taşıt kredisi)"
+- id: s012
+  query: "Müşteri bazında kırılımlı risk (KMH, ihtiyaç kredisi vb.) tablosu"
+- id: s013
+  query: "Segment kırılımında mevduat dağılımı"
+- id: s014
+  query: "Şube detayında yeni müşteri sayısı"
+- id: s015
+  query: "Ürün breakdown risk amount (card, housing)"
+- id: s016
+  query: "Kırılımlı olarak (altın hesabı, döviz hesabı) günlük bakiyeler"
+- id: s017
+  query: "Kart limit kullanım oranı"
+- id: s018
+  query: "Taksitli harcama yüzdesi"
+- id: s019
+  query: "Gecikmiş kart borcu tutarı"
+- id: s020
+  query: "Kredi kartı adedi"
+- id: s021
+  query: "Transfer sayısı ve tutarı"
+- id: s022
+  query: "Ortalama bakiye"
+- id: s023
+  query: "likidite oranı"
+- id: s024
+  query: "NPL oranı aylık"
+- id: s025
+  query: "Kâr payı oranı katılma hesabı"
+- id: s026
+  query: "Toplam risk bakiyesi"
+- id: s027
+  query: "Kartı olmayan müşteriler"
+- id: s028
+  query: "Virman hariç para transferleri"
+- id: s029
+  query: "Kredi kartı değil banka kartı"
+- id: s030
+  query: "FAST dışında giden transferler"
+- id: s031
+  query: "Kart bazlı değil toplam limit doluluğu"
+- id: s032
+  query: "İzni olmayan müşterilerin kampanya yanıtı"
+- id: s033
+  query: "except FAST outgoing transfers"
+- id: s034
+  query: "Son 3 ay kart harcaması"
+- id: s035
+  query: "Son 6 ay kart harcaması"
+- id: s036
+  query: "Son 12 ayın SWIFT adedi"
+- id: s037
+  query: "2024 yılı mevduat bakiyesi"
+- id: s038
+  query: "30 günlük ortalama bakiye"
+- id: s039
+  query: "Son 1 ay nakit avans tutarı"
+- id: s040
+  query: "Fon kullandırım bakiyesi"
+- id: s041
+  query: "Kredi bakiyesi"
+- id: s042
+  query: "Kâr payı tutarı"
+- id: s043
+  query: "Faiz oranı"
+- id: s044
+  query: "Leasing sözleşmeleri"
+- id: s045
+  query: "İcare sözleşme tutarı"
+- id: s046
+  query: "Murabaha vadeli satış"
+- id: s047
+  query: "Sukuk varlıkları"
+- id: s048
+  query: "Kira sertifikası"
+- id: s049
+  query: "Müşteri numarası ile hesap numarası eşlemesi"
+- id: s050
+  query: "CIF bazında bakiye"
+- id: s051
+  query: "Hesap no ile kart eşleşmesi"
+- id: s052
+  query: "EFT ve havale adetleri"
+- id: s053
+  query: "Findeks skoru"
+- id: s054
+  query: "Kredi kayıt bürosu skoru"
+- id: s055
+  query: "Memzuç toplam risk"
+- id: s056
+  query: "Donuk alacak tutarı"
+- id: s057
+  query: "Takipteki alacak tahsilatı"
+- id: s058
+  query: "Temerrüt olasılığı"
+- id: s059
+  query: "İçsel derecelendirme notu"
+- id: s060
+  query: "IFRS 9 aşaması"
+- id: s061
+  query: "Teminat mektubu riski"
+- id: s062
+  query: "Nakit avans kullanımı"
+- id: s063
+  query: "Konut finansmanı bakiyesi"
+- id: s064
+  query: "Taşıt kredisi limiti"
+- id: s065
+  query: "KMH limiti"
+- id: s066
+  query: "Anlık transfer adedi"
+- id: s067
+  query: "Uluslararası transfer tutarı"
+- id: s068
+  query: "Kendi hesabına para transferi"
+- id: s069
+  query: "Kampanya hedef kitlesi"
+- id: s070
+  query: "Hedef kitle büyüklüğü"
+- id: s071
+  query: "Kart ciro hacmi"
+- id: s072
+  query: "harcama tutarı ciro"
+- id: s073
+  query: "CardLimitUsageToday"
+- id: s074
+  query: "KKB_DATE"
+- id: s075
+  query: "IFRS9_STAGE"
+- id: s076
+  query: "CustomerPartyId"
+- id: s077
+  query: "SWIFTCountL12M"
+- id: s078
+  query: "Avg30dBalance"
+- id: s079
+  query: "TotalLimitUsage nedir?"
+- id: s080
+  query: "CreditCardLimitRate verisi"
+- id: s081
+  query: "Feature042"
+- id: s082
+  query: "musteri kredi karti limit doluluk orani"
+- id: s083
+  query: "ihtiyac kredisi bakiyesi aylik"
+- id: s084
+  query: "musterilik suresi"
+- id: s085
+  query: "sube bazinda yeni musteri sayisi"
+- id: s086
+  query: "kar payi orani"
+- id: s087
+  query: "MÜŞTERİ İHTİYAÇ KREDİSİ RİSKİ"
+- id: s088
+  query: "KARTIN LİMİTİ VE DOLULUĞU"
+- id: s089
+  query: "IŞIK SEKTÖRÜ MÜŞTERİLERİ"
+- id: s090
+  query: "İŞLEM KANALI ADI"
+- id: s091
+  query: "ÜRÜNGRUBU"
+- id: s092
+  query: "?!.,;"
+- id: s093
+  query: "— … —"
+- id: s094
+  query: "Merhaba"
+- id: s095
+  query: "ve ile için"
+- id: s096
+  query: "bir şey lazım"
+- id: s097
+  query: "nerede var mı"
+- id: s098
+  query: "SYNDM.CRD.vCardList"
+- id: s099
+  query: "vCardList"
+- id: s100
+  query: "rpt_DailyLiquidity tablosu"
+- id: s101
+  query: "SYNERP.HRM.vPersonKKB"
+- id: s102
+  query: "vCampaign"
+- id: s103
+  query: "SYNDM.REF.vHoliday"
+- id: s104
+  query: "Müşteri adı soyadı ve telefon numarası"
+- id: s105
+  query: "Alıcı kimlik numarası"
+- id: s106
+  query: "TCKN listesi"
+- id: s107
+  query: "Özel bankacılık müşterilerinin mevduatı"
+- id: s108
+  query: "Churn modeli girdileri"
+- id: s109
+  query: "Akıllı hedefleme skoru"
+- id: s110
+  query: "Segmentasyon girdisi davranış skoru"
+- id: s111
+  query: "Personelin KKB skoru"
+- id: s112
+  query: "Virman tutarı müşteri bazında"
+- id: s113
+  query: "Kampanya kitlesindeki müşterilerin kart harcaması"
+- id: s114
+  query: "Müşteri bazında aylık kredi kartı ve mevduat bakiyesi"
+- id: s115
+  query: "Sektör ve segment bazında risk"
+- id: s116
+  query: "Şube ve bölge bazında mevduat hacmi"
+- id: s117
+  query: "Müşterinin yaşı ve müşterilik süresi"
+- id: s118
+  query: "Firma yaşı ve sektör"
+- id: s119
+  query: "Kart statüsü ve asıl kart sahibi"
+- id: s120
+  query: "Ek kart sahibi müşteri numarası"
+- id: s121
+  query: "Kredi kartı limit doluluk oranı ve gecikme gün sayısı"
+- id: s122
+  query: "Hesap türü bazında bakiye"
+- id: s123
+  query: "Döviz alım satım kuru ve tutarı"
+- id: s124
+  query: "Tekafül prim tutarı"
+- id: s125
+  query: "Mobil şube giriş sayısı"
+- id: s126
+  query: "Dijital kanal işlem türü"
+- id: s127
+  query: "Fon kullandırım başvuru durumu"
+- id: s128
+  query: "Taksit ödeme tutarı"
+- id: s129
+  query: "Çek tutarı aylık"
+- id: s130
+  query: "Üye işyeri kategorisi"
+- id: s131
+  query: "ATM listesi şube bazında"
+- id: s132
+  query: "Proje finansmanı riski"
+- id: s133
+  query: "Erken uyarı rengi"
+- id: s134
+  query: "Beklenen kredi zararı ECL"
+- id: s135
+  query: "Teminat türü ve tutarı"
+- id: s136
+  query: "Araç sahipliği tahmini"
+- id: s137
+  query: "Kart rengi"
+- id: s138
+  query: "Bölge bazında aylık yönetim raporu"
+- id: s139
+  query: "Kanal bazında ürün bakiyeleri"
+- id: s140
+  query: "credit card limit utilization"
+- id: s141
+  query: "customer churn score"
+- id: s142
+  query: "deposit balance by sector"
+- id: s143
+  query: "Kartın bugünkü limit doluluk oranı nedir ve hangi tabloda bulunur, kart bazlı mı?"
+- id: s144
+  query: "Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor. Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme gün sayısı (kart bazlı) ile mevduat bakiyesi gerekiyor."
+- id: x01
+  query: "Kredi kartı harcamaları aylık"
+  scenario: step1_failed
+- id: x02
+  query: "Müşteri bazında mevduat bakiyesi"
+  scenario: step2_failed
+- id: x03
+  query: "Uzay istasyonu oksijen seviyesi"
+  scenario: no_candidates
+- id: x04
+  query: "Kart limit doluluk oranı günlük"
+  scenario: context_exceeded
+- id: x05
+  query: "Para transferi adedi aylık"
+  scenario: timeout
+- id: x06
+  query: "KKB skoru müşteri bazında"
+  scenario: connection_refused
+- id: x07
+  query: "Katılma hesabı kâr payı"
+  scenario: http_500
+- id: x08
+  query: "Kredi risk skoru"
+  scenario: server_down
+- id: x09
+  query: "Şube performansı"
+  scenario: server_unauthorized
+- id: x10
+  query: "Müşterilik süresi"
+  scenario: no_model
+- id: x11
+  query: "Kredi kartı limiti"
+  scenario: empty_dictionary
+- id: x12
+  query: "Mevduat dağılımı sektör bazlı"
+  scenario: server_down
+- id: x13
+  query: "Ürün kırılımlı risk"
+  scenario: http_500
