@@ -1,10 +1,10 @@
-"""Query processing: concepts + expansion (HANDOVER §7).
+"""Query processing: concepts + expansion.
 
 Two expansion sources:
 
 (a) corporate term dictionary — bidirectional groups; a matched group adds its other
     members to the BM25 query at reduced weight;
-(b) the dictionary's own synonym sections — inverted into phrase -> column ids; a
+(b) the dictionary's Synonyms column (ADR-046) — inverted into phrase -> column ids; a
     phrase found in the query puts those columns straight into the candidate pool.
 
 Per ADR-004 expansion only feeds the BM25 query; ``text`` keeps the user's original
@@ -24,7 +24,7 @@ from vsa.models import TermGroup
 from vsa.text.normalize import fold, load_stopwords, tokenize, tokenize_pairs
 
 # A single-word synonym shared by more columns than this is too generic to count
-# as the "most reliable signal" (§7.2b); it still participates in BM25.
+# as the "most reliable signal"; it still participates in BM25.
 GENERIC_SYNONYM_DF = 40
 MAX_PHRASE_LEN = 6
 _WORD = re.compile(r"\w+")
@@ -332,7 +332,7 @@ class QueryExpander:
 
 
 def build_synonym_index(features: Iterable[ColumnFeatures]) -> dict[tuple[str, ...], list[int]]:
-    """Synonym phrase (token tuple) -> column ids that list it (§7.2b)."""
+    """Synonym phrase (token tuple) -> column ids that list it."""
     index: dict[tuple[str, ...], list[int]] = defaultdict(list)
     for f in features:
         for phrase in dict.fromkeys(f.synonyms):

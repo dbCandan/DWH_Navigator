@@ -227,7 +227,7 @@ class OpenAICompatibleClient:
         # learned from the first HTTP 400 (see ``_adapt``).
         self.system_role = True
         self.structured = True
-        self.last_error = ""  # why the last chat call failed, for the user (ADR-029 fallback)
+        self.last_error = ""  # why the last chat call failed, told to the user (ADR-038)
 
     @property
     def available(self) -> bool:
@@ -330,7 +330,7 @@ class OpenAICompatibleClient:
         *,
         max_tokens: int = 1024,
     ) -> dict[str, Any] | None:
-        """Schema-constrained JSON (HANDOVER §10.4); one repair attempt, then None (§10.6)."""
+        """Schema-constrained JSON; one repair attempt, then None."""
         if not self.available:
             return None
         with trace.span("LLM çağrısı", self._model, trace.LLM) as s:

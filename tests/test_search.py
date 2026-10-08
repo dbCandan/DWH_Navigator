@@ -99,8 +99,8 @@ class TestExpansion:
 
 
 class TestConcepts:
-    def test_handover_example(self) -> None:
-        """HANDOVER §7.4 example."""
+    def test_time_and_breakdown_request(self) -> None:
+        """A request with a time and a breakdown word."""
         q = expander().expand(
             "Müşterilerin risk bilgilerini aylık bazda ve kırılımlı olarak "
             "(kredi kartı, gayrimenkul, ihtiyaç kredisi) gösteren tablo"

@@ -1,1 +1,1 @@
-"""Local web interface (HANDOVER §17 M6)."""
+"""Local web interface (M6)."""

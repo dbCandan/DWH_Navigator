@@ -1,4 +1,4 @@
-"""Orchestration (HANDOVER §4): query -> search -> column rules -> object
+"""Orchestration: query -> search -> column rules -> object
 aggregation -> validation -> explained result. Pure given its inputs; the
 ``Engine.from_*`` constructors are the only parts that touch files.
 """
@@ -210,7 +210,7 @@ class Engine:
         self, query: str, *, limit: int | None = None
     ) -> tuple[list[ObjectMatch], ExpandedQuery]:
         """The rule engine's ranked objects for a query (no answer threshold): the
-        analyst's hints and the fallback answer. ``limit`` overrides how many are kept."""
+        analyst's hints (and the measured rule answer). ``limit`` overrides how many are kept."""
         s = self.settings
         lap = trace.Laps()
         lap("Sorgu genişletme")
@@ -369,7 +369,7 @@ class Engine:
 
         lines = ["Kural skoru en yüksek tablolar:"]
         lines += [line(m) for m in ranked[:ANALYST_HINT_TABLES]]
-        # §8 / ADR-005: a table carrying the requested concepts together beats a join.
+        # ADR-005: a table carrying the requested concepts together beats a join.
         together = sorted(ranked, key=lambda m: (-len(m.covered), -m.score))
         lines.append("Talebin kavramlarını en çok BİRLİKTE taşıyan tablolar:")
         lines += [line(m) for m in together[:ANALYST_HINT_TABLES] if len(m.covered) > 1]
@@ -593,7 +593,7 @@ class Engine:
         return added
 
     def _concept_evidence(self, key: str, q: ExpandedQuery, relevance: Mapping[int, float]) -> str:
-        """Which request concepts the table carries, and in which column (§8, lexical)."""
+        """Which request concepts the table carries, and in which column (lexical)."""
         parts: list[str] = []
         for concept in q.content_concepts:
             carriers = [f for f in self.objects[key].features if covers(f.all_tokens, concept)]

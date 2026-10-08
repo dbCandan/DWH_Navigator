@@ -1,4 +1,4 @@
-"""Excel analysis reports (HANDOVER §12.1, §12.2). Does file I/O.
+"""Excel analysis reports. Does file I/O.
 
 One question: Özet · Öneriler.
 A term list (ADR-033): the same two sheets, combined, with a term column.

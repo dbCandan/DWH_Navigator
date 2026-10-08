@@ -1,12 +1,12 @@
-"""Object-level aggregation — THE core business rule (HANDOVER §8, ADR-005).
+"""Object-level aggregation — THE core business rule (ADR-005).
 
 Search runs on columns, but the business unit asks for tables. A table wins not
 because one column matches perfectly, but because it carries several of the
 requested concepts together, with the right time axis and granularity:
 
-    object_score = 0.50 × best_column + 0.30 × coverage
-                 + 0.10 × time        + 0.10 × granularity
-                 (+ topic fit, ADR-028 — weights come from settings)
+    object_score = 0.35 × best_column + 0.21 × coverage
+                 + 0.07 × time        + 0.07 × granularity
+                 + 0.30 × topic fit (ADR-028)    — weights come from settings
 
 Components that do not apply to the request are left out and the remaining
 weights renormalized (ADR-011). Keep this rule intact in refactors.
@@ -32,7 +32,7 @@ RELATED_MIN_SHARE = 0.6
 # Folded column name -> suitability for a period-level (monthly…) request.
 PERIOD_COLUMNS: dict[str, float] = {
     "period": 1.0,
-    "datadate": 0.8,  # often month-end snapshots (§2b)
+    "datadate": 0.8,  # often month-end snapshots
     "reportdate": 0.8,
     "kkbdate": 0.6,
     "trandate": 0.6,
@@ -56,7 +56,7 @@ CUSTOMER_KEYS = frozenset(
 )
 _CUSTOMER_TOKEN = stem(fold("müşteri"))
 
-# Long-format breakdown (Ek A.1/A.3): a dimension column such as ProductName or
+# Long-format breakdown: a dimension column such as ProductName or
 # FINANCETYPE carries breakdown values as rows instead of separate columns.
 DIMENSION_SUFFIXES = (
     "name", "type", "typename", "tip", "tipi", "tur", "turu", "code", "kod",

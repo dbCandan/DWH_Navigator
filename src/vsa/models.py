@@ -18,7 +18,7 @@ class DictColumn:
     description: str
     synonyms: tuple[str, ...] = ()
     dataset_group: str | None = None
-    has_pii: bool = False  # description mentions KVKK / kişisel veri (§18.5)
+    has_pii: bool = False  # description mentions KVKK / kişisel veri
     role: str = ""  # Anahtar | Kod | Ad | Zaman | Ölçü | Bayrak | Metin
     summary: str = ""  # ≤70-char compressed meaning, what the LLM reads instead of description
 
@@ -63,7 +63,7 @@ class Dictionary:
 
     columns: list[DictColumn]
     source_path: str
-    version: str  # "<sha256[:12]>-<row count>" (HANDOVER §3.6)
+    version: str  # "<sha256[:12]>-<row count>"
     warnings: list[str] = field(default_factory=list)
     objects: dict[str, ObjectProfile] = field(default_factory=dict)
 
@@ -150,15 +150,15 @@ class AnalysisResult:
     method: list[str]
     dropped_by_validation: int = 0
     elapsed_ms: int = 0
-    llm_model: str = ""  # the analyst's chat model; "" for a rule answer
+    llm_model: str = ""  # the analyst's chat model
     # Analyst flow (ADR-029): how the request was read, how to combine the suggested
     # tables ("Önerilen Kurgu") and the traps to watch ("Dikkat Edilmesi Gerekenler").
     interpretation: str = ""
     design: list[str] = field(default_factory=list)
     attention: list[str] = field(default_factory=list)
     analyst: bool = False  # True when the analyst flow wrote this answer
-    fallback: str = ""  # why the analyst flow could not answer (rule answer shown instead)
-    confidence_factor: float = 1.0  # rule answers: scores shown = rule score × this (ADR-034)
+    fallback: str = ""  # why the analyst flow could not answer (ADR-038: nothing is listed)
+    confidence_factor: float = 1.0  # Engine.rule_answer (measured only): rule score × this
     dictionary_objects: int = 0  # tables in the dictionary, for the report header
     # ADR-035: an earlier answer given again — when it was written, to which question,
     # and how the questions matched ("aynı soru" / "aynı anlam"). Empty for a fresh answer.

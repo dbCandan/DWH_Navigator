@@ -1,4 +1,4 @@
-"""Turkish text normalization (HANDOVER §6).
+"""Turkish text normalization.
 
 This module is the ONLY place where case folding happens. No other module may call
 ``str.lower()`` / ``str.upper()`` / ``str.casefold()`` directly.
@@ -36,8 +36,8 @@ _ASCII_FOLD = str.maketrans(
     }
 )
 
-# Suffixes in ASCII-folded form, longest first (HANDOVER §6.4).
-# HANDOVER §6.4 list plus possessive+case stacks ("verisine", "tablosundan").
+# Suffixes in ASCII-folded form, longest first.
+# The base list plus possessive+case stacks ("verisine", "tablosundan").
 _SUFFIXES: tuple[str, ...] = tuple(
     sorted(
         set(
@@ -179,7 +179,7 @@ def tokenize(
     """Turn free text or an identifier into normalized search tokens.
 
     Stopwords are removed per token, not per phrase: in "risk bilgisi" only
-    "bilgisi" is dropped (HANDOVER §6.5).
+    "bilgisi" is dropped.
 
     With ``keep_compound`` a CamelCase word also emits its whole folded form, so
     an exact identifier query (``CreditCardLimitRate``) still matches.

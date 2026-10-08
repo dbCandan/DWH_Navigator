@@ -96,7 +96,7 @@ SECTIONS: list[dict[str, Any]] = [
                 "label": "Sözlüğün eş anlamlılarını kullan",
                 "type": "bool",
                 "effect": NOW,
-                "help": "Kolon açıklamalarındaki “Eş anlamlılar / aranabilir terimler” bölümleri.",
+                "help": "Sözlüğün Synonyms kolonundaki eş anlamlılar.",
             },
             {
                 "key": "expansion.weight",

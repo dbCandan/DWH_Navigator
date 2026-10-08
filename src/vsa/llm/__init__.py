@@ -1,1 +1,1 @@
-"""Local LLM access over an OpenAI-compatible endpoint (HANDOVER §10)."""
+"""Local LLM access over an OpenAI-compatible endpoint."""

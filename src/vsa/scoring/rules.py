@@ -1,4 +1,4 @@
-"""Deterministic column-level rule score (HANDOVER §9.2, ADR-010, ADR-012).
+"""Deterministic column-level rule score (ADR-010, ADR-012).
 
     base  = 0.35 × search + 0.25 × column_concept_coverage (IDF-weighted)
     search = relative BM25
@@ -104,8 +104,8 @@ def score_column(
 
 
 def _negated_concepts(f: ColumnFeatures, covered: list[Concept]) -> list[Concept]:
-    """Concepts the description explicitly rules out: "Kart bazlı değil, …" (§9.2
-    "kapsam farkı"). A concept token within a few words before "değil" counts."""
+    """Concepts the description explicitly rules out: "Kart bazlı değil, …"
+    ("kapsam farkı"). A concept token within a few words before "değil" counts."""
     out: list[Concept] = []
     desc = f.description
     for i, tok in enumerate(desc):
