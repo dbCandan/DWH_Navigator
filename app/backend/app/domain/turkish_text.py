@@ -1,12 +1,16 @@
-"""The application's Turkish folding: the comparison form of names and model-server texts.
+"""The application's one Turkish folding helper: the comparison form of every Turkish text.
 
 Lower-case with Turkish rules (``I`` to ``ı``, ``İ`` to ``i``), then Turkish and a few Latin
-letters to ASCII, exactly as the source application's ``fold``. data-dictionary/PRDs/
-003-llm-connection uses it for the uniqueness of integration names (Requirement 2) and for reading
-a model server's refusal (Requirement 7).
+letters to ASCII, exactly as the source application's ``text/normalize.py``. Every Turkish
+comparison uses it: the question analysis's normalization (data-dictionary/PRDs/
+004-question-analysis), the word lists (002-vocabulary-management), the uniqueness of
+integration names and the reading of a model server's refusal (003-llm-connection Requirement 2
+and 7) and the password policy's list and name comparison (application-foundation/PRDs/
+001-user-accounts Requirement 3). No other module changes letter case.
 """
 
-_TURKISH_LOWER = str.maketrans({"I": "ı", "İ": "i"})
+_TR_LOWER = str.maketrans({"I": "ı", "İ": "i"})
+
 _ASCII_FOLD = str.maketrans(
     {
         "ı": "i",
@@ -18,7 +22,7 @@ _ASCII_FOLD = str.maketrans(
         "â": "a",
         "î": "i",
         "û": "u",
-        # Not Turkish, but they appear in banking text and must not break a comparison.
+        # Not Turkish, but appear in banking text and should not break tokens.
         "é": "e",
         "è": "e",
         "ä": "a",
@@ -26,7 +30,16 @@ _ASCII_FOLD = str.maketrans(
 )
 
 
-def fold(text: str) -> str:
-    """Turkish lower case, then ASCII letters; the canonical comparison form of a string."""
+def tr_lower(text: str) -> str:
+    """Lowercase with Turkish rules: ``I -> ı`` and ``İ -> i``."""
+    return text.translate(_TR_LOWER).lower()
 
-    return text.translate(_TURKISH_LOWER).lower().translate(_ASCII_FOLD)
+
+def ascii_fold(text: str) -> str:
+    """Fold Turkish characters to ASCII. Expects already-lowercased text."""
+    return text.translate(_ASCII_FOLD)
+
+
+def fold(text: str) -> str:
+    """Turkish lowercase + ASCII fold. Canonical comparison form for any string."""
+    return ascii_fold(tr_lower(text))

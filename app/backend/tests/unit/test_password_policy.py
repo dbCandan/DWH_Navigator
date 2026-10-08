@@ -13,8 +13,8 @@ from app.domain.password_policy import (
     PasswordPolicyViolation,
     check_password_policy,
     common_passwords,
-    turkish_fold,
 )
+from app.domain.turkish_text import fold
 
 pytestmark = pytest.mark.unit
 
@@ -83,7 +83,7 @@ def test_the_offline_list_is_large_folded_and_complete() -> None:
     entries = common_passwords()
     assert len(entries) > 10_000
     assert all(len(entry) >= PASSWORD_MIN_LENGTH for entry in entries)
-    assert all(entry == turkish_fold(entry) for entry in entries)
+    assert all(entry == fold(entry) for entry in entries)
     # The skeleton's original baseline entries stay on the list.
     assert {"passwordpassword", "welcome123456789", "administrator123"} <= entries
 
@@ -130,6 +130,6 @@ def test_every_reason_has_a_turkish_message() -> None:
 
 
 def test_turkish_fold_handles_dotted_and_dotless_i() -> None:
-    assert turkish_fold("IŞIK") == "isik"
-    assert turkish_fold("İstanbul") == "istanbul"
-    assert turkish_fold("ÇĞÖÜŞ") == "cgous"
+    assert fold("IŞIK") == "isik"
+    assert fold("İstanbul") == "istanbul"
+    assert fold("ÇĞÖÜŞ") == "cgous"
