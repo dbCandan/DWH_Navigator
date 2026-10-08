@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231F3864'/%3E%3Cpath d='M16 5l4 11-4 11-4-11z' fill='%23F2B84B'/%3E%3C/svg%3E">
 <style>
 /* =====================================================================
-   DWH Navigator · Yönetim — one sidebar, six pages, details in a drawer,
+   DWH Navigator · Yönetim — one sidebar, seven pages, details in a drawer,
    a command palette for everything. The app's "Evren" palette.
    ===================================================================== */
 :root {
@@ -103,7 +103,7 @@ main { min-width: 0; padding: 22px 28px 90px; }
 .btn.danger:hover { border-color: var(--bad); }
 .btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
 .note { color: var(--muted); font-size: 12.5px; }
-.muted { color: var(--muted); } .faint { color: var(--faint); }
+.muted { color: var(--muted); }
 .mono { font-family: var(--mono); font-size: .92em; }
 .msg { border-radius: 11px; padding: 9px 12px; font-size: 13px; margin: 8px 0; border: 1px solid transparent; }
 .msg.warn { background: var(--warn-bg); border-color: rgba(255, 209, 102, .25); }
@@ -148,7 +148,6 @@ kv, dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); ga
 dl.kv dt { color: var(--muted); }
 dl.kv dd { margin: 0; overflow-wrap: anywhere; }
 .grid { display: grid; gap: 14px; }
-.g4 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 .g2 { grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr)); }
 .more { display: flex; justify-content: center; padding: 12px 0 2px; }
 .tag { display: inline-block; font-size: 11.5px; font-weight: 600; border-radius: 7px; padding: 1px 8px; background: var(--surface-3); color: var(--muted); white-space: nowrap; }
@@ -196,7 +195,7 @@ dl.kv dd { margin: 0; overflow-wrap: anywhere; }
 .vb.VAR { background: var(--ok-bg); color: var(--ok); } .vb.KISMEN { background: var(--warn-bg); color: var(--warn); }
 .vb.BULUNAMADI { background: var(--bad-bg); color: var(--bad); } .vb.none { background: var(--surface-3); color: var(--muted); }
 .flow { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; white-space: nowrap; }
-.flow.analist { color: var(--ok); } .flow.önbellek { color: var(--accent); } .flow.yapılamadı, .flow.yedek, .flow.kural { color: var(--warn); }
+.flow.analist { color: var(--ok); } .flow.önbellek { color: var(--accent); } .flow.yapılamadı { color: var(--warn); }
 .flow.hata { color: var(--bad); } .flow.durduruldu { color: var(--muted); }
 td.when { white-space: nowrap; color: var(--faint); font: 12px var(--mono); }
 td.qq .q { font-weight: 600; overflow-wrap: anywhere; }
@@ -254,7 +253,6 @@ details.fold > :last-child { padding-bottom: 12px; }
 .row .lab { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .row .help { color: var(--muted); font-size: 12.5px; margin-top: 1px; }
 .ph p, .card > .intro, .row .help, .card > .note, .fold > .note { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.row .key { font: 11px var(--mono); color: var(--faint); }
 .row.changed .lab::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
 .row.flash { animation: flash 1.6s ease; border-radius: 10px; }
 @keyframes flash { 0%, 40% { background: rgba(124, 244, 255, .14); box-shadow: 0 0 0 6px rgba(124, 244, 255, .14); } 100% { background: transparent; box-shadow: none; } }
@@ -308,7 +306,7 @@ ul.tests .d { color: var(--muted); overflow-wrap: anywhere; } ul.tests .ms { fon
 
 /* ---------- dictionary ---------- */
 .dz { border: 2px dashed var(--line-2); border-radius: var(--radius); padding: 28px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
-.dz:hover, .dz.over { border-color: var(--accent); background: var(--accent-soft); }
+.dz:hover { border-color: var(--accent); background: var(--accent-soft); }
 .dz svg { width: 38px; height: 38px; color: var(--accent); }
 .dz b { display: block; font-size: 16px; margin: 8px 0 4px; }
 .dropzone { position: fixed; inset: 14px; z-index: 60; border: 3px dashed var(--accent); border-radius: 22px; display: grid; place-items: center;
@@ -556,9 +554,6 @@ const LOAD = {
   async dict() { DATA.dict = await api("/api/admin/dictionary"); Shell.refresh(); return DATA.dict; },
   async analyses() { DATA.analyses = await api("/api/admin/analyses"); return DATA.analyses; },
 };
-async function ensure(...names) {
-  await Promise.all(names.map(n => DATA[n] ? null : LOAD[n]().catch(e => { DATA[n] = null; throw e; })));
-}
 function modelState() {
   const L = DATA.llm;
   if (!L) return { state: "unknown", label: "…" };
@@ -794,8 +789,8 @@ const Settings = {
 async function reindex(btn) {
   const done = btn ? busy(btn, "Kuruluyor…") : () => {};
   try {
-    const r = await post("/api/reindex", {});
-    toast("Arama indeksi kuruldu", [`${num(r.columns)} kolon · ${num(r.objects)} tablo · ${(r.elapsed_ms / 1000).toFixed(1)} sn`]);
+    const t0 = performance.now(), r = await post("/api/reindex", {});
+    toast("Arama indeksi kuruldu", [`${num(r.columns)} kolon · ${num(r.objects)} tablo · ${((performance.now() - t0) / 1000).toFixed(1)} sn`]);
     await Promise.all([LOAD.settings(), LOAD.dict().catch(() => {})]);
     route();
   } catch (e) { toast("İndeks kurulamadı", [e.message], true); }
@@ -886,7 +881,7 @@ PAGES.genel = {
 };
 
 // ======================================================================= page: analyses
-const FLOWS = { analist: ["●", "Analist"], "önbellek": ["↻", "Önceki cevap"], "yapılamadı": ["!", "Yapılamadı"], yedek: ["↺", "Kural (eski)"], kural: ["◇", "Kural (eski)"], hata: ["✕", "Hata"], durduruldu: ["■", "Durduruldu"] };
+const FLOWS = { analist: ["●", "Analist"], "önbellek": ["↻", "Önceki cevap"], "yapılamadı": ["!", "Yapılamadı"], hata: ["✕", "Hata"], durduruldu: ["■", "Durduruldu"] };
 function flowChip(f) { const t = FLOWS[f] || ["", f || "—"]; return h("span", { class: "flow " + (f || "") }, t[0], " ", t[1]); }
 function verdictBadge(v, flow) {
   if (!v) return h("span", { class: "vb none" }, flow === "durduruldu" ? "durdu" : "—");
@@ -896,7 +891,7 @@ const PHASES = [
   { name: "Sırada bekleme", cls: "wait", steps: ["Sırada bekleme"], note: "başka bir soru bitene kadar" },
   { name: "Önceki cevap araması", cls: "check", steps: ["Önceki cevap araması"], note: "aynı ya da aynı anlama gelen soru" },
   { name: "Model sunucusu kontrolü", cls: "check", steps: ["Model sunucusu kontrolü"] },
-  { name: "Arama (kural motoru)", cls: "rules", steps: ["Kural motoru ipuçları", "Kural akışı", "Kural akışı (yedek)"], note: "sözlükte kelime araması" },
+  { name: "Arama (kural motoru)", cls: "rules", steps: ["Kural motoru ipuçları"], note: "sözlükte kelime araması" },
   { name: "Analist: tablo seçimi", cls: "pick", steps: ["1. adım — aday seçimi", "Aile araması"], note: "model katalogdan aday tabloları seçer" },
   { name: "Analist: kolonları okuma ve rapor", cls: "write", steps: ["2. adım — kolon okuma ve rapor"], note: "model adayların kolonlarını okur, cevabı yazar" },
 ];
@@ -910,7 +905,7 @@ const Analyses = PAGES.analizler = {
   kpi(rows) {
     const answered = rows.filter(e => e.verdict), found = answered.filter(e => e.verdict !== "BULUNAMADI").length;
     const analyst = rows.filter(e => e.flow === "analist" || e.flow === "önbellek").length, reused = rows.filter(e => e.flow === "önbellek").length;
-    const failed = rows.filter(e => ["yapılamadı", "hata", "yedek", "kural"].includes(e.flow)).length;
+    const failed = rows.filter(e => ["yapılamadı", "hata"].includes(e.flow)).length;
     const ms = rows.filter(e => e.flow === "analist").map(e => e.ms).sort((a, b) => a - b);
     const pct = (a, b) => b ? "%" + Math.round(100 * a / b) : "–";
     return [
@@ -1104,7 +1099,7 @@ function fileSettings(page) {
     secs.map(sec => sec.fields.map(f => Settings.row(Settings.fields[f.key]))),
     pending.length ? h("div", { class: "msg warn" }, `Kaydedilen ayarlar henüz indekste değil (${pending.join(", ")}). `, h("button", { class: "btn sm primary", type: "button", onclick: e => reindex(e.currentTarget) }, "İndeksi yeniden kur")) : null);
 }
-const Dict = PAGES.sozluk = {
+PAGES.sozluk = {
   q: "", group: "", shown: 200,
   async show(arg) {
     const p = $("#p-sozluk");
@@ -1707,7 +1702,7 @@ addEventListener("keydown", e => {
 });
 $("#save").onclick = () => Settings.save();
 $("#revert").onclick = () => Settings.revert();
-addEventListener("beforeunload", e => { if (Settings.changedKeys && DATA.settings && Settings.changedKeys().length) { e.preventDefault(); e.returnValue = ""; } });
+addEventListener("beforeunload", e => { if (DATA.settings && Settings.changedKeys().length) { e.preventDefault(); e.returnValue = ""; } });
 addEventListener("hashchange", route);
 Shell.build();
 Promise.all([LOAD.settings(), LOAD.llm(), LOAD.dict()].map(p => p.catch(() => null))).then(() => Shell.refresh());
