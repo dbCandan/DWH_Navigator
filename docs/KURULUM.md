@@ -136,7 +136,11 @@ Aynı işlemler komut satırından (dosya `data/` altında olmalı):
 ```bash
 docker compose exec vsa vsa-entrypoint dictionary import data/VeriSozlugu.xlsx
 docker compose exec vsa vsa-entrypoint dictionary export data/sozluk_yedek.xlsx
+docker compose restart        # komut satırından içe aktarınca: çalışan arayüz yeni sözlüğü okusun
 ```
+
+Yönetim ekranından içe aktarılan sözlük hemen geçerli olur; komut satırından içe aktarılan ise
+konteyner yeniden başlatılınca.
 
 İçe aktarıldıktan sonra Excel dosyasına gerek yoktur; silinebilir.
 
