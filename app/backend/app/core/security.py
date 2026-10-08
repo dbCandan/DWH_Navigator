@@ -1,7 +1,8 @@
-"""Password hashing and signed JWT access-token primitives."""
+"""Password hashing, one-time passwords, refresh tokens and signed JWT access-token primitives."""
 
+import hashlib
+import hmac
 import secrets
-from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any
@@ -13,30 +14,16 @@ from pwdlib import PasswordHash
 from pydantic import BaseModel, Field, ValidationError
 
 from app.core.config import get_settings
+from app.domain.password_policy import normalize_password
 
 _password_hash = PasswordHash.recommended()
-# rules/58: the baseline login is password-only, so NIST SP 800-63-4 requires at least 15
-# characters, accepts at least 64, and forbids composition rules. The upper bound only caps the
-# hashing work of one request.
-PASSWORD_MIN_LENGTH = 15
-PASSWORD_MAX_LENGTH = 128
-# rules/58 blocklist: widely used passwords long enough to pass the length rule. An organization
-# breached-password service can extend it; this list is only the offline baseline.
-_COMMON_PASSWORDS = frozenset(
-    {
-        "123456789012345",
-        "1234567890123456",
-        "administrator123",
-        "changemechangeme",
-        "iloveyouiloveyou",
-        "letmeinletmein123",
-        "passwordpassword",
-        "password12345678",
-        "qwertyuiopasdfgh",
-        "qwertyuiopasdfghjkl",
-        "welcome123456789",
-    }
-)
+
+# application-foundation 001 Requirement 2: 20 characters of lower-case letters and digits without
+# the easily confused 0, o, 1, l and i. 31 symbols give about 99 bits of randomness.
+ONE_TIME_PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
+ONE_TIME_PASSWORD_LENGTH = 20
+REFRESH_TOKEN_BYTES = 32
+_LOGIN_NAME_DIGEST_CONTEXT = b"dwhnavigator:login-name-digest:v1\0"
 
 
 class TokenClaims(BaseModel):
@@ -54,37 +41,10 @@ class TokenClaims(BaseModel):
     aud: str
 
 
-def validate_password_strength(password: str, *, context: Iterable[str] = ()) -> None:
-    """Apply the baseline bootstrap/password-creation policy.
+def hash_password(password: str) -> str:
+    """Argon2 hash of the NFKC form (never trimmed); the caller applies the policy beforehand."""
 
-    Length counts Unicode characters of the password exactly as entered; spaces and non-ASCII
-    characters are kept and no character-class composition is required. ``context`` carries the
-    account's own identifiers, such as the username, which the password must not contain.
-    """
-
-    if len(password) < PASSWORD_MIN_LENGTH:
-        raise ValueError(f"password must contain at least {PASSWORD_MIN_LENGTH} characters")
-    if len(password) > PASSWORD_MAX_LENGTH:
-        raise ValueError(f"password must contain at most {PASSWORD_MAX_LENGTH} characters")
-    folded = password.casefold()
-    if folded in _COMMON_PASSWORDS or _repeats_a_short_unit(folded):
-        raise ValueError("password is too common")
-    if any(len(word) >= 4 and word.casefold() in folded for word in context):
-        raise ValueError("password must not contain the account name")
-
-
-def _repeats_a_short_unit(value: str) -> bool:
-    """Detect passwords such as ``aaaa...`` or ``abcabc...`` built from one short repeated unit."""
-
-    return any(
-        len(value) % size == 0 and value == value[:size] * (len(value) // size)
-        for size in range(1, 5)
-    )
-
-
-def hash_password(password: str, *, context: Iterable[str] = ()) -> str:
-    validate_password_strength(password, context=context)
-    return _password_hash.hash(password)
+    return _password_hash.hash(normalize_password(password))
 
 
 @lru_cache(maxsize=1)
@@ -99,10 +59,42 @@ def verify_password(password: str, password_hash: str | None) -> bool:
     """
 
     try:
-        verified = _password_hash.verify(password, password_hash or _unknown_account_hash())
+        verified = _password_hash.verify(
+            normalize_password(password), password_hash or _unknown_account_hash()
+        )
     except (ValueError, TypeError):
         return False
     return verified and password_hash is not None
+
+
+def new_one_time_password() -> str:
+    """A CSPRNG one-time password of the Requirement 2 alphabet and length."""
+
+    return "".join(
+        secrets.choice(ONE_TIME_PASSWORD_ALPHABET) for _ in range(ONE_TIME_PASSWORD_LENGTH)
+    )
+
+
+def new_refresh_token() -> str:
+    """Return a CSPRNG refresh token of 256 bits; only its digest is ever stored."""
+
+    return secrets.token_urlsafe(REFRESH_TOKEN_BYTES)
+
+
+def refresh_token_digest(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def login_name_digest(normalized_name: str) -> str:
+    """Keyed digest that lets logs correlate failed attempts without the username.
+
+    The key is derived from the deployment's JWT signing key, so the digest is stable inside one
+    deployment and cannot be reversed by hashing a guessed name without that secret.
+    """
+
+    key_material = get_settings().jwt_private_key.get_secret_value().encode("utf-8")
+    key = hashlib.sha256(_LOGIN_NAME_DIGEST_CONTEXT + key_material).digest()
+    return hmac.new(key, normalized_name.encode("utf-8"), hashlib.sha256).hexdigest()[:16]
 
 
 def create_access_token(

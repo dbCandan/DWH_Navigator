@@ -1,4 +1,7 @@
-"""Password and JWT contract tests."""
+"""Password hashing, one-time password, refresh token and JWT contract tests.
+
+application-foundation/PRDs/001-user-accounts Requirement 1, 2, 6 and 7.
+"""
 
 import hashlib
 import hmac
@@ -18,11 +21,15 @@ from pydantic import ValidationError
 
 from app.core.config import MigrationSettings, Settings, get_settings
 from app.core.security import (
-    PASSWORD_MAX_LENGTH,
-    PASSWORD_MIN_LENGTH,
+    ONE_TIME_PASSWORD_ALPHABET,
+    ONE_TIME_PASSWORD_LENGTH,
     create_access_token,
     decode_access_token,
     hash_password,
+    login_name_digest,
+    new_one_time_password,
+    new_refresh_token,
+    refresh_token_digest,
     verify_password,
 )
 
@@ -191,7 +198,7 @@ def test_hosted_llm_services_fail_configuration_closed(
 
 def test_disabled_llm_tracing_is_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LANGSMITH_TRACING", "false")
-    assert Settings(_env_file=None).environment == "test"
+    assert Settings(_env_file=None).jwt_algorithm == "ES256"
 
 
 def test_migration_settings_require_only_the_database_boundary() -> None:
@@ -221,40 +228,6 @@ def test_unknown_account_fails_verification() -> None:
     assert not verify_password(_password(24), None)
 
 
-def test_password_below_the_password_only_minimum_is_rejected() -> None:
-    assert PASSWORD_MIN_LENGTH == 15
-    with pytest.raises(ValueError, match="at least 15"):
-        hash_password(_password(14))
-
-
-@pytest.mark.parametrize("length", (PASSWORD_MIN_LENGTH, 64, PASSWORD_MAX_LENGTH))
-def test_single_character_class_password_is_accepted(length: int) -> None:
-    password = _password(length)
-    assert verify_password(password, hash_password(password))
-
-
-def test_password_above_the_bound_is_rejected() -> None:
-    assert PASSWORD_MAX_LENGTH >= 64
-    with pytest.raises(ValueError, match="at most"):
-        hash_password(_password(PASSWORD_MAX_LENGTH + 1))
-
-
-@pytest.mark.parametrize(
-    "password",
-    ("PasswordPassword", "a" * 20, "abc" * 6, "1234" * 5),
-    ids=("common", "one-character", "short-unit", "digit-unit"),
-)
-def test_common_and_repetitive_passwords_are_rejected(password: str) -> None:
-    with pytest.raises(ValueError, match="too common"):
-        hash_password(password)
-
-
-def test_password_containing_the_account_name_is_rejected() -> None:
-    username = _password(6)
-    with pytest.raises(ValueError, match="account name"):
-        hash_password(f"{_password(10)}{username.upper()}", context=(username,))
-
-
 def test_password_spaces_and_unicode_are_kept() -> None:
     password = f" {_password(8)} şğüöçı {_password(8)} "
     encoded = hash_password(password)
@@ -262,6 +235,58 @@ def test_password_spaces_and_unicode_are_kept() -> None:
     assert verify_password(password, encoded)
     assert not verify_password(password.strip(), encoded)
     assert not verify_password(password.replace("ş", "s"), encoded)
+
+
+def test_passwords_are_compared_after_nfkc_without_trimming() -> None:
+    # Requirement 1: the composed and the decomposed spelling of "ş" are one password.
+    composed = f"{_password(10)} \u015f{_password(6)} "
+    decomposed = composed.replace("\u015f", "s\u0327")
+    assert composed != decomposed
+    encoded = hash_password(decomposed)
+
+    assert verify_password(composed, encoded)
+    assert not verify_password(composed.strip(), encoded)
+
+
+def test_one_time_password_uses_the_unambiguous_alphabet_and_csprng(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    assert ONE_TIME_PASSWORD_LENGTH == 20
+    assert set(ONE_TIME_PASSWORD_ALPHABET).isdisjoint("0o1li")
+    assert len(set(ONE_TIME_PASSWORD_ALPHABET)) == 31
+    generated = {new_one_time_password() for _ in range(200)}
+    assert len(generated) == 200
+    for value in generated:
+        assert len(value) == ONE_TIME_PASSWORD_LENGTH
+        assert set(value) <= set(ONE_TIME_PASSWORD_ALPHABET)
+
+    calls: list[str] = []
+
+    def recording_choice(sequence: str) -> str:
+        calls.append(sequence)
+        return sequence[0]
+
+    # The generator draws every character from the secrets module (CSPRNG), never from random.
+    monkeypatch.setattr("app.core.security.secrets.choice", recording_choice)
+    assert new_one_time_password() == ONE_TIME_PASSWORD_ALPHABET[0] * 20
+    assert calls == [ONE_TIME_PASSWORD_ALPHABET] * 20
+
+
+def test_refresh_tokens_carry_256_bits_and_only_their_digest_is_kept() -> None:
+    token = new_refresh_token()
+    assert len(token) >= 43
+    assert token != new_refresh_token()
+    digest = refresh_token_digest(token)
+    assert len(digest) == 64 and token not in digest
+    assert digest == hashlib.sha256(token.encode()).hexdigest()
+
+
+def test_login_name_digest_is_stable_keyed_and_never_the_name() -> None:
+    first = login_name_digest("ad.soyad")
+    assert first == login_name_digest("ad.soyad")
+    assert first != login_name_digest("baska.kisi")
+    assert "ad.soyad" not in first
+    assert first != hashlib.sha256(b"ad.soyad").hexdigest()[:16]
 
 
 def test_access_token_round_trip() -> None:
@@ -279,6 +304,21 @@ def test_access_token_round_trip() -> None:
     assert claims.sub == user_id
     assert claims.tenant_id == tenant_id
     assert claims.is_super_admin is True
+    # Requirement 6: 15 minutes, and no password or password state among the claims.
+    assert claims.exp - claims.iat == 15 * 60
+    payload = jwt.decode(token, options={"verify_signature": False})
+    assert set(payload) == {
+        "sub",
+        "username",
+        "tenant_id",
+        "roles",
+        "permissions",
+        "is_super_admin",
+        "iat",
+        "exp",
+        "iss",
+        "aud",
+    }
 
 
 def test_tampered_token_is_rejected() -> None:

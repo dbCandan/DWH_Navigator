@@ -3,6 +3,8 @@
 from dataclasses import dataclass, field
 from uuid import UUID
 
+from app.domain.accounts import role_satisfies
+
 
 @dataclass(frozen=True, slots=True)
 class RequestContext:
@@ -16,6 +18,9 @@ class RequestContext:
     permissions: frozenset[str] = field(default_factory=frozenset)
     is_super_admin: bool = False
     token_invalid: bool = False
+    # Unix time the access token expires; a live event stream opened with it closes then
+    # (application-foundation 001 Requirement 12).
+    token_expires_at: int | None = None
 
     @property
     def is_authenticated(self) -> bool:
@@ -25,4 +30,6 @@ class RequestContext:
         return self.is_super_admin or permission in self.permissions
 
     def has_role(self, role: str) -> bool:
-        return self.is_super_admin or role in self.roles
+        """The super admin passes every role check; ``yonetici`` also meets ``kullanici``."""
+
+        return self.is_super_admin or role_satisfies(self.roles, role)

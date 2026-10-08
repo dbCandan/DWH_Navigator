@@ -45,3 +45,24 @@ class AuditSoftDeleteMixin:
     )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     deleted_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+
+class AppendOnlyAuditMixin:
+    """Operational columns of an append-only stream: rows are inserted, never changed or deleted.
+
+    Such a table carries no update or soft-delete column; its deviation from the full block is
+    stated by the PRD that owns it (rules/41).
+    """
+
+    props: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("now()"),
+    )
+    created_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

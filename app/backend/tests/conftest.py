@@ -1,11 +1,16 @@
 """Safe test defaults loaded before application modules."""
 
 import os
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from sqlalchemy.engine import make_url
+
+if TYPE_CHECKING:
+    from tests.fakes.telemetry import TelemetryCapture
 
 os.environ.setdefault("DWHNAVIGATOR_ENVIRONMENT", "test")
 if not os.environ.get("DWHNAVIGATOR_JWT_PRIVATE_KEY"):
@@ -19,6 +24,11 @@ if not os.environ.get("DWHNAVIGATOR_JWT_PRIVATE_KEY"):
         )
         .decode("ascii")
     )
+# Tests never export telemetry, even inside the Compose backend whose observability overlay sets a
+# collector; they assert signals through the in-memory providers of the telemetry_capture fixture.
+os.environ["DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT"] = ""
+# A start-up password from the developer's app/infra/.env never reaches a test process.
+os.environ.pop("DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_PASSWORD", None)
 # Unit tests never connect; integration runs receive the disposable test database URL explicitly.
 os.environ.setdefault(
     "DWHNAVIGATOR_DATABASE_URL",
@@ -42,3 +52,14 @@ def postgres_database_url() -> str:
     if not database.endswith("_test"):
         pytest.fail("integration tests require a disposable database ending in '_test'")
     return url
+
+
+@pytest.fixture
+def telemetry_capture() -> Iterator["TelemetryCapture"]:
+    """In-memory trace and metric providers for the duration of one test."""
+
+    # Imported here: application modules load only after the safe defaults above.
+    from tests.fakes.telemetry import captured_telemetry
+
+    with captured_telemetry() as capture:
+        yield capture

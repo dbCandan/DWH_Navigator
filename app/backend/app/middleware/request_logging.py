@@ -10,6 +10,10 @@ from fastapi.routing import iter_route_contexts
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 from starlette.routing import Match
+from starlette.types import Scope
+
+from app.core.logging import request_id_var
+from app.core.telemetry import http_server_span
 
 REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 logger = logging.getLogger("app.http")
@@ -36,30 +40,57 @@ def route_template(request: Request) -> str:
     return UNMATCHED_ROUTE
 
 
+def match_route_template(application: object, scope: Scope) -> str:
+    """The template of the route that will serve ``scope``, found before routing runs.
+
+    Middleware that answers before the router (the cross-site guard) names the route this way;
+    a path only some method serves yields that route's template, an unknown path ``unmatched``.
+    """
+
+    routes = getattr(application, "routes", None)
+    if not routes:
+        return UNMATCHED_ROUTE
+    partial = UNMATCHED_ROUTE
+    for context in iter_route_contexts(routes):
+        match, _ = context.matches(scope)
+        if not context.path_format:
+            continue
+        if match is Match.FULL:
+            return context.path_format
+        if match is Match.PARTIAL and partial == UNMATCHED_ROUTE:
+            partial = context.path_format
+    return partial
+
+
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
-    """Log transport metadata only; never log headers, query strings, or bodies."""
+    """Log and trace transport metadata only; never headers, query strings, or bodies."""
 
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         supplied = request.headers.get("x-request-id", "")
         request_id = supplied if REQUEST_ID_RE.fullmatch(supplied) else str(uuid4())
         request.state.request_id = request_id
+        request_id_token = request_id_var.set(request_id)
         started = monotonic()
         status_code = 500
-        try:
-            response = await call_next(request)
-            status_code = response.status_code
-            response.headers["x-request-id"] = request_id
-            return response
-        finally:
-            logger.info(
-                "request.completed",
-                extra={
-                    "structured_fields": {
-                        "duration_ms": round((monotonic() - started) * 1000, 3),
-                        "http_method": request.method,
-                        "http_route": route_template(request),
-                        "http_status": status_code,
-                        "request_id": request_id,
-                    }
-                },
-            )
+        with http_server_span(request.method) as span:
+            try:
+                response = await call_next(request)
+                status_code = response.status_code
+                response.headers["x-request-id"] = request_id
+                return response
+            finally:
+                template = route_template(request)
+                span.complete(template, status_code)
+                logger.info(
+                    "request.completed",
+                    extra={
+                        "structured_fields": {
+                            "duration_ms": round((monotonic() - started) * 1000, 3),
+                            "http_method": request.method,
+                            "http_route": template,
+                            "http_status": status_code,
+                            "request_id": request_id,
+                        }
+                    },
+                )
+                request_id_var.reset(request_id_token)

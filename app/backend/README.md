@@ -34,7 +34,7 @@ export DWHNAVIGATOR_JWT_PRIVATE_KEY="$(sh scripts/dev-secrets.sh jwt-private-key
 cd app/backend
 alembic upgrade head
 python -m app.scripts.create_super_admin
-uvicorn app.main:app --reload
+uvicorn app.main:app --no-server-header --no-access-log --reload
 ```
 
 `DWHNAVIGATOR_DATABASE_URL` zorunludur ve varsayılanı yoktur. Yerel Compose yığınının PostgreSQL
@@ -52,9 +52,17 @@ Doğrulama, gerçek yorumlayıcının Python 3.12 veya daha yeni bir sürüm old
 yolundaki `sys.prefix` değerini, farklı `sys.base_prefix` değerini, `include-system-site-packages=false` ayarını ve pip
 erişimini kapsar. İskelet güncellemesi mevcut ortamı korur; eksik ortam oluşturmaz. `.venv` yerel çalışma zamanı çıktısıdır, güvenlik sandbox'ı değildir.
 
-Oturum açma, `/api/dwhnavigator/v1/auth/login` adresinde JSON `{ "username": "...", "password": "..." }`
-kullanır. Dönen bearer belirteciyle `x-tenant-id` üstbilgisini `/api/dwhnavigator/v1/auth/me` adresine
-gönderin. Oturum açma yanıtı, ana kiracının genel tanımlayıcısını içerir.
+Hesaplar ve oturumun sahibi `specs/application-foundation/PRDs/001-user-accounts/PRD.md`'dir.
+Hesapları süper yönetici `/api/dwhnavigator/v1/admin/users` uçlarıyla açar; uygulama her açılış ve
+sıfırlamada tek kullanımlık bir parola üretir ve onu yalnız o yanıtta bir kez döndürür. Kişi ilk
+girişte `/api/dwhnavigator/v1/auth/password` ile (`username`, `current_password`, `new_password`)
+kendi parolasını belirler; o zamana kadar `/auth/login` `403 password_change_required` döner. Giriş
+yalnız kullanıcı adıyla yapılır (`{ "username": "...", "password": "..." }`). Başarılı giriş ve
+parola değişikliği 15 dakikalık erişim belirtecini ve yalnız `/api/dwhnavigator/v1/auth` yolunda
+taşınan `dwhnavigator_refresh` çerezini (`Secure`, `HttpOnly`, `SameSite=Strict`) verir;
+`/auth/refresh` çerezi her kullanımda yeniler, `/auth/logout` oturumu sunucuda kapatır. Belirteçle
+birlikte `x-tenant-id` üstbilgisini gönderin; giriş yanıtı kiracının genel tanımlayıcısını içerir.
+Hatalar tek zarfla döner: `{"detail":{"code":"...","message":"..."}}`.
 
 Erişim belirteci `rules/58` kurumsal profiline göre asimetrik imzalanır: varsayılan `ES256` (P-256),
 seçenek olarak en az 2048 bit anahtarla `RS256`. `DWHNAVIGATOR_JWT_PRIVATE_KEY` şifresiz PEM özel
@@ -67,16 +75,25 @@ oluşturulan tek kullanımlık geliştirme anahtarını kullanır. Dağıtılmı
 sonra kümedekini kullanır). Üretim ortamında anahtarın üretimi, dönüşümü ve iptali kurum anahtar
 yönetimine ve insan onayına aittir.
 
-Parola politikası `app/core/security.py` içindedir: yalnız parolayla girilen bu akışta en az 15, en
-çok 128 karakter; büyük/küçük harf, rakam veya özel karakter zorunluluğu yoktur, boşluk ve Unicode
-karakterler olduğu gibi korunur. Çok kullanılan parolalar, `aaaa…` ya da `abcabc…` gibi tekrarlar ve
-kullanıcı adını içeren parolalar reddedilir. Olmayan kullanıcı için de bir parola doğrulaması yapılır;
-yanıt süresi kullanıcı adının var olup olmadığını ele vermez.
+Parola politikası `app/domain/password_policy.py` içindedir: parola NFKC ile normalleştirilir ama
+kırpılmaz; en az 15, en çok 128 karakterdir; büyük/küçük harf, rakam veya özel karakter zorunluluğu
+yoktur, boşluk ve Türkçe harfler korunur. `app/domain/common_passwords.txt` çevrimdışı yaygın ve
+ihlal edilmiş parola listesindeki, `aaaa…` ya da `abcabc…` gibi tekrarlardan oluşan, kullanıcı adını,
+görünen addaki dört ve daha uzun karakterli bir sözcüğü ya da ürün adını içeren ve şimdiki parolayla
+aynı olan parolalar reddedilir. Olmayan kullanıcı için de bir parola doğrulaması yapılır; yanıt süresi
+kullanıcı adının var olup olmadığını ele vermez.
 
-Aynı kullanıcı adıyla aynı adresten 15 dakikada 5 hatalı girişten sonra oturum açma `429` ve
-`Retry-After` döner; başarılı giriş sayacı sıfırlar (`app/core/login_throttle.py`). Sayaç her süreçte
-ayrıdır ve ters vekil arkasında vekilin adresini görür; birden çok kopya için ortak sınır giriş
-katmanında (ingress/WAF) kurulur ve bu bir işletim kararıdır.
+Giriş ve parola değiştirme aynı sayaçları kullanır: aynı kullanıcı adı ve adresten 15 dakikada 5,
+aynı adresten 15 dakikada 30 hatalı denemeden sonra `429` ve `Retry-After` döner; başarılı giriş
+kullanıcı adı sayacını sıfırlar (`app/core/login_throttle.py`). İstemci adresi yalnız
+`DWHNAVIGATOR_TRUSTED_PROXY_CIDRS` içindeki giriş denetleyicisinden gelen `X-Forwarded-For`'dan
+alınır. Sayaçlar süreç içindedir; arka uç tek kopya çalışır.
+
+Süper yönetici `python -m app.scripts.create_super_admin` ile açılır ya da sıfırlanır; komut parolayı
+yalnız istemden veya `--password-stdin` ile okur. `DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_PASSWORD`
+verilirse arka uç açılışta `DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_USERNAME` adlı hesabı bir kez açar ve
+var olan hesaba dokunmaz. İki yolda da verilen parola tek kullanımlıktır; hesap ilk girişte kendi
+parolasını belirler.
 
 Canlılık (`/api/dwhnavigator/v1/liveness`) veritabanına bakmaz. Hazır olma (`/api/dwhnavigator/v1/readiness`),
 çalışma zamanı veritabanı rolü bağlanana ve veritabanındaki Alembic sürümü imajla gelen son geçişe

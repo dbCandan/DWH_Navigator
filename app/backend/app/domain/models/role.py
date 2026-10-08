@@ -15,8 +15,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base_class import Base
 from app.domain.models.mixins import AuditSoftDeleteMixin, new_public_id
 
-SUPER_ADMIN_ROLE = "super_admin"
-
 
 class Role(AuditSoftDeleteMixin, Base):
     __tablename__ = "app_role"

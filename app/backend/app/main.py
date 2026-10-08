@@ -1,31 +1,52 @@
-"""FastAPI application factory for the neutral platform baseline."""
+"""FastAPI application factory."""
 
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+import asyncio
+import contextlib
+from collections.abc import AsyncIterator, Callable
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import router
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
+from app.core.errors import install_error_handlers
 from app.core.logging import configure_logging
+from app.core.telemetry import configure_telemetry
 from app.db.readiness import packaged_schema
-from app.db.session import engine
+from app.db.session import async_session_factory, engine
+from app.middleware.cross_site import CrossSiteRequestMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
+from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.tenant_context import TenantContextMiddleware
+from app.services.super_admin_service import run_super_admin_bootstrap
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    # Readiness compares the database with the migration head shipped in this image; reading it at
-    # startup stops an image without its migrations before it serves.
-    packaged_schema()
-    yield
-    await engine.dispose()
+def _lifespan(settings: Settings) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        # Readiness compares the database with the migration head shipped in this image; reading
+        # it at startup stops an image without its migrations before it serves.
+        packaged_schema()
+        telemetry_export = configure_telemetry(settings)
+        # application-foundation 001 Requirement 17: creates the configured super admin once; it
+        # retries in the background while a first installation is still migrating.
+        bootstrap = asyncio.create_task(run_super_admin_bootstrap(async_session_factory, settings))
+        try:
+            yield
+        finally:
+            bootstrap.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await bootstrap
+            await engine.dispose()
+            if telemetry_export is not None:
+                telemetry_export.shutdown()
+
+    return lifespan
 
 
-def create_application() -> FastAPI:
-    settings = get_settings()
+def create_application(settings: Settings | None = None) -> FastAPI:
+    settings = settings or get_settings()
     configure_logging(settings.log_level)
     application = FastAPI(
         title=settings.project_name,
@@ -33,20 +54,24 @@ def create_application() -> FastAPI:
         description="Platform API for dwhnavigator",
         docs_url="/docs",
         openapi_url="/openapi.json",
-        lifespan=lifespan,
+        lifespan=_lifespan(settings),
     )
-    # Register tenant context first; Starlette makes the later CORS middleware outermost,
-    # so even authorization failures receive the browser-facing CORS headers.
+    # Starlette makes the middleware added last the outermost. From the outside in: security
+    # headers and the 500 envelope, request logging and tracing, CORS, the cross-site guard (before
+    # any tenant or session check) and the tenant context.
     application.add_middleware(TenantContextMiddleware)
+    application.add_middleware(CrossSiteRequestMiddleware)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_allow_origins_list,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
-        expose_headers=["WWW-Authenticate", "X-Request-ID"],
+        expose_headers=["WWW-Authenticate", "X-Request-ID", "Retry-After"],
     )
     application.add_middleware(RequestLoggingMiddleware)
+    application.add_middleware(SecurityHeadersMiddleware)
+    install_error_handlers(application)
     application.include_router(router)
     return application
 
