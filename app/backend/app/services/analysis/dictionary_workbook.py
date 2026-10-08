@@ -3,8 +3,8 @@
 Records keep the template's own column names and cell texts, so the stored dictionary is
 parsed by the very code that parses the workbook (``loader.build_columns`` /
 ``object_profiles``) and an export gives the template back. The validation order, the
-messages, the content digest and the version are the source's. Pure: the workbook comes as
-bytes and the records go to and come from PostgreSQL through the caller.
+messages, the content digest and the version are the source's. The workbook comes as
+bytes and goes out as bytes; the records go to and come from PostgreSQL through the caller.
 """
 
 from __future__ import annotations
@@ -14,7 +14,10 @@ import json
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 
+from openpyxl import Workbook
+
 from app.domain.analysis import Dictionary
+from app.infrastructure.excel.writer import formulas_as_text, workbook_bytes
 from app.services.analysis.loader import (
     OBJECTS_SHEET,
     TooManyRows,
@@ -77,16 +80,31 @@ def _texts(rows: Iterable[Mapping[str, object]], fields: Sequence[str]) -> list[
 # --------------------------------------------------------------------------- import
 
 
+def too_many_rows() -> ValueError:
+    limit = f"{MAX_IMPORT_ROWS:,}".replace(",", ".")
+    return ValueError(f"Dosyada çok fazla satır var (en fazla {limit}).")
+
+
+def unreadable() -> ValueError:
+    return ValueError("Dosya Excel (.xlsx) olarak okunamadı.")
+
+
 def from_workbook(data: bytes) -> WorkbookImport:
     """A workbook in the dictionary template -> store records, checked the way the app
     reads a dictionary. Raises ValueError (Turkish) when the file does not fit."""
     try:
         sheets = read_workbook(data, MAX_IMPORT_ROWS + 1)
     except TooManyRows:
-        limit = f"{MAX_IMPORT_ROWS:,}".replace(",", ".")
-        raise ValueError(f"Dosyada çok fazla satır var (en fazla {limit}).") from None
+        raise too_many_rows() from None
     except Exception as exc:  # not an Excel file, a damaged one…
-        raise ValueError("Dosya Excel (.xlsx) olarak okunamadı.") from exc
+        raise unreadable() from exc
+    return from_sheets(sheets, data)
+
+
+def from_sheets(sheets: Mapping[str, Sequence[Sequence[object]]], data: bytes) -> WorkbookImport:
+    """The checks and records of ``from_workbook`` over sheets already read: every sheet
+    name of the workbook, with the rows of the template's sheets (dictionary-management
+    Requirement 2 reads no other sheet)."""
     if COLUMNS_SHEET not in sheets:
         found = ", ".join(sheets) or "-"
         raise ValueError(f"“{COLUMNS_SHEET}” sayfası yok (dosyadaki sayfalar: {found}). "
@@ -122,6 +140,13 @@ def from_workbook(data: bytes) -> WorkbookImport:
 # --------------------------------------------------------------------------- read
 
 
+def records_digest(
+    objects: Sequence[Mapping[str, str]], columns: Sequence[Mapping[str, str]]
+) -> str:
+    """The content digest of stored records (the source's ``_digest``)."""
+    return _digest(objects, columns)
+
+
 def load_dictionary(
     objects: Sequence[Mapping[str, str]],
     columns: Sequence[Mapping[str, str]],
@@ -141,3 +166,31 @@ def load_dictionary(
 def empty_dictionary() -> Dictionary:
     """No dictionary imported yet: the app starts and says so (ADR-050)."""
     return Dictionary([], SOURCE_NAME, "", [], {})
+
+
+# --------------------------------------------------------------------------- export
+
+
+def _sheet(
+    wb: Workbook, title: str, fields: Sequence[str], rows: Sequence[Mapping[str, str]]
+) -> None:
+    ws = wb.create_sheet(title)
+    extra = [k for r in rows for k in r if k not in fields]
+    header = [*fields, *dict.fromkeys(extra)]  # columns the template does not know stay
+    ws.append(header)
+    for r in rows:
+        ws.append([r.get(h) or None for h in header])
+    formulas_as_text(ws)
+    ws.freeze_panes = "A2"
+
+
+def export(
+    objects: Sequence[Mapping[str, str]] | None, columns: Sequence[Mapping[str, str]] | None
+) -> bytes:
+    """Stored records in the dictionary template (Objeler · Kolonlar) as workbook bytes;
+    ``None``: the empty template."""
+    wb = Workbook()
+    wb.remove(wb.worksheets[0])
+    _sheet(wb, OBJECTS_SHEET, OBJECT_FIELDS, objects or [])
+    _sheet(wb, COLUMNS_SHEET, COLUMN_FIELDS, columns or [])
+    return workbook_bytes(wb)
