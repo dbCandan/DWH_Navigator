@@ -27,7 +27,10 @@ export function formatDuration(milliseconds: number | null | undefined, t: Trans
   return t('common.duration.minutes', {minutes, seconds: String(seconds).padStart(2, '0')});
 }
 
-/** "bugün 14:05", else "08.10 14:05" (with the year when it is not this year); admin.html when(). */
+/**
+ * "bugün 14:05", else "08/10 14:05" (with the year, "08.10.2025 14:05", when it is not this year);
+ * admin.html when().
+ */
 export function formatWhen(iso: string, t: Translate, now: Date = new Date()): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;

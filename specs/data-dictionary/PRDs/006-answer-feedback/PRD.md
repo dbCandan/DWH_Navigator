@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.0
+Version: 1.0.1
 
 Acceptance date: 2026-10-08
 
@@ -290,7 +290,7 @@ döner.
 
 | Uç | Yetki | Başarı | Hatalar |
 |---|---|---|---|
-| `POST /votes` | `kullanici`, `yonetici` | 201 → `votes` (`up`, `down`, `support`, `status`, `reasons[]`) ya da `null`, `answer_rejected`, `forgotten` | 401; 403 rol; 422 biçim ve bilinmeyen alan; 422 `vote_table_unknown` |
+| `POST /votes` | `kullanici`, `yonetici` | 201 → `votes` (`up`, `down`, `support`, `status`, `reasons[]`) ya da `null`, `answer_rejected`, `forgotten` | 401; 403 rol; 422 biçim ve bilinmeyen alan; 422 `vote_table_unknown`; 503 `search_index_not_ready` (açılışta ilk arama indeksi kurulana kadar; "Arama indeksi hazırlanıyor; biraz sonra yeniden deneyin.") |
 
 Cevaba eklenen alanlar (cevap döndüren uçlarda: [question-analysis](../004-question-analysis/PRD.md)
 cevapları ve [list-search](../005-list-search/PRD.md) terim ayrıntısı; bu PRD'nin Requirement 7'si):

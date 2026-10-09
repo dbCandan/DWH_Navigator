@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.1
+Version: 1.0.2
 
 Acceptance date: 2026-10-08
 
@@ -334,8 +334,9 @@ Requirement 15: "Son 7 gün" kartı, son 7×24 saatin kayıtları için dört g�
   "–" ve "yeni analiz yok".
 
 Payda sıfırsa gösterge "–"dir. Göstergelerin altında son 14 günün yığılmış çubuk grafiği (her gün
-"tablo önerildi" ve "önerilmedi / cevaplanamadı" iki parçadır; çubuğun ipucu "gg.aa: N soru (x tablo
-önerildi, y önerilmedi)"; tarih etiketi iki günde bir) ve "Tüm analizler" bağlantısı vardır. "Son
+"tablo önerildi" ve "önerilmedi / cevaplanamadı" iki parçadır; çubuğun ipucu "<gün/ay>: N soru (x tablo
+önerildi, y önerilmedi)"; gün ve ay iki hanelidir ve tarayıcının Türkçe kısa tarihiyle yazılır, ör.
+"27/09"; tarih etiketi aynı biçimde iki günde bir) ve "Tüm analizler" bağlantısı vardır. "Son
 sorular" kartı en yeni 100 kaydı zaman, sonuç rozeti, soru ve akış etiketiyle listeler; satır kaydın
 ayrıntısını Analizler sayfasında açar; kayıt yoksa "Henüz soru sorulmadı." yazar. **Yeni davranış:**
 `interrupted` kaynakta yoktu; "cevaplanamadı" sayısına ve grafiğin ikinci parçasına girer.
@@ -421,8 +422,8 @@ Sonunda liste ve göstergeler yeniden yüklenir.
 Requirement 23: İki sayfanın bütün metinleri kaynaktaki Türkçe metinlerdir ve
 `app/frontend/src/locales/tr.json` kataloğundadır; akış etiketleri "● Analist", "↻ Önceki cevap", "!
 Yapılamadı", "■ Durduruldu", "✕ Hata" ve yeni "↯ Yarıda kesildi"dir. Zaman, süre ve sayı biçimleri
-Türkçe yerel ayarıyla kaynaktaki gibidir: bugünkü zaman "bugün 14:05", bu yılın tarihi "08.10
-14:05", önceki yılın tarihi "08.10.2025 14:05"; süre 1 saniyeden kısaysa "850 ms", 10 saniyeden
+Türkçe yerel ayarıyla kaynaktaki gibidir: bugünkü zaman "bugün 14:05", bu yılın tarihi "08/10
+14:05", önceki yılın tarihi "08.10.2025 14:05" (tarayıcının Türkçe kısa tarihleri); süre 1 saniyeden kısaysa "850 ms", 10 saniyeden
 kısaysa "4,5 sn", 1 dakikadan kısaysa "45 sn", değilse "2 dk 05 sn"; token sayısı "950", "12,3 k",
 "1,2 M"; sayılar "1.234". Masaüstünde sayfa tek ekrandır ve uzun listeler kendi içinde kayar
 (search-settings Requirement 25). İki sayfanın görünümü kaynaktaki `admin.html` ile birebir aynıdır;

@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.0
+Version: 1.0.1
 
 Acceptance date: 2026-10-08
 
@@ -209,7 +209,12 @@ okunur."
 Requirement 4: Kurumda çalışan bir liste varsa yeni liste dosya okunmadan 409 `term_list_running`
 alır. İleti, çalışan liste isteği yapanınsa "Bir liste zaten çalışıyor; bitmesini bekleyin ya da
 durdurun.", başkasınınsa "Başka bir kullanıcının listesi çalışıyor; bitince yeniden deneyin."
-olur; başkasının listesinin adı ve sahibi söylenmez. Okuma başarılıysa tek işlemde liste kaydı
+olur; başkasının listesinin adı ve sahibi söylenmez. Çalışan liste yoksa ve açılışta ilk arama
+indeksi henüz kurulmadıysa dosya okunmadan 503 `search_index_not_ready` ("Arama indeksi
+hazırlanıyor; biraz sonra yeniden deneyin.") döner; uygulama kapanırken 503 `analysis_unavailable`
+döner ([question-analysis](../004-question-analysis/PRD.md)). Boş gövde de dosya olarak okunur ve
+"Dosya Excel (.xlsx) olarak okunamadı." iletisiyle 422 `term_list_not_xlsx` alır (kaynakla aynı).
+Okuma başarılıysa tek işlemde liste kaydı
 (dışa açık kimlik `public_id`, sahip olarak oturumdaki kullanıcı, dosya adı, başlık, okuma notları,
 terim sayısı, başlangıçtaki sözlük sürümü, durum "sürüyor",
 başlangıç zamanı) ve terimleri sırayla yazılır; yanıt 201 ve Requirement 7'deki anlık durumdur;
@@ -388,14 +393,14 @@ okuyucusundadır.
 
 | Uç | Yetki | Başarı | Hatalar |
 |---|---|---|---|
-| `POST /term-lists` (ham Excel gövdesi, `X-Filename`) | `kullanici`, `yonetici` | 201 → anlık durum (Requirement 7) | 401; 403 rol; 409 `term_list_running`; 413 `upload_too_large`; 415 `unsupported_media_type`; 422 `term_list_not_xlsx`, `term_list_too_large_unpacked`, `term_list_too_many_rows`, `term_list_layout_invalid`, `term_list_term_too_long`, `term_list_too_many_terms` |
+| `POST /term-lists` (ham Excel gövdesi, `X-Filename`) | `kullanici`, `yonetici` | 201 → anlık durum (Requirement 7) | 401; 403 rol; 409 `term_list_running`; 413 `upload_too_large`; 415 `unsupported_media_type`; 422 `term_list_not_xlsx`, `term_list_too_large_unpacked`, `term_list_too_many_rows`, `term_list_layout_invalid`, `term_list_term_too_long`, `term_list_too_many_terms`; 503 `search_index_not_ready`, `analysis_unavailable` |
 | `GET /term-lists?page=&page_size=` | `kullanici`, `yonetici` (yalnız kendi listeleri) | 200 → satırlar (`id`, `name`, `owner`, `status`, `stop_requested`, `total`, `done`, `created_at`, `finished_at`) ve sayfa bilgisi (`page`, `page_size`, `total`) | 401; 422 |
 | `GET /term-lists/{list_id}` | sahip | 200 → anlık durum | 401; 404 `term_list_not_found` |
 | `GET /term-lists/{list_id}/items/{position}` | sahip | 200 → terimin tam cevabı (question-analysis cevap biçimi ve answer-feedback alanları) | 401; 404 `term_list_not_found`, `term_list_item_not_answered` |
 | `GET /term-lists/{list_id}/items/{position}/report` | sahip | 200 → terimin tek soru Excel raporu (indirme dosyası) | 401; 404 `term_list_not_found`, `term_list_item_not_answered` |
 | `GET /term-lists/{list_id}/report` | sahip | 200 → liste Excel raporu (indirme dosyası) | 401; 404 `term_list_not_found` |
 | `POST /term-lists/{list_id}/cancel` | sahip | 200 → anlık durum (`stop_requested: true`; çalışmayan listede değişmeden) | 401; 404 `term_list_not_found` |
-| `POST /term-lists/{list_id}/resume` | sahip | 200 → anlık durum (zaten çalışıyorsa değişmeden) | 401; 404 `term_list_not_found`; 409 `term_list_running`, `term_list_nothing_to_resume` |
+| `POST /term-lists/{list_id}/resume` | sahip | 200 → anlık durum (zaten çalışıyorsa değişmeden) | 401; 404 `term_list_not_found`; 409 `term_list_running`, `term_list_nothing_to_resume`; 503 `search_index_not_ready`, `analysis_unavailable` |
 
 Anlık durum alanları: `id`, `name`, `owner` (`public_id`, `display_name`), `header`, `notes[]`,
 `status` (`running`, `completed`, `cancelled`, `interrupted`), `stop_requested`, `total`, `done`,
@@ -462,8 +467,11 @@ Kaldırılan uçlar: kaynaktaki `POST /api/list`, `GET /api/list/<id>`,
   kimliği, durum, analist, kayıtlı cevap, analiz yapılamadı ve hata sayıları, çalışma süresi),
   `term_list.interrupted` (liste kimliği, sebep `shutdown`, `startup` ya da `check`),
   `term_list.upload_rejected` (hata kodu), `term_list.report_downloaded` (liste kimliği, tür `list`
-  ya da `item`). Terim metni, dosya
-  adı, başlık, cevap, tablo ve kolon adı yazılmaz.
+  ya da `item`), `term_list.term_failed` (liste kimliği, hata sınıfının adı; terim analiz sırasına
+  verilemedi ve `error` oldu), `term_list.run_failed` (liste kimliği, hata sınıfının adı; liste görevi
+  beklenmedik biçimde sonlandı, dakikalık denetim listeyi yarıda keser). Terim metni, dosya
+  adı, başlık, cevap, tablo ve kolon adı yazılmaz. Arka planda yürüyen listenin olayları listeyi
+  başlatan ya da sürdüren isteğin istek kimliğini (`request_id`) taşır.
 - Ölçümler: başlatılan listeler `dwhnavigator_term_lists_started_total`; biten listeler
   `dwhnavigator_term_lists_finished_total{status}` (`status`: `completed`, `cancelled`,
   `interrupted`); biten terimler `dwhnavigator_term_list_terms_total{outcome}` (`outcome`:
