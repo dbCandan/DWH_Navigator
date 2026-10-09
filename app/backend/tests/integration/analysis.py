@@ -24,6 +24,7 @@ from app.services.analysis.jobs import AnalysisJobs
 from app.services.analysis.saved_answers import SavedAnswers
 from app.services.answer_feedback import AnswerVotes
 from app.services.llm_connections import ConnectionKeys, LlmGateway
+from app.services.term_lists import TermLists
 from tests.fakes.analyst_server import AnalystServer
 from tests.fakes.llm_server import FakeLlmServer
 from tests.integration.conftest import SignedIn
@@ -38,6 +39,7 @@ async def local_resolver(host: str, port: int) -> list[str]:
 
 
 async def reset_analyses() -> None:
+    await sql("DELETE FROM term_list")
     await sql("DELETE FROM answer_vote")
     await sql("DELETE FROM saved_answer")
     await sql("DELETE FROM analysis_record")
@@ -107,6 +109,7 @@ class Qa:
     adapter: OpenAICompatibleAdapter
     gateway: LlmGateway
     jobs: AnalysisJobs
+    lists: TermLists
     user: SignedIn
     other: SignedIn
     streams: list[Live] = field(default_factory=list)
@@ -252,22 +255,25 @@ async def qa_harness(
         overlay=votes,
         **options,
     )
-    previous = app.state.analysis_jobs, app.state.answer_votes
-    app.state.analysis_jobs, app.state.answer_votes = jobs, votes
+    lists = TermLists(jobs=jobs, session_factory=async_session_factory)
+    previous = app.state.analysis_jobs, app.state.answer_votes, app.state.term_lists
+    app.state.analysis_jobs, app.state.answer_votes, app.state.term_lists = jobs, votes, lists
     user = await dd.auth.account(dd.admin, "kullanici")
     other = await dd.auth.account(dd.admin, "kullanici")
     try:
         async with live_server() as base, httpx.AsyncClient(base_url=base, timeout=30.0) as http:
-            qa = Qa(dd, http, model, adapter, gateway, jobs, user, other)
+            qa = Qa(dd, http, model, adapter, gateway, jobs, lists, user, other)
             try:
                 yield qa
             finally:
                 await qa.close_streams()
                 if model.hold is not None:
                     model.hold.set()
+                lists.closing = True
                 await jobs.shutdown(wait_seconds=5.0)
+                await lists.shutdown()
     finally:
-        app.state.analysis_jobs, app.state.answer_votes = previous
+        app.state.analysis_jobs, app.state.answer_votes, app.state.term_lists = previous
         await fake.close()
 
 

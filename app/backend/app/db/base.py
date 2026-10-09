@@ -17,6 +17,7 @@ from app.domain.models.role import Role, UserRole  # noqa: F401
 from app.domain.models.saved_answer import SavedAnswer  # noqa: F401
 from app.domain.models.search_setting import SearchSetting  # noqa: F401
 from app.domain.models.tenant import Tenant  # noqa: F401
+from app.domain.models.term_list import TermList, TermListItem  # noqa: F401
 from app.domain.models.user import User  # noqa: F401
 from app.domain.models.user_change import UserChange  # noqa: F401
 from app.domain.models.vocabulary import (  # noqa: F401

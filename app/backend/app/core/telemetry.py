@@ -116,6 +116,24 @@ SAVED_ANSWER_LOOKUP_RESULTS = frozenset(
 SAVED_ANSWER_WRITE_RESULTS = frozenset({"stored", "skipped", "error"})
 REPORT_RESULTS = frozenset({"ok", "error"})
 
+# Fixed label sets of data-dictionary/PRDs/005-list-search.
+TERM_LIST_STATUSES = frozenset({"completed", "cancelled", "interrupted"})
+TERM_LIST_TERM_OUTCOMES = frozenset({"analyst", "reused", "unavailable", "error"})
+TERM_LIST_REJECT_REASONS = frozenset(
+    {
+        "upload_too_large",
+        "unsupported_media_type",
+        "term_list_not_xlsx",
+        "term_list_too_large_unpacked",
+        "term_list_too_many_rows",
+        "term_list_layout_invalid",
+        "term_list_term_too_long",
+        "term_list_too_many_terms",
+        "term_list_running",
+    }
+)
+TERM_LIST_REPORT_KINDS = frozenset({"list", "item"})
+
 # Fixed label sets of data-dictionary/PRDs/006-answer-feedback.
 FEEDBACK_SCOPES = frozenset({"table", "answer"})
 FEEDBACK_VOTES = frozenset({"up", "down"})
@@ -324,6 +342,37 @@ class _Instruments:
             "dwhnavigator_analysis_records_deleted_total",
             unit="{record}",
             description="Analysis records a manager deleted",
+        )
+        # data-dictionary/PRDs/005-list-search
+        self.term_lists_started = meter.create_counter(
+            "dwhnavigator_term_lists_started_total",
+            unit="{list}",
+            description="Term lists started",
+        )
+        self.term_lists_finished = meter.create_counter(
+            "dwhnavigator_term_lists_finished_total",
+            unit="{list}",
+            description="Term lists that stopped running, by status",
+        )
+        self.term_list_terms = meter.create_counter(
+            "dwhnavigator_term_list_terms_total",
+            unit="{term}",
+            description="Terms of term lists that ended, by outcome (a stopped term is not counted)",
+        )
+        self.term_list_uploads_rejected = meter.create_counter(
+            "dwhnavigator_term_list_uploads_rejected_total",
+            unit="{upload}",
+            description="Term list uploads refused, by reason",
+        )
+        self.term_lists_running = meter.create_up_down_counter(
+            "dwhnavigator_term_lists_running",
+            unit="{list}",
+            description="Term lists running in this process (0 or 1)",
+        )
+        self.term_list_reports = meter.create_counter(
+            "dwhnavigator_term_list_reports_total",
+            unit="{report}",
+            description="Term list and term Excel reports downloaded, by kind",
         )
         # data-dictionary/PRDs/006-answer-feedback
         self.feedback_votes = meter.create_counter(
@@ -870,6 +919,37 @@ def record_analysis_report(result: str) -> None:
 def record_analysis_records_deleted(count: int) -> None:
     if count:
         _signals.instruments.analysis_records_deleted.add(count)
+
+
+# --- Term lists (data-dictionary/PRDs/005-list-search) ------------------------------------------
+
+
+def record_term_list_started() -> None:
+    _signals.instruments.term_lists_started.add(1)
+
+
+def record_term_list_finished(status: str) -> None:
+    _signals.instruments.term_lists_finished.add(1, {"status": bounded(status, TERM_LIST_STATUSES)})
+
+
+def record_term_list_term(outcome: str) -> None:
+    _signals.instruments.term_list_terms.add(
+        1, {"outcome": bounded(outcome, TERM_LIST_TERM_OUTCOMES)}
+    )
+
+
+def record_term_list_upload_rejected(reason: str) -> None:
+    _signals.instruments.term_list_uploads_rejected.add(
+        1, {"reason": bounded(reason, TERM_LIST_REJECT_REASONS)}
+    )
+
+
+def term_lists_running_changed(delta: int) -> None:
+    _signals.instruments.term_lists_running.add(delta)
+
+
+def record_term_list_report(kind: str) -> None:
+    _signals.instruments.term_list_reports.add(1, {"kind": bounded(kind, TERM_LIST_REPORT_KINDS)})
 
 
 # --- Votes (data-dictionary/PRDs/006-answer-feedback) -------------------------------------------

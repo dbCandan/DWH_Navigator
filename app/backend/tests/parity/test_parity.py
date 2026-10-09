@@ -18,16 +18,10 @@ pytestmark = pytest.mark.unit
 
 # Constants the target leaves to the capability that ports them with its own reader.
 SOURCE_ONLY = {
-    "vsa.loader": {  # word lists (vocabulary-management) and term lists (list-search)
+    "vsa.loader": {  # word lists (vocabulary-management)
         "MAX_LIST_ITEMS",
         "WORD_SHEETS",
         "_EQUIVALENT_SPLIT",
-        "MAX_TERMS",
-        "MAX_TERM_CHARS",
-        "MAX_LIST_ROWS",
-        "MAX_LIST_COLUMNS",
-        "_HEADER_WORDS",
-        "TERM_FORMAT",
     },
     "vsa.dictionary_store": {"FORMAT"},  # the jsonl store; the target keeps it in PostgreSQL
 }

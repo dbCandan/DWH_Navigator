@@ -230,11 +230,13 @@ def target_constants() -> dict[str, Any]:
 
 
 # Collector module -> its snapshot file: the source's settings schema and word list behaviour
-# (admin), the dictionary explorer (explorer) and the vote weighting (votes).
+# (admin), the dictionary explorer (explorer), the vote weighting (votes) and the term list's
+# reading and report (term_lists).
 COLLECTORS = {
     "admin": "admin.json",
     "explorer": "explorer.json",
     "votes": "votes.json",
+    "term_lists": "term_lists.json",
 }
 
 

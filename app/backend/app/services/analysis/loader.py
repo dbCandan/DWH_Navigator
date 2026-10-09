@@ -1,9 +1,12 @@
-"""Parsing the dictionary template (dictionary-management Decision 1).
+"""Parsing the dictionary template (dictionary-management Decision 1) and term lists
+(list-search Requirement 1-3, Decision 10).
 
 The parsing helpers are pure and byte-for-byte the source's: header mapping, cell texts,
-synonym splitting, the KVKK mark, dataset groups, object profiles, row warnings and the
-version. A workbook is read from its bytes in memory with openpyxl (read-only, values only;
-openpyxl parses the XML with defusedxml); nothing touches the file system.
+synonym splitting, the KVKK mark, dataset groups, object profiles, row warnings, the
+version and the term list rules (``parse_term_sheet``). A workbook is read from its bytes in
+memory with openpyxl (read-only, values only; openpyxl parses the XML with defusedxml); a term
+list is opened by the shared safe Excel reader, which bounds its unpacked size. Nothing touches
+the file system.
 """
 
 from __future__ import annotations
@@ -12,12 +15,23 @@ import hashlib
 import math
 import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
+from dataclasses import dataclass
 from io import BytesIO
 
 from openpyxl import load_workbook
 
+from app.domain import dictionary as dictionary_domain
 from app.domain.analysis import DictColumn, ObjectProfile
+from app.domain.term_lists import Rejection, TermListRejected
 from app.domain.turkish_text import fold
+from app.infrastructure.excel.reader import (
+    TooManyRows as SheetTooManyRows,
+)
+from app.infrastructure.excel.reader import (
+    WorkbookTooLarge,
+    WorkbookUnreadable,
+    open_workbook,
+)
 
 _PII_MARKER = re.compile(r"kvkk|kişisel\s+veri", re.IGNORECASE)
 
@@ -209,3 +223,135 @@ def read_workbook(
         }
     finally:
         book.close()
+
+
+# --------------------------------------------------------------------------- list search input
+
+MAX_TERMS = 200  # one list is one sitting; a longer one is split by the user
+MAX_TERM_CHARS = 500  # longer cells are pasted paragraphs, not search terms
+MAX_LIST_ROWS = MAX_TERMS * 10  # blank and repeated rows included
+MAX_LIST_COLUMNS = 50  # wide enough to see that a list is not one column
+_HEADER_WORDS = frozenset({
+    "terim", "terimler", "talep", "talepler", "soru", "sorular", "arama", "kavram", "kavramlar",
+    "term", "terms", "query", "queries", "request", "requests", "liste", "aranacak",
+    "aranacaklar", "ihtiyac", "konu",
+})  # fmt: skip
+TERM_FORMAT = "A sütununda, ilk satırda bir başlık (ör. “Terim”), altında her satırda bir terim"
+
+
+@dataclass(slots=True)
+class TermList:
+    """A term list read by the one rule set (ADR-033): what will be searched, the header
+    that was not, and everything the reader should know about what was left out."""
+
+    terms: list[str]
+    header: str
+    notes: list[str]
+
+
+def _column_letter(i: int) -> str:
+    letters = ""
+    i += 1
+    while i:
+        i, r = divmod(i - 1, 26)
+        letters = chr(65 + r) + letters
+    return letters
+
+
+def parse_term_sheet(
+    rows: Sequence[Sequence[object]], other_sheets: Sequence[str] = ()
+) -> TermList:
+    """The first sheet of a term list -> the terms, or a ``TermListRejected`` that says how to
+    fix the file. The format is fixed so nothing is guessed: one column (A), the first row is
+    always the header and is never searched, one term per row below it."""
+    cells = [[" ".join(_cell(c).split()) for c in row] for row in rows]
+    filled = sorted({j for row in cells for j, c in enumerate(row) if c})
+    if not filled:
+        raise TermListRejected(
+            Rejection.LAYOUT_INVALID, f"Dosya boş. Beklenen biçim: {TERM_FORMAT}."
+        )
+    if filled != [0]:
+        where = ", ".join(_column_letter(j) for j in filled)
+        if 0 not in filled:
+            raise TermListRejected(Rejection.LAYOUT_INVALID,
+                                   f"Terimler A sütununda olmalı; dosyada veri {where} sütununda. "
+                                   f"Beklenen biçim: {TERM_FORMAT}.")  # fmt: skip
+        raise TermListRejected(Rejection.LAYOUT_INVALID,
+                               f"Liste tek sütunlu olmalı; dosyada {where} sütunlarında veri var. "
+                               f"Terimleri A sütununa yazıp diğer sütunları silin. Beklenen biçim: "
+                               f"{TERM_FORMAT}.")  # fmt: skip
+    column = [row[0] if row else "" for row in cells]
+    while column and not column[-1]:
+        column.pop()
+    header = column[0]
+    if not header:
+        raise TermListRejected(
+            Rejection.LAYOUT_INVALID,
+            f"İlk satır başlık olmalı; A1 hücresi boş. Beklenen biçim: {TERM_FORMAT}.",
+        )
+    terms: list[str] = []
+    seen: set[str] = set()
+    blanks = repeats = 0
+    for n, text in enumerate(column[1:], 2):
+        if not text:
+            blanks += 1
+            continue
+        if len(text) > MAX_TERM_CHARS:
+            raise TermListRejected(Rejection.TERM_TOO_LONG,
+                                   f"{n}. satır çok uzun ({len(text)} karakter). Her satıra kısa bir "
+                                   f"terim ya da soru yazın (en fazla {MAX_TERM_CHARS}).")  # fmt: skip
+        key = fold(text)
+        if key in seen:
+            repeats += 1
+            continue
+        seen.add(key)
+        terms.append(text)
+    if not terms:
+        raise TermListRejected(Rejection.LAYOUT_INVALID,
+                               f"Başlığın (“{header}”) altında aranacak terim yok. "
+                               f"Beklenen biçim: {TERM_FORMAT}.")  # fmt: skip
+    if len(terms) > MAX_TERMS:
+        raise TermListRejected(Rejection.TOO_MANY_TERMS,
+                               f"Listede {len(terms)} terim var; tek seferde en fazla {MAX_TERMS}. "
+                               "Listeyi bölüp ayrı ayrı yükleyin.")  # fmt: skip
+    notes: list[str] = []
+    if fold(header).strip(" :.") not in _HEADER_WORDS:
+        notes.append(f"İlk satır (“{header}”) başlık sayıldı ve aranmadı.")
+    if blanks:
+        notes.append(f"{blanks} boş satır atlandı.")
+    if repeats:
+        notes.append(f"{repeats} tekrar eden terim atlandı (ilk geçtiği satır arandı).")
+    if other_sheets:
+        notes.append(f"Yalnız ilk sayfa okundu; şu sayfalardaki veriler alınmadı: "
+                     f"{', '.join(other_sheets)}.")  # fmt: skip
+    return TermList(terms, header, notes)
+
+
+def load_term_list(data: bytes) -> TermList:
+    """A term list from uploaded workbook bytes (first sheet; the other sheets are only checked),
+    read in memory by the shared safe reader; ``TermListRejected`` when it cannot be read."""
+    try:
+        with open_workbook(data) as book:
+            sheets = {
+                name: book.rows(name, max_rows=MAX_LIST_ROWS + 1, max_cols=MAX_LIST_COLUMNS)
+                for name in book.sheet_names
+            }
+    except SheetTooManyRows:
+        raise TermListRejected(Rejection.TOO_MANY_ROWS,
+                               f"Dosyada çok fazla satır var (en fazla {MAX_LIST_ROWS}); listeyi "
+                               "bölüp ayrı ayrı yükleyin.") from None  # fmt: skip
+    except WorkbookTooLarge:
+        raise TermListRejected(
+            Rejection.TOO_LARGE_UNPACKED, dictionary_domain.UNPACKED_TOO_LARGE_MESSAGE
+        ) from None
+    except (WorkbookUnreadable, ValueError, KeyError, OSError):
+        # not an Excel file, a damaged one, an old .xls…
+        raise TermListRejected(Rejection.NOT_XLSX,
+                               f"Dosya Excel (.xlsx) olarak okunamadı. Beklenen biçim: "
+                               f"{TERM_FORMAT}.") from None  # fmt: skip
+    if not sheets:
+        raise TermListRejected(
+            Rejection.LAYOUT_INVALID, f"Dosyada sayfa yok. Beklenen biçim: {TERM_FORMAT}."
+        )
+    names = list(sheets)
+    return parse_term_sheet(sheets[names[0]], [n for n in names[1:] if sheets[n]])

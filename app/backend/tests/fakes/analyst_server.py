@@ -8,6 +8,7 @@ answers slowly or never); ``models`` answers ``GET /models``.
 
 import asyncio
 import json
+import re
 from typing import Any
 
 from tests.fakes.llm_server import (
@@ -20,6 +21,8 @@ from tests.fakes.llm_server import (
 )
 from tests.parity.fake_model import MODEL, NORMAL, FakeAnalyst
 
+_TALEP = re.compile(r"^TALEP: (.*)$", re.MULTILINE)
+
 
 class AnalystServer:
     def __init__(self, server: FakeLlmServer) -> None:
@@ -29,6 +32,9 @@ class AnalystServer:
         self.chat_started = asyncio.Event()
         self.reply_marker = ""
         self.down = False
+        # Answer each request by the question in its "TALEP:" line (term lists ask many in a
+        # row); a question listed here gets that fake analyst scenario.
+        self.per_question: dict[str, str] | None = None
         server.scenario = self._answer
 
     def ask(self, query: str, scenario: str = NORMAL) -> None:
@@ -55,6 +61,10 @@ class AnalystServer:
         messages = body["messages"]
         system = messages[0]["content"]
         user = messages[1]["content"]
+        if self.per_question is not None:
+            asked = _TALEP.search(user)
+            query = asked.group(1) if asked else ""
+            self.analyst.begin(query, self.per_question.get(query, NORMAL))
         schema = body["response_format"]["json_schema"]["schema"]
         reply, failure = self.analyst.reply(system, user, schema, int(body["max_tokens"]))
         if reply is None:

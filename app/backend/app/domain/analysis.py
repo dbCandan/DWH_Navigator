@@ -167,3 +167,28 @@ class AnalysisResult:
     reused_match: str = ""
     # What the request asked for and a "KISMEN VAR" answer does not give, shown by the verdict.
     missing: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class ListItem:
+    """One term of a list search (list-search, source ADR-033): its answer, or why it has none."""
+
+    index: int  # 1-based, as in the file
+    term: str
+    result: AnalysisResult | None = None
+    error: str = ""
+    elapsed_ms: int = 0
+
+
+@dataclass(slots=True)
+class ListResult:
+    """A term list answered term by term through the one question flow (the report's input)."""
+
+    name: str  # the uploaded file's name, for the report
+    items: list[ListItem]
+    dictionary_source: str
+    dictionary_version: str
+    generated_at: str
+    cancelled: bool = False
+    header: str = ""  # the list's first row, never searched
+    notes: list[str] = field(default_factory=list)  # what the file check left out, and why

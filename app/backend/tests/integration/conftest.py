@@ -246,6 +246,15 @@ class RecordingHandler(logging.Handler):
             if record.getMessage() == name
         ]
 
+    def records_of(self, logger: str) -> list[dict[str, Any]]:
+        """The structured fields of every event one logger wrote, in order."""
+
+        return [
+            dict(getattr(record, "structured_fields", {}))
+            for record in self.records
+            if record.name == logger and hasattr(record, "structured_fields")
+        ]
+
     def rendered(self) -> str:
         formatter = JsonFormatter()
         return "\n".join(formatter.format(record) for record in self.records)
@@ -267,6 +276,8 @@ def recorded_logs() -> Iterator[RecordingHandler]:
             "app.vocabulary",
             "app.search",
             "app.feedback",
+            "app.lists",
+            "app.explorer",
         )
     ]
     levels = [logger.level for logger in loggers]

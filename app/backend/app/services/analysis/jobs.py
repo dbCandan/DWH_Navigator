@@ -431,8 +431,8 @@ class AnalysisJobs:
                 with telemetry.analysis_run_span(origin.value) as run:
                     await self._complete(job, reuse.result, run)
                 return job
-        if len(self._waiting) >= self.queue_limit:
-            raise _queue_full()
+        if origin is Origin.QUESTION and len(self._waiting) >= self.queue_limit:
+            raise _queue_full()  # a list term enters the queue alone, never refused (Req. 9 c)
         job.ahead = len(self._running) + len(self._waiting)
         job.queue_span = job.timeline.open(QUEUE_STEP, None, trace.STEP, "önceki analizin bitmesi")
         job.queue_span.key = "queue"

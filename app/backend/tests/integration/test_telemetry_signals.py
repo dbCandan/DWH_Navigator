@@ -100,3 +100,64 @@ def test_an_empty_collector_address_exports_nothing() -> None:
     settings = Settings(_env_file=None, otel_exporter_otlp_endpoint="")
     assert telemetry.configure_telemetry(settings) is None
     assert telemetry._signals is telemetry._NOOP
+
+
+def test_term_list_and_vote_signals_keep_their_label_sets(
+    telemetry_capture: TelemetryCapture,
+) -> None:
+    """data-dictionary 005-list-search and 006-answer-feedback Gözlemlenebilirlik: the metric
+    names and their fixed label sets; a value outside a set is ``other``."""
+
+    telemetry.record_term_list_started()
+    for status in ("completed", "cancelled", "interrupted", "running"):
+        telemetry.record_term_list_finished(status)
+    for outcome in ("analyst", "reused", "unavailable", "error", "stopped"):
+        telemetry.record_term_list_term(outcome)
+    for reason in ("term_list_running", "upload_too_large", "dosya.xlsx"):
+        telemetry.record_term_list_upload_rejected(reason)
+    telemetry.term_lists_running_changed(1)
+    telemetry.term_lists_running_changed(-1)
+    for kind in ("list", "item", "liste"):
+        telemetry.record_term_list_report(kind)
+    for scope, vote in (("table", "up"), ("answer", "down"), ("object", "maybe")):
+        telemetry.record_feedback_vote(scope, vote)
+    telemetry.record_feedback_saved_answers_forgotten(2)
+    telemetry.record_feedback_saved_answers_forgotten(0)
+    telemetry.record_feedback_apply_failure()
+
+    capture = telemetry_capture
+    assert {
+        "dwhnavigator_term_lists_started_total",
+        "dwhnavigator_term_lists_finished_total",
+        "dwhnavigator_term_list_terms_total",
+        "dwhnavigator_term_list_uploads_rejected_total",
+        "dwhnavigator_term_lists_running",
+        "dwhnavigator_term_list_reports_total",
+        "dwhnavigator_feedback_votes_total",
+        "dwhnavigator_feedback_saved_answers_forgotten_total",
+        "dwhnavigator_feedback_apply_failures_total",
+    } <= capture.metric_names()
+    finished = {
+        labels["status"]: value
+        for labels, value in capture.points("dwhnavigator_term_lists_finished_total")
+    }
+    assert finished == {"completed": 1, "cancelled": 1, "interrupted": 1, "other": 1}
+    outcomes = {
+        labels["outcome"] for labels, _ in capture.points("dwhnavigator_term_list_terms_total")
+    }
+    assert outcomes == {"analyst", "reused", "unavailable", "error", "other"}
+    reasons = {
+        labels["reason"]
+        for labels, _ in capture.points("dwhnavigator_term_list_uploads_rejected_total")
+    }
+    assert reasons == {"term_list_running", "upload_too_large", "other"}
+    assert capture.value("dwhnavigator_term_lists_running") == 0
+    kinds = {labels["kind"] for labels, _ in capture.points("dwhnavigator_term_list_reports_total")}
+    assert kinds == {"list", "item", "other"}
+    votes = {
+        (labels["scope"], labels["vote"])
+        for labels, _ in capture.points("dwhnavigator_feedback_votes_total")
+    }
+    assert votes == {("table", "up"), ("answer", "down"), ("other", "other")}
+    assert capture.value("dwhnavigator_feedback_saved_answers_forgotten_total") == 2
+    assert capture.value("dwhnavigator_feedback_apply_failures_total") == 1

@@ -27,6 +27,7 @@ from app.services.explorer import ExplorerIndex
 from app.services.llm_connections import llm_gateway
 from app.services.search_index import SearchIndex
 from app.services.super_admin_service import run_super_admin_bootstrap
+from app.services.term_lists import TermLists
 
 
 def _lifespan(settings: Settings) -> Callable[[FastAPI], AbstractAsyncContextManager[None]]:
@@ -47,11 +48,17 @@ def _lifespan(settings: Settings) -> Callable[[FastAPI], AbstractAsyncContextMan
         # queued or running are interrupted; at the end queued and running jobs are interrupted.
         analysis_jobs: AnalysisJobs = application.state.analysis_jobs
         jobs_startup = asyncio.create_task(analysis_jobs.run_startup(database_readiness.is_ready))
+        # data-dictionary 005-list-search Requirement 10: lists an earlier process left running
+        # are interrupted, then a minute check; at the end running lists are interrupted.
+        term_lists: TermLists = application.state.term_lists
+        lists_startup = asyncio.create_task(term_lists.run_startup(database_readiness.is_ready))
         try:
             yield
         finally:
+            term_lists.closing = True
             await analysis_jobs.shutdown()
-            for task in (bootstrap, index_startup, jobs_startup):
+            await term_lists.shutdown()
+            for task in (bootstrap, index_startup, jobs_startup, lists_startup):
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
@@ -89,6 +96,9 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         overlay=application.state.answer_votes,
         concurrency=settings.analysis_concurrency,
         queue_limit=settings.analysis_queue_limit,
+    )
+    application.state.term_lists = TermLists(
+        jobs=application.state.analysis_jobs, session_factory=async_session_factory
     )
     # Starlette makes the middleware added last the outermost. From the outside in: security
     # headers and the 500 envelope, request logging and tracing, CORS, the cross-site guard (before

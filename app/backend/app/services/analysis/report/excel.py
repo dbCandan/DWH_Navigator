@@ -1,6 +1,7 @@
-"""The single-question Excel report: Özet · Öneriler. Built in memory and returned as
-bytes; nothing is written to disk (question-analysis Requirement 16). The term-list report
-belongs to the list-search PRD.
+"""Excel analysis reports, built in memory and returned as bytes; nothing is written to disk.
+
+One question: Özet · Öneriler (question-analysis Requirement 16).
+A term list: the same two sheets, combined, with a term column (list-search Requirement 13).
 """
 
 from __future__ import annotations
@@ -16,7 +17,14 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
-from app.domain.analysis import AnalysisResult, Level, ObjectMatch, Verdict
+from app.domain.analysis import (
+    AnalysisResult,
+    Level,
+    ListItem,
+    ListResult,
+    ObjectMatch,
+    Verdict,
+)
 from app.domain.turkish_text import fold
 
 CellValue = str | int | float | None
@@ -252,6 +260,139 @@ def write_ask_report(result: AnalysisResult) -> bytes:
         raise TypeError("yeni çalışma kitabının sayfası yok")
     _summary(ws, result)
     _suggestions(wb.create_sheet("Öneriler"), result)
+    out = BytesIO()
+    wb.save(out)
+    return out.getvalue()
+
+
+# --------------------------------------------------------------------------- list search (ADR-033)
+
+
+def _level_fill(ws: Worksheet, col: int, first: int, last: int) -> None:
+    for row in range(first, last + 1):
+        cell = ws.cell(row=row, column=col)
+        for lvl, fill in LEVEL_FILL.items():
+            if cell.value == lvl.value:
+                cell.fill = fill
+        for verdict, vfill in VERDICT_FILL.items():
+            if cell.value == verdict.value:
+                cell.fill = vfill
+
+
+def _item_state(item: ListItem, cancelled: bool) -> str:
+    if item.result is not None:
+        return item.result.verdict.value
+    if item.error:
+        return "HATA"
+    return "DURDURULDU" if cancelled else "BEKLİYOR"
+
+
+def _list_summary(ws: Worksheet, r: ListResult, first_rows: dict[int, int]) -> None:
+    ws.title = "Özet"
+    ws.sheet_view.showGridLines = False
+    ws["A1"] = "Veri Ambarı Veri Sözlüğü – Toplu Talep Analizi"
+    ws["A1"].font = TITLE_FONT
+    done = [i.result for i in r.items if i.result is not None]
+    counts = {v: sum(1 for d in done if d.verdict is v) for v in Verdict}
+    stamp = datetime.fromisoformat(r.generated_at).strftime("%d.%m.%Y %H:%M")
+    outcome = (
+        f"{len(r.items)} terim: {counts[Verdict.FOUND]} VAR, {counts[Verdict.PARTIAL]} KISMEN VAR, "
+        f"{counts[Verdict.NOT_FOUND]} BULUNAMADI"
+    )
+    if len(done) < len(r.items):
+        outcome += f", {len(r.items) - len(done)} cevapsız"
+    if r.cancelled:
+        outcome += " — liste durduruldu, rapor yarım"
+    failed = [d for d in done if not d.analyst]
+    method = f"{len(done) - len(failed)} terim analist (dil modeli)"
+    if failed:
+        method += (f", {len(failed)} terim analiz edilemedi — model bağlı değil ya da "
+                   "çalışamadı (Yöntem sütunu)")  # fmt: skip
+    lines = [
+        ("Liste", r.name),
+        ("Kaynak sözlük", f"{r.dictionary_source} (sürüm {r.dictionary_version})"),
+        ("Üretim", stamp),
+        ("Sonuç", outcome),
+        ("Cevabı üreten", method),
+    ]
+    if r.notes:
+        lines.append(("Dosya", " ".join(r.notes)))
+    for row, (label, value) in enumerate(lines, 3):
+        ws.cell(row=row, column=1, value=label).font = BOLD
+        cell = _merged(ws, row, 2, 9, value)
+        if label == "Cevabı üreten" and failed:
+            cell.fill = WARN_FILL
+    start = len(lines) + 4
+    headers = [
+        "#", "Terim", "Sonuç", "En İyi Tablo", "Güven", "Seviye", "Özet", "Yöntem", "Süre (sn)",
+        "Eksik Bilgi",
+    ]  # fmt: skip
+    rows: list[list[CellValue]] = []
+    for item in r.items:
+        res = item.result
+        best = res.objects[0] if res and res.objects else None
+        method = "-" if res is None else "Analist" if res.analyst else "Yapılamadı"
+        rows.append([
+            item.index, item.term, _item_state(item, r.cancelled),
+            best.object_key if best else "-",
+            round(best.score, 2) if best else None,
+            best.level.value if best else "-",
+            res.summary if res else item.error or "-",
+            method, round(item.elapsed_ms / 1000, 1) if item.elapsed_ms else None,
+            ", ".join(res.missing) if res and res.missing else "-",
+        ])  # fmt: skip
+    _table(ws, start, headers, rows, [5, 34, 14, 44, 8, 9, 80, 13, 9, 30])
+    for n, item in enumerate(r.items):
+        row = start + 1 + n
+        ws.cell(row=row, column=5).number_format = "0.00"
+        target = first_rows.get(item.index)
+        if target:  # the term jumps to its suggestions
+            term = ws.cell(row=row, column=2)
+            term.hyperlink = f"#'Öneriler'!A{target}"
+            term.font = Font(name=FONT, size=10, color="1F3864", underline="single")
+    _level_fill(ws, 3, start + 1, start + len(rows))
+    _level_fill(ws, 6, start + 1, start + len(rows))
+    _finish_sheet(ws, start, len(headers), len(rows))
+
+
+def _list_suggestions(ws: Worksheet, r: ListResult) -> dict[int, int]:
+    """Every term's suggestions one under the other; returns term index -> first row."""
+    headers = [
+        "#", "Terim", "Sıra", "Veritabanı.Şema.Obje", "Veri Seti Grubu", "Kapsadığı Bilgi",
+        "İlgili Alanlar", "Gerekçe", "Kısıt / Dikkat", "Güven", "Seviye", "Kullanım Önerisi",
+    ]  # fmt: skip
+    rows: list[list[CellValue]] = []
+    first: dict[int, int] = {}
+    for item in r.items:
+        first[item.index] = len(rows) + 2
+        res = item.result
+        if res is None or not res.objects:
+            text = res.summary if res else item.error or _item_state(item, r.cancelled)
+            rows.append([item.index, item.term, "-", "-", "-", "-", "-", text, "-", None, "-", "-"])
+            continue
+        for rank, m in enumerate(res.objects, 1):
+            rows.append([
+                item.index, item.term, rank, m.object_key, ", ".join(m.dataset_groups) or "-",
+                _covers(m), "\n".join(h.col.column for h in m.columns), m.reason, m.caveat,
+                round(m.score, 2), m.level.value, m.usage,
+            ])  # fmt: skip
+    _table(ws, 1, headers, rows, [5, 30, 6, 42, 20, 30, 30, 70, 60, 8, 9, 40])
+    for i in range(2, len(rows) + 2):
+        ws.cell(row=i, column=10).number_format = "0.00"
+    _level_fill(ws, 11, 2, len(rows) + 1)
+    _finish_sheet(ws, 1, len(headers), len(rows))
+    return first
+
+
+def write_list_report(result: ListResult) -> bytes:
+    """One workbook for a whole term list: Özet (a row per term) · Öneriler — combined
+    sheets with a term column, filterable (ADR-033)."""
+    wb = Workbook()
+    ws = wb.active
+    if not isinstance(ws, Worksheet):
+        raise TypeError("yeni çalışma kitabının sayfası yok")
+    first_rows = _list_suggestions(wb.create_sheet("Öneriler"), result)
+    _list_summary(ws, result, first_rows)
     out = BytesIO()
     wb.save(out)
     return out.getvalue()
