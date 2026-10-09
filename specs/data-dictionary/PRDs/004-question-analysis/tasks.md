@@ -31,6 +31,12 @@
 - [ ] Task 10 — Acceptance 3 ve 8: kaynak kopyasıyla `--verify-snapshot` ve gerçek sözlükle fark
   düzeneği (geliştirici makinesi, depo dışı veri).
 - [ ] Task 11 — Acceptance 9: nonprod'da kurum içi model ucuyla koşum (ayrı kullanıcı talimatı).
-- [ ] Task 12 — Acceptance 10: görsel eşdeğerlik ekran görüntüleri.
-- [ ] Task 13 — Requirement 19'un tam tablo adı kısmı ve Requirement 21'deki tablo dosyası
+- [x] Task 12 — Acceptance 10: görsel eşdeğerlik ekran görüntüleri. Oylar geldikten sonra yeniden
+  çekildi: yerel Compose'da hedef ile kaynak `76e21a3` kopyası aynı sentetik sözlük, aynı sahte model
+  ve aynı tohum oylarıyla; açılış, süren analiz, durdurulmuş analiz, analist cevabı, kayıtlı cevap,
+  "Analiz yapılamadı", açık öneri satırı ve yan kartlar masaüstü ve telefon genişliğinde yan yana
+  karşılaştırıldı. Farklar oturum alanından (telefonda üst çubuğun daralması) ve görüntüleyenin kendi
+  oylarının basılı görünmesinden gelir.
+- [x] Task 13 — Requirement 19'un tam tablo adı kısmı ve Requirement 21'deki tablo dosyası
   bağlantıları ("Kolonlar", önerilmemiş tablo adları): dictionary-explorer'ın tablo dosyasıyla birlikte.
+  Kanıt: `app/frontend/src/pages/ExplorerPage.map.test.tsx`, `e2e/data-dictionary/01-explorer.mjs`.

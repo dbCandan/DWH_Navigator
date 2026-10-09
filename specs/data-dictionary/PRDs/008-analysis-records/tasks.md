@@ -19,7 +19,10 @@
 - [x] Task 5 — Requirement 13-23 / Acceptance 3: Genel bakış ve Analizler sayfaları, Vitest testleri
   (ön yüz dalgası). Kanıt: `app/frontend/src/pages/admin/OverviewPage.test.tsx`,
   `app/frontend/src/pages/admin/AnalysesPage.test.tsx`, `scripts/quality-gate.sh frontend`.
-- [ ] Task 6 — Acceptance 4 ve 5: yerel Compose'da tarayıcıyla senaryo.
+- [x] Task 6 — Acceptance 4 ve 5: yerel Compose'da tarayıcıyla senaryo. Kanıt:
+  `e2e/data-dictionary/05-analysis-records.mjs`; backend analiz sürerken yeniden başlatılınca kaydın
+  "Yarıda kesildi" görünmesi tarayıcıyla, `analysis_record` tablosunda adres ya da makine adı sütunu
+  olmaması veritabanı sorgusuyla ayrıca denendi (yerel sahte model).
 - [x] Task 7 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri. Yerel Compose'da hedef ile kaynak
   aynı sentetik sözlük, aynı sahte model ve aynı sorularla; Genel bakış, Analizler, ayrıntı ve
   Performans çekmeceleri masaüstü ve telefon genişliğinde. Farklar oturum alanı ile kayıt verisinden

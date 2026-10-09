@@ -25,9 +25,14 @@
   yükleme, ilerleme, durdurma, ara rapor, sürdürme, liste sürerken backend'in yeniden başlatılması
   ve "yarıda kesildi", sürdürme sonrası analiz kayıtlarında cevaplanmış terimin yeniden
   sorulmaması, terim ayrıntısı ve oylar, son rapor, günlükte terim metni olmaması.
-- [ ] Task 7 — Requirement 17 / Acceptance 5'in ön yüz kısmı: liste arayüzü, hap, yoklama, Vitest
-  testleri (ön yüz dalgası).
-- [ ] Task 8 — Acceptance 6-8: yerel Compose'da bağlı bir sohbet modeliyle tarayıcı senaryoları.
+- [x] Task 7 — Requirement 17 / Acceptance 5'in ön yüz kısmı: liste arayüzü, hap, yoklama, Vitest
+  testleri (ön yüz dalgası). Kanıt: `app/frontend/src/components/explorer/TermListView.test.tsx`,
+  `app/frontend/src/pages/ExplorerPage.lists.test.tsx`, `scripts/quality-gate.sh frontend`.
+- [x] Task 8 — Acceptance 6-8: yerel Compose'da bağlı bir sohbet modeliyle tarayıcı senaryoları.
+  Kanıt: `e2e/data-dictionary/04-term-list.mjs` (Acceptance 6, 8 ve sayfanın kapatılıp açılması);
+  liste sürerken backend kapsayıcısının yeniden başlatılması tarayıcıyla ayrıca denendi: liste
+  "Yarıda kesildi · 2/5" göründü, "▶ Devam et" sonrası analiz kayıtlarında cevaplanmış 1. ve 2.
+  terim yeniden sorulmadı, günlükte terim metni yoktu. Bağlı model yerel sahte model sunucusuydu.
 - [ ] Task 9 — Dağıtım etkisi: kapanış bekleme süresi ve `Recreate` (kubernetes-delivery dalgası).
 - [ ] Task 10 — Acceptance 9: nonprod'da ingress üzerinden liste ve dağıtım sırasında yarıda
   kesilme (ayrı kullanıcı talimatı).

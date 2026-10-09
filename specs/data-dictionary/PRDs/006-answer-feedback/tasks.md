@@ -20,7 +20,9 @@
 - [x] Task 5 — Yerel yığında sahte modelle deneme (sahte model kanıtı, kabul değil): iki kullanıcının
   liste terimindeki tabloya 👎 vermesiyle tablonun `rejected`'a geçmesi, liste satırının
   değişmemesi, iki cevap 👎'siyle kayıtlı cevabın silinmesi.
-- [ ] Task 6 — Requirement 11-13 / Acceptance 5: oy öğeleri, rozetler, bölümler ve cevap oyu, Vitest
-  testleri (ön yüz dalgası).
-- [ ] Task 7 — Acceptance 6 ve 7: yerel Compose'da bağlı bir sohbet modeliyle üç kullanıcılı
-  tarayıcı senaryoları.
+- [x] Task 6 — Requirement 11-13 / Acceptance 5: oy öğeleri, rozetler, bölümler ve cevap oyu, Vitest
+  testleri (ön yüz dalgası). Kanıt: `app/frontend/src/components/explorer/Votes.test.tsx`,
+  `scripts/quality-gate.sh frontend`.
+- [x] Task 7 — Acceptance 6 ve 7: yerel Compose'da bağlı bir sohbet modeliyle üç kullanıcılı
+  tarayıcı senaryoları. Kanıt: `e2e/data-dictionary/03-votes.mjs` (bağlı model yerel sahte model
+  sunucusuydu; senaryo art arda iki kez geçti).

@@ -25,7 +25,8 @@
   bildirimler, Ctrl K'daki üç işlem ve Tablolar, Vitest testleri. Kanıt:
   `app/frontend/src/pages/admin/DictionaryPage.test.tsx`, `app/frontend/src/services/excelUpload.test.ts`,
   `scripts/quality-gate.sh frontend`.
-- [ ] Task 8 — Acceptance 4: yerel Compose'da tarayıcıyla senaryo (ön yüz dalgasından sonra).
+- [x] Task 8 — Acceptance 4: yerel Compose'da tarayıcıyla senaryo (ön yüz dalgasından sonra). Kanıt:
+  `e2e/data-dictionary/02-dictionary-versions.mjs`.
 - [ ] Task 9 — Acceptance 5: nonprod'da gerçek sözlükle içe aktarma (ayrı kullanıcı talimatı).
 - [x] Task 10 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri. Yerel Compose'da hedef ile
   kaynak `76e21a3` fark testinin sentetik sözlüğüyle çalıştırıldı; boş sayfa, bilgi ve Tablolar
