@@ -85,10 +85,6 @@ export default function AnalysesPage() {
     if (request) navigate(location.pathname, {replace: true, state: null});
   }, [request, location.pathname, navigate]);
 
-  useEffect(() => {
-    loadedRef.current = shownList;
-  }, [shownList]);
-
   // The search goes out 300 ms after the typing stops.
   useEffect(() => {
     const timer = window.setTimeout(() => setQ(text.trim()), TYPING_MS);
@@ -114,7 +110,8 @@ export default function AnalysesPage() {
         ]);
         if (mine !== reads.current) return;
         const rows = [first, ...rest].flatMap((page) => page.items);
-        setLoaded({key: filterKey, rows, total: first.total, until, pages});
+        loadedRef.current = {key: filterKey, rows, total: first.total, until, pages};
+        setLoaded(loadedRef.current);
         setSummaryRead({key: filterKey, value: summaryAnswer});
         setAskers(askersAnswer.items);
         setFailureRead(null);
@@ -153,12 +150,13 @@ export default function AnalysesPage() {
 
   async function more() {
     const current = loadedRef.current;
-    if (!current) return;
+    if (!current || current.key !== filterKey) return;
     const mine = reads.current;
     try {
       const page = await AnalysisRecordsService.list(filters, current.pages + 1, current.until);
       if (mine !== reads.current) return;
-      setLoaded({...current, rows: [...current.rows, ...page.items], pages: current.pages + 1});
+      loadedRef.current = {...current, rows: [...current.rows, ...page.items], pages: current.pages + 1};
+      setLoaded(loadedRef.current);
     } catch (error) {
       reportUnreachable(error);
       setFailureRead({key: current.key, error});
@@ -203,7 +201,7 @@ export default function AnalysesPage() {
   const periodName = t(`records.periodName.${period}`);
 
   async function clear() {
-    const current = loadedRef.current;
+    const current = shownList;
     if (!current) return;
     if (!current.total) {
       toast(t('records.clear.nothing'), [t('records.clear.nothingLine')]);
