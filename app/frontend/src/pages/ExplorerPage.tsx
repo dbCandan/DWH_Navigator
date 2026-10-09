@@ -1,16 +1,21 @@
 import {lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent} from 'react';
 import {CompassMark} from '@/components/brand/CompassMark';
 import {AnswerView} from '@/components/explorer/AnswerView';
+import {Dossier, type OpenTable} from '@/components/explorer/Dossier';
 import {SearchBox} from '@/components/explorer/SearchBox';
 import {SessionArea} from '@/components/explorer/SessionArea';
+import {ListFormatHelp, TermListView} from '@/components/explorer/TermListView';
 import {useIntl} from '@/contexts/IntlContext';
 import {useAsk} from '@/hooks/useAsk';
 import {useDocumentTitle} from '@/hooks/useDocumentTitle';
+import {useGalaxy} from '@/hooks/useGalaxy';
 import {useServiceStatus} from '@/hooks/useServiceStatus';
 import {useRootClass, useSurface} from '@/hooks/useSurface';
+import {useTermList} from '@/hooks/useTermList';
 import {config} from '@/lib/config';
 import type {CosmosEngine} from '@/lib/cosmos/engine';
-import {SAMPLE_GALAXY} from '@/lib/cosmos/sampleGalaxy';
+import {XLSX_MEDIA_TYPE} from '@/lib/excelUpload';
+import {explorerErrorText} from '@/lib/explorerErrors';
 import {statusView} from '@/lib/serviceStatus';
 import {AnalysisService} from '@/services/analyses';
 import '@/components/explorer/explorer.css';
@@ -36,12 +41,71 @@ function useScrollClasses(): void {
 
 const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+/** What the space under the bar shows: the question's outcome or the term list (index.html #ask-out). */
+type Pane =
+  | {kind: 'ask'}
+  | {kind: 'list'}
+  /** "“{name}” okunuyor…" while the file is uploaded. */
+  | {kind: 'reading'; name: string}
+  /** The refused file with the accepted layout. */
+  | {kind: 'refused'; name: string; message: string};
+
+/** Only files are dropped on the page (index.html Bulk). */
+const carriesFiles = (event: DragEvent) => [...(event.dataTransfer?.types ?? [])].includes('Files');
+
+/**
+ * Drop an Excel list anywhere on the page: the bar lights up while a file is dragged over the
+ * window (list-search Requirement 17).
+ */
+function useListDrop(onFile: (file: File) => void): void {
+  const [dropping, setDropping] = useState(false);
+  const latest = useRef(onFile);
+  useEffect(() => {
+    latest.current = onFile;
+  });
+  useRootClass('dropping', dropping);
+  useEffect(() => {
+    let depth = 0;
+    const enter = (event: DragEvent) => {
+      if (!carriesFiles(event)) return;
+      depth++;
+      setDropping(true);
+    };
+    const leave = (event: DragEvent) => {
+      if (!carriesFiles(event) || --depth > 0) return;
+      depth = 0;
+      setDropping(false);
+    };
+    const over = (event: DragEvent) => {
+      if (carriesFiles(event)) event.preventDefault();
+    };
+    const drop = (event: DragEvent) => {
+      if (!carriesFiles(event)) return;
+      event.preventDefault();
+      depth = 0;
+      setDropping(false);
+      const file = event.dataTransfer?.files[0];
+      if (file) latest.current(file);
+    };
+    window.addEventListener('dragenter', enter);
+    window.addEventListener('dragleave', leave);
+    window.addEventListener('dragover', over);
+    window.addEventListener('drop', drop);
+    return () => {
+      window.removeEventListener('dragenter', enter);
+      window.removeEventListener('dragleave', leave);
+      window.removeEventListener('dragover', over);
+      window.removeEventListener('drop', drop);
+    };
+  }, []);
+}
+
 /**
  * The main screen (`/`): the "Evren" sky, the top line with the brand, the question bar (in the
  * middle at first, then docked in the top line as the page's heading), the status pill and the
  * session area, the warning under the bar and the answer (dictionary-explorer Requirement 1, 2, 5,
- * 17; question-analysis Requirement 19–22). The table file, the term list and the votes come with
- * the capabilities that own them.
+ * 17; question-analysis Requirement 19–22), the table file (Requirement 9, 11-14), the term list
+ * and its pill (list-search Requirement 17).
  */
 export default function ExplorerPage() {
   const {t} = useIntl();
@@ -63,14 +127,39 @@ export default function ExplorerPage() {
     statusRef.current = status;
   }, [status]);
 
+  const galaxy = useGalaxy(status);
+
   const {running, outcome, ask, stop, clear} = useAsk({
     engine: () => engine.current,
     status: () => statusRef.current,
     onUnavailable: reloadStatus,
   });
+  const lists = useTermList();
+  const [pane, setPane] = useState<Pane>({kind: 'ask'});
+  const [opened, setOpened] = useState<ReadonlySet<number>>(() => new Set());
+  // Showing the list removes the pill; it comes back when the list answers a poll or a question
+  // is answered (index.html Bulk.pill). On opening the page it shows the newest list (list-search
+  // Requirement 15).
+  const [pillGone, setPillGone] = useState<{polls: number; outcome: typeof outcome} | null>(null);
+  const pillArmed =
+    pillGone === null || lists.polls !== pillGone.polls || (outcome !== pillGone.outcome && outcome?.kind === 'answer');
   useRootClass('docked', docked);
   useRootClass('busy', running);
-  useRootClass('has-results', outcome?.kind === 'answer');
+  useRootClass('has-results', pane.kind === 'list' || (pane.kind === 'ask' && outcome?.kind === 'answer'));
+
+  // The table file: one shared opening for every place that offers a table (Requirement 14).
+  const [table, setTable] = useState<OpenTable | null>(null);
+  const openings = useRef(0);
+  const openTable = useCallback((key: string) => {
+    const star = engine.current?.select(key) ?? null;
+    openings.current += 1;
+    setTable({key, star, seq: openings.current});
+  }, []);
+  const closeTable = useCallback(() => {
+    engine.current?.select(null);
+    setTable(null);
+  }, []);
+  const hasTable = useCallback((key: string) => engine.current?.node(key) != null, []);
 
   // The compass searches while the analysis runs ("busy") and settles once it ends ("found").
   const wasRunning = useRef(false);
@@ -137,13 +226,15 @@ export default function ExplorerPage() {
 
   const start = useCallback(
     (text: string, fresh: boolean) => {
+      closeTable();
+      setPane({kind: 'ask'});
       foldSearch();
       field.current?.blur();
       window.scrollTo({top: 0});
       setAsked(text);
       void ask(text, fresh);
     },
-    [ask, foldSearch],
+    [ask, foldSearch, closeTable],
   );
 
   function submit() {
@@ -153,8 +244,62 @@ export default function ExplorerPage() {
       field.current?.focus();
       return;
     }
+    // A table's own name opens its file as if its star was clicked (Requirement 9); the focus
+    // comes back to the bar when the file closes.
+    const exact = engine.current?.find(text) ?? null;
+    if (exact) {
+      openTable(exact.key);
+      return;
+    }
     start(text, false);
   }
+
+  /** The list heads the page like an answer does. */
+  const showList = useCallback(() => {
+    foldSearch();
+    setPane({kind: 'list'});
+    setPillGone({polls: lists.polls, outcome});
+  }, [foldSearch, lists.polls, outcome]);
+
+  const startList = useCallback(
+    async (file: File) => {
+      if (lists.list?.status === 'running' && lists.following) {
+        showList();
+        return;
+      }
+      closeTable();
+      foldSearch();
+      field.current?.blur();
+      window.scrollTo({top: 0});
+      setQuestion('');
+      setAsked(undefined);
+      setOpened(new Set());
+      setPane({kind: 'reading', name: file.name});
+      const started = await lists.start(file);
+      if (started.kind === 'refused') setPane({kind: 'refused', name: file.name, message: explorerErrorText(started.error, t)});
+      else showList();
+    },
+    [lists, closeTable, foldSearch, showList, t],
+  );
+  useListDrop((file) => void startList(file));
+  const picker = useRef<HTMLInputElement>(null);
+  const toggleTerm = useCallback(
+    (position: number) =>
+      setOpened((was) => {
+        const next = new Set(was);
+        if (next.has(position)) next.delete(position);
+        else next.add(position);
+        return next;
+      }),
+    [],
+  );
+  const redo = useCallback(
+    (query: string) => {
+      setQuestion(query);
+      start(query, true);
+    },
+    [start],
+  );
 
   // Reopening the page follows the person's running question (Requirement 19).
   useEffect(() => {
@@ -201,6 +346,9 @@ export default function ExplorerPage() {
     // A running analysis goes on, as after a reload of the source page that reconnects to it.
     if (running) return;
     clear();
+    closeTable();
+    setPane({kind: 'ask'});
+    setPillGone(null);
     setQuestion('');
     setAsked(undefined);
     setDocked(false);
@@ -222,14 +370,16 @@ export default function ExplorerPage() {
       docked={docked}
       title={docked ? asked : undefined}
       textareaRef={field}
+      onAttach={() => picker.current?.click()}
     />
   );
 
   return (
     <>
       <Suspense fallback={null}>
-        <CosmosMap galaxy={SAMPLE_GALAXY} onEngine={onEngine} />
+        <CosmosMap galaxy={galaxy} onEngine={onEngine} onStarClick={openTable} onSkyClick={closeTable} />
       </Suspense>
+      <Dossier table={table} onOpen={openTable} onClose={closeTable} />
       <header className="top" ref={header}>
         <div className="wrap">
           <a className="brand" href="/" title={t('explorer.brand.restart')} onClick={restart}>
@@ -243,6 +393,20 @@ export default function ExplorerPage() {
             {docked ? searchBox : null}
           </div>
           <div className="tools">
+            {lists.list && lists.following && pane.kind !== 'list' && pillArmed ? (
+              <button
+                className="pill listpill"
+                id="listpill"
+                type="button"
+                title={t('list.pillTip')}
+                onClick={showList}
+              >
+                <i className={'dot' + (lists.list.status === 'running' ? ' on' : '')} />
+                {lists.list.status === 'running'
+                  ? t('list.pillRunning', {done: lists.list.done, total: lists.list.total})
+                  : t('list.pillResult')}
+              </button>
+            ) : null}
             <div className="status" id="status">
               {view ? (
                 <span className={'pill ' + view.tone} title={view.tip}>
@@ -266,17 +430,45 @@ export default function ExplorerPage() {
             <div className={'model-warn' + (view?.tone === 'bad' ? ' bad' : '')} id="model-warn" role="status">
               {warn}
             </div>
+            <input
+              type="file"
+              id="xl-file"
+              ref={picker}
+              accept={'.xlsx,' + XLSX_MEDIA_TYPE}
+              hidden
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = '';
+                if (file) void startList(file);
+              }}
+            />
           </div>
           <div id="ask-out">
-            {outcome?.kind === 'answer' ? (
+            {pane.kind === 'list' && lists.list ? (
+              <TermListView
+                list={lists.list}
+                opened={opened}
+                onToggle={toggleTerm}
+                onStop={lists.stop}
+                onResume={lists.resume}
+                onRedo={redo}
+                openTable={openTable}
+                hasTable={hasTable}
+              />
+            ) : pane.kind === 'reading' ? (
+              <div className="stopped" role="status">
+                {t('list.reading', {name: pane.name})}
+              </div>
+            ) : pane.kind === 'refused' ? (
+              <ListFormatHelp name={pane.name} message={pane.message} />
+            ) : pane.kind === 'list' ? null : outcome?.kind === 'answer' ? (
               <AnswerView
                 answer={outcome.answer}
                 reportHref={`${config.apiPrefix}/analyses/${encodeURIComponent(outcome.analysisId)}/report`}
                 onReport={() => void AnalysisService.report(outcome.analysisId).catch(() => undefined)}
-                onRedo={() => {
-                  setQuestion(outcome.answer.query);
-                  start(outcome.answer.query, true);
-                }}
+                onRedo={() => redo(outcome.answer.query)}
+                openTable={openTable}
+                hasTable={hasTable}
               />
             ) : outcome?.kind === 'stopped' ? (
               <div className="stopped" role="status">

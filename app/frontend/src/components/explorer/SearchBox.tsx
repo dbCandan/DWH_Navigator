@@ -30,6 +30,8 @@ interface Props {
   onStop?: () => void;
   /** The asked question, as the field's tooltip in the heading. */
   title?: string;
+  /** The Excel list button: pick a list file (list-search Requirement 17). */
+  onAttach?: () => void;
 }
 
 /**
@@ -38,7 +40,7 @@ interface Props {
  * drop hint, and "Ara ↵", which turns into "Durdur" while an analysis runs (question-analysis
  * Requirement 19).
  */
-export function SearchBox({value, onChange, onSubmit, textareaRef, docked = false, busy = false, onStop, title}: Props) {
+export function SearchBox({value, onChange, onSubmit, textareaRef, docked = false, busy = false, onStop, title, onAttach}: Props) {
   const {t} = useIntl();
   const own = useRef<HTMLTextAreaElement>(null);
   const field = textareaRef ?? own;
@@ -81,6 +83,7 @@ export function SearchBox({value, onChange, onSubmit, textareaRef, docked = fals
         type="button"
         data-tip={t('explorer.list.attachTip')}
         aria-label={t('explorer.list.attachLabel')}
+        onClick={onAttach}
       >
         <svg
           viewBox="0 0 24 24"
