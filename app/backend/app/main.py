@@ -22,6 +22,7 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.tenant_context import TenantContextMiddleware
 from app.services.analysis.jobs import AnalysisJobs
 from app.services.analysis.saved_answers import SavedAnswers
+from app.services.answer_feedback import AnswerVotes
 from app.services.explorer import ExplorerIndex
 from app.services.llm_connections import llm_gateway
 from app.services.search_index import SearchIndex
@@ -74,11 +75,18 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     )
     application.state.search_index = SearchIndex(async_session_factory)
     application.state.explorer_index = ExplorerIndex()
+    saved_answers = SavedAnswers(async_session_factory)
+    application.state.answer_votes = AnswerVotes(
+        index=application.state.search_index,
+        session_factory=async_session_factory,
+        saved_answers=saved_answers,
+    )
     application.state.analysis_jobs = AnalysisJobs(
         index=application.state.search_index,
         models=llm_gateway(settings, async_session_factory),
         session_factory=async_session_factory,
-        saved_answers=SavedAnswers(async_session_factory),
+        saved_answers=saved_answers,
+        overlay=application.state.answer_votes,
         concurrency=settings.analysis_concurrency,
         queue_limit=settings.analysis_queue_limit,
     )

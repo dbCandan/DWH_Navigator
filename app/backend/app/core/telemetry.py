@@ -116,6 +116,10 @@ SAVED_ANSWER_LOOKUP_RESULTS = frozenset(
 SAVED_ANSWER_WRITE_RESULTS = frozenset({"stored", "skipped", "error"})
 REPORT_RESULTS = frozenset({"ok", "error"})
 
+# Fixed label sets of data-dictionary/PRDs/006-answer-feedback.
+FEEDBACK_SCOPES = frozenset({"table", "answer"})
+FEEDBACK_VOTES = frozenset({"up", "down"})
+
 # Fixed label sets of data-dictionary/PRDs/007-dictionary-explorer.
 EXPLORER_ENDPOINTS = frozenset({"galaxy", "search", "table"})
 EXPLORER_OUTCOMES = frozenset({"ok", "not_found", "not_ready", "invalid", "error"})
@@ -320,6 +324,22 @@ class _Instruments:
             "dwhnavigator_analysis_records_deleted_total",
             unit="{record}",
             description="Analysis records a manager deleted",
+        )
+        # data-dictionary/PRDs/006-answer-feedback
+        self.feedback_votes = meter.create_counter(
+            "dwhnavigator_feedback_votes_total",
+            unit="{vote}",
+            description="Votes recorded, by scope and vote",
+        )
+        self.feedback_saved_answers_forgotten = meter.create_counter(
+            "dwhnavigator_feedback_saved_answers_forgotten_total",
+            unit="{answer}",
+            description="Saved answers deleted because enough people found the answer useless",
+        )
+        self.feedback_apply_failures = meter.create_counter(
+            "dwhnavigator_feedback_apply_failures_total",
+            unit="{failure}",
+            description="Answers returned without votes because applying the votes failed",
         )
         # data-dictionary/PRDs/007-dictionary-explorer
         self.explorer_requests = meter.create_counter(
@@ -850,6 +870,24 @@ def record_analysis_report(result: str) -> None:
 def record_analysis_records_deleted(count: int) -> None:
     if count:
         _signals.instruments.analysis_records_deleted.add(count)
+
+
+# --- Votes (data-dictionary/PRDs/006-answer-feedback) -------------------------------------------
+
+
+def record_feedback_vote(scope: str, vote: str) -> None:
+    _signals.instruments.feedback_votes.add(
+        1, {"scope": bounded(scope, FEEDBACK_SCOPES), "vote": bounded(vote, FEEDBACK_VOTES)}
+    )
+
+
+def record_feedback_saved_answers_forgotten(count: int) -> None:
+    if count:
+        _signals.instruments.feedback_saved_answers_forgotten.add(count)
+
+
+def record_feedback_apply_failure() -> None:
+    _signals.instruments.feedback_apply_failures.add(1)
 
 
 # --- Dictionary explorer (data-dictionary/PRDs/007-dictionary-explorer) ------------------------

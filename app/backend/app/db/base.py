@@ -4,6 +4,7 @@ from app.db.base_class import Base  # noqa: F401
 
 # Alembic imports this module to populate Base.metadata. Keep the imports here.
 from app.domain.models.analysis_record import AnalysisRecord  # noqa: F401
+from app.domain.models.answer_vote import AnswerVote  # noqa: F401
 from app.domain.models.dictionary import (  # noqa: F401
     DictionaryColumnRecord,
     DictionaryObjectRecord,

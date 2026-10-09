@@ -127,6 +127,19 @@
           "elapsed_ms": {
             "type": "integer"
           },
+          "endorsed": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EndorsedTable"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "expansion": {
             "items": {
               "type": "string"
@@ -135,6 +148,16 @@
           },
           "fallback": {
             "type": "string"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnswerFeedback"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "interpretation": {
             "type": "string"
@@ -174,6 +197,19 @@
           },
           "query": {
             "type": "string"
+          },
+          "rejected": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/AnswerObject"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "reused": {
             "anyOf": [
@@ -601,6 +637,44 @@
         ],
         "type": "object"
       },
+      "AnswerFeedback": {
+        "description": "answer-feedback Requirement 7: the votes on the whole answer, whether it is rejected, the\nreading user's own last votes (table key, \"\" for the answer) and when the answer was written.",
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/Tally"
+          },
+          "answer_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "answer_rejected": {
+            "type": "boolean"
+          },
+          "mine": {
+            "additionalProperties": {
+              "enum": [
+                "up",
+                "down"
+              ],
+              "type": "string"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "answer",
+          "answer_rejected",
+          "mine",
+          "answer_at"
+        ],
+        "type": "object"
+      },
       "AnswerNote": {
         "properties": {
           "scope": {
@@ -694,6 +768,16 @@
           "name": {
             "type": "string"
           },
+          "promoted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "rank": {
             "type": "integer"
           },
@@ -706,8 +790,28 @@
           "score": {
             "type": "number"
           },
+          "score_before": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "usage": {
             "type": "string"
+          },
+          "votes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Tally"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -1160,6 +1264,30 @@
         },
         "required": [
           "type"
+        ],
+        "type": "object"
+      },
+      "EndorsedTable": {
+        "description": "A table people approved for this question that the answer does not hold.",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "votes": {
+            "$ref": "#/components/schemas/Tally"
+          }
+        },
+        "required": [
+          "key",
+          "name",
+          "schema",
+          "votes"
         ],
         "type": "object"
       },
@@ -4026,6 +4154,44 @@
         ],
         "type": "object"
       },
+      "Tally": {
+        "description": "The people who voted \ud83d\udc4d and \ud83d\udc4e, the support (\u22121..1, three decimals), the status and the\nnewest three reasons of the counted \ud83d\udc4e, without names (Requirement 5, 15).",
+        "properties": {
+          "down": {
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "status": {
+            "enum": [
+              "rejected",
+              "approved",
+              "disputed",
+              "doubted",
+              ""
+            ],
+            "type": "string"
+          },
+          "support": {
+            "type": "number"
+          },
+          "up": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "up",
+          "down",
+          "support",
+          "status",
+          "reasons"
+        ],
+        "type": "object"
+      },
       "TermItem": {
         "properties": {
           "domain": {
@@ -4303,6 +4469,92 @@
           "list",
           "revision",
           "items"
+        ],
+        "type": "object"
+      },
+      "VoteIn": {
+        "additionalProperties": false,
+        "description": "One \ud83d\udc4d/\ud83d\udc4e on a suggested table (``scope=table`` with ``table_key``) or on the whole answer\n(``scope=answer``). Too long values are refused, never cut; unknown fields are refused.",
+        "properties": {
+          "answer_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "query": {
+            "type": "string"
+          },
+          "scope": {
+            "enum": [
+              "table",
+              "answer"
+            ],
+            "type": "string"
+          },
+          "table_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "vote": {
+            "enum": [
+              "up",
+              "down"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "scope",
+          "vote"
+        ],
+        "type": "object"
+      },
+      "VoteRecorded": {
+        "properties": {
+          "answer_rejected": {
+            "type": "boolean"
+          },
+          "forgotten": {
+            "type": "integer"
+          },
+          "votes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Tally"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "votes",
+          "answer_rejected",
+          "forgotten"
         ],
         "type": "object"
       }
@@ -8408,6 +8660,83 @@
         "summary": "Import List",
         "tags": [
           "vocabulary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/votes": {
+      "post": {
+        "description": "Record a \ud83d\udc4d/\ud83d\udc4e; the last vote of each person counts. Enough \ud83d\udc4e on the whole answer delete\nthe question's saved answers, so it is analysed anew.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoteRecorded"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_request: bi\u00e7im ya da bilinmeyen alan; vote_table_unknown: tablo s\u00f6zl\u00fckte yok"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_index_not_ready: ilk arama indeksi kuruluyor"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Cast Vote",
+        "tags": [
+          "votes"
         ]
       }
     }

@@ -266,6 +266,7 @@ def recorded_logs() -> Iterator[RecordingHandler]:
             "app.dictionary",
             "app.vocabulary",
             "app.search",
+            "app.feedback",
         )
     ]
     levels = [logger.level for logger in loggers]

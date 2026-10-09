@@ -3802,6 +3802,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/votes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cast Vote
+         * @description Record a 👍/👎; the last vote of each person counts. Enough 👎 on the whole answer delete
+         *     the question's saved answers, so it is analysed anew.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VoteIn"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["VoteRecorded"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_request: biçim ya da bilinmeyen alan; vote_table_unknown: tablo sözlükte yok */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_not_ready: ilk arama indeksi kuruluyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3835,8 +3915,10 @@ export interface components {
             design: string[];
             dictionary_version: string;
             elapsed_ms: number;
+            endorsed?: components["schemas"]["EndorsedTable"][] | null;
             expansion: string[];
             fallback: string;
+            feedback?: components["schemas"]["AnswerFeedback"] | null;
             interpretation: string;
             llm_model: string;
             method: string[];
@@ -3845,6 +3927,7 @@ export interface components {
             notes: components["schemas"]["AnswerNote"][];
             objects: components["schemas"]["AnswerObject"][];
             query: string;
+            rejected?: components["schemas"]["AnswerObject"][] | null;
             reused: components["schemas"]["AnswerReuse"] | null;
             summary: string;
             /** @enum {string} */
@@ -3908,6 +3991,18 @@ export interface components {
         } & {
             [key: string]: unknown;
         };
+        /**
+         * @description answer-feedback Requirement 7: the votes on the whole answer, whether it is rejected, the
+         *     reading user's own last votes (table key, "" for the answer) and when the answer was written.
+         */
+        AnswerFeedback: {
+            answer: components["schemas"]["Tally"];
+            answer_at: string | null;
+            answer_rejected: boolean;
+            mine: {
+                [key: string]: "up" | "down";
+            };
+        };
         AnswerNote: {
             scope: string;
             text: string;
@@ -3931,11 +4026,14 @@ export interface components {
             long_format: string[];
             missing: string[];
             name: string;
+            promoted?: boolean | null;
             rank: number;
             reason: string;
             schema: string;
             score: number;
+            score_before?: number | null;
             usage: string;
+            votes?: components["schemas"]["Tally"] | null;
         } & {
             [key: string]: unknown;
         };
@@ -4047,6 +4145,13 @@ export interface components {
              * @enum {string}
              */
             type: "cancelled" | "interrupted";
+        };
+        /** @description A table people approved for this question that the answer does not hold. */
+        EndorsedTable: {
+            key: string;
+            name: string;
+            schema: string;
+            votes: components["schemas"]["Tally"];
         };
         ErrorDetail: {
             code: string;
@@ -4593,6 +4698,18 @@ export interface components {
             items: components["schemas"]["FoundTable"][];
             query: string;
         };
+        /**
+         * @description The people who voted 👍 and 👎, the support (−1..1, three decimals), the status and the
+         *     newest three reasons of the counted 👎, without names (Requirement 5, 15).
+         */
+        Tally: {
+            down: number;
+            reasons: string[];
+            /** @enum {string} */
+            status: "rejected" | "approved" | "disputed" | "doubted" | "";
+            support: number;
+            up: number;
+        };
         TermItem: {
             domain: string;
             equivalents: string[];
@@ -4653,6 +4770,25 @@ export interface components {
             /** @enum {string} */
             list: "terms" | "stopwords";
             revision: number;
+        };
+        /**
+         * @description One 👍/👎 on a suggested table (``scope=table`` with ``table_key``) or on the whole answer
+         *     (``scope=answer``). Too long values are refused, never cut; unknown fields are refused.
+         */
+        VoteIn: {
+            answer_at?: string | null;
+            note?: string | null;
+            query: string;
+            /** @enum {string} */
+            scope: "table" | "answer";
+            table_key?: string | null;
+            /** @enum {string} */
+            vote: "up" | "down";
+        };
+        VoteRecorded: {
+            answer_rejected: boolean;
+            forgotten: number;
+            votes: components["schemas"]["Tally"] | null;
         };
     };
     responses: never;

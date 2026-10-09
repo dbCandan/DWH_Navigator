@@ -131,13 +131,12 @@ class Event:
 
 @dataclass(frozen=True, slots=True)
 class OverlayContext:
-    """What answer-feedback needs to apply the votes to an answer for the reading user."""
+    """What answer-feedback needs to apply the votes to an answer for the reading user: the
+    answer's question and the time it was written (its first analysis's for a saved answer)."""
 
     tenant_id: int
     user_public_id: str
-    analysis_public_id: str
     query: str
-    dictionary_version: str
     generated_at: str
 
 
@@ -145,13 +144,6 @@ class AnswerOverlay(Protocol):
     """answer-feedback's vote overlay on a result being read (question-analysis Requirement 7)."""
 
     async def apply(self, answer: dict[str, Any], context: OverlayContext) -> dict[str, Any]: ...
-
-
-class NoVotes:
-    """The overlay while no vote is stored: the answer as the analysis wrote it."""
-
-    async def apply(self, answer: dict[str, Any], context: OverlayContext) -> dict[str, Any]:
-        return answer
 
 
 @dataclass(eq=False)
@@ -293,6 +285,7 @@ class AnalysisJobs:
         models: SnapshotSource,
         session_factory: async_sessionmaker[AsyncSession],
         saved_answers: SavedAnswers,
+        overlay: AnswerOverlay,
         concurrency: int = DEFAULT_CONCURRENCY,
         queue_limit: int = DEFAULT_QUEUE_LIMIT,
         keepalive_seconds: float = KEEPALIVE_SECONDS,
@@ -301,7 +294,7 @@ class AnalysisJobs:
         self.index = index
         self.models = models
         self.saved_answers = saved_answers
-        self.overlay: AnswerOverlay = NoVotes()
+        self.overlay = overlay
         self._session_factory = session_factory
         self.concurrency = concurrency
         self.queue_limit = queue_limit
@@ -909,24 +902,30 @@ class AnalysisJobs:
         )
 
     async def answer(self, tenant_id: int, user_public_id: str, view: JobView) -> dict[str, Any]:
-        """Requirement 7: the result for the reading user, with answer-feedback's overlay;
-        an overlay failure returns the answer without votes and leaves an event."""
+        """Requirement 7: the result for the reading user, with answer-feedback's overlay."""
 
         if view.result is None:
             raise analysis_not_found()
-        data = serialize.analysis(view.result)
+        return await self.present(tenant_id, user_public_id, view.result, view.public_id)
+
+    async def present(
+        self, tenant_id: int, user_public_id: str, result: AnalysisResult, analysis_id: str | None
+    ) -> dict[str, Any]:
+        """An answer in its Requirement 7 form with the votes applied for the reading user (also
+        a list term's answer, list-search Requirement 12); an overlay failure returns the answer
+        without votes and leaves an event."""
+
+        data = serialize.analysis(result)
         context = OverlayContext(
             tenant_id=tenant_id,
             user_public_id=user_public_id,
-            analysis_public_id=view.public_id,
-            query=view.result.query,
-            dictionary_version=view.result.dictionary_version,
-            generated_at=view.result.generated_at,
+            query=result.query,
+            generated_at=result.generated_at,
         )
         try:
             return await self.overlay.apply(data, context)
         except Exception:  # noqa: BLE001 - votes must never cost the answer
-            log_event(logger, "analysis.feedback_overlay_failed", analysis_id=view.public_id)
+            log_event(logger, "analysis.feedback_overlay_failed", analysis_id=analysis_id)
             return data
 
     async def cancel(self, view: JobView) -> JobView:

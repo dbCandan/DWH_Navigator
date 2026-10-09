@@ -22,6 +22,7 @@ from app.infrastructure.llm.openai_adapter import LlmTimeouts, OpenAICompatibleA
 from app.main import app
 from app.services.analysis.jobs import AnalysisJobs
 from app.services.analysis.saved_answers import SavedAnswers
+from app.services.answer_feedback import AnswerVotes
 from app.services.llm_connections import ConnectionKeys, LlmGateway
 from tests.fakes.analyst_server import AnalystServer
 from tests.fakes.llm_server import FakeLlmServer
@@ -37,6 +38,7 @@ async def local_resolver(host: str, port: int) -> list[str]:
 
 
 async def reset_analyses() -> None:
+    await sql("DELETE FROM answer_vote")
     await sql("DELETE FROM saved_answer")
     await sql("DELETE FROM analysis_record")
     await sql("DELETE FROM llm_integration")
@@ -238,15 +240,20 @@ async def qa_harness(
     if connect:
         await connect_model(dd, model.endpoint)
     options: dict[str, Any] = {"keepalive_seconds": 15.0} | job_options
+    saved_answers = SavedAnswers(async_session_factory)
+    votes = AnswerVotes(
+        index=dd.index, session_factory=async_session_factory, saved_answers=saved_answers
+    )
     jobs = AnalysisJobs(
         index=dd.index,
         models=gateway,
         session_factory=async_session_factory,
-        saved_answers=SavedAnswers(async_session_factory),
+        saved_answers=saved_answers,
+        overlay=votes,
         **options,
     )
-    previous = app.state.analysis_jobs
-    app.state.analysis_jobs = jobs
+    previous = app.state.analysis_jobs, app.state.answer_votes
+    app.state.analysis_jobs, app.state.answer_votes = jobs, votes
     user = await dd.auth.account(dd.admin, "kullanici")
     other = await dd.auth.account(dd.admin, "kullanici")
     try:
@@ -260,7 +267,7 @@ async def qa_harness(
                     model.hold.set()
                 await jobs.shutdown(wait_seconds=5.0)
     finally:
-        app.state.analysis_jobs = previous
+        app.state.analysis_jobs, app.state.answer_votes = previous
         await fake.close()
 
 

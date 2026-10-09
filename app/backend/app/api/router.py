@@ -12,6 +12,7 @@ from app.api.health import router as health_router
 from app.api.llm_integrations.router import router as llm_integrations_router
 from app.api.search.router import router as search_router
 from app.api.vocabulary.router import router as vocabulary_router
+from app.api.votes.router import router as votes_router
 from app.core.config import get_settings
 
 # kt-scaffold:router-imports
@@ -27,4 +28,5 @@ router.include_router(search_router)
 router.include_router(analyses_router)
 router.include_router(analysis_records_router)
 router.include_router(explorer_router)
+router.include_router(votes_router)
 # kt-scaffold:router-registration

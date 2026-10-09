@@ -14,6 +14,8 @@ from pydantic import (
     StrictStr,
 )
 
+from app.schemas.votes.votes import Tally
+
 JobStateName = Literal["queued", "running", "completed", "failed", "cancelled", "interrupted"]
 StepKey = Literal[
     "saved_answer_lookup",
@@ -81,6 +83,32 @@ class AnswerObject(BaseModel):
     usage: str
     covers: str
     columns: list[AnswerColumn]
+    # answer-feedback Requirement 7: the votes on this table, its confidence before them and
+    # whether people's approval brought a near candidate in (absent when no vote was applied).
+    votes: Tally | None = None
+    score_before: float | None = None
+    promoted: bool | None = None
+
+
+class EndorsedTable(BaseModel):
+    """A table people approved for this question that the answer does not hold."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    key: str
+    name: str
+    schema_: str = Field(alias="schema")
+    votes: Tally
+
+
+class AnswerFeedback(BaseModel):
+    """answer-feedback Requirement 7: the votes on the whole answer, whether it is rejected, the
+    reading user's own last votes (table key, "" for the answer) and when the answer was written."""
+
+    answer: Tally
+    answer_rejected: bool
+    mine: dict[str, Literal["up", "down"]]
+    answer_at: str | None
 
 
 class AnswerNote(BaseModel):
@@ -119,6 +147,10 @@ class AnalysisAnswer(BaseModel):
     attention: list[str]
     reused: AnswerReuse | None
     missing: list[str]
+    # answer-feedback's fields, absent when the votes could not be applied (Requirement 8).
+    rejected: list[AnswerObject] | None = None
+    endorsed: list[EndorsedTable] | None = None
+    feedback: AnswerFeedback | None = None
 
 
 class AnalysisJob(BaseModel):
