@@ -8,6 +8,9 @@ backend:
     tag: latest
     digest: ""
   existingSecret: ""
+  # Optional update strategy; empty keeps the rolling update. {type: Recreate} never runs two
+  # backend pods at once, for a backend that keeps in-process job state.
+  strategy: {}
   # Non-secret settings as prefixed environment variables, for example DWHNAVIGATOR_LOG_LEVEL.
   config: {}
   networkPolicy:
@@ -35,6 +38,9 @@ frontend:
     className: ""
     host: ""
     tlsSecretName: ""
+    # Optional non-secret ingress controller settings merged after the generated identity, for
+    # example nginx.ingress.kubernetes.io/proxy-body-size: "20m".
+    annotations: {}
   networkPolicy:
     ingress:
       - from:

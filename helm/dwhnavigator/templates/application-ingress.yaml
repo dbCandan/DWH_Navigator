@@ -9,6 +9,9 @@ metadata:
     {{- include "generated.workloadLabels" (dict "root" . "component" "frontend") | nindent 4 }}
   annotations:
     {{- include "generated.annotations" . | nindent 4 }}
+    {{- with include "generated.ingressAnnotations" . }}
+    {{- . | trim | nindent 4 }}
+    {{- end }}
 spec:
   ingressClassName: {{ $className | quote }}
   tls:

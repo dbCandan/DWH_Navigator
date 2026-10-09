@@ -74,11 +74,19 @@ dosyaları hiç oluşturmaz, değiştirmez veya silmez; ikisi de isteğe bağlı
 
 `helm/dwhnavigator/values-project.yaml` (değer katmanı): `deploy.sh` bu dosyayı `values.yaml`
 dosyasının üstüne ekler. Yalnız adresleri ve gizli olmayan ayarları taşır; parola, anahtar veya
-belirteç yazılırsa `scripts/render-charts.sh` denetimi reddeder. Örnek:
+belirteç yazılırsa `scripts/render-charts.sh` denetimi reddeder. İki ayar isteğe bağlıdır ve
+yazılmazsa dağıtım bugünkü gibi kalır. `backend.strategy` arka ucun nasıl güncelleneceğini seçer:
+yalnız `{type: RollingUpdate}` (isteğe bağlı `maxSurge` ve `maxUnavailable` ile) veya
+`{type: Recreate}` yazılabilir. Arka uç süren işlerin durumunu kendi belleğinde tutuyorsa
+`Recreate` seçin; böylece güncelleme sırasında iki arka uç podu aynı anda çalışmaz.
+`frontend.ingress.annotations`, giriş kapısına gizli olmayan ek ayarlar verir; örneğin 20 MB'lık
+dosya yüklemesi için `nginx.ingress.kubernetes.io/proxy-body-size: "20m"`. `scaffold.kt.internal/`
+ve `helm.sh/` ile başlayan anahtarlar ile `...-snippet` ayarları reddedilir. Örnek:
 
 ~~~yaml
 backend:
   existingSecret: dwhnavigator-runtime   # deploy-hooks.sh'in hazırladığı Secret'ın adı
+  strategy: {type: Recreate}                 # isteğe bağlı; iki arka uç podu aynı anda çalışmaz
   config:
     DWHNAVIGATOR_ENVIRONMENT: staging       # gizli olmayan ayarlar
   networkPolicy:
@@ -98,6 +106,8 @@ frontend:
     className: nginx
     host: dwhnavigator.ailab-test.kuveytturk.com.tr
     tlsSecretName: ailab-tls
+    annotations:                             # isteğe bağlı, gizli olmayan ingress ayarları
+      nginx.ingress.kubernetes.io/proxy-body-size: "20m"
 postgres:
   enabled: true                              # yalnız kabul edilmiş PRD isterse
   persistence: {storageClassName: <kümenin-depolama-sınıfı>}
@@ -333,5 +343,3 @@ kodlama ajanıdır. `specs/README.md` dosyasına bakın.
 
 Ürüne dönük dokümantasyon `docs/tr/` altındadır. Kabul edilmiş PRD'leri; mühendislik kurallarını veya
 uygulama planlarını ikinci gereksinim kaynağına kopyalamadan güncelleyin.
-
-deneme

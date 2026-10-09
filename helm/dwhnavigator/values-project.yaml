@@ -8,8 +8,7 @@ backend:
   # super admin start-up password (kubernetes-delivery Requirement 7, Decision 8).
   existingSecret: dwhnavigator-runtime
   # Single process: the old backend stops before the new one starts (kubernetes-delivery
-  # Decision 5). The factory chart option is pending; until it lands this key is ignored and the
-  # first nonprod deployment waits (Decision 22).
+  # Decision 5).
   strategy: {type: Recreate}
   config:
     # staging is the nonprod environment of application-foundation/DOMAIN.md.
@@ -62,9 +61,7 @@ frontend:
     className: nginx
     host: dwhnavigator.ailab-test.kuveytturk.com.tr
     tlsSecretName: ailab-tls
-    # Request bodies up to 20 MB reach the application (kubernetes-delivery Requirement 11). The
-    # factory chart option is pending; until it lands this key is ignored, ingress-nginx keeps its
-    # 1 MB default and the first nonprod deployment waits (Decision 22).
+    # Request bodies up to 20 MB reach the application (kubernetes-delivery Requirement 11).
     annotations:
       nginx.ingress.kubernetes.io/proxy-body-size: "20m"
 postgres:

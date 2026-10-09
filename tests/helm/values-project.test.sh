@@ -180,9 +180,7 @@ check(
     and [rule["host"] for rule in ingress["spec"]["rules"]] == [host],
 )
 
-# The factory chart options for the update strategy and ingress annotations are pending
-# (kubernetes-delivery Decision 22). The layer already carries the values; once the chart renders
-# them, the rendered objects must carry exactly these.
+# The update strategy and the ingress body limit reach the rendered objects exactly.
 check(
     "the layer asks for the Recreate update strategy",
     layer["backend"].get("strategy") == {"type": "Recreate"},
@@ -194,10 +192,10 @@ check(
 )
 check(
     "a rendered backend strategy is Recreate",
-    backend["spec"].get("strategy", {"type": "Recreate"}) == {"type": "Recreate"},
+    backend["spec"].get("strategy") == {"type": "Recreate"},
 )
 body_size = ingress["metadata"].get("annotations", {}).get(
-    "nginx.ingress.kubernetes.io/proxy-body-size", "20m"
+    "nginx.ingress.kubernetes.io/proxy-body-size"
 )
 check("a rendered ingress body limit is 20 MB", body_size == "20m")
 
