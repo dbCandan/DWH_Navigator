@@ -14,6 +14,7 @@ const AdminFramePage = lazy(() => import('@/pages/admin/AdminFramePage'));
 const UsersPage = lazy(() => import('@/pages/admin/UsersPage'));
 const AiPage = lazy(() => import('@/pages/admin/AiPage'));
 const DictionaryPage = lazy(() => import('@/pages/admin/DictionaryPage'));
+const VocabularyPage = lazy(() => import('@/pages/admin/VocabularyPage'));
 
 /**
  * The application's addresses: the main screen at `/`, the admin screen under `/admin`
@@ -35,7 +36,7 @@ export default function App() {
               <Route path="genel" element={<AdminFramePage page="genel" />} />
               <Route path="analizler/:analysisId?" element={<AdminFramePage page="analizler" />} />
               <Route path="sozluk/*" element={<DictionaryPage />} />
-              <Route path="kelimeler" element={<AdminFramePage page="kelimeler" />} />
+              <Route path="kelimeler" element={<VocabularyPage />} />
               <Route path="yapay-zeka" element={<AiPage />} />
               <Route path="arama" element={<AdminFramePage page="arama" />} />
               <Route path="bakim" element={<AdminFramePage page="bakim" />} />

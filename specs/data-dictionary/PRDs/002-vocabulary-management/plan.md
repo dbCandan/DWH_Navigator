@@ -47,4 +47,4 @@ geçer.
 | 1, 5, 8, 9, 14, 15 | `tests/integration/test_vocabulary_api.py` |
 | Veri ve geçiş | `tests/integration/test_data_dictionary_model.py`, `tests/integration/test_vocabulary_api.py` |
 | Gözlemlenebilirlik | `tests/integration/test_vocabulary_api.py`, `tests/integration/test_search_index_signals.py` |
-| 10-13 | Ön yüz testleri (açık görev) |
+| 10-13 | `app/frontend/src/pages/admin/VocabularyPage.test.tsx` |
