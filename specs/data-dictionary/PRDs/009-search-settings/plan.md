@@ -58,5 +58,5 @@ ve ön yüzdeki yönetim ekranı kabuğu ile Arama ve cevap ve Bakım sayfaları
 | 9-15 | `tests/unit/test_search_index.py`, `tests/integration/test_search_settings_api.py`, `tests/integration/test_dictionary_api.py`, `tests/integration/test_vocabulary_api.py` |
 | 10 (hazırlık) | `tests/unit/test_readiness.py`, `tests/integration/test_search_settings_api.py` |
 | Gözlemlenebilirlik | `tests/integration/test_search_index_signals.py` |
-| 16 | question-analysis kayıtlı cevap uçları `tests/integration/test_analysis_jobs_api.py`; Bakım sayfası (açık görev) |
-| 17-25 | Ön yüz testleri (açık görev) |
+| 16 | question-analysis kayıtlı cevap uçları `tests/integration/test_analysis_jobs_api.py`; Bakım sayfası `app/frontend/src/pages/admin/MaintenancePage.test.tsx` |
+| 17-25 | `app/frontend/src/pages/admin/SearchSettingsPage.test.tsx`, `app/frontend/src/pages/admin/MaintenancePage.test.tsx`, `app/frontend/src/components/admin/AdminShell.test.tsx` |

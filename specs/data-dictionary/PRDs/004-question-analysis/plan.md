@@ -74,4 +74,4 @@ soru çubuğu ile cevap görünümü.
 | 24 | `tests/unit/analysis/test_model_view.py` |
 | Gözlemlenebilirlik, sızıntı | `tests/integration/test_analysis_signals.py` |
 | Veri ve geçiş | `tests/integration/test_analysis_data_model.py` |
-| 19-22 | Ön yüz testleri (açık görev) |
+| 19-22 | `app/frontend/src/hooks/useAsk.test.tsx`, `app/frontend/src/components/explorer/AnswerView.test.tsx`, `app/frontend/src/pages/ExplorerPage.test.tsx`, `app/frontend/src/lib/cosmos/engine.test.ts`; tarayıcı senaryosu `e2e/question/01-ask-and-answer.mjs` |

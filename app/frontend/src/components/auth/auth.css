@@ -1,0 +1,12 @@
+/* The account screens (sign-in, password, not found, no access): one card on the admin
+   screen's sky, with its card, form, button and notice look (user-accounts Requirement 16). */
+[data-surface="admin"] main.auth { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
+[data-surface="admin"] .auth-card { width: min(440px, 100%); margin: 0; padding: 22px 24px 24px; }
+[data-surface="admin"] .auth-card .brand { padding: 0; margin-bottom: 18px; }
+[data-surface="admin"] .auth-card h1 { margin: 0 0 4px; font-size: 21px; }
+[data-surface="admin"] .auth-card .lead { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+[data-surface="admin"] .auth-card .form .btn.primary { justify-content: center; padding-top: 9px; padding-bottom: 9px; }
+[data-surface="admin"] .auth-card .msg { margin: 0; }
+[data-surface="admin"] .auth-links { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 16px; font-size: 13px; }
+[data-surface="admin"] .auth-links a { color: var(--muted); text-decoration: none; font-weight: 600; }
+[data-surface="admin"] .auth-links a:hover { color: var(--text); }

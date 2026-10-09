@@ -1,0 +1,22 @@
+/* The session area on the main screen's top bar: the factory's one new element there
+   (dictionary-explorer Requirement 1, user-accounts Requirement 16). It is the status pill's
+   look; its menu is the star tooltip's glass. */
+[data-surface="explorer"] .session { position: relative; flex: none; }
+[data-surface="explorer"] .session-pill { cursor: pointer; font-family: inherit; }
+[data-surface="explorer"] .session-pill:hover,
+[data-surface="explorer"] .session-pill[aria-expanded="true"] { color: var(--white); border-color: var(--cyan-a50); }
+[data-surface="explorer"] .session-pill svg { width: 13px; height: 13px; flex: none; }
+[data-surface="explorer"] .session-name { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+[data-surface="explorer"] .session-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; min-width: 190px;
+  display: grid; gap: 2px; padding: 6px; border-radius: 12px;
+  background: var(--night-a90); border: 1px solid var(--cyan-a40); box-shadow: var(--glow);
+}
+[data-surface="explorer"] .session-item {
+  display: block; width: 100%; padding: 7px 10px; border: 0; border-radius: 8px; background: none;
+  color: var(--text); font-size: 13px; text-align: left; text-decoration: none; cursor: pointer;
+}
+[data-surface="explorer"] .session-item:hover { background: var(--tint-a10); }
+@media (max-width: 760px) {
+  [data-surface="explorer"] .session-name { display: none; }  /* the icon alone, with its accessible name */
+}

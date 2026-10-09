@@ -9,5 +9,7 @@ export default defineConfig({
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
     coverage: {reporter: ['text', 'json-summary']},
+    // Stylesheets read as text (`?raw`) keep their content; imported ones stay empty in tests.
+    css: {include: [/\.css\?raw$/]},
   },
 });

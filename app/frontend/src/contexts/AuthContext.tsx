@@ -5,79 +5,85 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
-} from "react";
-import { ApiError } from "@/lib/apiClient";
-import { clearAuth, readUser, writeSession, writeUser } from "@/lib/authStorage";
-import { AuthService } from "@/services/auth";
-import type { AuthenticatedUser } from "@/types/auth";
+} from 'react';
+import {accessOf, type Access} from '@/lib/access';
+import {clearAuth, readUser, subscribeAuth, writeSession} from '@/lib/authStorage';
+import {AuthService} from '@/services/auth';
+import type {AuthenticatedUser} from '@/types/auth';
 
 interface AuthValue {
   user: AuthenticatedUser | null;
+  /** True while a page load restores the session from the refresh cookie. */
   loading: boolean;
+  /** Menu and route visibility only; the backend authorizes every request. */
+  access: Access;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  /** Set a new password with the current (or one-time) one and keep the new session. */
+  changePassword: (username: string, currentPassword: string, newPassword: string) => Promise<void>;
+  logout: () => Promise<void>;
   hasPermission: (permission: string) => boolean;
 }
 
 const Context = createContext<AuthValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthenticatedUser | null>(readUser);
-  const [loading, setLoading] = useState(Boolean(readUser()));
+/**
+ * The signed-in session (user-accounts Requirement 6-8, 16; rules/34). The token and the user live
+ * in memory only, so every page load first restores the session from the HttpOnly refresh cookie
+ * before protected routes render; a failed refresh (401) leaves the user signed out, which sends
+ * protected routes to the sign-in screen.
+ */
+export function AuthProvider({children}: {children: ReactNode}) {
+  const user = useSyncExternalStore(subscribeAuth, readUser, readUser);
+  const [restoring, setRestoring] = useState(() => readUser() === null);
 
   useEffect(() => {
-    if (!loading) return;
+    if (!restoring) return;
     let active = true;
-    AuthService.me()
-      .then((current) => {
-        if (!active) return;
-        writeUser(current);
-        setUser(current);
-      })
-      .catch((error: unknown) => {
-        // The shared client already cleared storage when the bearer credential was rejected;
-        // network, proxy, upstream and unrelated authorization failures keep the session.
-        if (active && error instanceof ApiError && error.sessionExpired) setUser(null);
-      })
+    AuthService.refresh()
+      .catch(() => undefined)
       .finally(() => {
-        if (active) setLoading(false);
+        if (active) setRestoring(false);
       });
     return () => {
       active = false;
     };
-  }, [loading]);
+  }, [restoring]);
 
   const login = useCallback(async (username: string, password: string) => {
     const response = await AuthService.login(username, password);
     writeSession(response.access_token, response.user);
-    setUser(response.user);
   }, []);
 
-  const logout = useCallback(() => {
+  const changePassword = useCallback(async (username: string, currentPassword: string, newPassword: string) => {
+    const response = await AuthService.changePassword(username, currentPassword, newPassword);
+    writeSession(response.access_token, response.user);
+  }, []);
+
+  const logout = useCallback(async () => {
+    // Close the refresh session on the server first; a failed call still ends the local session.
+    await AuthService.logout().catch(() => undefined);
     clearAuth();
-    setUser(null);
   }, []);
 
   const hasPermission = useCallback(
     (permission: string) =>
-      Boolean(
-        user?.is_super_admin ||
-          user?.permissions?.includes("*:*") ||
-          user?.permissions?.includes(permission),
-      ),
+      Boolean(user?.is_super_admin || user?.permissions?.includes('*:*') || user?.permissions?.includes(permission)),
     [user],
   );
 
+  const access = useMemo(() => accessOf(user), [user]);
+
   const value = useMemo(
-    () => ({ user, loading, login, logout, hasPermission }),
-    [user, loading, login, logout, hasPermission],
+    () => ({user, loading: restoring, access, login, changePassword, logout, hasPermission}),
+    [user, restoring, access, login, changePassword, logout, hasPermission],
   );
   return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
 export function useAuth(): AuthValue {
   const value = useContext(Context);
-  if (!value) throw new Error("useAuth must be used inside AuthProvider");
+  if (!value) throw new Error('useAuth must be used inside AuthProvider');
   return value;
 }

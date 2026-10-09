@@ -62,4 +62,4 @@ sırasından geçmesi ve ön yüzdeki Sözlük sayfası.
 | 16 | `tests/integration/test_dictionary_script.py` |
 | Veri ve geçiş | `tests/integration/test_data_dictionary_model.py` |
 | Gözlemlenebilirlik | `tests/unit/test_dictionary_telemetry.py`, `tests/integration/test_dictionary_api.py` |
-| 13, 15 | Ön yüz testleri (açık görev) |
+| 13, 15 | `app/frontend/src/pages/admin/DictionaryPage.test.tsx`, `app/frontend/src/services/excelUpload.test.ts` |
