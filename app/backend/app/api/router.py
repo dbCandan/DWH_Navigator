@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from app.api.admin.router import router as admin_router
 from app.api.analyses.router import router as analyses_router
+from app.api.analysis_records.router import router as analysis_records_router
 from app.api.auth.router import router as auth_router
 from app.api.dictionary.router import router as dictionary_router
 from app.api.health import router as health_router
@@ -23,4 +24,5 @@ router.include_router(dictionary_router)
 router.include_router(vocabulary_router)
 router.include_router(search_router)
 router.include_router(analyses_router)
+router.include_router(analysis_records_router)
 # kt-scaffold:router-registration
