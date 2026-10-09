@@ -290,6 +290,9 @@ async def test_votes_shape_the_term_but_not_the_row_or_the_report(qa: Qa) -> Non
     assert item["feedback"]["mine"] == {best["key"]: "down"}
     row = (await qa.request("GET", f"/term-lists/{done['id']}")).json()["items"][0]
     assert row["best"] == best
+    # A vote on the term is a vote on the same single question, and the other way round.
+    single = await qa.finished(await qa.started(TERM, qa.other), qa.other)
+    assert [m["key"] for m in single["result"]["rejected"]] == [best["key"]]
     after = await qa.request("GET", f"/term-lists/{done['id']}/report")
     first, second = excel_dump.workbook(before.content), excel_dump.workbook(after.content)
     for sheet in (first, second):

@@ -1,6 +1,6 @@
 # Plan — question-analysis
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.1). Uygulama dört parçadır: kaynaktan
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.2). Uygulama dört parçadır: kaynaktan
 taşınan çekirdek ve fark testi, analiz işi (kabul, kuyruk, canlı ilerleme, durdurma, yeniden
 başlama) ile motorun model portuna bağlanması, kayıtlı cevaplar, rapor ve durum ucu ve ön yüzdeki
 soru çubuğu ile cevap görünümü.
@@ -32,7 +32,8 @@ soru çubuğu ile cevap görünümü.
   bağlantıyı sabitler; motorun kopyası (`Engine.with_llm`) yalnız o işin model görünümünü taşır.
 - Requirement 9 ve 14: Kuyruk ilk gelen ilk çıkar sırasıyla yürür; `fresh` olmayan iş, aynı
   `text_key`, aynı `top` ve hizmetteki motorla yürüyen iş bitene kadar başlatılmaz, sonra kayıtlı
-  cevabı arar. Kabulde kayıtlı cevapla biten iş kuyruk sınırına sayılmaz.
+  cevabı arar. Kabulde kayıtlı cevapla biten iş kuyruk sınırına sayılmaz; kuyruk sınırı yalnız tek
+  soruya uygulanır, list-search'ün tek tek verdiği terim sınıra takılmaz.
 - Requirement 10: Her işin olayları sırayla numaralanır ve iş süresince bellekte durur. Akış
   `snapshot` ile başlar, `Last-Event-ID`'den sonraki adım olaylarını yeniden gönderir, sonra canlı
   olayları ve 15 saniyede bir `: canlı` satırını yollar; erişim belirtecinin bitişinde kapanır.
@@ -40,9 +41,9 @@ soru çubuğu ile cevap görünümü.
 - Requirement 12: Kapanışta sıradakiler ve yürüyenler `interrupted` olur (yürüyenlerin model
   bağlantısı kapatılır); açılışta bu süreçten önce kabul edilmiş `queued` ya da `running` kayıtlar
   `interrupted` yapılır.
-- Requirement 7: Sonuç okunurken cevap `AnswerOverlay` uygulama noktasından geçer; answer-feedback
-  oy uygulamasını buraya bağlar, hata verirse cevap oysuz döner ve `analysis.feedback_overlay_failed`
-  yazılır. Oy deposu olmadığı sürece uygulama noktası cevabı değiştirmez.
+- Requirement 7: Sonuç okunurken cevap `AnswerOverlay` uygulama noktasından (`AnalysisJobs.present`)
+  geçer; answer-feedback'in oy hizmeti bu noktadır, hata verirse cevap oysuz döner ve
+  `analysis.feedback_overlay_failed` yazılır. list-search'ün terim ayrıntısı da aynı noktadan geçer.
 - Requirement 18 ve Decision 10: Kayıtlı cevap kaynağın biçimini (`answer_cache.encode`, kolonlar
   anahtarla) taşır ve güncel sözlükle kurulur. Analiz kaydının tam cevabı aynı biçimdir ama her
   kolonun sözlük satırını içinde taşır; böylece sonraki içe aktarmalardan sonra da sonuç zarfı

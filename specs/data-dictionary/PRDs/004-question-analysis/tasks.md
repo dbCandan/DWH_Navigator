@@ -21,16 +21,16 @@
 - [x] Task 6 — Dağıtım etkisi (yerel): iki ayar, `.env.example` ve Compose ortam bloğu. Kanıt:
   `python3 scripts/check-config-sync.py`. Yerel yığında sahte OpenAI uyumlu sunucuyla `curl`
   denemesi (başlat, akış, sonuç, rapor, durdur, kayıtlı cevap).
-- [ ] Task 7 — Requirement 7'nin oy tarafı: answer-feedback'in oy uygulamasının
-  `AnalysisJobs.overlay` noktasına bağlanması (answer-feedback dalgası).
+- [x] Task 7 — Requirement 7'nin oy tarafı: answer-feedback'in oy uygulamasının
+  `AnalysisJobs.overlay` noktasına bağlanması. Kanıt: `tests/integration/test_votes_api.py`.
 - [x] Task 8 — Requirement 19-22 / Acceptance 6: soru çubuğu, ilerleme, cevap görünümü, Vitest
   testleri (ön yüz dalgası). Kanıt: `app/frontend/src/hooks/useAsk.test.tsx`,
   `app/frontend/src/components/explorer/AnswerView.test.tsx`, `app/frontend/src/pages/ExplorerPage.test.tsx`,
   `scripts/quality-gate.sh frontend`.
-- [ ] Task 13 — Requirement 19'un tam tablo adı kısmı ve Requirement 21'deki tablo dosyası
-  bağlantıları ("Kolonlar", önerilmemiş tablo adları): dictionary-explorer'ın tablo dosyasıyla birlikte.
 - [ ] Task 9 — Acceptance 7: yerel Compose'da onaylı gerçek model ucuyla tarayıcı senaryosu.
 - [ ] Task 10 — Acceptance 3 ve 8: kaynak kopyasıyla `--verify-snapshot` ve gerçek sözlükle fark
   düzeneği (geliştirici makinesi, depo dışı veri).
 - [ ] Task 11 — Acceptance 9: nonprod'da kurum içi model ucuyla koşum (ayrı kullanıcı talimatı).
 - [ ] Task 12 — Acceptance 10: görsel eşdeğerlik ekran görüntüleri.
+- [ ] Task 13 — Requirement 19'un tam tablo adı kısmı ve Requirement 21'deki tablo dosyası
+  bağlantıları ("Kolonlar", önerilmemiş tablo adları): dictionary-explorer'ın tablo dosyasıyla birlikte.
