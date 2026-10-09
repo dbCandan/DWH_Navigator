@@ -1,5 +1,5 @@
 {
-  "corpus_digest": "163054dde85775016c6927ab69d97b34a38ec865032753515a0daff8e8719aff",
+  "corpus_digest": "2014d9e0c6140d5ec758c038c3ddd06752c04ad11b15382b6a19a1719cd1ed69",
   "files": {
     ".agents/skills/governed-review/SKILL.md": "fa131dc2434be85615146a4ff8ab070b8938a0eea47557e39e8d9f2932bdfc76",
     ".agents/skills/kt-alan/SKILL.md": "11016f2dae2bf4c6736c1262ff9a743faff5fce2dbc875eb75d6541aae9820a0",
@@ -32,7 +32,7 @@
     ".claude/rules/42-referans-butunlugu.md": "09443910d32505e0728f673e11cf9cce87d56e5fad15eb83603982a0c31a9fe2",
     ".claude/rules/43-sema-yorumlari.md": "c3b2434cb26258da9bbe676af2a77d7d36a88450d8f8beb37a6112292f30e7b2",
     ".claude/rules/44-sema-motoru-siniri.md": "8ba5a8112d650b4451851a619551bfe5f560d6416cda13608d2208937b122680",
-    ".claude/rules/45-dagitim-hedefi.md": "568780282c33116f9cfb561bc7d2979915649ce7d4eb051a415191ac35a68bb2",
+    ".claude/rules/45-dagitim-hedefi.md": "ee1251fea5a21287208fce07aa40221ce20a267efc2fb12a71e328f94e6097a7",
     ".claude/rules/46-vektor-gomme-siniri.md": "817a58d358f130414f4fd310a9ab93e2cc7e462eae165cd6a9c4e344b6071000",
     ".claude/rules/58-kimlik-dogrulama-ve-yetkilendirme.md": "69e916b2ab80070e1a010761c2720bbd83e036f64b197e73b01295f639402e27",
     ".claude/settings.json": "ee654b94352405acc5def40f6095ccc25de7237308858d8b1e7735cd0fe88f8b",

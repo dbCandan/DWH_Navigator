@@ -8,6 +8,10 @@ metadata:
     {{- include "generated.annotations" . | nindent 4 }}
 spec:
   replicas: {{ .Values.backend.replicaCount }}
+  {{- with include "generated.backendStrategy" . }}
+  strategy:
+    {{- . | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       scaffold.kt.internal/workload: {{ include "generated.resourceName" (list . "backend") | quote }}

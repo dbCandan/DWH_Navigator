@@ -54,6 +54,15 @@ silmez ve yönetilen dosya listesine yazmaz:
   değer dosyasının üstüne katmanlar. Projenin ortam bilgisini taşır: ingress sınıfı, host ve TLS
   `Secret` adı; `backend.existingSecret` adı; backend çıkış eşleri; depolama sınıfı; `postgres` ve
   `migration` açma anahtarları; `backend.config` altında `<ENV_PREFIX>` önekli, gizli olmayan ayarlar.
+  İki ayar isteğe bağlıdır; yazılmazsa render çıktısı değişmez. `backend.strategy` arka uç
+  `Deployment`'ının güncelleme yöntemidir: yalnız `{type: RollingUpdate}` (isteğe bağlı `maxSurge` ve
+  `maxUnavailable` tam sayı ya da yüzde olarak) veya `{type: Recreate}` kabul edilir; `Recreate`
+  ile `rollingUpdate` birlikte reddedilir. Süren işin durumunu bellekte tutan arka uç `Recreate`
+  seçer; güncellemede iki arka uç podu aynı anda çalışmaz. `frontend.ingress.annotations`, `chart`'ın
+  ürettiği kimlik ek açıklamalarının (`annotation`) yanına giriş kapısı için gizli olmayan ayarlar
+  ekler; örneğin `nginx.ingress.kubernetes.io/proxy-body-size: "20m"`. `scaffold.kt.internal/`,
+  `helm.sh/` ve `meta.helm.sh/` önekli anahtarlar ile paylaşılan giriş kapısında yapılandırma
+  çalıştıran `...snippet` anahtarları işlenmeden reddedilir.
   Çıkış eşi bir seçici ya da adıyla sınırlı `ipBlock` adres bloğudur; IPv4'te `/8`, IPv6'da `/32`
   değerinden geniş blok reddedilir. Gizli görünen anahtar (parola, belirteç, özel anahtar, bağlantı
   adresi gibi), PEM özel anahtarı veya kullanıcı adı ve parola içeren adres taşıyamaz.
@@ -70,7 +79,8 @@ silmez ve yönetilen dosya listesine yazmaz:
 hem açıkken kanıtlar. Proje katmanı varsa temel değerleri ve katmanı `deploy.sh`'in varsayılan release
 ve namespace adıyla aynı yapısal denetimlerden geçirir; gizli malzemeyi ve geçersiz yapıyı reddeder.
 Kanca varsa sözdizimini `bash -n` ile denetler. `chart` da `backend.config` içinde öneksiz veya gizli
-görünen anahtarı işlemeden reddeder.
+görünen anahtarı, geçersiz `backend.strategy` değerini ve izin verilmeyen ingress ek açıklamasını
+işlemeden reddeder.
 
 `postgres.enabled` açıldığında veritabanı iş yükü yukarıdaki kontrollere ek olarak şunları karşılar:
 

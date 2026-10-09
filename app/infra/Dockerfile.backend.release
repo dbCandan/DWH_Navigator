@@ -16,6 +16,13 @@ ENV HOME=/tmp \
 RUN addgroup -g "${APP_GID}" app \
     && adduser -D -H -u "${APP_UID}" -G app app
 
+# Organization root CA of the internal model server (data-dictionary/PRDs/003-llm-connection,
+# Dağıtım etkisi): added to the system trust store; nonprod also names this file in
+# DWHNAVIGATOR_LLM_CA_BUNDLE (helm/dwhnavigator/values-project.yaml).
+COPY app/backend/certs/corporate-inference-root.crt /usr/local/share/ca-certificates/corporate-inference-root.crt
+RUN chmod 0644 /usr/local/share/ca-certificates/corporate-inference-root.crt \
+    && update-ca-certificates >/dev/null 2>&1
+
 WORKDIR /workspace/app/backend
 COPY app/backend/requirements.txt /tmp/dependencies/requirements.txt
 RUN --mount=type=bind,from=python_wheelhouse,source=/,target=/opt/wheelhouse \
@@ -36,4 +43,8 @@ COPY --chown=${APP_UID}:${APP_GID} schema /workspace/schema
 
 USER ${APP_UID}:${APP_GID}
 EXPOSE 8000
-ENTRYPOINT ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header", "--no-access-log"]
+# --timeout-graceful-shutdown: on SIGTERM uvicorn waits for open responses before the application's
+# own shutdown runs; an open analysis event stream would hold it until the pod is killed. After 3 s
+# the streams are cancelled and the application ends its jobs and lists as interrupted
+# (data-dictionary/PRDs/004-question-analysis Requirement 12) within the 30 s pod grace.
+ENTRYPOINT ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header", "--no-access-log", "--timeout-graceful-shutdown", "3"]

@@ -108,7 +108,7 @@ politikası, zaman aşımı, yeniden deneme, şemaya bağlı yanıt isteği, yan
 
 ## Mevcut davranış
 
-Kaynak: `~/codes/kt-dwhnavigator` (içerik `76e21a3`). Her maddenin sonundaki **Hedefte:** notu neyin
+Kaynak: bu deponun geçmişindeki `76e21a3`. Her maddenin sonundaki **Hedefte:** notu neyin
 değiştiğini ya da aynen kaldığını söyler.
 
 ### Soru akışı

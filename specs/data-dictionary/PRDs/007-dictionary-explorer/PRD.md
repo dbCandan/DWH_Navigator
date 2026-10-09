@@ -84,7 +84,7 @@ görünümü değiştirmeden karşılanır (Decision 4–8).
 
 ## Mevcut davranış
 
-Kaynak: `~/codes/kt-dwhnavigator`, `76e21a3`; ana ekran `src/vsa/web/static/index.html` (tek dosya, dış
+Kaynak: bu deponun geçmişindeki `76e21a3`; ana ekran `src/vsa/web/static/index.html` (tek dosya, dış
 kaynak yok). Her maddenin sonunda hedefteki karşılığı yazılıdır.
 
 - **Kabuk ve üst çubuk** (`index.html` `header.top`): Solda pusula simgesi, "DWH Navigator" ve

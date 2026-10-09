@@ -87,7 +87,7 @@ Windows ve macOS'ta aynı komutlarla açılır.
 
 ## Mevcut davranış
 
-Kaynak `~/codes/kt-dwhnavigator` (`76e21a3`) ve hedef iskelet `~/codes/dwhnavigator-kt` bugün şöyle
+Kaynak (bu deponun geçmişindeki `76e21a3`) ve hedef iskeletin ilk hali (`43635ec`) bugün şöyle
 çalışır; her maddenin sonunda hedefteki değişiklik yazılıdır.
 
 - **Tek konteyner imajı** (`Dockerfile`, ADR-048): `python:3.12-alpine` taban imajı SHA-256 özetiyle

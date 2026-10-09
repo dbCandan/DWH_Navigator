@@ -75,7 +75,7 @@ gördüğü değerler kaynak `76e21a3` ile bayt bayt aynıdır.
 
 ## Mevcut davranış
 
-Kaynak uygulama `~/codes/kt-dwhnavigator` (`76e21a3`) bugün şöyle çalışır; hedefteki değişiklik her
+Kaynak uygulama (bu deponun geçmişindeki `76e21a3`) bugün şöyle çalışır; hedefteki değişiklik her
 maddede yazılıdır.
 
 - **Depolama** (ADR-052): Terim sözlüğü `data/terms.jsonl` (satır başına bir grup: `term`,

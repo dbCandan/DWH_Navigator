@@ -34,5 +34,8 @@
   "Yarıda kesildi · 2/5" göründü, "▶ Devam et" sonrası analiz kayıtlarında cevaplanmış 1. ve 2.
   terim yeniden sorulmadı, günlükte terim metni yoktu. Bağlı model yerel sahte model sunucusuydu.
 - [ ] Task 9 — Dağıtım etkisi: kapanış bekleme süresi ve `Recreate` (kubernetes-delivery dalgası).
+  Kapanış bekleme süresi tamam: release imajı uvicorn'u `--timeout-graceful-shutdown 3` ile
+  başlatır; 3 + 20 + 5 saniye pod'un 30 saniyelik bekleme süresine sığar (kanıt:
+  `tests/helm/values-project.test.sh`). `Recreate` fabrika chart seçeneğini bekliyor.
 - [ ] Task 10 — Acceptance 9: nonprod'da ingress üzerinden liste ve dağıtım sırasında yarıda
   kesilme (ayrı kullanıcı talimatı).

@@ -101,7 +101,7 @@ yalnız şifreli `https`; `nonprod`'un model ucu (RunAI) `https` olduğu için i
 
 ## Mevcut davranış
 
-Kaynak uygulama `~/codes/kt-dwhnavigator` (`76e21a3`) bugün şöyle çalışır; hedefteki değişiklik her
+Kaynak uygulama (bu deponun geçmişindeki `76e21a3`) bugün şöyle çalışır; hedefteki değişiklik her
 maddede belirtilmiştir.
 
 - **Bağlantının yeri** (`src/vsa/config.py` `load_settings`, `read_integrations`,

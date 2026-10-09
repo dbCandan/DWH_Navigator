@@ -89,7 +89,7 @@ göstergesi ayrışmayı `stale` olarak gösterir (Requirement 15).
 
 ## Mevcut davranış
 
-Kaynak uygulama `~/codes/kt-dwhnavigator` (`76e21a3`) bugün şöyle çalışır; hedefteki değişiklik her
+Kaynak uygulama (bu deponun geçmişindeki `76e21a3`) bugün şöyle çalışır; hedefteki değişiklik her
 maddede yazılıdır.
 
 - **Ayarlar ve varsayılanlar** (`config.py`): ayarlar veri sınıflarıdır; varsayılanlar 2026-10-07'de
