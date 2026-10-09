@@ -3,7 +3,8 @@
 It speaks just enough HTTP/1.1, plain or over TLS with its own test certificate authority. Every
 request is recorded byte for byte (method, path, headers, body) and answered by the scenario the
 test installs. Each answer closes the connection. The certificate authority and server key are
-generated per test run and written only to the pytest temporary directory.
+generated per test run and written only to the pytest temporary directory. ``close`` drops every
+connection still open, so a client that keeps one idle cannot hold the server open.
 """
 
 import asyncio
@@ -205,6 +206,7 @@ class FakeLlmServer:
     closed_at: list[float] = field(default_factory=list)
     port: int = 0
     _server: asyncio.Server | None = None
+    _writers: set[Writer] = field(default_factory=set)
 
     async def start(self, *, certificate: ServerPki | None = None) -> "FakeLlmServer":
         context: ssl.SSLContext | None = None
@@ -219,6 +221,10 @@ class FakeLlmServer:
     async def close(self) -> None:
         if self._server is not None:
             self._server.close()
+            # Since Python 3.12 wait_closed also waits for open connections; an idle keep-alive
+            # connection or an unanswered request would otherwise keep it waiting forever.
+            for writer in list(self._writers):
+                writer.transport.abort()
             await self._server.wait_closed()
 
     def url(self, path: str = "/v1", *, host: str | None = None) -> str:
@@ -231,6 +237,7 @@ class FakeLlmServer:
 
     async def _handle(self, reader: asyncio.StreamReader, writer: Writer) -> None:
         self.connections += 1
+        self._writers.add(writer)
         try:
             request_line = await reader.readline()
             if not request_line:
@@ -257,6 +264,7 @@ class FakeLlmServer:
         except (ConnectionError, asyncio.IncompleteReadError, ssl.SSLError):
             pass
         finally:
+            self._writers.discard(writer)
             writer.close()
             try:
                 await writer.wait_closed()
