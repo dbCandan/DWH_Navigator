@@ -9,6 +9,15 @@ import type {AnalysisAnswer, AnswerObject} from '@/types/analysis';
 /** A score 0..1 as a whole percent. */
 export const pct = (x: number | null | undefined): number => Math.round((x || 0) * 100);
 
+/**
+ * The whole percent before the votes, when the votes moved the shown confidence
+ * (answer-feedback Requirement 7, 12); null otherwise.
+ */
+export function movedBefore(m: Pick<AnswerObject, 'score' | 'score_before'>): number | null {
+  if (m.score_before == null || pct(m.score_before) === pct(m.score)) return null;
+  return pct(m.score_before);
+}
+
 /** Long identifiers may wrap only at CamelCase and underscore boundaries. */
 export const breakParts = (name: string): string[] => name.split(/(?<=[a-z0-9])(?=[A-Z])|(?<=_)/);
 
@@ -77,9 +86,11 @@ const reEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  * Table and column names inside the analyst's prose (source richOf): a full `DB.Şema.Obje` key or
  * a known table name becomes a table reference, a CamelCase word a column name.
  */
-export function richTokenizer(answer: Pick<AnalysisAnswer, 'objects' | 'near'>): (text: string) => RichToken[] {
+export function richTokenizer(
+  answer: Pick<AnalysisAnswer, 'objects' | 'near' | 'rejected'>,
+): (text: string) => RichToken[] {
   const known = new Map<string, AnswerObject>();
-  for (const m of [...answer.objects, ...answer.near]) {
+  for (const m of [...answer.objects, ...answer.near, ...(answer.rejected ?? [])]) {
     if (!known.has(m.key)) known.set(m.key, m);
     if (!known.has(m.name)) known.set(m.name, m);
   }

@@ -10,10 +10,12 @@ import {
   type MouseEvent,
   type ReactNode,
 } from 'react';
+import {Breakable} from '@/components/explorer/Breakable';
+import {AnswerVote, ApprovedMark, PickMark, VoteBadge, VoteBar, type SendVote} from '@/components/explorer/Votes';
 import {useIntl} from '@/contexts/IntlContext';
 import {
   answerConcepts,
-  breakParts,
+  movedBefore,
   cardId,
   conceptParts,
   NOTE_TONE,
@@ -23,13 +25,15 @@ import {
   verdictClass,
   type RichToken,
 } from '@/lib/answerText';
+import {VoteService} from '@/services/votes';
 import type {AnalysisAnswer, AnswerColumn, AnswerObject} from '@/types/analysis';
+import type {VoteIn} from '@/types/feedback';
 
 /*
  * The answer view (question-analysis Requirement 21; index.html answerView, foundBlock,
  * overview, resultCard, sideCard, richOf): the source's elements, class names and texts. The
- * analyst's text is rendered as plain text only. The vote controls and the tables people
- * approved or rejected belong to answer-feedback and join this view with it.
+ * analyst's text is rendered as plain text only. The vote elements (answer-feedback
+ * Requirement 11-13) are in Votes.tsx; the tables people approved or rejected are shown apart.
  */
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
@@ -43,6 +47,10 @@ interface Shared {
   openTable?: (key: string) => void;
   /** Whether the table file can open this key (it has a star on the map). */
   hasTable?: (key: string) => boolean;
+  /** A vote on this answer or on one of its tables. */
+  vote: (body: Pick<VoteIn, 'scope' | 'table_key'>) => SendVote;
+  /** The person's own last votes in this question (table key, "" for the answer). */
+  mine: Record<string, 'up' | 'down'>;
 }
 
 const AnswerContext = createContext<Shared | null>(null);
@@ -58,20 +66,6 @@ const VERDICT_WORD: Record<string, [string, string]> = {
   'KISMEN VAR': ['◐', 'answer.verdict.partial'],
   BULUNAMADI: ['✕', 'answer.verdict.notFound'],
 };
-
-/** "vCustomer<wbr>Info": a long identifier that may wrap only at its word joints. */
-function Breakable({name}: {name: string}) {
-  return (
-    <>
-      {breakParts(name).map((part, i) => (
-        <Fragment key={i}>
-          {i ? <wbr /> : null}
-          {part}
-        </Fragment>
-      ))}
-    </>
-  );
-}
 
 /** Prose with its table and column names made light to read. */
 function Rich({text}: {text: string}) {
@@ -95,7 +89,12 @@ function Rich({text}: {text: string}) {
               className="tn"
               type="button"
               title={t(toCard ? 'answer.openDetail' : 'answer.openDictionary', {key: token.key})}
-              onClick={() => (toCard && token.object ? jumpTo(token.object) : openTable?.(token.key))}
+              onClick={(event) => {
+                if (toCard && token.object) return jumpTo(token.object);
+                // The map's sky click would close the file this click opens (as "Kolonlar" does).
+                event.stopPropagation();
+                openTable?.(token.key);
+              }}
             >
               <Breakable name={token.name} />
             </button>
@@ -130,12 +129,13 @@ function Ring({m}: {m: AnswerObject}) {
   }, []);
   const p = Math.max(0, Math.min(1, m.score || 0));
   const score = pct(m.score);
+  const before = movedBefore(m);
   return (
     <div
       className={'ring lc-' + m.level}
       role="img"
       aria-label={t('answer.ring', {score, level: m.level})}
-      title={t('answer.ringTip', {score})}
+      title={t('answer.ringTip', {score}) + (before !== null ? t('vote.ringBefore', {before}) : '')}
     >
       <svg viewBox="0 0 52 52" width="52" height="52" aria-hidden="true">
         <circle cx="26" cy="26" r={RING_R} className="ring-track" />
@@ -297,22 +297,25 @@ interface PickProps {
   m: AnswerObject;
   open: boolean;
   onToggle: () => void;
-  /** A near candidate: no rank, no element id. */
+  /** A near candidate or a rejected table: no rank, no element id. */
   aside?: boolean;
+  /** A table people rejected: shown faded. */
+  dim?: boolean;
 }
 
 /** A suggestion as one row (rank, name, confidence) that opens its card under it. */
-function ResultCard({m, open, onToggle, aside = false}: PickProps) {
-  const {t} = useShared();
+function ResultCard({m, open, onToggle, aside = false, dim = false}: PickProps) {
+  const {t, vote, mine} = useShared();
   const id = aside ? undefined : cardId(m.key);
   const bodyId = aside ? undefined : cardId(m.key) + '-body';
   const covered = new Set(m.covered);
   const long = new Set(m.long_format);
   const concepts = [...m.covered, ...m.missing];
   const score = pct(m.score);
+  const before = movedBefore(m);
   return (
     <article
-      className={`pick lc-${m.level}` + (open ? ' open' : '')}
+      className={`pick lc-${m.level}` + (dim ? ' dim' : '') + (open ? ' open' : '')}
       id={id}
       style={{'--i': m.rank || 0} as CSSProperties}
     >
@@ -321,11 +324,14 @@ function ResultCard({m, open, onToggle, aside = false}: PickProps) {
         type="button"
         aria-expanded={open}
         aria-controls={bodyId}
-        title={t('answer.pickTip', {key: m.key, score, level: m.level})}
+        title={t('answer.pickTip', {key: m.key, score, level: m.level}) + (before !== null ? t('vote.pickBefore', {before}) : '')}
         onClick={onToggle}
       >
         <span className="pk-n">{!aside && m.rank ? m.rank : '·'}</span>
-        <span className="pk-name">{m.name}</span>
+        <span className="pk-name">
+          {m.name}
+          <PickMark m={m} />
+        </span>
         <span className="pk-bar" aria-hidden="true">
           <i style={{'--w': `${score}%`} as CSSProperties} />
         </span>
@@ -338,7 +344,8 @@ function ResultCard({m, open, onToggle, aside = false}: PickProps) {
       <div className="pick-body" id={bodyId}>
         <div className="res-path">
           <code>{`${m.database}.${m.schema}`}</code>
-          {m.groups.length ? ' · ' + m.groups.join(', ') : null} <ColumnsButton m={m} />
+          {m.groups.length ? ' · ' + m.groups.join(', ') : null} <VoteBadge m={m} />
+          <ColumnsButton m={m} />
         </div>
         {m.covers ? <div className="res-covers">{m.covers}</div> : null}
         <Clamp as="p" className="res-reason">
@@ -391,6 +398,11 @@ function ResultCard({m, open, onToggle, aside = false}: PickProps) {
             ) : null}
             <Bars m={m} />
           </details>
+          <VoteBar
+            label={t('vote.question')}
+            mine={mine[m.key] ?? ''}
+            send={vote({scope: 'table', table_key: m.key})}
+          />
         </div>
       </div>
     </article>
@@ -401,12 +413,14 @@ function ResultCard({m, open, onToggle, aside = false}: PickProps) {
 function PickList({
   items,
   aside = false,
+  dim = false,
   className = 'pick-list',
   openKey,
   onOpen,
 }: {
   items: readonly AnswerObject[];
   aside?: boolean;
+  dim?: boolean;
   className?: string;
   openKey: string | null;
   onOpen: (key: string | null) => void;
@@ -418,6 +432,7 @@ function PickList({
           key={m.key + i}
           m={m}
           aside={aside}
+          dim={dim}
           open={openKey === m.key}
           onToggle={() => onOpen(openKey === m.key ? null : m.key)}
         />
@@ -543,6 +558,7 @@ function FoundBlock({answer}: {answer: AnalysisAnswer}) {
           <span className="ab-k">{t('answer.best')}</span>
           <span className="ab-name">
             <Breakable name={best.name} />
+            <ApprovedMark m={best} />
           </span>
           {best.covers ? <span className="ab-covers">{best.covers}</span> : null}
           <span className="ab-path">
@@ -561,7 +577,10 @@ function FoundBlock({answer}: {answer: AnalysisAnswer}) {
                 title={t('answer.alsoTip', {key: m.key, score: pct(m.score), level: m.level})}
               >
                 <span className="aa-n">{m.rank}</span>
-                <span className="aa-name">{m.name}</span>
+                <span className="aa-name">
+                  {m.name}
+                  <ApprovedMark m={m} />
+                </span>
                 <span className="aa-covers">{m.covers || ''}</span>
                 <span className="aa-pct">{'%' + pct(m.score)}</span>
               </button>
@@ -600,6 +619,7 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
   const {t} = useIntl();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [nearKey, setNearKey] = useState<string | null>(null);
+  const [rejectedKey, setRejectedKey] = useState<string | null>(null);
   const [flash, setFlash] = useState<{key: string; at: number} | null>(null);
   const rich = useMemo(() => richTokenizer(r), [r]);
 
@@ -622,6 +642,7 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
     return () => window.clearTimeout(timer);
   }, [flash]);
 
+  const feedback = r.feedback ?? null;
   const shared: Shared = useMemo(
     () => ({
       t,
@@ -632,11 +653,26 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
         setOpenKey(m.key);
         setFlash({key: m.key, at: performance.now()});
       },
+      // The question and the time the answer was written go back with every vote (Decision 4).
+      vote:
+        ({scope, table_key}) =>
+        (vote, note) =>
+          VoteService.cast({
+            query: r.query,
+            scope,
+            ...(table_key ? {table_key} : {}),
+            vote,
+            ...(note ? {note} : {}),
+            ...(feedback?.answer_at ? {answer_at: feedback.answer_at} : {}),
+          }),
+      mine: feedback?.mine ?? {},
     }),
-    [t, rich, openTable, hasTable],
+    [t, rich, openTable, hasTable, r.query, feedback],
   );
 
   const [title, lead] = splitSummary(r.summary);
+  const rejected = r.rejected ?? [];
+  const endorsed = r.endorsed ?? [];
   const why = r.fallback ? r.fallback.replace(/\.?$/, '.') : t('answer.unavailableNoModel');
   const ruleNote = t('answer.unavailableNote', {why});
   const ruleShort = t('answer.unavailableShort', {why: r.fallback || t('answer.unavailableShortNoModel')});
@@ -769,6 +805,9 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
                   {ruleShort}
                 </div>
               )}
+              {r.reused && feedback?.answer_rejected ? (
+                <div className="answer-fallback">{t('vote.keptRejected')}</div>
+              ) : null}
             </div>
           </div>
         </section>
@@ -781,6 +820,47 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
                 <summary>{t('answer.near', {count: r.near.length})}</summary>
                 <PickList items={r.near} aside className="inner pick-list" openKey={nearKey} onOpen={setNearKey} />
               </details>
+            ) : null}
+            {endorsed.length ? (
+              <section className="guide crowd">
+                <div className="label">{t('vote.endorsed')}</div>
+                <div className="crowd-list">
+                  {endorsed.map((e) => (
+                    <button
+                      key={e.key}
+                      className="crowd-item"
+                      type="button"
+                      title={t('vote.endorsedTip')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openTable?.(e.key);
+                      }}
+                    >
+                      <b>
+                        <Breakable name={e.name} />
+                      </b>
+                      <span>{e.schema}</span>
+                      <span className="vb up">{t('vote.endorsedCount', {count: e.votes.up})}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+            {rejected.length ? (
+              <details className="ask-more">
+                <summary>{t('vote.rejected', {count: rejected.length})}</summary>
+                <div className="inner">
+                  <p className="faint">{t('vote.rejectedNote')}</p>
+                  <PickList items={rejected} aside dim openKey={rejectedKey} onOpen={setRejectedKey} />
+                </div>
+              </details>
+            ) : null}
+            {r.objects.length || rejected.length ? (
+              <AnswerVote
+                answer={feedback?.answer ?? null}
+                mine={feedback?.mine[''] ?? ''}
+                send={shared.vote({scope: 'answer'})}
+              />
             ) : null}
             <details className="ask-more">
               <summary>{t('answer.searchDetails')}</summary>
