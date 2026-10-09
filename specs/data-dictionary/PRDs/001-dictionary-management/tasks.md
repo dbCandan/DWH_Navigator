@@ -21,8 +21,13 @@
   `tests/integration/test_dictionary_api.py`.
 - [x] Task 6 — Dağıtım etkisi (yerel): yerel ters vekilde 20 MB gövde. Kanıt: yerel yığında
   `nginx -t` ve `curl` ile içe aktarma.
-- [ ] Task 7 — Requirement 13 ve 15 / Acceptance 3: Sözlük sayfası, bırakma alanı, çekmece,
-  bildirimler, Vitest testleri (ön yüz dalgası).
+- [x] Task 7 — Requirement 13 ve 15 / Acceptance 3: Sözlük sayfası, bırakma alanı, çekmece,
+  bildirimler, Ctrl K'daki üç işlem ve Tablolar, Vitest testleri. Kanıt:
+  `app/frontend/src/pages/admin/DictionaryPage.test.tsx`, `app/frontend/src/services/excelUpload.test.ts`,
+  `scripts/quality-gate.sh frontend`.
 - [ ] Task 8 — Acceptance 4: yerel Compose'da tarayıcıyla senaryo (ön yüz dalgasından sonra).
 - [ ] Task 9 — Acceptance 5: nonprod'da gerçek sözlükle içe aktarma (ayrı kullanıcı talimatı).
-- [ ] Task 10 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri.
+- [x] Task 10 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri. Yerel Compose'da hedef ile
+  kaynak `76e21a3` fark testinin sentetik sözlüğüyle çalıştırıldı; boş sayfa, bilgi ve Tablolar
+  kartları, tablo çekmecesi ve sürükleme alanı masaüstü ve telefon genişliğinde yan yana
+  karşılaştırıldı. Farklar yalnız yol, Boyut, "Dosya ayarları" ve oturum alanıdır.

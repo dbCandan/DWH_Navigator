@@ -1,0 +1,9 @@
+/* The product marks' colors (the source drew them with SVG color attributes). */
+.compass-disc { fill: var(--compass-disc); }
+.compass-rim { fill: none; stroke: var(--compass-gold); stroke-opacity: .45; }
+.compass-north { fill: var(--compass-gold); }
+.compass-south { fill: var(--white); fill-opacity: .85; }
+.logo-disc { fill: var(--logo-disc); }
+.logo-stop-start { stop-color: var(--cyan); }
+.logo-stop-mid { stop-color: var(--violet); }
+.logo-stop-end { stop-color: var(--pink); }

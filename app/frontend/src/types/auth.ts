@@ -1,8 +1,18 @@
-import type { paths } from "./api";
+import type {components} from './api';
 
-/** Types are selected by endpoint, so both supported backend profiles stay interchangeable. */
-export type AuthenticatedUser =
-  paths["/api/dwhnavigator/v1/auth/me"]["get"]["responses"][200]["content"]["application/json"];
+type Schemas = components['schemas'];
 
-export type LoginResponse =
-  paths["/api/dwhnavigator/v1/auth/login"]["post"]["responses"][200]["content"]["application/json"];
+/** The signed-in account as `/auth/me`, login, password change and refresh return it. */
+export type AuthenticatedUser = Schemas['AuthenticatedUser'];
+export type LoginResponse = Schemas['LoginResponse'];
+export type PasswordChangeRequest = Schemas['PasswordChangeRequest'];
+
+/** Super-admin account administration (user-accounts Requirement 2 and 5). */
+export type UserSummary = Schemas['UserSummary'];
+export type UserPage = Schemas['UserPage'];
+export type UserCreateRequest = Schemas['UserCreateRequest'];
+export type UserCreated = Schemas['UserCreated'];
+export type OneTimePassword = Schemas['OneTimePassword'];
+export type ApplicationRole = Schemas['RoleChange']['role'];
+export type RoleChange = Schemas['RoleChange'];
+export type ActiveChange = Schemas['ActiveChange'];

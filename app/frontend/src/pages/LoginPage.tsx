@@ -1,76 +1,143 @@
 import {useState, type FormEvent} from 'react';
-import {Navigate, useNavigate} from 'react-router';
+import {Navigate, useLocation, useNavigate} from 'react-router';
+import {Field} from '@/components/admin/Field';
+import {AuthCard} from '@/components/auth/AuthCard';
 import {useAuth} from '@/contexts/AuthContext';
 import {useIntl} from '@/contexts/IntlContext';
+import {accountErrorMessage} from '@/lib/accountErrors';
 import {ApiError} from '@/lib/apiClient';
-import {config} from '@/lib/config';
 
-/** Stable catalog key for each login failure the backend distinguishes. */
-function loginErrorKey(error: unknown): string {
-  if (error instanceof ApiError && error.status === 401) return 'auth.login.invalidCredentials';
-  if (error instanceof ApiError && error.status === 429) return 'auth.login.tooManyAttempts';
-  return 'auth.login.unavailable';
+/** Where to go after signing in: the protected page that sent the person here, else the main screen. */
+function targetOf(state: unknown): string {
+  const from = (state as {from?: unknown} | null)?.from;
+  return typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') && from !== '/login' ? from : '/';
 }
 
-function languageName(locale: string): string {
-  try {
-    return new Intl.DisplayNames([locale], {type: 'language'}).of(locale) ?? locale;
-  } catch {
-    return locale;
-  }
-}
-
+/**
+ * Sign-in (user-accounts Requirement 1 and 16). The message never says whether the user name or
+ * the password was wrong. When the account still holds its one-time password, the same screen
+ * turns into "Yeni parola belirleyin": the new password twice and the policy in plain words; the
+ * change signs the person in.
+ */
 export default function LoginPage() {
-  const {user, login} = useAuth();
-  const {locale, locales, setLocale, t} = useIntl();
+  const {user, login, changePassword} = useAuth();
+  const {t} = useIntl();
   const navigate = useNavigate();
+  const location = useLocation();
+  const target = targetOf(location.state);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [changing, setChanging] = useState(false);
+  const [next, setNext] = useState('');
+  const [repeat, setRepeat] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to={target} replace />;
 
-  async function submit(event: FormEvent) {
+  async function signIn(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
-    setErrorKey(null);
+    setError(null);
     try {
       await login(username, password);
-      navigate('/', {replace: true});
-    } catch (error) {
-      setErrorKey(loginErrorKey(error));
+      navigate(target, {replace: true});
+    } catch (failure) {
+      if (failure instanceof ApiError && failure.code === 'password_change_required') setChanging(true);
+      else setError(accountErrorMessage(failure, 'login', t));
     } finally {
       setBusy(false);
     }
   }
 
-  return (
-    <main className="login-shell">
-      <section className="login-card">
-        <div className="eyebrow">{t('auth.login.context', {domain: config.primaryDomain})}</div>
-        <h1>{"DWH Navigator"}</h1>
-        <p>{t('auth.login.subtitle')}</p>
-        <form onSubmit={submit}>
-          <label htmlFor="username">{t('auth.login.username')}</label>
-          <input id="username" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} />
-          <label htmlFor="password">{t('auth.login.password')}</label>
-          <input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-          {errorKey && <div role="alert">{t(errorKey)}</div>}
-          <button type="submit" disabled={busy}>{busy ? t('auth.login.busy') : t('auth.login.submit')}</button>
+  async function setNewPassword(event: FormEvent) {
+    event.preventDefault();
+    if (next !== repeat) {
+      setError(t('auth.password.mismatch'));
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await changePassword(username, password, next);
+      navigate(target, {replace: true});
+    } catch (failure) {
+      setError(accountErrorMessage(failure, 'password', t));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (changing)
+    return (
+      <AuthCard title={t('auth.firstLogin.title')} lead={t('auth.firstLogin.lead')}>
+        <form className="form" onSubmit={setNewPassword}>
+          <Field id="new-password" label={t('auth.password.new')} hint={t('auth.password.policy')}>
+            <input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              aria-describedby="new-password-hint"
+              required
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+            />
+          </Field>
+          <Field id="repeat-password" label={t('auth.password.repeat')}>
+            <input
+              id="repeat-password"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={repeat}
+              onChange={(e) => setRepeat(e.target.value)}
+            />
+          </Field>
+          {error && (
+            <div className="msg bad" role="alert">
+              {error}
+            </div>
+          )}
+          <button className="btn primary" type="submit" disabled={busy}>
+            {busy ? t('auth.password.saving') : t('auth.firstLogin.submit')}
+          </button>
         </form>
-        {locales.length > 1 && (
-          <div className="language">
-            <label htmlFor="language">{t('common.language.label')}</label>
-            <select id="language" value={locale} onChange={(e) => setLocale(e.target.value)}>
-              {locales.map((option) => (
-                <option key={option} value={option} lang={option}>
-                  {languageName(option)}
-                </option>
-              ))}
-            </select>
+      </AuthCard>
+    );
+
+  return (
+    <AuthCard title={t('auth.login.title')} lead={t('auth.login.subtitle')}>
+      <form className="form" onSubmit={signIn}>
+        <Field id="username" label={t('auth.login.username')}>
+          <input
+            id="username"
+            type="text"
+            autoComplete="username"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+        </Field>
+        <Field id="password" label={t('auth.login.password')}>
+          <input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </Field>
+        {error && (
+          <div className="msg bad" role="alert">
+            {error}
           </div>
         )}
-      </section>
-    </main>
+        <button className="btn primary" type="submit" disabled={busy}>
+          {busy ? t('auth.login.busy') : t('auth.login.submit')}
+        </button>
+      </form>
+    </AuthCard>
   );
 }

@@ -16,7 +16,11 @@
 - [x] Task 4 — Requirement 1'in toplu arama kısmı: list-search terimlerinin kaydı (`origin=list`,
   liste kimliği, dosya adı, sıra) `AnalysisJobs.start(origin=..., list_term=...)` ile. Kanıt:
   `tests/integration/test_term_lists_api.py` (`test_term_list_end_to_end`).
-- [ ] Task 5 — Requirement 13-23 / Acceptance 3: Genel bakış ve Analizler sayfaları, Vitest testleri
-  (ön yüz dalgası).
+- [x] Task 5 — Requirement 13-23 / Acceptance 3: Genel bakış ve Analizler sayfaları, Vitest testleri
+  (ön yüz dalgası). Kanıt: `app/frontend/src/pages/admin/OverviewPage.test.tsx`,
+  `app/frontend/src/pages/admin/AnalysesPage.test.tsx`, `scripts/quality-gate.sh frontend`.
 - [ ] Task 6 — Acceptance 4 ve 5: yerel Compose'da tarayıcıyla senaryo.
-- [ ] Task 7 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri.
+- [x] Task 7 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri. Yerel Compose'da hedef ile kaynak
+  aynı sentetik sözlük, aynı sahte model ve aynı sorularla; Genel bakış, Analizler, ayrıntı ve
+  Performans çekmeceleri masaüstü ve telefon genişliğinde. Farklar oturum alanı ile kayıt verisinden
+  gelir (soranın görünen adı, adressiz sebep, süreler).

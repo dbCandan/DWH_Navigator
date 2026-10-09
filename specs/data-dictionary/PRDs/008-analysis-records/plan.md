@@ -46,4 +46,4 @@ sayfaları.
 | 5-11 | `tests/integration/test_analysis_records_api.py`, `tests/unit/test_analysis_records_summary.py` |
 | Veri ve geçiş | `tests/integration/test_analysis_data_model.py` |
 | Gözlemlenebilirlik | `tests/integration/test_analysis_records_api.py` |
-| 13-23 | Ön yüz testleri (açık görev) |
+| 13-23 | `app/frontend/src/pages/admin/OverviewPage.test.tsx`, `app/frontend/src/pages/admin/AnalysesPage.test.tsx`, `app/frontend/src/lib/analysisRecords.test.ts`, `app/frontend/src/services/analysisRecords.test.ts` |

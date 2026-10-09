@@ -1,0 +1,5 @@
+/* The Kullanıcılar page: the admin screen's table, buttons and drawer, with two small layouts. */
+[data-surface="admin"] .acts-row { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+[data-surface="admin"] .secret { font-size: 15px; letter-spacing: .5px; user-select: all; overflow-wrap: anywhere; }
+[data-surface="admin"] .toolbar .note { white-space: nowrap; }
+[data-surface="admin"] .more .note { align-self: center; padding: 0 10px; }

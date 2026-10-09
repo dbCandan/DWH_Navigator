@@ -1,0 +1,24 @@
+/* The session area in the admin sidebar, under the system status (search-settings
+   Requirement 21, user-accounts Requirement 16): the status box's look and tokens. */
+[data-surface="admin"] .who { display: grid; gap: 6px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); font-size: 12px; }
+[data-surface="admin"] .who > div { display: flex; align-items: center; gap: 7px; color: var(--muted); min-width: 0; }
+[data-surface="admin"] .who svg { width: 14px; height: 14px; flex: none; }
+[data-surface="admin"] .who .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); font-weight: 600; }
+[data-surface="admin"] .who-act { border: 0; background: none; padding: 0; color: var(--muted); font: inherit; cursor: pointer; text-decoration: none; }
+[data-surface="admin"] .who-act:hover { color: var(--text); }
+[data-surface="admin"] .who-toggle { display: none; }
+@media (max-width: 920px) {
+  /* The top bar keeps one row: the person icon beside "Uygulamaya dön" opens the same box. */
+  [data-surface="admin"] .side-foot { position: relative; flex-direction: row; align-items: center; }
+  [data-surface="admin"] .who-toggle {
+    display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border-radius: 11px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--muted);
+  }
+  [data-surface="admin"] .who-toggle:hover, [data-surface="admin"] .who-toggle[aria-expanded="true"] { color: var(--text); border-color: var(--line-2); }
+  [data-surface="admin"] .who-toggle svg { width: 16px; height: 16px; }
+  [data-surface="admin"] .who { display: none; }
+  [data-surface="admin"] .who.open {
+    display: grid; position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; min-width: 220px;
+    background: var(--panel-solid); border-color: var(--line-2); box-shadow: var(--shadow);
+  }
+}

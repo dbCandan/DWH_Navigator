@@ -1,9 +1,13 @@
 # Tarayıcı kanıtı
 
 Kalıcı tarayıcı paketi varsayılan `http://localhost:8080` olmak üzere `APP_E2E_BASE` üzerinde çalışır.
-Süreç kaynaklı `super-admin` kimlik bilgilerini kullanır ve depoya işlemez. Temel senaryo; korumalı
-yönlendirme, oturum açma, JWT kalıcılığı, kiracı uygulaması, veritabanı destekli `/auth/me`, yeniden
-yükleme sonrası kurtarma ve oturum kapatma temizliği davranışını kanıtlar. İstemciden bağımsız
+Süreç kaynaklı `super-admin` kimlik bilgilerini (`APP_E2E_SUPER_ADMIN_USER`, `APP_E2E_SUPER_ADMIN_PASS`)
+kullanır ve depoya işlemez. Başlangıç parolasıyla açılmış hesap ilk girişte yeni parola ister; bu
+durumda yeni parola `APP_E2E_SUPER_ADMIN_NEW_PASS` ile verilir ve sonraki koşumlar onu
+`APP_E2E_SUPER_ADMIN_PASS` olarak kullanır. Temel senaryo; korumalı yönlendirme, gerçek formla oturum
+açma, belirtecin yalnız bellekte tutulması ve yenileme çerezinin HttpOnly olması, kiracı uygulaması,
+veritabanı destekli `/auth/me`, başka kökenden yenileme reddi, yeniden yüklemede yenileme çereziyle
+kurtarma ve oturum alanından çıkışın oturumu sunucuda kapatmasını kanıtlar. İstemciden bağımsız
 Node.js/Playwright kodudur; eklenti kurmaz veya ikinci MCP sunucusu açmaz. Tarayıcı çalıştırılabilir
 dosyaları kontrollü çevrimdışı paketten gelmeli ve
 `PLAYWRIGHT_BROWSERS_PATH` ile seçilmelidir.

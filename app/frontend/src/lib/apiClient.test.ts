@@ -1,143 +1,125 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {ApiError, apiRequest} from './apiClient';
-import {STORAGE_KEYS} from './authStorage';
+import {ApiError, apiFetch, apiRequest, isUnreachable, refreshSession} from './apiClient';
+import {clearAuth, readAccessToken, writeSession} from './authStorage';
+import type {AuthenticatedUser} from '@/types/auth';
 
-function jsonResponse(status: number, body: unknown, headers: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: {'Content-Type': 'application/json', ...headers},
+const user = {username: 'ad.soyad', tenant_id: 'tenant-1'} as AuthenticatedUser;
+const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), {status, headers: {'Content-Type': 'application/json', ...headers}});
+const expired = () => json(401, {detail: {code: 'not_authenticated', message: 'x'}}, {'WWW-Authenticate': 'Bearer'});
+const issued = (token: string) => json(200, {access_token: token, token_type: 'bearer', expires_in: 900, user});
+
+function requestOf(call: unknown[]): {url: string; headers: Headers; init: RequestInit} {
+  const [url, init = {}] = call as [string, RequestInit | undefined];
+  return {url, headers: new Headers(init.headers), init};
+}
+
+describe('shared API client', () => {
+  beforeEach(() => writeSession('old', user));
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    clearAuth();
   });
-}
 
-function storeSession(token = 'jwt'): void {
-  localStorage.setItem(STORAGE_KEYS.accessToken, token);
-  localStorage.setItem(STORAGE_KEYS.user, JSON.stringify({tenant_id: 'tenant-1'}));
-}
-
-function sessionKept(token = 'jwt'): void {
-  expect(localStorage.getItem(STORAGE_KEYS.accessToken)).toBe(token);
-  expect(localStorage.getItem(STORAGE_KEYS.user)).not.toBeNull();
-}
-
-describe('api client', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    window.history.replaceState({}, '', '/login');
-  });
-  afterEach(() => vi.restoreAllMocks());
-
-  it('sends bearer and tenant context together', async () => {
-    storeSession();
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(jsonResponse(200, {ok: true}));
+  it('sends the bearer token and the tenant in headers, never in the address', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(200, {ok: true}));
     await apiRequest('/auth/me');
-    const request = fetchMock.mock.calls[0][1]!;
-    const headers = new Headers(request.headers);
-    expect(headers.get('Authorization')).toBe('Bearer jwt');
+    const {url, headers} = requestOf(fetchMock.mock.calls[0]);
+    expect(url).toBe('/api/dwhnavigator/v1/auth/me');
+    expect(headers.get('Authorization')).toBe('Bearer old');
     expect(headers.get('x-tenant-id')).toBe('tenant-1');
+    expect(url).not.toContain('old');
+  });
+
+  it('renews an expired token silently and repeats the request once', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(expired())
+      .mockResolvedValueOnce(issued('new'))
+      .mockResolvedValueOnce(json(200, {ok: true}));
+    await expect(apiRequest('/explorer/galaxy')).resolves.toEqual({ok: true});
+    const refresh = requestOf(fetchMock.mock.calls[1]);
+    expect(refresh.url).toBe('/api/dwhnavigator/v1/auth/refresh');
+    expect(refresh.init.method).toBe('POST');
+    expect(refresh.init.credentials).toBe('same-origin');
+    expect(refresh.headers.get('Authorization')).toBeNull();
+    expect(requestOf(fetchMock.mock.calls[2]).headers.get('Authorization')).toBe('Bearer new');
+    expect(readAccessToken()).toBe('new');
+  });
+
+  it('ends the session when the refresh is refused', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(expired())
+      .mockResolvedValueOnce(json(401, {detail: {code: 'session_expired', message: 'x'}}));
+    await expect(apiRequest('/auth/me')).rejects.toMatchObject({status: 401, sessionExpired: true});
+    expect(readAccessToken()).toBeNull();
+  });
+
+  it('shares one refresh between parallel requests and queues it behind a Web Lock', async () => {
+    const lock = vi.fn((_name: string, run: () => Promise<unknown>) => run());
+    vi.stubGlobal('navigator', {...navigator, locks: {request: lock}});
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.endsWith('/auth/refresh')) return issued('new');
+      return new Headers(init?.headers).get('Authorization') === 'Bearer new' ? json(200, {ok: url}) : expired();
+    });
+    await Promise.all([apiRequest('/a'), apiRequest('/b'), apiRequest('/c')]);
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/auth/refresh'))).toHaveLength(1);
+    expect(lock).toHaveBeenCalledTimes(1);
+    expect(lock.mock.calls[0][0]).toBe('dwhnavigator-session-refresh');
   });
 
   it.each([
-    ['a bare Bearer challenge', 'Bearer'],
-    ['an invalid_token Bearer challenge', 'Bearer realm="api", error="invalid_token"'],
-  ])('ends the session when the app bearer credential is rejected with %s', async (_, challenge) => {
-    storeSession();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      jsonResponse(401, {detail: 'Invalid or missing access token'}, {'WWW-Authenticate': challenge}),
-    );
-
-    const error = await apiRequest('/auth/me').catch((reason: unknown) => reason);
-
-    expect(error).toBeInstanceOf(ApiError);
-    expect(error).toMatchObject({status: 401, sessionExpired: true});
-    expect(localStorage.getItem(STORAGE_KEYS.accessToken)).toBeNull();
-    expect(localStorage.getItem(STORAGE_KEYS.user)).toBeNull();
-  });
-
-  it('redirects to the login page after ending the session elsewhere', async () => {
-    window.history.replaceState({}, '', '/reports');
-    const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => undefined);
-    storeSession();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      jsonResponse(401, {}, {'WWW-Authenticate': 'Bearer'}),
-    );
-
-    await expect(apiRequest('/auth/me')).rejects.toMatchObject({sessionExpired: true});
-    expect(assign).toHaveBeenCalledWith('/login');
-  });
-
-  it.each([
-    ['a 401 without a challenge', () => jsonResponse(401, {detail: 'Unauthorized'})],
-    [
-      'a proxy Basic challenge',
-      () => jsonResponse(401, {}, {'WWW-Authenticate': 'Basic realm="corporate-proxy"'}),
-    ],
-    [
-      'a Bearer challenge for another error',
-      () => jsonResponse(401, {}, {'WWW-Authenticate': 'Bearer error="invalid_request"'}),
-    ],
-    ['a 403', () => jsonResponse(403, {detail: 'Missing permission: reports:read'})],
-    ['a 429', () => jsonResponse(429, {detail: 'Too many requests'}, {'Retry-After': '60'})],
-    ['a 500', () => jsonResponse(500, {detail: 'Internal Server Error'})],
+    ['a 401 without a challenge', () => json(401, {})],
+    ['a proxy Basic challenge', () => json(401, {}, {'WWW-Authenticate': 'Basic realm="proxy"'})],
+    ['a 403', () => json(403, {detail: {code: 'forbidden', message: 'x'}})],
+    ['a 500', () => json(500, {detail: {code: 'internal_error', message: 'x'}})],
     ['a 502 from a proxy', () => new Response('<html>Bad Gateway</html>', {status: 502})],
-    ['a 503 without a body', () => new Response(null, {status: 503})],
   ])('keeps the session on %s', async (_, response) => {
-    storeSession();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response());
-
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(response());
     await expect(apiRequest('/auth/me')).rejects.toMatchObject({sessionExpired: false});
-    sessionKept();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(readAccessToken()).toBe('old');
   });
 
   it('keeps the session on a network error', async () => {
-    storeSession();
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
-
-    await expect(apiRequest('/auth/me')).rejects.toThrow('Failed to fetch');
-    sessionKept();
+    await expect(apiRequest('/auth/me')).rejects.toBeInstanceOf(TypeError);
+    expect(readAccessToken()).toBe('old');
   });
 
-  it('keeps the session on a timeout', async () => {
-    storeSession();
-    vi.spyOn(globalThis, 'fetch').mockRejectedValue(
-      new DOMException('The operation timed out.', 'TimeoutError'),
-    );
-
-    await expect(apiRequest('/auth/me', {signal: AbortSignal.timeout(1)})).rejects.toMatchObject({
-      name: 'TimeoutError',
+  it('does not refresh for a request sent without a token, such as the sign-in', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(json(401, {detail: {code: 'invalid_credentials', message: 'x'}}, {'WWW-Authenticate': 'Bearer'}));
+    await expect(apiRequest('/auth/login', {method: 'POST', body: '{}'}, false)).rejects.toMatchObject({
+      code: 'invalid_credentials',
+      sessionExpired: false,
     });
-    sessionKept();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(new Headers(fetchMock.mock.calls[0][1]?.headers).get('Authorization')).toBeNull();
   });
 
-  it('keeps the session when a successful response cannot be parsed', async () => {
-    storeSession();
+  it('reads the error envelope and the Retry-After header', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('not json', {status: 200, headers: {'Content-Type': 'application/json'}}),
+      json(429, {detail: {code: 'rate_limited', message: 'Çok fazla'}}, {'Retry-After': '120'}),
     );
-
-    await expect(apiRequest('/auth/me')).rejects.toBeInstanceOf(SyntaxError);
-    sessionKept();
+    const error = (await apiFetch('/auth/login', {method: 'POST'}, false).catch((e: unknown) => e)) as ApiError;
+    expect(error).toMatchObject({status: 429, code: 'rate_limited', message: 'Çok fazla', retryAfter: 120});
   });
 
-  it('keeps the session when the rejected request carried no bearer credential', async () => {
-    storeSession();
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      jsonResponse(401, {detail: 'Incorrect username or password'}, {'WWW-Authenticate': 'Bearer'}),
-    );
-
-    await expect(
-      apiRequest('/auth/login', {method: 'POST', body: '{}'}, false),
-    ).rejects.toMatchObject({status: 401, sessionExpired: false});
-    sessionKept();
+  it('restores a session from the refresh cookie', async () => {
+    clearAuth();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(issued('restored'));
+    await refreshSession();
+    expect(readAccessToken()).toBe('restored');
   });
 
-  it('keeps a newer session when an older credential is rejected', async () => {
-    storeSession('old-jwt');
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
-      storeSession('new-jwt');
-      return jsonResponse(401, {}, {'WWW-Authenticate': 'Bearer'});
-    });
-
-    await expect(apiRequest('/auth/me')).rejects.toMatchObject({sessionExpired: false});
-    sessionKept('new-jwt');
+  it('tells an unreachable server from an application answer', () => {
+    expect(isUnreachable(new TypeError('Failed to fetch'))).toBe(true);
+    expect(isUnreachable(new ApiError(502, 'Bad Gateway'))).toBe(true);
+    expect(isUnreachable(new ApiError(503, 'x', 'search_index_not_ready'))).toBe(false);
+    expect(isUnreachable(new ApiError(404, 'x', 'not_found'))).toBe(false);
   });
 });

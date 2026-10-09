@@ -16,11 +16,20 @@
 - [x] Task 4 — Requirement 2 ve 10'un tüketicileri: question-analysis'in `GET /status`
   (`shortlist`) ve analiz başlatmada `503 search_index_not_ready`. Kanıt:
   `tests/integration/test_analysis_jobs_api.py`.
-- [ ] Task 5 — Requirement 16: Bakım sayfasının kayıtlı cevap bloğu, question-analysis'in
-  `GET /saved-answers/summary` ve `DELETE /saved-answers` uçlarıyla.
-- [ ] Task 6 — Requirement 17-25 / Acceptance 3: yönetim kabuğu, Arama ve cevap ve Bakım sayfaları,
-  ön yüz testleri (ön yüz dalgası).
+- [x] Task 5 — Requirement 16: Bakım sayfasının kayıtlı cevap bloğu, question-analysis'in
+  `GET /saved-answers/summary` ve `DELETE /saved-answers` uçlarıyla. Kanıt:
+  `app/frontend/src/pages/admin/MaintenancePage.test.tsx`; yerel Compose'da özet ve silme denendi.
+- [x] Task 6 — Requirement 17-25 / Acceptance 3: yönetim kabuğunun sözlük ve indeks durumu, rozetler,
+  Ctrl K'daki ayarlar ve indeks işlemi, kaydedilmemiş değişiklik çubuğu ve çıkış onayı; Arama ve
+  cevap ve Bakım sayfaları; ön yüz testleri. Kanıt:
+  `app/frontend/src/pages/admin/SearchSettingsPage.test.tsx`,
+  `app/frontend/src/pages/admin/MaintenancePage.test.tsx`, `app/frontend/src/lib/settingsDraft.test.ts`,
+  `scripts/quality-gate.sh frontend`.
 - [ ] Task 7 — Acceptance 4: yerel Compose'da tarayıcıyla senaryo.
 - [ ] Task 8 — Acceptance 5: nonprod'da gerçek sözlükle kurulum süreleri ve bellek (ayrı kullanıcı
   talimatı).
-- [ ] Task 9 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri.
+- [x] Task 9 — Acceptance 6: görsel eşdeğerlik ekran görüntüleri. Yerel Compose'da hedef ile
+  kaynak `76e21a3` aynı sözlük ve ayarlarla çalıştırıldı; kenar çubuğu ve rozetler, komut paleti,
+  tablo çekmecesi, kaydedilmemiş değişiklik çubuğu, Arama ve cevap ve Bakım masaüstü ve telefon
+  genişliğinde yan yana karşılaştırıldı. Farklar yalnız ¹ işaretli metinler, "Klasörler" kartı,
+  oturum alanı ve Kullanıcılar menü öğesidir.

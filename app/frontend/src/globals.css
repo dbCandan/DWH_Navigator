@@ -1,72 +1,211 @@
-:root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #12231c;
-  background: #f2f6f3;
-  font-synthesis: none;
-}
-* { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; min-height: 100vh; }
-button, input { font: inherit; }
-button { cursor: pointer; }
-.center { min-height: 100vh; display: grid; place-items: center; }
-.login-shell {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 2rem;
-  background:
-    radial-gradient(circle at 15% 15%, rgba(18, 124, 80, .16), transparent 32rem),
-    linear-gradient(145deg, #eff8f2, #e9efeb);
-}
-.login-card {
-  width: min(100%, 30rem);
-  padding: clamp(2rem, 5vw, 3.5rem);
-  border: 1px solid rgba(15, 71, 48, .12);
-  border-radius: 1.5rem;
-  background: rgba(255, 255, 255, .9);
-  box-shadow: 0 2rem 5rem rgba(20, 52, 39, .12);
-}
-.eyebrow { color: #087246; font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-h1 { font-size: clamp(2rem, 6vw, 3.5rem); letter-spacing: -.04em; margin: .5rem 0; }
-form { display: grid; gap: .6rem; margin-top: 2rem; }
-label { font-size: .85rem; font-weight: 700; }
-input {
-  border: 1px solid #b9c9c0;
-  border-radius: .75rem;
-  padding: .85rem 1rem;
-  margin-bottom: .5rem;
-  background: white;
-}
-input:focus { outline: 3px solid rgba(8, 114, 70, .18); border-color: #087246; }
-button {
-  border: 0;
-  border-radius: .75rem;
-  padding: .85rem 1.1rem;
-  color: white;
-  background: #087246;
-  font-weight: 800;
-}
-button:disabled { opacity: .55; cursor: progress; }
-.language { margin-top: 1.5rem; display: flex; align-items: center; gap: .75rem; }
-.language select {
-  border: 1px solid #b9c9c0;
-  border-radius: .75rem;
-  padding: .5rem .75rem;
-  background: white;
-  font: inherit;
-}
-.home { min-height: 100vh; padding: clamp(1.5rem, 5vw, 5rem); max-width: 80rem; margin: auto; }
-.home header { display: flex; justify-content: space-between; align-items: start; gap: 2rem; }
-.hero, .empty-state {
-  margin-top: 2rem;
-  padding: clamp(1.5rem, 4vw, 3rem);
-  border-radius: 1.5rem;
-  background: white;
-  border: 1px solid #dbe6df;
-}
-.hero > p { font-size: clamp(1.1rem, 2.5vw, 1.7rem); max-width: 52rem; line-height: 1.55; }
-dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr)); gap: 1rem; margin-top: 2rem; }
-dl div { padding: 1rem; border-radius: 1rem; background: #f2f6f3; }
-dt { color: #65756d; font-size: .75rem; text-transform: uppercase; }
-dd { margin: .35rem 0 0; font-weight: 800; overflow-wrap: anywhere; }
+/* =====================================================================
+   Design tokens: the source application's "Evren" palette, centrally.
+   dictionary-explorer Requirement 17 and Decision 5; search-settings Decision 11.
 
+   Every color, gradient, shadow and font of the source pages (index.html, the main screen, and
+   admin.html, the admin screen) is defined here once. Component CSS uses only these tokens.
+   The two screens keep their own values for the same semantic names (--surface, --line,
+   --faint, ...), exactly as the two source pages did; the shell of each screen marks <html>
+   with data-surface="explorer" or data-surface="admin" (useSurface).
+
+   Naming: "<family>-a<alpha>" is the family's RGB at that opacity (for example --cyan-a12 is the
+   accent cyan at 12 %); "--cluster-*" are the saturation and lightness applied to a star
+   cluster's computed hue; "--cosmos-*" feed the canvas map, which reads them at start.
+   ===================================================================== */
+
+:root {
+  color-scheme: dark;
+
+  /* ---- named colors ---- */
+  --white: #ffffff;
+  --mask: #000;                     /* opaque part of a CSS mask */
+  --paper: #03040b;                 /* the night sky behind the main screen */
+  --cyan: #7cf4ff;
+  --violet: #8b5cff;
+  --pink: #ff5dd6;
+  --mint: #3dfcb4;
+  --amber: #ffd166;
+  --rose: #ff5d8f;
+  --coral: #ff6b93;
+  --text: #eef1ff;
+  --muted: #a3acd6;
+  --accent: var(--cyan);
+  --on-accent: #050a18;             /* text on the cyan-violet gradient */
+  --on-cyan: #031018;
+  --on-mint: #03140d;
+  --on-amber: #241a00;
+  --on-coral: #2a0010;
+  --rose-light: #ff9ab8;
+  --rose-pale: #ffd0dc;
+  --orange: #ffb86b;
+  --lilac: #c9b6ff;
+  --sky: #8fb3ff;
+  --aqua: #4ad1c8;
+  --teal: #33b8d6;
+  --iris: #9a7bff;
+  --title-fade: #c9d4ff;            /* landing title gradient end */
+  --placeholder: #7880a8;
+  --attach-icon: #8c95c8;
+  --drop-hint-bg: #0a0e22;
+  --bar-llm: #7a5cd6;
+  --table-name: #8ff6ff;
+  --text-soft: #dfe6ff;
+  --text-mono: #eef3ff;
+  --text-column: #e3e9ff;
+  --text-reason: #d7ddf7;
+  --text-desc: #bcc5ea;
+  --text-desc-open: #dfe5ff;
+  --text-lead: #b4bde6;
+  --text-usage: #a9b3e0;
+  --text-note: #aab3dc;
+  --kind-time: #6d8fd6;
+  --kind-breakdown: #a07ad6;
+  --kind-measure: #d6a86d;
+  --kind-value: #7abfb0;
+  --panel-solid: #0b0f24;           /* drawer and command palette */
+  --table-head: #0d1128;
+  --option-bg: #0e1228;
+  --compass-disc: #1f3864;          /* the main screen's compass mark */
+  --compass-gold: #f2b84b;
+  --logo-disc: #0b1030;             /* the admin screen's mark */
+
+  /* ---- translucent families: rgba(<family>, <alpha>) ---- */
+  --cyan-a05: rgba(124, 244, 255, .05); --cyan-a08: rgba(124, 244, 255, .08); --cyan-a09: rgba(124, 244, 255, .09);
+  --cyan-a10: rgba(124, 244, 255, .1); --cyan-a12: rgba(124, 244, 255, .12); --cyan-a13: rgba(124, 244, 255, .13);
+  --cyan-a14: rgba(124, 244, 255, .14); --cyan-a15: rgba(124, 244, 255, .15); --cyan-a16: rgba(124, 244, 255, .16);
+  --cyan-a18: rgba(124, 244, 255, .18); --cyan-a20: rgba(124, 244, 255, .2); --cyan-a22: rgba(124, 244, 255, .22);
+  --cyan-a25: rgba(124, 244, 255, .25); --cyan-a30: rgba(124, 244, 255, .3); --cyan-a35: rgba(124, 244, 255, .35);
+  --cyan-a40: rgba(124, 244, 255, .4); --cyan-a50: rgba(124, 244, 255, .5); --cyan-a55: rgba(124, 244, 255, .55);
+  --cyan-a60: rgba(124, 244, 255, .6); --cyan-a70: rgba(124, 244, 255, .7);
+  --violet-a07: rgba(139, 92, 255, .07); --violet-a08: rgba(139, 92, 255, .08); --violet-a12: rgba(139, 92, 255, .12);
+  --violet-a20: rgba(139, 92, 255, .2); --violet-a22: rgba(139, 92, 255, .22); --violet-a25: rgba(139, 92, 255, .25);
+  --pink-a09: rgba(255, 93, 214, .09); --pink-a10: rgba(255, 93, 214, .1); --pink-a14: rgba(255, 93, 214, .14);
+  --mint-a00: rgba(61, 252, 180, 0); --mint-a04: rgba(61, 252, 180, .04); --mint-a08: rgba(61, 252, 180, .08);
+  --mint-a12: rgba(61, 252, 180, .12); --mint-a13: rgba(61, 252, 180, .13); --mint-a14: rgba(61, 252, 180, .14);
+  --mint-a15: rgba(61, 252, 180, .15); --mint-a22: rgba(61, 252, 180, .22); --mint-a25: rgba(61, 252, 180, .25);
+  --mint-a50: rgba(61, 252, 180, .5);
+  --amber-a05: rgba(255, 209, 102, .05); --amber-a06: rgba(255, 209, 102, .06); --amber-a07: rgba(255, 209, 102, .07);
+  --amber-a12: rgba(255, 209, 102, .12); --amber-a13: rgba(255, 209, 102, .13); --amber-a15: rgba(255, 209, 102, .15);
+  --amber-a16: rgba(255, 209, 102, .16); --amber-a22: rgba(255, 209, 102, .22); --amber-a24: rgba(255, 209, 102, .24);
+  --amber-a25: rgba(255, 209, 102, .25); --amber-a35: rgba(255, 209, 102, .35);
+  --rose-a07: rgba(255, 93, 143, .07); --rose-a08: rgba(255, 93, 143, .08); --rose-a13: rgba(255, 93, 143, .13);
+  --rose-a14: rgba(255, 93, 143, .14); --rose-a15: rgba(255, 93, 143, .15); --rose-a18: rgba(255, 93, 143, .18);
+  --rose-a25: rgba(255, 93, 143, .25); --rose-a30: rgba(255, 93, 143, .3); --rose-a40: rgba(255, 93, 143, .4);
+  --rose-a50: rgba(255, 93, 143, .5);
+  --coral-a55: rgba(255, 107, 147, .55);
+  --periwinkle-a06: rgba(140, 165, 255, .06); --periwinkle-a08: rgba(140, 165, 255, .08);
+  --periwinkle-a10: rgba(140, 165, 255, .1); --periwinkle-a11: rgba(140, 165, 255, .11);
+  --periwinkle-a12: rgba(140, 165, 255, .12); --periwinkle-a14: rgba(140, 165, 255, .14);
+  --periwinkle-a16: rgba(140, 165, 255, .16); --periwinkle-a20: rgba(140, 165, 255, .2);
+  --periwinkle-a22: rgba(140, 165, 255, .22); --periwinkle-a25: rgba(140, 165, 255, .25);
+  --periwinkle-a28: rgba(140, 165, 255, .28); --periwinkle-a30: rgba(140, 165, 255, .3);
+  --periwinkle-a40: rgba(140, 165, 255, .4); --periwinkle-a50: rgba(140, 165, 255, .5);
+  --tint-a05: rgba(130, 150, 255, .05); --tint-a07: rgba(130, 150, 255, .07); --tint-a08: rgba(130, 150, 255, .08);
+  --tint-a09: rgba(130, 150, 255, .09); --tint-a10: rgba(130, 150, 255, .1); --tint-a12: rgba(130, 150, 255, .12);
+  --tint-a14: rgba(130, 150, 255, .14);
+  --mist-a35: rgba(190, 205, 255, .35); --mist-a60: rgba(190, 205, 255, .6);
+  --sky-a20: rgba(143, 179, 255, .2); --sky-a40: rgba(143, 179, 255, .4);
+  --azure-a08: rgba(120, 170, 255, .08); --azure-a22: rgba(120, 170, 255, .22);
+  --lilac-a14: rgba(170, 140, 255, .14); --lilac-a25: rgba(170, 140, 255, .25);
+  --haze-a40: rgba(163, 172, 214, .4);
+  --gold-a60: rgba(242, 184, 75, .6);
+  --gloss-a06: rgba(255, 255, 255, .06); --gloss-a07: rgba(255, 255, 255, .07);
+  --shade-a20: rgba(0, 0, 0, .2); --shade-a30: rgba(0, 0, 0, .3); --shade-a45: rgba(0, 0, 0, .45);
+  --shade-a50: rgba(0, 0, 0, .5); --shade-a55: rgba(0, 0, 0, .55); --shade-a60: rgba(0, 0, 0, .6);
+  /* dark glass surfaces, from the bluest to the deepest */
+  --navy-a58: rgba(14, 18, 40, .58); --navy-a96: rgba(14, 18, 40, .96);
+  --dusk-a86: rgba(14, 18, 44, .86);
+  --deep-a74: rgba(17, 22, 48, .74);
+  --slate-a45: rgba(20, 26, 56, .45); --slate-a50: rgba(20, 26, 56, .5); --slate-a60: rgba(20, 26, 56, .6);
+  --panel-a20: rgba(12, 16, 38, .2); --panel-a62: rgba(12, 16, 38, .62); --panel-a66: rgba(12, 16, 38, .66);
+  --panel-a95: rgba(12, 16, 38, .95); --panel-a96: rgba(12, 16, 38, .96);
+  --midnight-a80: rgba(9, 13, 32, .8);
+  --harbor-a86: rgba(9, 12, 28, .86);
+  --night-a78: rgba(8, 12, 30, .78); --night-a90: rgba(8, 12, 30, .9);
+  --trench-a70: rgba(6, 10, 26, .7);
+  --abyss-a90: rgba(6, 9, 24, .9);
+  --well-a60: rgba(4, 7, 20, .6);
+  --basin-a82: rgba(4, 6, 15, .82);
+  --inlet-a50: rgba(3, 5, 14, .5);
+  --void-a00: rgba(3, 4, 11, 0); --void-a78: rgba(3, 4, 11, .78); --void-a94: rgba(3, 4, 11, .94);
+  --scrim-a55: rgba(2, 3, 10, .55); --scrim-a60: rgba(2, 3, 10, .6);
+  --indigo-a18: rgba(40, 60, 160, .18);
+
+  /* ---- a star cluster's tone: hsl(<computed hue>, <saturation>, <lightness>[, <alpha>]) ---- */
+  --cluster-core: 95%, 72%;
+  --cluster-soft: 95%, 70%, .14;
+  --cluster-light: 95%, 65%, .28;
+  --cluster-halo: 95%, 65%, .55;
+  --cluster-ring: 95%, 80%, .55;
+  --cluster-open: 95%, 70%, .3;
+  --cluster-title: 90%, 82%;
+  --cluster-planet-mid: 80%, 38%;
+  --cluster-planet-dark: 70%, 16%;
+
+  /* ---- the canvas map ("Evren"): RGB triplets get their alpha while drawing ---- */
+  --cosmos-dust: 200, 215, 255;
+  --cosmos-cyan: 124, 244, 255;
+  --cosmos-pink: 255, 93, 214;
+  --cosmos-mint: 61, 252, 180;
+  --cosmos-white: 255, 255, 255;
+  --cosmos-trail: 190, 250, 255;
+  --cosmos-hover-ring: rgba(255, 255, 255, .8);
+  --cosmos-label-bg: rgba(8, 12, 30, .85);
+  --cosmos-label-text: #eaf6ff;
+  --cosmos-label-font: 600 12px 'Cascadia Code', Consolas, monospace;
+  --cosmos-link: 80%, 70%;          /* star to cluster centre */
+  --cosmos-star-saturation: 90%;
+  --cosmos-star-lightness: 72;      /* plus depth x the range below, in % */
+  --cosmos-star-lightness-depth: 18;
+  --cosmos-kin-line: 90%, 75%;
+  --cosmos-kin-dot: 95%, 85%;
+  --cosmos-selected-glow: 95%, 68%;
+  --cosmos-reticle: 95%, 82%;
+  --cosmos-ping: 95%, 75%;
+
+  /* ---- search icons drawn inside the question bar ---- */
+  --icon-search-landing: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237cf4ff' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E");
+  --icon-search-docked: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%237cf4ff' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E");
+
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+}
+
+/* ---- the main screen (index.html :root) ---- */
+[data-surface="explorer"] {
+  --surface: var(--navy-a58); --surface-2: var(--tint-a09);
+  --line: var(--periwinkle-a20); --faint: #6f78a3;
+  --ink: var(--white); --ink-2: var(--violet); --accent-soft: var(--cyan-a13);
+  --high: var(--mint); --high-bg: var(--mint-a13); --mid: var(--amber); --mid-bg: var(--amber-a13);
+  --low: var(--rose); --low-bg: var(--rose-a14);
+  --shadow: 0 0 0 1px var(--cyan-a05), 0 24px 70px var(--shade-a55);
+  --radius: 20px;
+  --glow: 0 0 24px var(--cyan-a35), 0 0 60px var(--violet-a25);
+  --grad: linear-gradient(120deg, var(--cyan) 0%, var(--violet) 45%, var(--pink) 75%, var(--cyan) 100%);
+  --mono: "Cascadia Code", "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ---- the admin screen and the account screens (admin.html :root) ---- */
+[data-surface="admin"] {
+  --bg: #04060f; --side: var(--harbor-a86);
+  --surface: var(--deep-a74); --surface-2: var(--tint-a08); --surface-3: var(--tint-a14);
+  --line: var(--periwinkle-a16); --line-2: var(--periwinkle-a28); --faint: #6c75a0;
+  --accent-soft: var(--cyan-a12);
+  --ok: var(--mint); --ok-bg: var(--mint-a12); --warn: var(--amber); --warn-bg: var(--amber-a12);
+  --bad: var(--coral); --bad-bg: var(--rose-a13);
+  --k-step: var(--teal); --k-llm: var(--iris);
+  --grad: linear-gradient(120deg, var(--cyan), var(--violet) 55%, var(--pink));
+  --radius: 16px; --shadow: 0 18px 50px var(--shade-a45);
+  --mono: "Cascadia Code", Consolas, "SFMono-Regular", Menlo, monospace;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+}
+
+/* React renders into #root; it takes no box, so the source pages' body-level layout holds. */
+#root { display: contents; }
+
+/* Before a screen's shell has loaded: the night sky, never a white flash. */
+html { background: var(--paper); }
+body { margin: 0; }
+
+/* A status for screen readers only (the session being restored). */
+.sr-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
