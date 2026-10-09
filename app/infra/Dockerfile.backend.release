@@ -36,4 +36,8 @@ COPY --chown=${APP_UID}:${APP_GID} schema /workspace/schema
 
 USER ${APP_UID}:${APP_GID}
 EXPOSE 8000
-ENTRYPOINT ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header", "--no-access-log"]
+# --timeout-graceful-shutdown: on SIGTERM uvicorn waits for open responses before the application's
+# own shutdown runs; an open analysis event stream would hold it until the pod is killed. After 3 s
+# the streams are cancelled and the application ends its jobs and lists as interrupted
+# (data-dictionary/PRDs/004-question-analysis Requirement 12) within the 30 s pod grace.
+ENTRYPOINT ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--no-server-header", "--no-access-log", "--timeout-graceful-shutdown", "3"]
