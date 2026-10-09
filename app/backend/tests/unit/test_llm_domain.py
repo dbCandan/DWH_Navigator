@@ -325,7 +325,7 @@ def test_turkish_folding_is_the_source_fold() -> None:
 
 
 def test_the_fingerprint_follows_every_connection_field() -> None:
-    secret = "gizli-anahtar-0b1c"
+    secret = "gizli-anahtar-placeholder"
     base = LlmConnection(endpoint=SPARK, chat_model="m", api_key="k", public_id="p")
     assert secret not in repr(LlmConnection(endpoint=SPARK, api_key=secret))
     variants = [
