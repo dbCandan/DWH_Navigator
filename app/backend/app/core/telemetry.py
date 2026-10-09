@@ -18,6 +18,7 @@ from time import perf_counter
 from typing import Any
 from urllib.parse import urlsplit
 
+from opentelemetry import context as otel_context
 from opentelemetry import metrics, trace
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
@@ -91,6 +92,32 @@ DICTIONARY_EXPORT_KINDS = frozenset({"dictionary", "template"})
 SEARCH_TRIGGERS = frozenset({"startup", "dictionary", "terms", "stopwords", "settings", "manual"})
 SEARCH_BUILD_OUTCOMES = frozenset({"ok", "failed"})
 SEARCH_CHANGE_OUTCOMES = frozenset({"applied", "unchanged", "failed", "busy"})
+
+# Fixed label sets of data-dictionary/PRDs/004-question-analysis and 008-analysis-records.
+ANALYSIS_ORIGINS = frozenset({"question", "list"})
+ANALYSIS_OUTCOMES = frozenset(
+    {"analyst", "reused", "unavailable", "failed", "cancelled", "interrupted"}
+)
+ANALYSIS_VERDICTS = frozenset({"var", "kismen_var", "bulunamadi"})
+ANALYSIS_STEPS = frozenset(
+    {
+        "saved_answer_lookup",
+        "queue",
+        "model_check",
+        "rule_hints",
+        "shortlist",
+        "family_search",
+        "analyst_report",
+    }
+)
+SAVED_ANSWER_LOOKUP_RESULTS = frozenset(
+    {"same_question", "same_meaning", "miss", "disabled", "error"}
+)
+SAVED_ANSWER_WRITE_RESULTS = frozenset({"stored", "skipped", "error"})
+REPORT_RESULTS = frozenset({"ok", "error"})
+
+# An analysis waits in the queue and runs for up to an hour of model time.
+_ANALYSIS_BUCKETS = (0.5, 1, 2, 5, 10, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1800, 3600)
 
 # A chat call reads for up to timeout_seconds (at most 3600 s) after waiting for a slot.
 _LLM_BUCKETS = (0.25, 0.5, 1, 2.5, 5, 10, 20, 30, 60, 120, 300, 600, 900, 1800, 2700, 3600)
@@ -209,6 +236,82 @@ class _Instruments:
             "dwhnavigator_search_changes_total",
             unit="{change}",
             description="Changes of the search data through the change queue by outcome",
+        )
+
+        # data-dictionary/PRDs/004-question-analysis
+        self.analyses_started = meter.create_counter(
+            "dwhnavigator_analyses_started_total",
+            unit="{analysis}",
+            description="Analysis jobs that started running, by origin",
+        )
+        self.analyses_finished = meter.create_counter(
+            "dwhnavigator_analyses_finished_total",
+            unit="{analysis}",
+            description="Analysis jobs that reached their end, by origin and outcome",
+        )
+        self.analysis_duration = meter.create_histogram(
+            "dwhnavigator_analysis_duration_seconds",
+            unit="s",
+            description="From acceptance to the end of an analysis job, by origin and outcome",
+            explicit_bucket_boundaries_advisory=_ANALYSIS_BUCKETS,
+        )
+        self.analysis_queue_wait = meter.create_histogram(
+            "dwhnavigator_analysis_queue_wait_seconds",
+            unit="s",
+            description="Time an analysis job waited in the queue, by origin",
+            explicit_bucket_boundaries_advisory=_ANALYSIS_BUCKETS,
+        )
+        self.analysis_step_duration = meter.create_histogram(
+            "dwhnavigator_analysis_step_duration_seconds",
+            unit="s",
+            description="Duration of the main steps of analysis jobs, by step key",
+            explicit_bucket_boundaries_advisory=_ANALYSIS_BUCKETS,
+        )
+        self.analysis_queue_length = meter.create_up_down_counter(
+            "dwhnavigator_analysis_queue_length",
+            unit="{analysis}",
+            description="Analysis jobs waiting in the queue",
+        )
+        self.analyses_running = meter.create_up_down_counter(
+            "dwhnavigator_analyses_running",
+            unit="{analysis}",
+            description="Analysis jobs running",
+        )
+        self.analysis_verdicts = meter.create_counter(
+            "dwhnavigator_analysis_verdicts_total",
+            unit="{analysis}",
+            description="Answers of completed analysis jobs by verdict",
+        )
+        self.analysis_validation_dropped = meter.create_counter(
+            "dwhnavigator_analysis_validation_dropped_total",
+            unit="{name}",
+            description="Names and sentences the dictionary check dropped from model answers",
+        )
+        self.saved_answer_lookups = meter.create_counter(
+            "dwhnavigator_saved_answer_lookups_total",
+            unit="{lookup}",
+            description="Saved answer lookups by result",
+        )
+        self.saved_answer_writes = meter.create_counter(
+            "dwhnavigator_saved_answer_writes_total",
+            unit="{write}",
+            description="Saved answer writes by result",
+        )
+        self.analysis_streams_open = meter.create_up_down_counter(
+            "dwhnavigator_analysis_streams_open",
+            unit="{stream}",
+            description="Open live progress streams of analysis jobs",
+        )
+        self.analysis_reports = meter.create_counter(
+            "dwhnavigator_analysis_reports_total",
+            unit="{report}",
+            description="Single-question Excel reports by result",
+        )
+        # data-dictionary/PRDs/008-analysis-records
+        self.analysis_records_deleted = meter.create_counter(
+            "dwhnavigator_analysis_records_deleted_total",
+            unit="{record}",
+            description="Analysis records a manager deleted",
         )
 
 
@@ -589,3 +692,141 @@ def search_index_build_span(trigger: str) -> Iterator[SearchBuildRecord]:
 
 def set_search_index_ready(ready: bool) -> None:
     _signals.instruments.search_index_ready.set(1 if ready else 0)
+
+
+# --- Analysis jobs (data-dictionary/PRDs/004-question-analysis) ----------------------------------
+
+
+def verdict_label(verdict: str) -> str:
+    """``VAR`` → ``var``, ``KISMEN VAR`` → ``kismen_var``, ``BULUNAMADI`` → ``bulunamadi``."""
+
+    return bounded(verdict.lower().replace(" ", "_"), ANALYSIS_VERDICTS)
+
+
+@dataclass
+class AnalysisRunRecord:
+    """What the ``analysis.run`` span reports at its end; classes and counts only."""
+
+    outcome: str = "failed"
+    verdict: str = ""
+    suggestions: int = 0
+    dropped: int = 0
+    llm_calls: int = 0
+
+
+@contextmanager
+def analysis_run_span(origin: str) -> Iterator[AnalysisRunRecord]:
+    """One analysis job's ``analysis.run`` span; its step spans and model calls go below it."""
+
+    record = AnalysisRunRecord()
+    with _content_free_span(
+        "analysis.run",
+        SpanKind.INTERNAL,
+        {"dwhnavigator.analysis.origin": bounded(origin, ANALYSIS_ORIGINS)},
+    ) as span:
+        try:
+            yield record
+        finally:
+            outcome = bounded(record.outcome, ANALYSIS_OUTCOMES)
+            span.set_attribute("dwhnavigator.analysis.outcome", outcome)
+            if record.verdict:
+                span.set_attribute("dwhnavigator.analysis.verdict", verdict_label(record.verdict))
+            span.set_attribute("dwhnavigator.analysis.suggestions", record.suggestions)
+            span.set_attribute("dwhnavigator.analysis.dropped", record.dropped)
+            span.set_attribute("dwhnavigator.analysis.llm_calls", record.llm_calls)
+            if outcome == "failed":
+                span.set_status(Status(StatusCode.ERROR))
+
+
+@dataclass
+class StepSpan:
+    span: Span
+    token: object | None
+
+
+def open_step_span(key: str, *, start_time_ns: int | None = None, current: bool = True) -> StepSpan:
+    """A main step of an analysis job, named by its fixed key. ``current`` makes it the parent of
+    what runs inside the step in this thread (the model call spans); the step's end must then
+    come from the same context."""
+
+    span = _signals.tracer.start_span(
+        bounded(key, ANALYSIS_STEPS),
+        kind=SpanKind.INTERNAL,
+        start_time=start_time_ns,
+        record_exception=False,
+        set_status_on_exception=False,
+    )
+    token = otel_context.attach(trace.set_span_in_context(span)) if current else None
+    return StepSpan(span, token)
+
+
+def close_step_span(step: StepSpan, *, error: bool) -> None:
+    if step.token is not None:
+        otel_context.detach(step.token)  # type: ignore[arg-type]
+    if error:
+        step.span.set_status(Status(StatusCode.ERROR))
+    step.span.end()
+
+
+def record_analysis_started(origin: str, queue_wait_seconds: float) -> None:
+    labels = {"origin": bounded(origin, ANALYSIS_ORIGINS)}
+    _signals.instruments.analyses_started.add(1, labels)
+    _signals.instruments.analysis_queue_wait.record(queue_wait_seconds, labels)
+
+
+def record_analysis_finished(
+    *, origin: str, outcome: str, duration_seconds: float, verdict: str, dropped: int
+) -> None:
+    labels = {
+        "origin": bounded(origin, ANALYSIS_ORIGINS),
+        "outcome": bounded(outcome, ANALYSIS_OUTCOMES),
+    }
+    instruments = _signals.instruments
+    instruments.analyses_finished.add(1, labels)
+    instruments.analysis_duration.record(duration_seconds, labels)
+    if verdict:
+        instruments.analysis_verdicts.add(1, {"verdict": verdict_label(verdict)})
+    if dropped:
+        instruments.analysis_validation_dropped.add(dropped)
+
+
+def record_analysis_step(key: str, seconds: float) -> None:
+    _signals.instruments.analysis_step_duration.record(
+        seconds, {"step": bounded(key, ANALYSIS_STEPS)}
+    )
+
+
+def analysis_queue_changed(delta: int) -> None:
+    _signals.instruments.analysis_queue_length.add(delta)
+
+
+def analyses_running_changed(delta: int) -> None:
+    _signals.instruments.analyses_running.add(delta)
+
+
+def analysis_streams_changed(delta: int) -> None:
+    _signals.instruments.analysis_streams_open.add(delta)
+
+
+def record_saved_answer_lookup(result: str) -> None:
+    _signals.instruments.saved_answer_lookups.add(
+        1, {"result": bounded(result, SAVED_ANSWER_LOOKUP_RESULTS)}
+    )
+
+
+def record_saved_answer_write(result: str) -> None:
+    _signals.instruments.saved_answer_writes.add(
+        1, {"result": bounded(result, SAVED_ANSWER_WRITE_RESULTS)}
+    )
+
+
+def record_analysis_report(result: str) -> None:
+    _signals.instruments.analysis_reports.add(1, {"result": bounded(result, REPORT_RESULTS)})
+
+
+# --- Analysis records (data-dictionary/PRDs/008-analysis-records) --------------------------------
+
+
+def record_analysis_records_deleted(count: int) -> None:
+    if count:
+        _signals.instruments.analysis_records_deleted.add(count)

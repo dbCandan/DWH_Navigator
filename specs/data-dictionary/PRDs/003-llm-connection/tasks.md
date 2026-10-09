@@ -21,11 +21,14 @@
   `httpx` ve `cryptography` kabul kaydı, kubernetes-delivery Requirement 17'deki `local-egress`
   geçidi. Kanıt: `python3 scripts/check-config-sync.py`, `scripts/check-dependency-admission.py`,
   `tests/infra/local-egress.test.sh`.
-- [ ] Task 6 — Requirement 5, 11 ve 18'in motor tarafı: question-analysis motorunun model
+- [x] Task 6 — Requirement 5, 11 ve 18'in motor tarafı: question-analysis motorunun model
   portunu (`app/backend/app/services/analysis/llm/port.py` `LLMClient`) `LlmGateway` ve
-  `OpenAICompatibleAdapter`'a bağlayan görünüm; motor ana koda alındığında yapılır.
-- [ ] Task 7 — Requirement 18: analiz kaydındaki çağrı özetleri ve model kullanımı toplamları
-  (analysis-records tablosuyla birlikte).
+  `OpenAICompatibleAdapter`'a bağlayan işe özgü görünüm
+  (`app/backend/app/services/analysis/model_view.py`). Kanıt:
+  `tests/unit/analysis/test_model_view.py`, `tests/integration/test_analysis_jobs_api.py`.
+- [x] Task 7 — Requirement 18: analiz kaydındaki çağrı özetleri ve model kullanımı toplamları
+  (analysis-records tablosuyla birlikte). Kanıt: `tests/integration/test_analysis_jobs_api.py`,
+  `tests/unit/analysis/test_steps.py`.
 - [x] Task 8 — Requirement 19 / Acceptance 5: Yapay zekâ sayfası (etkin model kartı, entegrasyon
   kartları, düzenleyici ve envanter çekmeceleri, onaylar ve bildirimler), kabuktaki rozet, sistem
   durumu satırı ve Ctrl K'daki iki eylem; Vitest testleri, OpenAPI ve üretilmiş tiplerin güncelliği.

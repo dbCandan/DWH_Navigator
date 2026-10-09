@@ -13,8 +13,9 @@
   `scripts/quality-gate.sh all`.
 - [x] Task 3 — Gözlemlenebilirlik: olaylar, ölçümler ve aralıklar. Kanıt:
   `tests/integration/test_search_index_signals.py`.
-- [ ] Task 4 — Requirement 2 ve 10'un tüketicileri: question-analysis'in `GET /status`
-  (`shortlist`) ve analiz başlatmada `503 search_index_not_ready` (Dalga 3).
+- [x] Task 4 — Requirement 2 ve 10'un tüketicileri: question-analysis'in `GET /status`
+  (`shortlist`) ve analiz başlatmada `503 search_index_not_ready`. Kanıt:
+  `tests/integration/test_analysis_jobs_api.py`.
 - [ ] Task 5 — Requirement 16: Bakım sayfasının kayıtlı cevap bloğu, question-analysis'in
   `GET /saved-answers/summary` ve `DELETE /saved-answers` uçlarıyla.
 - [x] Task 6 — Requirement 17-25 / Acceptance 3: yönetim kabuğunun sözlük ve indeks durumu, rozetler,

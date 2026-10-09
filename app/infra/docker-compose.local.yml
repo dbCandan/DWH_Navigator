@@ -75,6 +75,9 @@ services:
       # local-egress gate below. Empty trust store: the image's system trust store.
       DWHNAVIGATOR_LLM_CA_BUNDLE: ""
       DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: "2"
+      # Question analysis jobs: one at a time, at most 20 waiting (004-question-analysis).
+      DWHNAVIGATOR_ANALYSIS_CONCURRENCY: "1"
+      DWHNAVIGATOR_ANALYSIS_QUEUE_LIMIT: "20"
       # OpenTelemetry export stays off here; the observability overlay sets its collector address.
       DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT: "${DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
       DWHNAVIGATOR_OTEL_SERVICE_NAME: "dwhnavigator-backend"

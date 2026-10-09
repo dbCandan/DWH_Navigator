@@ -54,6 +54,10 @@ class SecurityHeadersMiddleware:
                 started = True
                 headers = MutableHeaders(scope=message)
                 for name, value in SECURITY_HEADERS:
+                    # A live event stream keeps its own "no-cache" (question-analysis
+                    # Requirement 10); every other response is "no-store".
+                    if name == "Cache-Control" and headers.get(name) == "no-cache":
+                        continue
                     headers[name] = value
             await send(message)
 

@@ -1,6 +1,24 @@
 {
   "components": {
     "schemas": {
+      "ActiveAnalysis": {
+        "properties": {
+          "analysis": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisJob"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "analysis"
+        ],
+        "type": "object"
+      },
       "ActiveChange": {
         "properties": {
           "active": {
@@ -78,6 +96,710 @@
         ],
         "type": "object"
       },
+      "AnalysisAnswer": {
+        "additionalProperties": true,
+        "description": "Requirement 7: the answer in the source's fields; answer-feedback adds its own.",
+        "properties": {
+          "analyst": {
+            "type": "boolean"
+          },
+          "attention": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "concepts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "design": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "dictionary_version": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "integer"
+          },
+          "expansion": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "fallback": {
+            "type": "string"
+          },
+          "interpretation": {
+            "type": "string"
+          },
+          "llm_model": {
+            "type": "string"
+          },
+          "method": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "near": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerObject"
+            },
+            "type": "array"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerNote"
+            },
+            "type": "array"
+          },
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerObject"
+            },
+            "type": "array"
+          },
+          "query": {
+            "type": "string"
+          },
+          "reused": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnswerReuse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "summary": {
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "VAR",
+              "KISMEN VAR",
+              "BULUNAMADI"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "verdict",
+          "summary",
+          "objects",
+          "near",
+          "notes",
+          "concepts",
+          "expansion",
+          "method",
+          "elapsed_ms",
+          "dictionary_version",
+          "llm_model",
+          "analyst",
+          "fallback",
+          "interpretation",
+          "design",
+          "attention",
+          "reused",
+          "missing"
+        ],
+        "type": "object"
+      },
+      "AnalysisError": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "AnalysisJob": {
+        "description": "The job envelope; ``result`` only in ``GET /analyses/{analysis_id}`` of a completed job.",
+        "properties": {
+          "ahead": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "analysis_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flow": {
+            "anyOf": [
+              {
+                "enum": [
+                  "analyst",
+                  "reused",
+                  "unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fresh": {
+            "type": "boolean"
+          },
+          "origin": {
+            "enum": [
+              "question",
+              "list"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled",
+              "interrupted"
+            ],
+            "type": "string"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "enum": [
+                  "saved_answer_lookup",
+                  "queue",
+                  "model_check",
+                  "rule_hints",
+                  "shortlist",
+                  "family_search",
+                  "analyst_report"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "analysis_id",
+          "state",
+          "origin",
+          "query",
+          "fresh",
+          "ahead",
+          "step",
+          "flow",
+          "error",
+          "created_at",
+          "started_at",
+          "finished_at"
+        ],
+        "type": "object"
+      },
+      "AnalysisJobWithResult": {
+        "properties": {
+          "ahead": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "analysis_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flow": {
+            "anyOf": [
+              {
+                "enum": [
+                  "analyst",
+                  "reused",
+                  "unavailable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fresh": {
+            "type": "boolean"
+          },
+          "origin": {
+            "enum": [
+              "question",
+              "list"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnalysisAnswer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled",
+              "interrupted"
+            ],
+            "type": "string"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "enum": [
+                  "saved_answer_lookup",
+                  "queue",
+                  "model_check",
+                  "rule_hints",
+                  "shortlist",
+                  "family_search",
+                  "analyst_report"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "analysis_id",
+          "state",
+          "origin",
+          "query",
+          "fresh",
+          "ahead",
+          "step",
+          "flow",
+          "error",
+          "created_at",
+          "started_at",
+          "finished_at"
+        ],
+        "type": "object"
+      },
+      "AnalysisStreamEvent": {
+        "description": "The JSON of one event's ``data:`` line on the live progress stream (Requirement 10).",
+        "discriminator": {
+          "mapping": {
+            "cancelled": "#/components/schemas/EndedEvent",
+            "completed": "#/components/schemas/CompletedEvent",
+            "failed": "#/components/schemas/FailedEvent",
+            "interrupted": "#/components/schemas/EndedEvent",
+            "queued": "#/components/schemas/QueuedEvent",
+            "snapshot": "#/components/schemas/SnapshotEvent",
+            "started": "#/components/schemas/StartedEvent",
+            "step": "#/components/schemas/StepEvent"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/SnapshotEvent"
+          },
+          {
+            "$ref": "#/components/schemas/QueuedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/StepEvent"
+          },
+          {
+            "$ref": "#/components/schemas/CompletedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/FailedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/EndedEvent"
+          }
+        ]
+      },
+      "AnswerColumn": {
+        "additionalProperties": true,
+        "properties": {
+          "caveats": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "column": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "key": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "pii": {
+            "type": "boolean"
+          },
+          "role": {
+            "type": "string"
+          },
+          "signals": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "synonyms": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "key",
+          "column",
+          "object",
+          "description",
+          "synonyms",
+          "pii",
+          "group",
+          "role",
+          "signals",
+          "caveats"
+        ],
+        "type": "object"
+      },
+      "AnswerNote": {
+        "properties": {
+          "scope": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "scope",
+          "title",
+          "text"
+        ],
+        "type": "object"
+      },
+      "AnswerObject": {
+        "additionalProperties": true,
+        "description": "One suggested (or near) table; answer-feedback adds its vote fields to it.",
+        "properties": {
+          "caveat": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerColumn"
+            },
+            "type": "array"
+          },
+          "components": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object"
+          },
+          "covered": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "covers": {
+            "type": "string"
+          },
+          "database": {
+            "type": "string"
+          },
+          "dimension": {
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "key": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "llm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "long_format": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "string"
+          },
+          "score": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "rank",
+          "key",
+          "database",
+          "schema",
+          "name",
+          "groups",
+          "score",
+          "level",
+          "llm",
+          "components",
+          "covered",
+          "missing",
+          "long_format",
+          "dimension",
+          "reason",
+          "caveat",
+          "usage",
+          "covers",
+          "columns"
+        ],
+        "type": "object"
+      },
+      "AnswerReuse": {
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "match": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "query",
+          "match"
+        ],
+        "type": "object"
+      },
+      "Asker": {
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "public_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "display_name"
+        ],
+        "type": "object"
+      },
+      "AskerCount": {
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "public_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "display_name",
+          "count"
+        ],
+        "type": "object"
+      },
+      "Askers": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Asker"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "type": "object"
+      },
       "AuthenticatedUser": {
         "properties": {
           "display_name": {
@@ -131,6 +853,69 @@
           "username",
           "display_name",
           "tenant_id"
+        ],
+        "type": "object"
+      },
+      "CompletedEvent": {
+        "properties": {
+          "flow": {
+            "enum": [
+              "analyst",
+              "reused",
+              "unavailable"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "const": "completed",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "VAR",
+              "KISMEN VAR",
+              "BULUNAMADI"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "flow",
+          "verdict"
+        ],
+        "type": "object"
+      },
+      "DailyCounts": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DayCount"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "days"
+        ],
+        "type": "object"
+      },
+      "DayCount": {
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "with_tables": {
+            "type": "integer"
+          },
+          "without_tables": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "with_tables",
+          "without_tables"
         ],
         "type": "object"
       },
@@ -363,6 +1148,21 @@
         ],
         "type": "object"
       },
+      "EndedEvent": {
+        "properties": {
+          "type": {
+            "enum": [
+              "cancelled",
+              "interrupted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
       "ErrorDetail": {
         "properties": {
           "code": {
@@ -386,6 +1186,26 @@
         },
         "required": [
           "detail"
+        ],
+        "type": "object"
+      },
+      "FailedEvent": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "type": {
+            "const": "failed",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "code",
+          "message"
         ],
         "type": "object"
       },
@@ -1452,6 +2272,41 @@
         ],
         "type": "object"
       },
+      "ModelStateOut": {
+        "properties": {
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "ok",
+              "none",
+              "down"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "model",
+          "code",
+          "reason"
+        ],
+        "type": "object"
+      },
       "OneTimePassword": {
         "description": "Shown once in this response; no endpoint can read it again.",
         "properties": {
@@ -1496,6 +2351,726 @@
         ],
         "type": "object"
       },
+      "PhaseAverage": {
+        "properties": {
+          "average_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "count": {
+            "type": "integer"
+          },
+          "phase": {
+            "enum": [
+              "queue",
+              "saved_answer_lookup",
+              "model_check",
+              "rule_hints",
+              "analyst_pick",
+              "analyst_write"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "phase",
+          "average_ms",
+          "count"
+        ],
+        "type": "object"
+      },
+      "QueuedEvent": {
+        "properties": {
+          "ahead": {
+            "type": "integer"
+          },
+          "type": {
+            "const": "queued",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "ahead"
+        ],
+        "type": "object"
+      },
+      "RecordDetail": {
+        "properties": {
+          "asked_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "asked_by": {
+            "$ref": "#/components/schemas/Asker"
+          },
+          "completion_tokens": {
+            "type": "integer"
+          },
+          "dictionary_version": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flow": {
+            "enum": [
+              "analyst",
+              "reused",
+              "unavailable",
+              "cancelled",
+              "failed",
+              "interrupted"
+            ],
+            "type": "string"
+          },
+          "list_file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "list_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "list_public_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "llm_calls": {
+            "type": "integer"
+          },
+          "model": {
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "question",
+              "list"
+            ],
+            "type": "string"
+          },
+          "phases": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "queue",
+                "saved_answer_lookup",
+                "model_check",
+                "rule_hints",
+                "analyst_pick",
+                "analyst_write"
+              ]
+            },
+            "type": "object"
+          },
+          "prompt_tokens": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "queue_wait_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reused": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordReuse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/RecordStep"
+            },
+            "type": "array"
+          },
+          "steps_truncated": {
+            "type": "boolean"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "table_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "unavailable_reason": {
+            "type": "string"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "VAR",
+                  "KISMEN VAR",
+                  "BULUNAMADI"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "public_id",
+          "asked_at",
+          "asked_by",
+          "query",
+          "origin",
+          "list_public_id",
+          "list_file_name",
+          "list_position",
+          "flow",
+          "model",
+          "verdict",
+          "table_keys",
+          "unavailable_reason",
+          "error",
+          "duration_ms",
+          "summary",
+          "reused",
+          "llm_calls",
+          "prompt_tokens",
+          "completion_tokens",
+          "dictionary_version",
+          "started_at",
+          "finished_at",
+          "queue_wait_ms",
+          "phases",
+          "steps_truncated",
+          "steps"
+        ],
+        "type": "object"
+      },
+      "RecordError": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "RecordPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecordRowOut"
+            },
+            "type": "array"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "snapshot_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size",
+          "snapshot_at"
+        ],
+        "type": "object"
+      },
+      "RecordReuse": {
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "match": {
+            "enum": [
+              "same_question",
+              "same_meaning"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "query",
+          "match"
+        ],
+        "type": "object"
+      },
+      "RecordRowOut": {
+        "properties": {
+          "asked_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "asked_by": {
+            "$ref": "#/components/schemas/Asker"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "flow": {
+            "enum": [
+              "analyst",
+              "reused",
+              "unavailable",
+              "cancelled",
+              "failed",
+              "interrupted"
+            ],
+            "type": "string"
+          },
+          "list_file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "list_position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "list_public_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "question",
+              "list"
+            ],
+            "type": "string"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "query": {
+            "type": "string"
+          },
+          "table_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "unavailable_reason": {
+            "type": "string"
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "VAR",
+                  "KISMEN VAR",
+                  "BULUNAMADI"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "public_id",
+          "asked_at",
+          "asked_by",
+          "query",
+          "origin",
+          "list_public_id",
+          "list_file_name",
+          "list_position",
+          "flow",
+          "model",
+          "verdict",
+          "table_keys",
+          "unavailable_reason",
+          "error",
+          "duration_ms"
+        ],
+        "type": "object"
+      },
+      "RecordStep": {
+        "description": "One step: no prompt, reply, address or server error text (Requirement 3 and 4).",
+        "properties": {
+          "call": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "check": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "detail": {
+            "type": "string"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "step",
+              "llm",
+              "event"
+            ],
+            "type": "string"
+          },
+          "ms": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seq": {
+            "type": "integer"
+          },
+          "start_ms": {
+            "type": "integer"
+          },
+          "status": {
+            "enum": [
+              "ok",
+              "warn",
+              "error"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "parent",
+          "name",
+          "kind",
+          "key",
+          "start_ms",
+          "ms",
+          "status",
+          "detail"
+        ],
+        "type": "object"
+      },
+      "RecordSummary": {
+        "properties": {
+          "analyst_p50_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "analyst_p90_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "askers": {
+            "items": {
+              "$ref": "#/components/schemas/AskerCount"
+            },
+            "type": "array"
+          },
+          "completion_tokens": {
+            "type": "integer"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "flows": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "enum": [
+                "analyst",
+                "reused",
+                "unavailable",
+                "cancelled",
+                "failed",
+                "interrupted"
+              ]
+            },
+            "type": "object"
+          },
+          "llm_calls": {
+            "type": "integer"
+          },
+          "max_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "newest_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "p50_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "p90_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "phases": {
+            "items": {
+              "$ref": "#/components/schemas/PhaseAverage"
+            },
+            "type": "array"
+          },
+          "prompt_tokens": {
+            "type": "integer"
+          },
+          "snapshot_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "with_result": {
+            "type": "integer"
+          },
+          "with_tables": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "newest_at",
+          "with_result",
+          "with_tables",
+          "flows",
+          "analyst_p50_ms",
+          "analyst_p90_ms",
+          "p50_ms",
+          "p90_ms",
+          "max_ms",
+          "phases",
+          "llm_calls",
+          "prompt_tokens",
+          "completion_tokens",
+          "askers",
+          "snapshot_at"
+        ],
+        "type": "object"
+      },
+      "RecordsDeleted": {
+        "properties": {
+          "deleted_count": {
+            "type": "integer"
+          },
+          "remaining_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted_count",
+          "remaining_count"
+        ],
+        "type": "object"
+      },
       "RoleChange": {
         "properties": {
           "role": {
@@ -1508,6 +3083,44 @@
         },
         "required": [
           "role"
+        ],
+        "type": "object"
+      },
+      "SavedAnswerSummaryOut": {
+        "properties": {
+          "newest_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "integer"
+          },
+          "usable": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "usable",
+          "newest_at"
+        ],
+        "type": "object"
+      },
+      "SavedAnswersRemoved": {
+        "properties": {
+          "removed": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "removed"
         ],
         "type": "object"
       },
@@ -1955,6 +3568,151 @@
           "values",
           "elapsed_ms",
           "index"
+        ],
+        "type": "object"
+      },
+      "SnapshotEvent": {
+        "properties": {
+          "ahead": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "analysis_id": {
+            "type": "string"
+          },
+          "elapsed_ms": {
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled",
+              "interrupted"
+            ],
+            "type": "string"
+          },
+          "step": {
+            "anyOf": [
+              {
+                "enum": [
+                  "saved_answer_lookup",
+                  "queue",
+                  "model_check",
+                  "rule_hints",
+                  "shortlist",
+                  "family_search",
+                  "analyst_report"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "const": "snapshot",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "analysis_id",
+          "state",
+          "ahead",
+          "step",
+          "elapsed_ms"
+        ],
+        "type": "object"
+      },
+      "StartedEvent": {
+        "properties": {
+          "type": {
+            "const": "started",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "type": "object"
+      },
+      "StatusOut": {
+        "description": "Requirement 17.",
+        "properties": {
+          "columns": {
+            "type": "integer"
+          },
+          "dictionary_version": {
+            "type": "string"
+          },
+          "llm": {
+            "type": "string"
+          },
+          "llm_state": {
+            "$ref": "#/components/schemas/ModelStateOut"
+          },
+          "objects": {
+            "type": "integer"
+          },
+          "shortlist": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "columns",
+          "objects",
+          "dictionary_version",
+          "llm",
+          "llm_state",
+          "shortlist"
+        ],
+        "type": "object"
+      },
+      "StepEvent": {
+        "properties": {
+          "elapsed_ms": {
+            "type": "integer"
+          },
+          "key": {
+            "enum": [
+              "saved_answer_lookup",
+              "queue",
+              "model_check",
+              "rule_hints",
+              "shortlist",
+              "family_search",
+              "analyst_report"
+            ],
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "started",
+              "finished",
+              "error"
+            ],
+            "type": "string"
+          },
+          "type": {
+            "const": "step",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "key",
+          "status",
+          "elapsed_ms"
         ],
         "type": "object"
       },
@@ -2725,6 +4483,1192 @@
         "summary": "Set Role",
         "tags": [
           "user-administration"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analyses": {
+      "post": {
+        "description": "Accept a question; a saved answer completes the job at once, otherwise it is queued.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "description": "Requirement 4: the question, how many tables to suggest and whether to analyse anew.",
+                "properties": {
+                  "fresh": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "query": {
+                    "type": "string"
+                  },
+                  "top": {
+                    "default": 5,
+                    "maximum": 10.0,
+                    "minimum": 1.0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "request_too_large: g\u00f6vde 32 KB'tan b\u00fcy\u00fck"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "query_empty, query_too_long, query_invalid_characters, invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: 60 saniyede 30'dan \u00e7ok istek"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_queue_full, analysis_unavailable, search_index_not_ready"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Start Analysis",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analyses/active": {
+      "get": {
+        "description": "The caller's most recently started single question that is queued or running.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveAnalysis"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Active Analysis",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analyses/{analysis_id}": {
+      "get": {
+        "description": "The job; a completed job carries its answer with the reading user's votes applied.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisJobWithResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_not_found: analiz yok ya da ba\u015fkas\u0131n\u0131n"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Read Analysis",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analyses/{analysis_id}/cancel": {
+      "post": {
+        "description": "Stop the job; a finished job is returned as it is.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_not_found: analiz yok ya da ba\u015fkas\u0131n\u0131n"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Cancel Analysis",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analyses/{analysis_id}/events": {
+      "get": {
+        "description": "Live progress: a snapshot, the missed step events after ``Last-Event-ID``, then live.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisStreamEvent",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "text/event-stream: every event is an id: line and one data: line with this JSON; ': canl\u0131' comment lines keep the connection alive every 15 seconds."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_not_found: analiz yok ya da ba\u015fkas\u0131n\u0131n"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_streams: kullan\u0131c\u0131 ba\u015f\u0131na 5 ak\u0131\u015f"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Follow Analysis",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analyses/{analysis_id}/report": {
+      "get": {
+        "description": "The single-question Excel report, made in memory from the record's answer.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_not_found: analiz yok ya da ba\u015fkas\u0131n\u0131n"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_has_no_result: tamamlanmam\u0131\u015f analiz"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Analysis Report",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analysis-records": {
+      "delete": {
+        "description": "Delete the matching finished records for good; ``until`` is required.",
+        "parameters": [
+          {
+            "description": "ISO 8601, saat dilimli",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ISO 8601, saat dilimli"
+            }
+          },
+          {
+            "description": "today, 7d (varsay\u0131lan), 30d ya da all",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "today, 7d (varsay\u0131lan), 30d ya da all"
+            }
+          },
+          {
+            "description": "Alt\u0131 ak\u0131\u015ftan biri",
+            "in": "query",
+            "name": "flow",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Alt\u0131 ak\u0131\u015ftan biri"
+            }
+          },
+          {
+            "description": "Soran\u0131n public_id de\u011feri",
+            "in": "query",
+            "name": "asked_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Soran\u0131n public_id de\u011feri"
+            }
+          },
+          {
+            "description": "En \u00e7ok 200 karakterlik metin",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "En \u00e7ok 200 karakterlik metin"
+            }
+          },
+          {
+            "description": "true: until'den \u00f6nceki b\u00fct\u00fcn kay\u0131tlar",
+            "in": "query",
+            "name": "all",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: until'den \u00f6nceki b\u00fct\u00fcn kay\u0131tlar"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordsDeleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_delete_scope_missing: s\u00fczge\u00e7 ya da all=true yok; invalid_filter"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Delete Records",
+        "tags": [
+          "analysis-records"
+        ]
+      },
+      "get": {
+        "description": "Finished records, newest first, a page at a time.",
+        "parameters": [
+          {
+            "description": "today, 7d (varsay\u0131lan), 30d ya da all",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "today, 7d (varsay\u0131lan), 30d ya da all"
+            }
+          },
+          {
+            "description": "Alt\u0131 ak\u0131\u015ftan biri",
+            "in": "query",
+            "name": "flow",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Alt\u0131 ak\u0131\u015ftan biri"
+            }
+          },
+          {
+            "description": "Soran\u0131n public_id de\u011feri",
+            "in": "query",
+            "name": "asked_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Soran\u0131n public_id de\u011feri"
+            }
+          },
+          {
+            "description": "En \u00e7ok 200 karakterlik metin",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "En \u00e7ok 200 karakterlik metin"
+            }
+          },
+          {
+            "description": "ISO 8601, saat dilimli",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ISO 8601, saat dilimli"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_filter: d\u00f6nem, ak\u0131\u015f, soran, metin, zaman ya da sayfa ge\u00e7ersiz"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "List Records",
+        "tags": [
+          "analysis-records"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analysis-records/askers": {
+      "get": {
+        "description": "Everyone with a finished record, by display name.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Askers"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Askers",
+        "tags": [
+          "analysis-records"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analysis-records/daily-counts": {
+      "get": {
+        "description": "Records with and without suggested tables per Istanbul calendar day.",
+        "parameters": [
+          {
+            "description": "1-31, varsay\u0131lan 14",
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "1-31, varsay\u0131lan 14"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyCounts"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_filter: d\u00f6nem, ak\u0131\u015f, soran, metin, zaman ya da sayfa ge\u00e7ersiz"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Daily Counts",
+        "tags": [
+          "analysis-records"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analysis-records/summary": {
+      "get": {
+        "description": "Counts, durations, phases, model use and askers of the matching records.",
+        "parameters": [
+          {
+            "description": "today, 7d (varsay\u0131lan), 30d ya da all",
+            "in": "query",
+            "name": "period",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "today, 7d (varsay\u0131lan), 30d ya da all"
+            }
+          },
+          {
+            "description": "Alt\u0131 ak\u0131\u015ftan biri",
+            "in": "query",
+            "name": "flow",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Alt\u0131 ak\u0131\u015ftan biri"
+            }
+          },
+          {
+            "description": "Soran\u0131n public_id de\u011feri",
+            "in": "query",
+            "name": "asked_by",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Soran\u0131n public_id de\u011feri"
+            }
+          },
+          {
+            "description": "En \u00e7ok 200 karakterlik metin",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "En \u00e7ok 200 karakterlik metin"
+            }
+          },
+          {
+            "description": "ISO 8601, saat dilimli",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ISO 8601, saat dilimli"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_filter: d\u00f6nem, ak\u0131\u015f, soran, metin, zaman ya da sayfa ge\u00e7ersiz"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Records Summary",
+        "tags": [
+          "analysis-records"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analysis-records/{public_id}": {
+      "get": {
+        "description": "One finished record with its phases and every step; never the full answer.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_record_not_found: yok, s\u00fcr\u00fcyor ya da silinmi\u015f"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Record Detail",
+        "tags": [
+          "analysis-records"
         ]
       }
     },
@@ -4155,6 +7099,100 @@
         ]
       }
     },
+    "/api/dwhnavigator/v1/saved-answers": {
+      "delete": {
+        "description": "Delete every saved answer of the tenant for good; a repeat removes 0.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedAnswersRemoved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Clear Saved Answers",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/saved-answers/summary": {
+      "get": {
+        "description": "Requirement 15: every saved answer, those the current engine and model can use (top 5),\nand the newest one's time.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SavedAnswerSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Saved Answers Summary",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
     "/api/dwhnavigator/v1/search-index": {
       "get": {
         "description": "The serving index, a change in progress and the last failed attempt; no content.",
@@ -4398,6 +7436,53 @@
         "summary": "Save Settings",
         "tags": [
           "search"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/status": {
+      "get": {
+        "description": "Requirement 17: the serving dictionary, the chat model and its state, the shortlist.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Analysis Status",
+        "tags": [
+          "analyses"
         ]
       }
     },

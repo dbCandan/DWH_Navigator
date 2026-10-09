@@ -403,6 +403,916 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/analyses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Analysis
+         * @description Accept a question; a saved answer completes the job at once, otherwise it is queued.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": {
+                        /** @default false */
+                        fresh?: boolean;
+                        query: string;
+                        /** @default 5 */
+                        top?: number;
+                    };
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AnalysisJob"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description request_too_large: gövde 32 KB'tan büyük */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description query_empty, query_too_long, query_invalid_characters, invalid_request */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description rate_limited: 60 saniyede 30'dan çok istek */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description analysis_queue_full, analysis_unavailable, search_index_not_ready */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analyses/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Active Analysis
+         * @description The caller's most recently started single question that is queued or running.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ActiveAnalysis"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analyses/{analysis_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Analysis
+         * @description The job; a completed job carries its answer with the reading user's votes applied.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    analysis_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AnalysisJobWithResult"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description analysis_not_found: analiz yok ya da başkasının */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analyses/{analysis_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Analysis
+         * @description Stop the job; a finished job is returned as it is.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    analysis_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AnalysisJob"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description analysis_not_found: analiz yok ya da başkasının */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analyses/{analysis_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Follow Analysis
+         * @description Live progress: a snapshot, the missed step events after ``Last-Event-ID``, then live.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "last-event-id"?: string | null;
+                };
+                path: {
+                    analysis_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description text/event-stream: every event is an id: line and one data: line with this JSON; ': canlı' comment lines keep the connection alive every 15 seconds. */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "text/event-stream": components["schemas"]["AnalysisStreamEvent"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description analysis_not_found: analiz yok ya da başkasının */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description too_many_streams: kullanıcı başına 5 akış */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analyses/{analysis_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analysis Report
+         * @description The single-question Excel report, made in memory from the record's answer.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    analysis_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Excel çalışma kitabı */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description analysis_not_found: analiz yok ya da başkasının */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description analysis_has_no_result: tamamlanmamış analiz */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analysis-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Records
+         * @description Finished records, newest first, a page at a time.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description today, 7d (varsayılan), 30d ya da all */
+                    period?: string | null;
+                    /** @description Altı akıştan biri */
+                    flow?: string | null;
+                    /** @description Soranın public_id değeri */
+                    asked_by?: string | null;
+                    /** @description En çok 200 karakterlik metin */
+                    q?: string | null;
+                    /** @description ISO 8601, saat dilimli */
+                    until?: string | null;
+                    page?: string | null;
+                    page_size?: string | null;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordPage"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_filter: dönem, akış, soran, metin, zaman ya da sayfa geçersiz */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * Delete Records
+         * @description Delete the matching finished records for good; ``until`` is required.
+         */
+        delete: {
+            parameters: {
+                query?: {
+                    /** @description ISO 8601, saat dilimli */
+                    until?: string | null;
+                    /** @description today, 7d (varsayılan), 30d ya da all */
+                    period?: string | null;
+                    /** @description Altı akıştan biri */
+                    flow?: string | null;
+                    /** @description Soranın public_id değeri */
+                    asked_by?: string | null;
+                    /** @description En çok 200 karakterlik metin */
+                    q?: string | null;
+                    /** @description true: until'den önceki bütün kayıtlar */
+                    all?: string | null;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordsDeleted"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description analysis_delete_scope_missing: süzgeç ya da all=true yok; invalid_filter */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analysis-records/askers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Askers
+         * @description Everyone with a finished record, by display name.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Askers"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analysis-records/daily-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Daily Counts
+         * @description Records with and without suggested tables per Istanbul calendar day.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 1-31, varsayılan 14 */
+                    days?: string | null;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DailyCounts"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_filter: dönem, akış, soran, metin, zaman ya da sayfa geçersiz */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analysis-records/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Records Summary
+         * @description Counts, durations, phases, model use and askers of the matching records.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description today, 7d (varsayılan), 30d ya da all */
+                    period?: string | null;
+                    /** @description Altı akıştan biri */
+                    flow?: string | null;
+                    /** @description Soranın public_id değeri */
+                    asked_by?: string | null;
+                    /** @description En çok 200 karakterlik metin */
+                    q?: string | null;
+                    /** @description ISO 8601, saat dilimli */
+                    until?: string | null;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordSummary"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_filter: dönem, akış, soran, metin, zaman ya da sayfa geçersiz */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/analysis-records/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Record Detail
+         * @description One finished record with its phases and every step; never the full answer.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    public_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecordDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description analysis_record_not_found: yok, sürüyor ya da silinmiş */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/auth/login": {
         parameters: {
             query?: never;
@@ -1871,6 +2781,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/saved-answers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Clear Saved Answers
+         * @description Delete every saved answer of the tenant for good; a repeat removes 0.
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SavedAnswersRemoved"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/saved-answers/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Saved Answers Summary
+         * @description Requirement 15: every saved answer, those the current engine and model can use (top 5),
+         *     and the newest one's time.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SavedAnswerSummaryOut"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/search-index": {
         parameters: {
             query?: never;
@@ -2130,6 +3155,63 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Analysis Status
+         * @description Requirement 17: the serving dictionary, the chat model and its state, the shortlist.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StatusOut"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/dwhnavigator/v1/vocabulary/{list_name}": {
@@ -2493,6 +3575,9 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        ActiveAnalysis: {
+            analysis: components["schemas"]["AnalysisJob"] | null;
+        };
         ActiveChange: {
             active: boolean;
         };
@@ -2511,6 +3596,135 @@ export interface components {
             warning_count: number;
             warnings: string[];
         };
+        /** @description Requirement 7: the answer in the source's fields; answer-feedback adds its own. */
+        AnalysisAnswer: {
+            analyst: boolean;
+            attention: string[];
+            concepts: string[];
+            design: string[];
+            dictionary_version: string;
+            elapsed_ms: number;
+            expansion: string[];
+            fallback: string;
+            interpretation: string;
+            llm_model: string;
+            method: string[];
+            missing: string[];
+            near: components["schemas"]["AnswerObject"][];
+            notes: components["schemas"]["AnswerNote"][];
+            objects: components["schemas"]["AnswerObject"][];
+            query: string;
+            reused: components["schemas"]["AnswerReuse"] | null;
+            summary: string;
+            /** @enum {string} */
+            verdict: "VAR" | "KISMEN VAR" | "BULUNAMADI";
+        } & {
+            [key: string]: unknown;
+        };
+        AnalysisError: {
+            code: string;
+            message: string;
+        };
+        /** @description The job envelope; ``result`` only in ``GET /analyses/{analysis_id}`` of a completed job. */
+        AnalysisJob: {
+            ahead: number | null;
+            analysis_id: string;
+            /** Format: date-time */
+            created_at: string;
+            error: components["schemas"]["AnalysisError"] | null;
+            finished_at: string | null;
+            flow: ("analyst" | "reused" | "unavailable") | null;
+            fresh: boolean;
+            /** @enum {string} */
+            origin: "question" | "list";
+            query: string;
+            started_at: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
+            step: ("saved_answer_lookup" | "queue" | "model_check" | "rule_hints" | "shortlist" | "family_search" | "analyst_report") | null;
+        };
+        AnalysisJobWithResult: {
+            ahead: number | null;
+            analysis_id: string;
+            /** Format: date-time */
+            created_at: string;
+            error: components["schemas"]["AnalysisError"] | null;
+            finished_at: string | null;
+            flow: ("analyst" | "reused" | "unavailable") | null;
+            fresh: boolean;
+            /** @enum {string} */
+            origin: "question" | "list";
+            query: string;
+            result?: components["schemas"]["AnalysisAnswer"] | null;
+            started_at: string | null;
+            /** @enum {string} */
+            state: "queued" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
+            step: ("saved_answer_lookup" | "queue" | "model_check" | "rule_hints" | "shortlist" | "family_search" | "analyst_report") | null;
+        };
+        /** @description The JSON of one event's ``data:`` line on the live progress stream (Requirement 10). */
+        AnalysisStreamEvent: components["schemas"]["SnapshotEvent"] | components["schemas"]["QueuedEvent"] | components["schemas"]["StartedEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["CompletedEvent"] | components["schemas"]["FailedEvent"] | components["schemas"]["EndedEvent"];
+        AnswerColumn: {
+            caveats: string[];
+            column: string;
+            description: string;
+            group: string | null;
+            key: string;
+            object: string;
+            pii: boolean;
+            role: string;
+            signals: string[];
+            synonyms: string[];
+        } & {
+            [key: string]: unknown;
+        };
+        AnswerNote: {
+            scope: string;
+            text: string;
+            title: string;
+        };
+        /** @description One suggested (or near) table; answer-feedback adds its vote fields to it. */
+        AnswerObject: {
+            caveat: string[];
+            columns: components["schemas"]["AnswerColumn"][];
+            components: {
+                [key: string]: number;
+            };
+            covered: string[];
+            covers: string;
+            database: string;
+            dimension: string;
+            groups: string[];
+            key: string;
+            level: string;
+            llm: number | null;
+            long_format: string[];
+            missing: string[];
+            name: string;
+            rank: number;
+            reason: string;
+            schema: string;
+            score: number;
+            usage: string;
+        } & {
+            [key: string]: unknown;
+        };
+        AnswerReuse: {
+            at: string;
+            match: string;
+            query: string;
+        };
+        Asker: {
+            display_name: string;
+            public_id: string;
+        };
+        AskerCount: {
+            count: number;
+            display_name: string;
+            public_id: string;
+        };
+        Askers: {
+            items: components["schemas"]["Asker"][];
+        };
         AuthenticatedUser: {
             display_name: string;
             /** @default false */
@@ -2523,6 +3737,25 @@ export interface components {
             /** Format: uuid */
             tenant_id: string;
             username: string;
+        };
+        CompletedEvent: {
+            /** @enum {string} */
+            flow: "analyst" | "reused" | "unavailable";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "completed";
+            /** @enum {string} */
+            verdict: "VAR" | "KISMEN VAR" | "BULUNAMADI";
+        };
+        DailyCounts: {
+            days: components["schemas"]["DayCount"][];
+        };
+        DayCount: {
+            date: string;
+            with_tables: number;
+            without_tables: number;
         };
         DictionaryImported: {
             changed: boolean;
@@ -2577,12 +3810,28 @@ export interface components {
             version: string;
             warning_count: number;
         };
+        EndedEvent: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "cancelled" | "interrupted";
+        };
         ErrorDetail: {
             code: string;
             message: string;
         };
         ErrorResponse: {
             detail: components["schemas"]["ErrorDetail"];
+        };
+        FailedEvent: {
+            code: string;
+            message: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "failed";
         };
         HTTPValidationError: {
             detail?: components["schemas"]["ValidationError"][];
@@ -2774,6 +4023,13 @@ export interface components {
             token_type: "bearer";
             user: components["schemas"]["AuthenticatedUser"];
         };
+        ModelStateOut: {
+            code: string | null;
+            model: string;
+            reason: string;
+            /** @enum {string} */
+            state: "ok" | "none" | "down";
+        };
         /** @description Shown once in this response; no endpoint can read it again. */
         OneTimePassword: {
             one_time_password: string;
@@ -2787,9 +4043,148 @@ export interface components {
             new_password: string;
             username: string;
         };
+        PhaseAverage: {
+            average_ms: number | null;
+            count: number;
+            /** @enum {string} */
+            phase: "queue" | "saved_answer_lookup" | "model_check" | "rule_hints" | "analyst_pick" | "analyst_write";
+        };
+        QueuedEvent: {
+            ahead: number;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "queued";
+        };
+        RecordDetail: {
+            /** Format: date-time */
+            asked_at: string;
+            asked_by: components["schemas"]["Asker"];
+            completion_tokens: number;
+            dictionary_version: string;
+            duration_ms: number | null;
+            error: components["schemas"]["RecordError"] | null;
+            finished_at: string | null;
+            /** @enum {string} */
+            flow: "analyst" | "reused" | "unavailable" | "cancelled" | "failed" | "interrupted";
+            list_file_name: string | null;
+            list_position: number | null;
+            list_public_id: string | null;
+            llm_calls: number;
+            model: string;
+            /** @enum {string} */
+            origin: "question" | "list";
+            phases: {
+                [key: string]: number;
+            };
+            prompt_tokens: number;
+            public_id: string;
+            query: string;
+            queue_wait_ms: number | null;
+            reused: components["schemas"]["RecordReuse"] | null;
+            started_at: string | null;
+            steps: components["schemas"]["RecordStep"][];
+            steps_truncated: boolean;
+            summary: string;
+            table_keys: string[];
+            unavailable_reason: string;
+            verdict: ("VAR" | "KISMEN VAR" | "BULUNAMADI") | null;
+        };
+        RecordError: {
+            code: string;
+            message: string;
+        };
+        RecordPage: {
+            items: components["schemas"]["RecordRowOut"][];
+            page: number;
+            page_size: number;
+            /** Format: date-time */
+            snapshot_at: string;
+            total: number;
+        };
+        RecordReuse: {
+            at: string | null;
+            /** @enum {string} */
+            match: "same_question" | "same_meaning";
+            query: string;
+        };
+        RecordRowOut: {
+            /** Format: date-time */
+            asked_at: string;
+            asked_by: components["schemas"]["Asker"];
+            duration_ms: number | null;
+            error: components["schemas"]["RecordError"] | null;
+            /** @enum {string} */
+            flow: "analyst" | "reused" | "unavailable" | "cancelled" | "failed" | "interrupted";
+            list_file_name: string | null;
+            list_position: number | null;
+            list_public_id: string | null;
+            model: string;
+            /** @enum {string} */
+            origin: "question" | "list";
+            public_id: string;
+            query: string;
+            table_keys: string[];
+            unavailable_reason: string;
+            verdict: ("VAR" | "KISMEN VAR" | "BULUNAMADI") | null;
+        };
+        /** @description One step: no prompt, reply, address or server error text (Requirement 3 and 4). */
+        RecordStep: {
+            call?: {
+                [key: string]: unknown;
+            } | null;
+            check?: {
+                [key: string]: unknown;
+            } | null;
+            detail: string;
+            key: string | null;
+            /** @enum {string} */
+            kind: "step" | "llm" | "event";
+            ms: number;
+            name: string;
+            parent: number | null;
+            seq: number;
+            start_ms: number;
+            /** @enum {string} */
+            status: "ok" | "warn" | "error";
+        };
+        RecordSummary: {
+            analyst_p50_ms: number | null;
+            analyst_p90_ms: number | null;
+            askers: components["schemas"]["AskerCount"][];
+            completion_tokens: number;
+            count: number;
+            flows: {
+                [key: string]: number;
+            };
+            llm_calls: number;
+            max_ms: number | null;
+            newest_at: string | null;
+            p50_ms: number | null;
+            p90_ms: number | null;
+            phases: components["schemas"]["PhaseAverage"][];
+            prompt_tokens: number;
+            /** Format: date-time */
+            snapshot_at: string;
+            with_result: number;
+            with_tables: number;
+        };
+        RecordsDeleted: {
+            deleted_count: number;
+            remaining_count: number;
+        };
         RoleChange: {
             /** @enum {string} */
             role: "kullanici" | "yonetici";
+        };
+        SavedAnswerSummaryOut: {
+            newest_at: string | null;
+            total: number;
+            usable: number;
+        };
+        SavedAnswersRemoved: {
+            removed: number;
         };
         SearchIndexRebuilt: {
             build_ms: number | null;
@@ -2863,6 +4258,47 @@ export interface components {
             values: {
                 [key: string]: boolean | number;
             };
+        };
+        SnapshotEvent: {
+            ahead: number | null;
+            analysis_id: string;
+            elapsed_ms: number;
+            /** @enum {string} */
+            state: "queued" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
+            step: ("saved_answer_lookup" | "queue" | "model_check" | "rule_hints" | "shortlist" | "family_search" | "analyst_report") | null;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "snapshot";
+        };
+        StartedEvent: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "started";
+        };
+        /** @description Requirement 17. */
+        StatusOut: {
+            columns: number;
+            dictionary_version: string;
+            llm: string;
+            llm_state: components["schemas"]["ModelStateOut"];
+            objects: number;
+            shortlist: number;
+        };
+        StepEvent: {
+            elapsed_ms: number;
+            /** @enum {string} */
+            key: "saved_answer_lookup" | "queue" | "model_check" | "rule_hints" | "shortlist" | "family_search" | "analyst_report";
+            /** @enum {string} */
+            status: "started" | "finished" | "error";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "step";
         };
         StopwordItem: {
             group: string;

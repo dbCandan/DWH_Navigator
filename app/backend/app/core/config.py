@@ -133,6 +133,11 @@ class Settings(BaseSettings):
     llm_ca_bundle: str = ""
     # Process-wide limit of concurrent /chat/completions requests (Requirement 17, Decision 11).
     llm_max_concurrent_calls: Annotated[int, Field(ge=1, le=8)] = 2
+    # Analysis jobs running at the same time and jobs waiting in the queue (data-dictionary/PRDs/
+    # 004-question-analysis Requirement 9, Decision 2): the source ran one analysis at a time;
+    # raise the concurrency only after measuring the gold set before and after.
+    analysis_concurrency: Annotated[int, Field(ge=1, le=4)] = 1
+    analysis_queue_limit: Annotated[int, Field(ge=1, le=200)] = 20
 
     # OpenTelemetry traces and metrics over OTLP/gRPC (app/core/telemetry.py). Empty disables
     # export; the local observability Compose overlay points it at its collector. Only these typed
