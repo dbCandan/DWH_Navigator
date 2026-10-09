@@ -10,7 +10,8 @@ import NotFoundPage from '@/pages/NotFoundPage';
 const ExplorerPage = lazy(() => import('@/pages/ExplorerPage'));
 const PasswordChangePage = lazy(() => import('@/pages/PasswordChangePage'));
 const AdminShell = lazy(() => import('@/components/admin/AdminShell').then((m) => ({default: m.AdminShell})));
-const AdminFramePage = lazy(() => import('@/pages/admin/AdminFramePage'));
+const OverviewPage = lazy(() => import('@/pages/admin/OverviewPage'));
+const AnalysesPage = lazy(() => import('@/pages/admin/AnalysesPage'));
 const UsersPage = lazy(() => import('@/pages/admin/UsersPage'));
 const AiPage = lazy(() => import('@/pages/admin/AiPage'));
 const DictionaryPage = lazy(() => import('@/pages/admin/DictionaryPage'));
@@ -35,8 +36,8 @@ export default function App() {
           <Route path="/admin" element={<RequireAccess need="administer" />}>
             <Route element={<AdminShell />}>
               <Route index element={<Navigate to="genel" replace />} />
-              <Route path="genel" element={<AdminFramePage page="genel" />} />
-              <Route path="analizler/:analysisId?" element={<AdminFramePage page="analizler" />} />
+              <Route path="genel" element={<OverviewPage />} />
+              <Route path="analizler/:analysisId?" element={<AnalysesPage />} />
               <Route path="sozluk/*" element={<DictionaryPage />} />
               <Route path="kelimeler" element={<VocabularyPage />} />
               <Route path="yapay-zeka" element={<AiPage />} />

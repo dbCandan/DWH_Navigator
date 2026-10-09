@@ -12,23 +12,37 @@ import {useSearchState} from '@/hooks/useSearchState';
 import {useSurface} from '@/hooks/useSurface';
 import {useVocabularyDraft} from '@/hooks/useVocabularyDraft';
 import {dictionaryStatus, indexStatus, type IndexStatus} from '@/lib/adminStatus';
-import {formatNumber} from '@/lib/format';
+import {formatNumber, formatWhen} from '@/lib/format';
 import {modelStatus, type ModelStatus} from '@/lib/modelStatus';
 import type {PaletteEntry} from '@/lib/paletteSearch';
 import {changedKeys, settingFields, type SettingField} from '@/lib/settingsDraft';
+import {AnalysisRecordsService} from '@/services/analysisRecords';
 import {DictionaryService} from '@/services/dictionary';
+import type {RecordRow} from '@/types/records';
 import {CommandPalette} from './CommandPalette';
 import {DictionaryDrop} from './DictionaryDrop';
 import {DictionaryStateProvider} from './DictionaryStateProvider';
 import {Icon} from './Icon';
 import {LlmStateProvider} from './LlmStateProvider';
-import {adminPath, dictionaryTablePath, NAV, NAV_PAGES, type AdminPageId, type AiDrawerRequest} from './nav';
+import {
+  adminPath,
+  analysisPath,
+  dictionaryTablePath,
+  NAV,
+  NAV_PAGES,
+  type AdminPageId,
+  type AiDrawerRequest,
+  type RecordsDrawerRequest,
+} from './nav';
 import {SaveBar} from './SaveBar';
 import {SearchStateProvider} from './SearchStateProvider';
 import {ToastProvider} from './Toasts';
 import {VocabularyDraftProvider} from './VocabularyDraftProvider';
 import './admin.css';
 import './session.css';
+
+/** The palette's "Son sorular": the newest 200 finished records (search-settings Requirement 22). */
+const PALETTE_RECENT = 200;
 
 /** The page id of an admin address (`/admin/sozluk/DB.Şema.Obje` → `sozluk`). */
 function pageOf(pathname: string): AdminPageId | null {
@@ -131,6 +145,7 @@ function ShellLayout() {
   const page = pageOf(location.pathname);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [whoOpen, setWhoOpen] = useState(false);
+  const [recent, setRecent] = useState<RecordRow[]>([]);
   const menu = useRef<HTMLElement>(null);
   const pages = useMemo(() => NAV_PAGES.filter((item) => !item.superAdmin || access.manageUsers), [access.manageUsers]);
 
@@ -205,6 +220,19 @@ function ShellLayout() {
 
   const togglePalette = useCallback(() => setPaletteOpen((open) => !open), []);
 
+  // The newest questions are read whenever the palette opens; an unreadable list leaves the group out.
+  useEffect(() => {
+    if (!paletteOpen) return;
+    let current = true;
+    AnalysisRecordsService.list({period: 'all'}, 1, undefined, PALETTE_RECENT).then(
+      (page) => current && setRecent(page.items),
+      () => current && setRecent([]),
+    );
+    return () => {
+      current = false;
+    };
+  }, [paletteOpen]);
+
   useEffect(() => {
     const keyDown = (event: KeyboardEvent) => {
       if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
@@ -229,6 +257,7 @@ function ShellLayout() {
     const pageGroup = t('admin.palette.pages');
     const actionGroup = t('admin.palette.actions');
     const openOnAiPage = (open: AiDrawerRequest) => navigate(adminPath('yapay-zeka'), {state: {open}});
+    const openOnAnalyses = (open: RecordsDrawerRequest) => navigate(adminPath('analizler'), {state: {open}});
     return [
       ...pages.map((item) => ({
         groupId: 'pages',
@@ -289,6 +318,14 @@ function ShellLayout() {
       {
         groupId: 'actions',
         group: actionGroup,
+        icon: 'gauge' as const,
+        title: t('admin.palette.performance'),
+        subtitle: t('admin.palette.performanceTip'),
+        run: () => openOnAnalyses('performance'),
+      },
+      {
+        groupId: 'actions',
+        group: actionGroup,
         icon: 'arrow' as const,
         title: t('admin.palette.backToApp'),
         subtitle: t('admin.palette.backToAppTip'),
@@ -324,8 +361,19 @@ function ShellLayout() {
             run: () => navigate(dictionaryTablePath(table.key)),
           }))
         : []),
+      ...recent.map((row) => ({
+        groupId: 'recent',
+        group: t('admin.palette.recent'),
+        icon: 'chart' as const,
+        title: row.query,
+        subtitle: t('admin.palette.recentTip', {
+          when: formatWhen(row.asked_at, t),
+          label: row.verdict || t(`records.flow.${row.flow}`),
+        }),
+        run: () => navigate(analysisPath(row.public_id)),
+      })),
     ];
-  }, [pages, navigate, t, download, rebuild, mayLeave, fields, dict.active, tables]);
+  }, [pages, navigate, t, download, rebuild, mayLeave, fields, dict.active, tables, recent]);
 
   const modelDot = modelBadge(model.state);
   const badges: Partial<Record<AdminPageId, Badge | null>> = {
