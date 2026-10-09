@@ -1,0 +1,11 @@
+# Beyaz liste: imaja yalnız aşağıdakiler girer. Sözlük ve tüm kurum içi veri (data/, out/,
+# *.xlsx), ayarlar ve API anahtarları, testler, belgeler, Windows betikleri
+# (baslat.bat, scripts/) ve geliştirme ortamı (.venv, .git) imaja girmez.
+*
+!Dockerfile
+!requirements.lock
+!src/vsa/**
+!data/terms.jsonl
+!data/stopwords.jsonl
+**/__pycache__
+**/*.py[cod]

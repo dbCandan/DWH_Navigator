@@ -1,0 +1,39 @@
+# Kurum içi veri — repoya girmez. data/ uygulamanın tek klasörü (ADR-052); yalnız terim
+# sözlüğü ve durak kelimeler repodadır (kurum verisi değil, kodla birlikte gelişir).
+data/*
+!data/terms.jsonl
+!data/stopwords.jsonl
+out/
+docker-data/
+*.xlsx
+*.xls
+
+# Sırlar (eski konum config/ dahil)
+config/
+.env
+
+# Dağıtım çıktıları (docker save)
+dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editör / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+~$*
+# word lists copied into the package only inside the image (Dockerfile)
+src/vsa/defaults/

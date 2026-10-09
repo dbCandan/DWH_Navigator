@@ -1,0 +1,2351 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DWH Navigator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%231F3864'/%3E%3Cpath d='M16 5l4 11-4 11-4-11z' fill='%23F2B84B'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: dark;
+  --paper: #03040b; --surface: rgba(14, 18, 40, .58); --surface-2: rgba(130, 150, 255, .09);
+  --line: rgba(140, 165, 255, .2); --text: #eef1ff; --muted: #a3acd6; --faint: #6f78a3;
+  --ink: #ffffff; --ink-2: #8b5cff; --accent: #7cf4ff; --accent-soft: rgba(124, 244, 255, .13);
+  --high: #3dfcb4; --high-bg: rgba(61, 252, 180, .13); --mid: #ffd166; --mid-bg: rgba(255, 209, 102, .13);
+  --low: #ff5d8f; --low-bg: rgba(255, 93, 143, .14);
+  --shadow: 0 0 0 1px rgba(124, 244, 255, .05), 0 24px 70px rgba(0, 0, 0, .55);
+  --radius: 20px;
+  --glow: 0 0 24px rgba(124, 244, 255, .35), 0 0 60px rgba(139, 92, 255, .25);
+  --grad: linear-gradient(120deg, #7cf4ff 0%, #8b5cff 45%, #ff5dd6 75%, #7cf4ff 100%);
+  --mono: "Cascadia Code", "Cascadia Mono", Consolas, "SFMono-Regular", Menlo, monospace;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --display: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--paper); color: var(--text); font: 15px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  /* app shell: exactly one screen tall until the content needs more */
+  min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column;
+}
+body > main { flex: 1 0 auto; width: 100%; display: flex; flex-direction: column; }
+body > main > section { flex: 1 0 auto; }
+#tab-ask { display: flex; flex-direction: column; }
+button, input, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+/* ---------- top bar ---------- */
+header.top {
+  position: sticky; top: 0; z-index: 20;
+  background: color-mix(in srgb, var(--paper) 86%, transparent);
+  backdrop-filter: blur(10px); border-bottom: 1px solid var(--line);
+}
+header.top .wrap { display: flex; align-items: center; gap: 14px; height: 60px; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--display); }
+.brand b { font-size: 17px; letter-spacing: .2px; }
+.brand > div { display: flex; flex-direction: column; line-height: 1.2; }
+.brand span { color: var(--muted); font-size: 12px; letter-spacing: .2px; white-space: nowrap; }
+.status { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; min-width: 0; }
+.pill {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; background: var(--surface);
+  white-space: nowrap;
+}
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.dot.on { background: var(--high); box-shadow: 0 0 0 3px var(--high-bg); }
+
+/* ---------- hero / search ---------- */
+.hero { padding: 54px 0 22px; text-align: center; transition: padding .35s ease; }
+/* landing: the hero fills the free screen height and centres the title and search bar */
+#hero:not(.compact) { flex: 1 0 auto; display: flex; flex-direction: column; justify-content: center;
+  /* +14vh at the bottom lifts the block to the optical centre, so the search bar does not sit low */
+  padding: calc(24px + var(--shift-top, 0px)) 0 calc(24px + 14vh + var(--shift-bottom, 0px)); transition: none; }
+#hero > .searchbox { width: 100%; }
+.hero h1 {
+  font-family: var(--display); font-size: clamp(26px, min(4vw, 6vh), 40px); line-height: 1.15; font-weight: 700;
+  margin: 0 0 28px; letter-spacing: -.8px; color: var(--ink);
+}
+.hero.compact h1 { display: none; }
+.searchbox {
+  display: flex; align-items: flex-end; gap: 10px; background: var(--surface); border: 1px solid var(--line);
+  border-radius: 18px; padding: 10px 10px 10px 18px; box-shadow: var(--shadow); max-width: 860px; margin: 0 auto;
+  transition: border-color .2s, box-shadow .2s;
+}
+.searchbox:focus-within { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow); }
+.searchbox textarea {
+  flex: 1; border: 0; outline: 0; resize: none; background: transparent; font-size: 17px;
+  min-height: 30px; max-height: 180px; padding: 6px 0;
+}
+.primary {
+  border: 0; border-radius: 12px; padding: 10px 18px; cursor: pointer; font-weight: 700;
+  background: var(--ink-2); color: #fff; display: inline-flex; gap: 8px; align-items: center;
+}
+.primary:disabled { opacity: .55; cursor: wait; }
+.ghost {
+  border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 7px 12px;
+  cursor: pointer; font-size: 13px; font-weight: 600; display: inline-flex; gap: 6px; align-items: center;
+}
+.ghost:hover { border-color: var(--accent); }
+
+
+/* ---------- results ---------- */
+main { padding-bottom: 0; }
+#ask-out:not(:empty) { padding-bottom: 30px; }
+.v-VAR { --vc: var(--high); } .v-KISMEN { --vc: var(--mid); } .v-BULUNAMADI { --vc: var(--low); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip {
+  font-size: 12px; border-radius: 999px; padding: 2px 9px; border: 1px solid var(--line);
+  background: var(--surface-2); color: var(--muted); white-space: nowrap;
+}
+.chip b { color: var(--text); font-weight: 600; }
+.chip.k-zaman { border-color: #6d8fd6; } .chip.k-kirilim { border-color: #a07ad6; }
+.chip.k-olcu { border-color: #d6a86d; } .chip.k-deger { border-color: #7abfb0; }
+.chip.on { background: var(--high-bg); color: var(--high); border-color: transparent; }
+.chip.off { text-decoration: line-through; opacity: .7; }
+.chip.long { background: var(--mid-bg); color: var(--mid); border-color: transparent; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.usage, .detail { overflow-wrap: anywhere; }
+.usage { font-size: 13px; color: var(--muted); }
+.bars { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 14px; margin: 10px 0; }
+.bar { font-size: 11.5px; color: var(--muted); }
+.bar .track { height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-top: 3px; }
+.bar .fill { height: 100%; background: var(--ink-2); border-radius: 3px; transition: width .6s ease; }
+.bar.llm .fill { background: #7a5cd6; }
+
+.cols { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.col {
+  border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; padding: 3px 9px;
+  font-family: var(--mono); font-size: 12.5px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center;
+}
+.col:hover, .col[aria-expanded="true"] { border-color: var(--accent); }
+.col { max-width: 100%; text-align: left; flex-wrap: wrap; }
+.col .flag { color: var(--low); }
+.detail {
+  margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
+  background: var(--surface-2); font-size: 13.5px; display: none;
+}
+.detail.on { display: block; animation: rise .2s ease both; }
+.detail .k { font-family: var(--mono); font-weight: 700; }
+.detail .syn { color: var(--muted); font-size: 12.5px; margin-top: 4px; }
+.detail .sig { font-size: 12px; color: var(--high); margin-top: 4px; }
+.muted { color: var(--muted); } .faint { color: var(--faint); font-size: 12px; }
+
+.empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+.error { background: var(--low-bg); color: var(--low); border-radius: 12px; padding: 12px 16px; margin: 18px 0; }
+
+/* ---------- ask results: one calm column, the answer first ---------- */
+#ask-out { max-width: 860px; width: 100%; margin: 0 auto; }
+.answer { margin: 28px 0 20px; }
+.answer-top { display: flex; align-items: center; gap: 10px; }
+.vbadge {
+  flex: none; font-size: 11.5px; font-weight: 700; letter-spacing: .8px; padding: 3px 10px; border-radius: 999px;
+  color: var(--vc); background: color-mix(in srgb, var(--vc) 14%, transparent);
+}
+.answer-q { flex: 1; min-width: 0; color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.answer-top .dl { flex: none; font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none; }
+.answer-top .dl:hover { color: var(--text); }
+.res-path { font-size: 12.5px; color: var(--faint); margin-top: 2px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.res-cols { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--accent);
+  font: 600 12.5px/1 var(--sans); padding: 6px 11px; border-radius: 999px; cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s; }
+.res-cols:hover, .res-cols:focus-visible { border-color: var(--accent); box-shadow: 0 0 16px rgba(124, 244, 255, .25); transform: translateY(-1px); outline: 0; }
+.res-cols svg { width: 14px; height: 14px; }
+.res-path code { font-family: var(--mono); font-size: 12px; }
+.lc-Yüksek { --lc: var(--high); } .lc-Orta { --lc: var(--mid); } .lc-Düşük { --lc: var(--low); }
+.res-reason { margin: 10px 0 0; overflow-wrap: anywhere; }
+.res-warn { margin: 8px 0 0; font-size: 13.5px; color: var(--mid); overflow-wrap: anywhere; }
+.res-covers { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--accent); letter-spacing: .2px; overflow-wrap: anywhere; }
+.res-usage { margin: 6px 0 0; }
+.answer-fallback {
+  margin: 12px 0 0; padding: 9px 13px; border-radius: 12px; font-size: 13px; color: var(--mid);
+  background: rgba(255, 209, 102, .07); border: 1px solid rgba(255, 209, 102, .22); overflow-wrap: anywhere;
+}
+.guide { margin: 14px 0 0; padding: 14px 18px; border-radius: 16px; border: 1px solid var(--line); overflow-wrap: anywhere; }
+.guide ul { margin: 6px 0 0; padding-left: 18px; }
+.guide li + li { margin-top: 5px; }
+.col.more { font-family: var(--sans); color: var(--muted); }
+.res-foot { display: flex; align-items: flex-start; gap: 4px; margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+.res-foot details { flex: 1; min-width: 0; }
+.res-foot details > :not(summary) { margin-top: 8px; }
+.res-foot summary, .ask-more summary { cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 600; list-style: none; padding: 3px 0; }
+.res-foot summary::-webkit-details-marker, .ask-more summary::-webkit-details-marker { display: none; }
+.res-foot summary::before, .ask-more summary::before { content: "▸"; display: inline-block; width: 1em; transition: transform .15s; }
+.res-foot details[open] > summary::before, .ask-more[open] > summary::before { transform: rotate(90deg); }
+.res-foot summary:hover, .ask-more summary:hover { color: var(--text); }
+.ask-more { margin: 16px 0; }
+.ask-more > .inner { margin-top: 8px; font-size: 13.5px; }
+.ask-more .label { font-size: 12px; color: var(--faint); margin: 10px 0 4px; }
+.ask-more .method { margin: 10px 0; padding-left: 18px; }
+
+footer { color: var(--faint); font-size: 12px; text-align: center; padding: 18px 16px 22px; }
+.hidden { display: none !important; }
+kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--muted); }
+
+@media (max-width: 760px) {
+  .status { display: none; }
+  header.top .wrap { column-gap: 8px; padding-left: 14px; padding-right: 14px; }
+}
+@media (max-height: 760px) {
+  footer { padding-top: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* =====================================================================
+   "Evren": the warehouse as a galaxy behind the page (ADR-024).
+   ===================================================================== */
+
+body { background: transparent; min-height: 100vh; }
+html {
+  background-attachment: fixed;
+  background:
+    radial-gradient(1200px 700px at 78% -10%, rgba(139, 92, 255, .22), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(255, 93, 214, .14), transparent 60%),
+    radial-gradient(700px 500px at 50% 50%, rgba(40, 60, 160, .18), transparent 70%),
+    #03040b;
+  background-attachment: fixed;
+  overflow-x: hidden;
+}
+body::before {
+  content: ""; position: fixed; inset: -20%; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(40% 30% at 30% 40%, rgba(124, 244, 255, .10), transparent 70%),
+    radial-gradient(35% 25% at 70% 65%, rgba(255, 93, 214, .09), transparent 70%),
+    radial-gradient(30% 30% at 55% 25%, rgba(139, 92, 255, .12), transparent 70%);
+  filter: blur(30px); animation: nebula 38s ease-in-out infinite alternate;
+}
+@keyframes nebula { from { transform: translate3d(-3%, -2%, 0) rotate(0deg) scale(1); } to { transform: translate3d(3%, 2%, 0) rotate(8deg) scale(1.08); } }
+#cosmos { display: block; position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; }  /* 100vw would include the scrollbar and overflow */
+header.top, main, footer { position: relative; z-index: 2; }
+
+/* ---------- one surface: the galaxy is the page, the top line floats on it ----------
+   No panel. The brand sits top-left, status and settings top-right, straight on the sky.
+   The middle of the line is a slot: after a question the search bar glides up into it and
+   becomes the page's heading, at the answer's width. Scrolling, a soft veil fades in
+   behind the line so the results pass under it cleanly. */
+header.top {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 20; margin: 0; width: auto; max-width: none;
+  border: 0; border-radius: 0; background: none; box-shadow: none; backdrop-filter: none;
+}
+header.top::before {
+  content: ""; position: absolute; inset: 0 0 -34px; pointer-events: none; opacity: 0; transition: opacity .35s;
+  background: linear-gradient(to bottom, rgba(3, 4, 11, .94) 0%, rgba(3, 4, 11, .78) 62%, rgba(3, 4, 11, 0) 100%);
+  backdrop-filter: blur(10px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 64%, transparent); mask-image: linear-gradient(to bottom, #000 64%, transparent);
+}
+html.lifted header.top::before { opacity: 1; }
+header.top .wrap {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 860px) minmax(0, 1fr); column-gap: 22px;
+  align-items: center; height: 84px; max-width: none; padding: 0 22px; position: relative;
+}
+/* ---------- term list (ADR-033): an Excel list, every term through the question flow ---------- */
+/* attach a term list: a quiet icon inside the bar, a tooltip, and drag & drop anywhere */
+.attach {
+  position: relative; flex: none; width: 40px; height: 40px; border: 0; border-radius: 12px; padding: 0;
+  background: transparent; color: #8c95c8; display: grid; place-items: center; cursor: pointer;
+  transition: color .2s, background .2s, box-shadow .2s;
+}
+.attach::before {  /* a hairline between the text and the controls */
+  content: ""; position: absolute; left: -6px; top: 9px; bottom: 9px; width: 1px; background: rgba(140, 165, 255, .2);
+}
+.attach svg { width: 20px; height: 20px; transition: transform .25s; }
+.attach:hover, .attach:focus-visible {
+  color: #7cf4ff; background: rgba(124, 244, 255, .08); box-shadow: 0 0 0 1px rgba(124, 244, 255, .25), 0 0 18px rgba(124, 244, 255, .12); outline: 0;
+}
+.attach:hover svg { transform: translateY(-1px); }
+.attach::after {  /* tooltip */
+  content: attr(data-tip); position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translate(-50%, 4px);
+  white-space: nowrap; font-size: 12.5px; font-weight: 600; color: #eef1ff; padding: 6px 10px; border-radius: 9px;
+  background: rgba(14, 18, 40, .96); border: 1px solid rgba(140, 165, 255, .25); box-shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  opacity: 0; pointer-events: none; transition: opacity .15s, transform .15s; z-index: 5;
+}
+.attach:hover::after, .attach:focus-visible::after { opacity: 1; transform: translate(-50%, 0); }
+#bar-slot .attach { width: 36px; height: 36px; }
+#bar-slot .attach::after { top: calc(100% + 10px); bottom: auto; }
+html.dropping .searchbox { border-color: rgba(124, 244, 255, .7) !important; box-shadow: 0 0 0 4px rgba(124, 244, 255, .15), 0 0 60px rgba(124, 244, 255, .18) !important; }
+html.dropping .searchbox .drop-hint { opacity: 1; }
+.drop-hint {
+  position: absolute; inset: 0; border-radius: inherit; display: grid; place-items: center; pointer-events: none;
+  background: #0a0e22; color: #7cf4ff; font-weight: 700; font-size: 15px; letter-spacing: .2px;
+  opacity: 0; transition: opacity .15s; z-index: 3;
+}
+.drop-hint small { display: block; color: #a3acd6; font-weight: 500; font-size: 12.5px; margin-top: 2px; text-align: center; }
+/* landing bar, balanced: a search mark on the left mirrors the Excel button on the right */
+#hero .searchbox {
+  position: relative; padding: 12px;
+  background: rgba(8, 12, 30, .78) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%237cf4ff' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E") no-repeat left 22px bottom 22px;
+  padding-left: 58px;  /* icon stays on the last line, beside the buttons */
+}
+@media (max-width: 760px) { #hero .searchbox { padding-left: 16px; background-image: none; } }  /* phones: the text needs the room */
+.listpill { cursor: pointer; }
+.listpill:hover { color: #fff; border-color: rgba(124, 244, 255, .5); }
+.list { margin: 28px 0 20px; }
+.list-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.list-head .ttl { flex: 1; min-width: 0; }
+.list-head h2 { margin: 0; font: 600 20px/1.3 var(--display); color: #fff; overflow-wrap: anywhere; }
+.list-head .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.list-head a.ghost { text-decoration: none; }
+.list-bar { height: 6px; border-radius: 3px; background: rgba(140, 165, 255, .12); overflow: hidden; margin: 14px 0 8px; }
+.list-bar i { display: block; height: 100%; background: linear-gradient(90deg, #7cf4ff, #8b5cff); transition: width .6s; }
+.list-bar.live i { background-size: 200% 100%; animation: shimmer 2.2s linear infinite;
+  background-image: linear-gradient(90deg, #7cf4ff, #8b5cff, #7cf4ff); }
+.list-items { list-style: none; margin: 10px 0 0; padding: 0; }
+.list-items > li { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); margin: 8px 0; overflow: hidden; }
+.li-row { width: 100%; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto auto; gap: 12px; align-items: center;
+  padding: 12px 16px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: default; }
+.li-row[aria-expanded] { cursor: pointer; }
+.li-row[aria-expanded]:hover { background: rgba(140, 165, 255, .06); }
+.li-n { color: var(--faint); font-family: var(--mono); font-size: 12.5px; text-align: right; }
+.li-term { font-weight: 600; overflow-wrap: anywhere; }
+.li-best { display: block; font-weight: 400; font-size: 12.5px; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.li-best b { color: var(--lc, var(--muted)); font-weight: 700; }
+.li-ms { font-family: var(--mono); font-size: 12px; color: var(--faint); white-space: nowrap; }
+.st { font-size: 11px; font-weight: 700; letter-spacing: .6px; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  color: var(--vc, var(--muted)); background: color-mix(in srgb, var(--vc, #a3acd6) 14%, transparent); }
+.st.run { --vc: #7cf4ff; display: inline-flex; gap: 6px; align-items: center; }
+.st.run::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 2px solid rgba(124, 244, 255, .25); border-top-color: #7cf4ff; animation: spin .8s linear infinite; }
+.st.err { --vc: var(--low); } .st.wait { --vc: #6f78a3; }
+.li-detail { border-top: 1px solid var(--line); padding: 0 18px 8px; }
+.li-detail .answer { margin-top: 18px; }
+@media (max-width: 640px) { .li-row { grid-template-columns: 24px minmax(0, 1fr) auto; } .li-ms { display: none; } }
+/* ---------- who wrote the answer (ADR-034) ---------- */
+.src { flex: none; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.src.ai { color: #7cf4ff; background: rgba(124, 244, 255, .1); }
+.src.rule { color: #ffd166; background: rgba(255, 209, 102, .12); }
+/* ADR-035: an earlier answer given again, with a way to ask for a new analysis */
+.src.reused { color: #c9b6ff; background: rgba(170, 140, 255, .14); cursor: help; }
+.li-flow.reused { color: #c9b6ff; }
+.redo { flex: none; font: inherit; font-size: 12px; color: var(--muted); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; cursor: pointer; white-space: nowrap; }
+.redo:hover, .redo:focus-visible { color: var(--text); border-color: currentColor; }
+.pill.warn { color: #ffd166; border-color: rgba(255, 209, 102, .35); cursor: help; }
+.pill.warn .dot { background: #ffd166; box-shadow: 0 0 0 3px rgba(255, 209, 102, .15); }
+.pill.bad { color: #ff9ab8; border-color: rgba(255, 93, 143, .4); cursor: help; }
+.pill.bad .dot { background: #ff5d8f; box-shadow: 0 0 0 3px rgba(255, 93, 143, .15); }
+.model-warn { max-width: 860px; margin: 14px auto 0; padding: 9px 14px; border-radius: 12px; font-size: 13px; text-align: center;
+  color: #ffd166; background: rgba(255, 209, 102, .07); border: 1px solid rgba(255, 209, 102, .22); }
+.model-warn.bad { color: #ff9ab8; background: rgba(255, 93, 143, .07); border-color: rgba(255, 93, 143, .25); }
+.model-warn:empty { display: none; }
+.li-flow { font-size: 10.5px; font-weight: 700; letter-spacing: .3px; color: #ffd166; margin-left: 8px; }
+.xl-help { margin: 28px 0 20px; }
+.xl-ex { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; margin-top: 12px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }
+.xl-ex table { border-collapse: collapse; font-size: 13px; }
+.xl-ex th, .xl-ex td { border: 1px solid rgba(140, 165, 255, .22); padding: 5px 10px; }
+.xl-ex thead th, .xl-ex tbody th { background: rgba(140, 165, 255, .08); color: #a3acd6; font-weight: 600; font-size: 11.5px; text-align: center; }
+.xl-ex td { min-width: 230px; color: #eef1ff; } .xl-ex td.off { min-width: 60px; background: repeating-linear-gradient(45deg, transparent 0 4px, rgba(140, 165, 255, .06) 4px 8px); }
+.xl-ex td.hd { font-weight: 700; color: #7cf4ff; }
+.xl-ex ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: #a3acd6; flex: 1 1 260px; }
+.xl-ex li + li { margin-top: 6px; } .xl-ex li b { color: #eef1ff; }
+.list-notes { margin: 10px 0 0; padding: 8px 13px; border-radius: 12px; font-size: 13px; color: #a3acd6; background: rgba(124, 244, 255, .05); border: 1px solid rgba(124, 244, 255, .15); }
+.list-notes div + div { margin-top: 3px; }
+main.wrap { padding-top: 84px; }
+html.docked .answer-q { display: none; }  /* the question already heads the page */
+.brand { justify-self: start; color: inherit; text-decoration: none; border-radius: 12px; padding: 4px 8px 4px 4px; margin-left: -4px; }
+.brand:hover b { color: #7cf4ff; }
+.brand b { color: #fff; letter-spacing: .3px; white-space: nowrap; transition: color .2s; }
+.slot { min-width: 0; }
+.tools { justify-self: end; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tools .status { margin-left: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { to { background-position: 300% 0; } }
+.pill, .ghost { background: rgba(20, 26, 56, .45); border-color: rgba(140, 165, 255, .16); color: var(--muted); }
+.dot.on { background: var(--high); box-shadow: 0 0 0 3px rgba(61, 252, 180, .15); }
+
+/* the compass in the logo searches while the analyst works and settles on the answer */
+.compass { flex: none; overflow: visible; transition: filter .4s; }
+.compass .needle { transform-box: view-box; transform-origin: 16px 16px; }
+html.busy .compass { filter: drop-shadow(0 0 7px rgba(242, 184, 75, .6)); }
+html.busy .compass .needle { animation: seek 3.2s cubic-bezier(.45, 0, .25, 1) infinite; }
+html.found .compass .needle { animation: settle 1.1s cubic-bezier(.3, 1.7, .45, 1); }
+@keyframes seek {
+  0% { transform: rotate(0deg); } 18% { transform: rotate(-38deg); } 42% { transform: rotate(128deg); }
+  63% { transform: rotate(84deg); } 82% { transform: rotate(250deg); } 100% { transform: rotate(360deg); }
+}
+@keyframes settle { from { transform: rotate(-160deg); } to { transform: rotate(0deg); } }
+
+/* ---------- the search bar as the page's heading ---------- */
+#hero.compact { display: none; }
+@property --orbit { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+#bar-slot .searchbox {
+  position: relative; max-width: none; margin: 0; height: 54px; align-items: center; gap: 10px;
+  padding: 0 7px 0 50px; border-radius: 18px; border: 1px solid rgba(140, 165, 255, .22);
+  background: rgba(9, 13, 32, .8) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%237cf4ff' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='M15.5 15.5 21 21'/%3E%3C/svg%3E") no-repeat 19px center;
+  backdrop-filter: blur(16px); box-shadow: 0 18px 50px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .06);
+  transition: box-shadow .4s, border-color .3s;
+}
+#bar-slot .searchbox:focus-within {
+  border-color: rgba(124, 244, 255, .55);
+  box-shadow: 0 0 0 4px rgba(124, 244, 255, .09), 0 18px 50px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+#bar-slot .searchbox textarea {
+  font-size: 16px; color: #eef1ff; height: 24px; min-height: 0; max-height: 24px; line-height: 24px; padding: 0;
+  overflow: hidden; white-space: pre; text-overflow: ellipsis;
+}
+#bar-slot .searchbox .primary { padding: 9px 16px; border-radius: 12px; font-size: 13.5px; }
+/* while the analyst works: a comet runs around the bar and the button says what is going on */
+#bar-slot .searchbox::before {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--orbit), transparent 0deg 235deg, rgba(124, 244, 255, .15) 270deg,
+    #7cf4ff 318deg, #8b5cff 340deg, #ff5dd6 354deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; opacity: 0; transition: opacity .5s;
+}
+#bar-slot .searchbox:has(.primary.busy)::before { opacity: 1; animation: orbit 2.6s linear infinite; }
+#bar-slot .searchbox:has(.primary.busy) {
+  box-shadow: 0 0 46px rgba(124, 244, 255, .1), 0 18px 50px rgba(0, 0, 0, .5), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+@keyframes orbit { to { --orbit: 360deg; } }
+/* the running analysis can be stopped: the button turns into "Durdur" (Esc does the same) */
+/* #bar-slot too: its own .primary rule sets a font size that would show the "Ara" label */
+.searchbox .primary.busy, #bar-slot .searchbox .primary.busy {
+  opacity: 1; font-size: 0; gap: 8px; background: rgba(124, 244, 255, .1); color: #7cf4ff; cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.searchbox .primary.busy kbd { display: none; }
+.searchbox .primary.busy::before {
+  content: ""; width: 13px; height: 13px; border-radius: 50%; box-sizing: border-box;
+  border: 2px solid rgba(124, 244, 255, .25); border-top-color: #7cf4ff; animation: spin .8s linear infinite;
+}
+.searchbox .primary.busy::after { content: "Durdur"; font-size: 13px; font-weight: 600; }
+.searchbox .primary.busy:hover, .searchbox .primary.busy:focus-visible { background: rgba(255, 93, 143, .18); color: #ff9ab8; }
+.searchbox .primary.busy:hover::before, .searchbox .primary.busy:focus-visible::before {
+  border: 0; border-radius: 2px; width: 10px; height: 10px; background: currentColor; animation: none;
+}
+.stopped { background: var(--surface-2); color: var(--muted); border-radius: 12px; padding: 12px 16px; margin: 18px 0; }
+
+@media (max-width: 1299px) {
+  html.docked header.top .brand > div { display: none; }  /* the mark alone leaves the bar room */
+}
+@media (max-width: 760px) {
+  header.top .wrap { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; height: 70px; padding: 0 12px; }
+  main.wrap { padding-top: 70px; }
+  html.docked .tools .status { display: none; }
+  #bar-slot .searchbox { height: 46px; border-radius: 15px; padding-left: 40px; background-position: 14px center; }
+  #bar-slot .searchbox textarea { font-size: 15px; }
+  #bar-slot .searchbox .primary { padding: 8px 12px; }
+  #bar-slot .searchbox .primary kbd { display: none; }
+}
+.hero h1 {
+  font-size: clamp(30px, min(5vw, 7.5vh), 58px); letter-spacing: -1.2px; font-weight: 700; line-height: 1.08;
+  margin: 0 0 24px; padding-bottom: .12em;  /* background-clip:text cuts descenders (g, y) outside the box */
+  background: linear-gradient(120deg, #ffffff 30%, #c9d4ff 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+/* ---------- search ---------- */
+.searchbox {
+  border: 1px solid rgba(140, 165, 255, .28); border-radius: 20px; padding: 12px 12px 12px 22px;
+  background: rgba(8, 12, 30, .78); backdrop-filter: blur(16px); box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+.searchbox:focus-within { border-color: rgba(124, 244, 255, .6); box-shadow: 0 0 0 4px rgba(124, 244, 255, .1), 0 20px 60px rgba(0, 0, 0, .5); }
+.searchbox textarea { font-size: 19px; color: #fff; }
+.searchbox textarea::placeholder { color: #7880a8; }
+.primary { background: linear-gradient(135deg, #7cf4ff, #8b5cff); color: #050a18; transition: filter .15s; }
+.primary:hover { filter: brightness(1.1); }
+.primary kbd { border-color: rgba(0, 0, 0, .3) !important; color: inherit; }
+
+/* results in focus: the galaxy steps back */
+#cosmos, body::before { transition: opacity .6s; }
+html.has-results #cosmos { opacity: .3; }
+html.has-results body::before { opacity: .35; }
+html.has-results #hud { opacity: 0; }
+.bar .fill { background: linear-gradient(90deg, #7cf4ff, #8b5cff); }
+.bar.llm .fill { background: linear-gradient(90deg, #ff5dd6, #8b5cff); }
+.col { border-color: rgba(140, 165, 255, .22); color: #dfe6ff; }
+.col:hover, .col[aria-expanded="true"] { border-color: rgba(124, 244, 255, .6); }
+.detail { background: rgba(6, 10, 26, .7); }
+.chip { background: rgba(130, 150, 255, .08); }
+.chip.on { background: rgba(61, 252, 180, .14); color: var(--high); }
+
+/* bottom line in the HUD's type (empty on the landing screen; keeps the HUD clear of the content) */
+footer {
+  text-align: right; padding: 18px 16px 18.5px 240px;
+  font: 11px/1.5 var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: rgba(190, 205, 255, .6);
+}
+@media (max-width: 760px) { footer { text-align: center; padding-left: 16px; padding-right: 16px; } }
+
+/* ---------- HUD + star tooltip ---------- */
+#hud {
+  display: block; position: fixed; left: 16px; bottom: 14px; z-index: 1; pointer-events: none;
+  font: 11px/1.5 var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: rgba(190, 205, 255, .6);
+}
+#hud b { color: #7cf4ff; font-weight: 700; }#hud { transition: opacity .3s; }
+html.scrolled #hud { opacity: 0; }
+@media (max-width: 760px) {
+  #hud { display: none; }  /* no room for the voyage log on phones */
+  .searchbox textarea { font-size: 16.5px; }
+  .searchbox { padding: 12px 12px 12px 16px; }
+}
+#hud .focus { color: #fff; letter-spacing: .6px; text-transform: none; font-size: 12px; margin-top: 2px; max-width: 46vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#star-tip {
+  position: fixed; z-index: 30; pointer-events: none; padding: 8px 11px; border-radius: 12px;
+  background: rgba(8, 12, 30, .9); border: 1px solid rgba(124, 244, 255, .4); box-shadow: var(--glow);
+  font-size: 12.5px; color: #fff; transform: translate(14px, 14px); opacity: 0; transition: opacity .15s;
+}
+#star-tip { display: none; }
+#star-tip.on { display: block; opacity: 1; }
+#star-tip .t { font-family: var(--mono); font-weight: 700; }
+#star-tip .g { color: #a3acd6; font-size: 11.5px; }
+@media (prefers-reduced-motion: reduce) { body::before { animation: none !important; } }
+
+/* ---------- star dossier: a click on a star opens the table's dictionary entry ---------- */
+html.star-hover, html.star-hover body { cursor: pointer; }
+html.dossier-open main, html.dossier-open #foot { opacity: .14; filter: blur(2px); transition: opacity .4s, filter .4s; }
+html.dossier-open #cosmos { opacity: 1; }
+html.dossier-open body::before { opacity: 1; }
+html.dossier-open #hud { opacity: 0; pointer-events: none; }
+main, #foot { transition: opacity .4s, filter .4s; }
+.dossier {
+  --hue: 190; --tone: hsl(var(--hue), 95%, 72%); --tone-soft: hsla(var(--hue), 95%, 70%, .14);
+  position: fixed; z-index: 40; top: 12px; right: 12px; bottom: 12px; width: min(540px, calc(100% - 24px));
+  display: flex; flex-direction: column; overflow: hidden; border-radius: 24px;
+  background: linear-gradient(180deg, rgba(14, 18, 44, .86), rgba(6, 9, 24, .9));
+  border: 1px solid rgba(140, 165, 255, .22); backdrop-filter: blur(22px) saturate(160%);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 255, 255, .07), -30px 0 80px -40px var(--tone);
+  transform: translateX(calc(100% + 30px)); opacity: 0; visibility: hidden;
+  transition: transform .5s cubic-bezier(.16, 1, .3, 1), opacity .3s, visibility 0s .5s;
+}
+.dossier.on { transform: none; opacity: 1; visibility: visible; transition: transform .5s cubic-bezier(.16, 1, .3, 1), opacity .3s; }
+.dossier::before {  /* the star's light spilling over the panel's top edge */
+  content: ""; position: absolute; inset: -120px -80px auto auto; width: 340px; height: 340px; pointer-events: none;
+  background: radial-gradient(closest-side, hsla(var(--hue), 95%, 65%, .28), transparent); filter: blur(10px);
+}
+.dossier::after {  /* scanning line on open */
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 2px; pointer-events: none; opacity: 0;
+  background: linear-gradient(90deg, transparent, var(--tone), transparent);
+}
+.dossier.on::after { animation: scan 1.1s .1s cubic-bezier(.4, 0, .2, 1) both; }
+@keyframes scan { 0% { top: 0; opacity: 0; } 15% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+.ds-head { position: relative; display: flex; gap: 16px; align-items: flex-start; padding: 22px 22px 14px; }
+.ds-planet {
+  flex: none; width: 54px; height: 54px; border-radius: 50%; position: relative; margin-top: 2px;
+  background: radial-gradient(circle at 34% 30%, #fff 0 6%, hsl(var(--hue), 95%, 72%) 22%, hsl(calc(var(--hue) + 40), 80%, 38%) 70%, hsl(calc(var(--hue) + 60), 70%, 16%));
+  box-shadow: 0 0 26px hsla(var(--hue), 95%, 65%, .55), inset -6px -8px 16px rgba(0, 0, 0, .45);
+}
+.ds-planet::after {
+  content: ""; position: absolute; inset: -9px -16px; border-radius: 50%; border: 1.5px solid hsla(var(--hue), 95%, 80%, .55);
+  transform: rotate(-22deg) scaleY(.32); border-top-color: transparent;
+}
+.dossier.on .ds-planet { animation: planetIn .8s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes planetIn { from { transform: scale(.2) rotate(-90deg); opacity: 0; } }
+.ds-title { flex: 1; min-width: 0; }
+.ds-kicker { font: 600 11px/1.4 var(--mono); letter-spacing: 1.6px; text-transform: uppercase; color: var(--tone); }
+.ds-title h2 {
+  margin: 4px 0 6px; font: 700 24px/1.15 var(--display); letter-spacing: -.4px; overflow-wrap: anywhere; padding-bottom: .08em;
+  background: linear-gradient(120deg, #fff 40%, hsl(var(--hue), 90%, 82%)); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ds-path { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--faint); min-width: 0; }
+.ds-path code { font-family: var(--mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-mini {
+  flex: none; border: 1px solid var(--line); background: rgba(20, 26, 56, .6); color: var(--muted); border-radius: 7px;
+  font-size: 11px; padding: 1px 7px; cursor: pointer;
+}
+.ds-mini:hover { color: #fff; border-color: var(--tone); }
+.ds-close {
+  flex: none; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); cursor: pointer;
+  background: rgba(20, 26, 56, .6); color: var(--muted); font-size: 15px; display: grid; place-items: center; transition: transform .2s, color .2s, border-color .2s;
+}
+.ds-close:hover { color: #fff; border-color: var(--tone); transform: rotate(90deg); }
+.ds-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 22px 14px; }
+.ds-stat {
+  border: 1px solid rgba(140, 165, 255, .14); background: rgba(130, 150, 255, .05); border-radius: 14px; padding: 9px 10px 8px;
+  animation: rise .45s ease both; animation-delay: calc(120ms + var(--i, 0) * 60ms);
+}
+.ds-stat b { display: block; font: 700 22px/1.1 var(--display); color: #fff; font-variant-numeric: tabular-nums; }
+.ds-stat span { font-size: 11px; color: var(--muted); letter-spacing: .3px; }
+.ds-stat.pii b { color: var(--low); } .ds-stat.key b { color: var(--tone); }
+.ds-stat.zero b { color: var(--faint); }
+.ds-tools { padding: 0 22px 12px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--line); }
+.ds-search {
+  display: flex; align-items: center; gap: 8px; border: 1px solid rgba(140, 165, 255, .22); border-radius: 12px;
+  background: rgba(4, 7, 20, .6); padding: 0 12px; transition: border-color .2s, box-shadow .2s;
+}
+.ds-search:focus-within { border-color: var(--tone); box-shadow: 0 0 0 3px var(--tone-soft); }
+.ds-search svg { flex: none; color: var(--faint); }
+.ds-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; padding: 9px 0; font-size: 14px; color: #fff; }
+.ds-search input::placeholder { color: #6f78a3; }
+.ds-count { flex: none; font: 11.5px var(--mono); color: var(--faint); }
+.ds-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.ds-filter {
+  border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: 3px 11px;
+  font-size: 12.5px; cursor: pointer; transition: all .15s;
+}
+.ds-filter:hover { color: #fff; }
+.ds-filter[aria-pressed="true"] { background: var(--tone-soft); border-color: transparent; color: var(--tone); font-weight: 600; }
+.ds-filter:disabled { opacity: .35; cursor: default; }
+.ds-list { flex: 1; overflow-y: auto; padding: 8px 12px 14px; scrollbar-width: thin; scrollbar-color: rgba(140, 165, 255, .25) transparent; }
+.ds-col {
+  position: relative; padding: 11px 12px 11px 22px; border-radius: 14px; cursor: pointer; outline: 0;
+  border: 1px solid transparent; transition: background .15s, border-color .15s;
+  animation: rise .35s ease both; animation-delay: calc(min(var(--i, 0), 18) * 22ms + 150ms);
+}
+.ds-col::before {  /* a small orbiting dot marks the kind of column */
+  content: ""; position: absolute; left: 9px; top: 18px; width: 5px; height: 5px; border-radius: 50%;
+  background: rgba(190, 205, 255, .35);
+}
+.ds-col.is-key::before { background: var(--tone); box-shadow: 0 0 8px var(--tone); }
+.ds-col.is-pii::before { background: var(--low); box-shadow: 0 0 8px var(--low); }
+.ds-col:hover, .ds-col:focus-visible { background: rgba(130, 150, 255, .07); border-color: rgba(140, 165, 255, .14); }
+.ds-col.open { background: rgba(130, 150, 255, .09); border-color: hsla(var(--hue), 95%, 70%, .3); }
+.ds-col + .ds-col { margin-top: 2px; }
+.ds-ctop { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.ds-cname { font: 600 13.5px var(--mono); color: #eef3ff; overflow-wrap: anywhere; }
+.ds-badge { font-size: 10.5px; font-weight: 600; letter-spacing: .4px; border-radius: 999px; padding: 0 7px; line-height: 18px; white-space: nowrap; }
+.ds-badge.key { color: var(--tone); background: var(--tone-soft); }
+.ds-badge.pii { color: var(--low); background: var(--low-bg); }
+.ds-desc {
+  margin: 4px 0 0; font-size: 13.5px; color: #bcc5ea; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.ds-col.open .ds-desc { -webkit-line-clamp: unset; display: block; color: #dfe5ff; }
+.ds-desc.none { font-style: italic; color: var(--faint); }
+.ds-more { display: none; margin-top: 8px; font-size: 12.5px; }
+.ds-col.open .ds-more { display: block; animation: rise .2s ease both; }
+.ds-syn { color: var(--muted); }
+.ds-syn b { color: var(--faint); font-weight: 600; margin-right: 4px; }
+.ds-col mark { background: hsla(var(--hue), 95%, 65%, .28); color: #fff; border-radius: 3px; padding: 0 1px; }
+.ds-empty { text-align: center; color: var(--muted); padding: 40px 16px; }
+.ds-skel { height: 58px; border-radius: 14px; margin: 6px 0; background: linear-gradient(90deg, rgba(130,150,255,.05), rgba(130,150,255,.12), rgba(130,150,255,.05)); background-size: 300% 100%; animation: shimmer 1.4s linear infinite; }
+.ds-foot { border-top: 1px solid var(--line); padding: 12px 22px 16px; }
+.ds-foot .lbl { font: 600 10.5px var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: var(--faint); margin-bottom: 7px; }
+.ds-sibs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; scrollbar-color: rgba(140, 165, 255, .25) transparent; }
+.ds-sib {
+  flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px;
+  background: rgba(20, 26, 56, .5); color: #dfe6ff; font: 12px var(--mono); padding: 4px 10px; cursor: pointer; transition: border-color .15s;
+}
+.ds-sib::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--tone); box-shadow: 0 0 6px var(--tone); }
+.ds-sib:hover { border-color: var(--tone); }
+.ds-sib small { color: var(--faint); font-family: var(--sans); }
+@media (max-width: 760px) {
+  .dossier { top: 8px; right: 8px; bottom: 8px; width: calc(100% - 16px); border-radius: 20px; }
+  .ds-head { padding: 18px 16px 12px; gap: 12px; }
+  .ds-planet { width: 40px; height: 40px; margin-left: 4px; }
+  .ds-planet::after { inset: -6px -11px; }
+  .ds-head { gap: 16px; }
+  .ds-title h2 { font-size: 20px; }
+  .ds-stats { padding: 0 16px 12px; gap: 6px; }
+  .ds-stat b { font-size: 18px; }
+  .ds-tools { padding: 0 16px 12px; }
+  .ds-list { padding: 6px 6px 12px; }
+  .ds-foot { padding: 10px 16px 14px; }
+}
+
+/* ---------- the answer at a glance + votes (ADR-036) ---------- */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ov-n { font: 12px var(--mono); color: var(--faint); text-align: right; }
+.ov-ok { font-style: normal; color: var(--high); margin-left: 6px; font-family: var(--sans); }
+@keyframes grow { from { width: 0; } }
+.ov-mx-wrap { overflow-x: auto; scrollbar-width: thin; scrollbar-color: rgba(140, 165, 255, .25) transparent; }
+.ov-mx { border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
+.ov-mx thead th {
+  font-weight: 600; font-size: 11.5px; color: var(--muted); padding: 0 6px 6px; vertical-align: bottom;
+  min-width: 64px; max-width: 96px; line-height: 1.25; overflow-wrap: anywhere;
+}
+.ov-mx thead th span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ov-mx tbody th { text-align: left; padding: 0 10px 0 0; font-weight: 400; }
+.ov-mx tbody th button {
+  display: flex; gap: 8px; align-items: baseline; max-width: 340px; border: 0; background: none; color: #dfe6ff; padding: 5px 0;
+  font: 12.5px var(--mono); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ov-mx tbody th button:hover { color: #fff; }
+.ov-mx td { text-align: center; padding: 5px 6px; border-top: 1px solid rgba(140, 165, 255, .08); font-size: 15px; line-height: 1; }
+.ov-mx tbody th { border-top: 1px solid rgba(140, 165, 255, .08); }
+.cv-on { color: var(--high); } .cv-long { color: var(--mid); } .cv-off { color: rgba(163, 172, 214, .4); }
+.ov-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.ov-legend i { font-style: normal; }
+
+/* confidence ring */
+.ring { flex: none; display: grid; grid-template-areas: "c" "l"; justify-items: center; row-gap: 2px; }
+.ring svg, .ring b { grid-area: c; }
+.ring circle { fill: none; stroke-width: 5; }
+.ring .ring-track { stroke: rgba(140, 165, 255, .14); }
+.ring .ring-arc { stroke: var(--lc); stroke-linecap: round; transition: stroke-dasharray 1s cubic-bezier(.16, 1, .3, 1); filter: drop-shadow(0 0 4px color-mix(in srgb, var(--lc) 45%, transparent)); }
+.ring b { align-self: center; font: 700 16px var(--display); color: #fff; font-variant-numeric: tabular-nums; }
+.ring span { grid-area: l; font-size: 11px; color: var(--muted); }
+@keyframes flash { 0%, 40% { border-color: rgba(124, 244, 255, .7); box-shadow: 0 0 0 3px rgba(124, 244, 255, .12); } }
+
+/* what earlier votes say */
+.vb { display: inline-block; margin-top: 6px; font-size: 11.5px; font-weight: 600; letter-spacing: .2px; padding: 2px 9px; border-radius: 999px; cursor: help; }
+.vb.up { color: var(--high); background: var(--high-bg); }
+.vb.down { color: #ff9ab8; background: var(--low-bg); }
+.vb.warn { color: var(--mid); background: var(--mid-bg); }
+.vb.mix { color: var(--muted); background: rgba(130, 150, 255, .1); }
+
+/* "İşinize yarar mı?" */
+.fb { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px; flex: none; max-width: 100%; }
+.res-foot .fb { margin-left: auto; }
+.res-foot:has(.fb-why:not(.hidden)) { flex-wrap: wrap; }
+.res-foot details { min-width: 110px; }
+.fb-q { font-size: 12.5px; color: var(--faint); }
+.fb-q:empty { display: none; }
+.fb-btn {
+  border: 1px solid rgba(140, 165, 255, .2); background: none; color: var(--muted); border-radius: 999px;
+  padding: 3px 11px; font-size: 12.5px; cursor: pointer; transition: color .15s, background .15s, border-color .15s;
+}
+.fb-btn:hover { color: #fff; border-color: rgba(124, 244, 255, .5); }
+.fb-btn.up[aria-pressed="true"] { color: var(--high); background: var(--high-bg); border-color: transparent; }
+.fb-btn.down[aria-pressed="true"] { color: #ff9ab8; background: var(--low-bg); border-color: transparent; }
+.fb-msg { font-size: 12px; color: var(--faint); }
+.fb-msg:empty { display: none; }
+.fb-why { flex-basis: 100%; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin-top: 4px; animation: rise .2s ease both; }
+.fb-chip { border: 1px dashed rgba(140, 165, 255, .3); background: none; color: var(--muted); border-radius: 999px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
+.fb-chip:hover { color: #fff; border-style: solid; }
+.fb-note { display: inline-flex; gap: 6px; }
+.fb-note input {
+  width: 190px; max-width: 50vw; border: 1px solid rgba(140, 165, 255, .22); background: rgba(4, 7, 20, .6); border-radius: 999px;
+  padding: 3px 11px; font-size: 12.5px; color: #fff; outline: 0;
+}
+.fb-note input:focus { border-color: rgba(124, 244, 255, .55); }
+.fb-send { border: 0; background: rgba(124, 244, 255, .12); color: #7cf4ff; border-radius: 999px; padding: 3px 11px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.answer-fb {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 18px; margin: 22px 0 8px;
+  padding: 14px 18px; border-radius: 16px; border: 1px solid rgba(170, 140, 255, .25); background: rgba(139, 92, 255, .07);
+}
+.answer-fb > div:first-child b { font: 600 15px var(--display); color: #fff; }
+.fb-after { flex-basis: 100%; font-size: 13px; color: #c9b6ff; }
+.fb-after:empty { display: none; }
+.crowd { border-color: rgba(61, 252, 180, .22); background: rgba(61, 252, 180, .04); }
+.crowd-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.crowd-item {
+  display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; border: 1px solid var(--line); border-radius: 12px;
+  background: rgba(20, 26, 56, .5); color: inherit; padding: 6px 12px; cursor: pointer; text-align: left;
+}
+.crowd-item b { font: 600 13px var(--mono); color: #eef3ff; }
+.crowd-item span { font-size: 12px; color: var(--faint); }
+.crowd-item .vb { margin: 0; }
+.crowd-item:hover { border-color: rgba(124, 244, 255, .5); }
+@media (max-width: 640px) {
+  .ov-mx tbody th button { max-width: 140px; }
+  .ov-mx thead th { min-width: 52px; }
+  .fb, .fb-why { justify-content: flex-start; }
+  .res-foot { flex-wrap: wrap; }
+}
+
+/* ---------- the answer as a board ----------
+   A headline that reads in one breath (first sentence large, the rest as a light lead,
+   table names as chips), the numbers beside it; below, the table cards on the left and a
+   sticky guide on the right: ranking, coverage, how to combine, what to watch, notes.
+   Container queries, not media queries: the same view also opens inside a term list. */
+html.has-results main.wrap { max-width: 1440px; }
+#ask-out:has(> .ans) { max-width: none; }
+.ans { container: ans / inline-size; margin: 24px 0 20px; }
+.ans .ans-head {
+  position: relative; overflow: hidden; margin: 0; padding: 18px 22px 20px; border-radius: 20px;
+  border: 1px solid rgba(140, 165, 255, .16); background: rgba(12, 16, 38, .66); backdrop-filter: blur(16px) saturate(140%);
+  animation: rise .3s ease both;
+}
+.ans .ans-head::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--vc, var(--faint)); opacity: .85; }
+.ans .answer-top { flex-wrap: wrap; row-gap: 8px; }
+.ans-hero { display: grid; gap: 16px 32px; margin-top: 14px; }
+.ans-text { min-width: 0; }
+.ans-title { margin: 0; font: 600 19px/1.5 var(--display); letter-spacing: -.1px; color: #fff; max-width: 70ch; text-wrap: pretty; overflow-wrap: anywhere; }
+.ans-lead { margin: 8px 0 0; font-size: 14.5px; line-height: 1.7; color: #b4bde6; max-width: 82ch; text-wrap: pretty; overflow-wrap: anywhere; }
+.ans-read { display: flex; gap: 10px; align-items: baseline; margin: 14px 0 0; padding-top: 12px; border-top: 1px dashed rgba(140, 165, 255, .16);
+  font-size: 13px; line-height: 1.6; color: var(--muted); max-width: 90ch; overflow-wrap: anywhere; }
+.ans-read-k { flex: none; font: 600 10px var(--mono); letter-spacing: 1.3px; text-transform: uppercase; color: var(--faint);
+  border: 1px solid rgba(140, 165, 255, .22); border-radius: 6px; padding: 1px 6px; }
+/* names in prose */
+.tn {
+  display: inline; font: 600 .9em var(--mono); color: #8ff6ff; background: rgba(124, 244, 255, .08);
+  border: 1px solid rgba(124, 244, 255, .2); border-radius: 6px; padding: 0 5px; margin: 0 1px; line-height: inherit;
+  overflow-wrap: break-word; text-align: left; -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+button.tn { cursor: pointer; transition: background .15s, border-color .15s; }
+button.tn:hover, button.tn:focus-visible { background: rgba(124, 244, 255, .16); border-color: rgba(124, 244, 255, .5); outline: 0; }
+.cn { font: .88em var(--mono); color: #e3e9ff; background: rgba(140, 165, 255, .11); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+.ans-title .tn { font-size: .82em; vertical-align: .05em; }
+
+/* board: one column (cards, then the guide), two when there is room */
+.ans-grid { display: flex; flex-direction: column; gap: 14px; margin-top: 16px; }
+.ans-side { display: contents; }
+.side-glance { order: 2; display: grid; gap: 12px; }
+.ans-main { order: 1; min-width: 0; }  /* one column: the suggestions first */
+.side-guide { order: 3; display: grid; gap: 12px; }
+@container ans (min-width: 980px) {
+  .ans-grid:not(.solo) { display: grid; grid-template-columns: minmax(0, 1fr) clamp(340px, 31%, 420px); gap: 18px; align-items: start; }
+  .ans-main { grid-column: 1; grid-row: 1; }
+  .ans-side {
+    grid-column: 2; grid-row: 1;
+    /* plain flow, no inner scroll box: the wheel over the guide scrolls the page (a sticky,
+       self-scrolling column swallowed it); the guide cards fold, so the column stays short */
+    display: flex; flex-direction: column; gap: 12px;
+  }
+}
+.ans-main .answer-fb { margin-top: 18px; }
+
+/* side cards */
+.side-card {
+  min-width: 0; padding: 14px 16px 15px; border-radius: 16px; border: 1px solid rgba(140, 165, 255, .14);
+  background: rgba(12, 16, 38, .62); backdrop-filter: blur(16px) saturate(140%); animation: rise .35s ease both;
+}
+.side-h { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font: 600 10.5px var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: var(--faint); }
+.side-h::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--side-c, rgba(140, 165, 255, .5)); box-shadow: 0 0 8px var(--side-c, transparent); }
+.side-card.rank { --side-c: #7cf4ff; } .side-card.matrix { --side-c: #3dfcb4; }
+.side-card.plan { --side-c: #8fb3ff; border-color: rgba(120, 170, 255, .22); }
+.side-card.warn { --side-c: #ffd166; border-color: rgba(255, 209, 102, .24); background: linear-gradient(rgba(255, 209, 102, .05), rgba(255, 209, 102, .05)), rgba(12, 16, 38, .62); }
+.side-card.notes { --side-c: #c9b6ff; }
+.side-card .ov-mx tbody th button { max-width: 180px; }
+.side-card .ov-mx thead th { min-width: 46px; }
+.steps { list-style: none; margin: 0; padding: 0; counter-reset: st; font-size: 13.5px; line-height: 1.6; }
+.steps li { position: relative; padding-left: 32px; counter-increment: st; overflow-wrap: anywhere; }
+.steps li + li { margin-top: 10px; }
+.steps li::before {
+  content: counter(st); position: absolute; left: 0; top: 1px; width: 21px; height: 21px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 11px var(--mono); color: #8fb3ff; border: 1px solid rgba(143, 179, 255, .4); background: rgba(120, 170, 255, .08);
+}
+.steps li:not(:last-child)::after { content: ""; position: absolute; left: 10px; top: 25px; bottom: -8px; width: 1px; background: rgba(143, 179, 255, .2); }
+.watch { margin: 0; padding: 0; list-style: none; font-size: 13.5px; line-height: 1.6; }
+.watch li { position: relative; padding-left: 18px; overflow-wrap: anywhere; }
+.watch li + li { margin-top: 8px; }
+.watch li::before { content: "!"; position: absolute; left: 2px; top: 0; font-weight: 800; color: #ffd166; }
+.note-list { margin: 0; padding: 0; list-style: none; font-size: 13px; line-height: 1.55; }
+.note-list li { padding: 9px 0 0; overflow-wrap: anywhere; }
+.note-list li + li { margin-top: 9px; border-top: 1px solid rgba(140, 165, 255, .1); }
+.note-list li:first-child { padding-top: 0; }
+.note-list b { color: #eef1ff; font-weight: 600; }
+.note-list div { color: #aab3dc; margin-top: 2px; }
+.nt-tag { display: inline-block; margin-right: 8px; font: 600 9.5px var(--mono); letter-spacing: 1px; text-transform: uppercase; padding: 1px 6px; border-radius: 5px; vertical-align: 1px;
+  color: var(--nt, #a3acd6); background: color-mix(in srgb, var(--nt, #a3acd6) 13%, transparent); }
+.nt.t-warn { --nt: #ffd166; } .nt.t-scope { --nt: #8fb3ff; } .nt.t-derive { --nt: #c9b6ff; } .nt.t-ask { --nt: #7cf4ff; } .nt.t-near { --nt: #3dfcb4; }
+
+/* cards: lighter text rhythm */
+.ans .res-reason { font-size: 14.5px; line-height: 1.65; color: #d7ddf7; }
+.ans .res-warn { display: grid; gap: 4px; padding: 8px 12px; border-radius: 10px; background: rgba(255, 209, 102, .06); border: 1px solid rgba(255, 209, 102, .16); line-height: 1.55; }
+.ans .res-warn > div, .ans .res-usage { display: flex; gap: 8px; align-items: baseline; }
+.res-warn-i, .res-use-i { flex: none; }
+.ans .res-usage { font-size: 13.5px; color: #a9b3e0; line-height: 1.55; }
+.ans .res-covers { display: inline-block; margin-top: 10px; padding: 2px 10px; border-radius: 999px; background: rgba(124, 244, 255, .08); border: 1px solid rgba(124, 244, 255, .18); }
+/* the find, first: verdict, best table, the others */
+.ans-verdict { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+.av-icon { font-size: 24px; line-height: 1; color: var(--vc); }
+.av-word { font: 700 30px/1.1 var(--display); letter-spacing: -.6px; color: var(--vc); }
+.av-for { font-size: 14px; color: var(--muted); }
+.av-miss, .li-miss { color: #ffb86b; }
+.av-miss { font-size: 14px; font-weight: 600; }
+.li-miss { display: block; font-size: 12.5px; margin-top: 2px; overflow-wrap: anywhere; }
+.ans-best {
+  display: flex; align-items: center; gap: 16px; width: 100%; margin-top: 14px; padding: 14px 18px; text-align: left; cursor: pointer;
+  border-radius: 16px; border: 1px solid color-mix(in srgb, var(--lc) 35%, transparent);
+  background: linear-gradient(110deg, color-mix(in srgb, var(--lc) 13%, transparent), rgba(12, 16, 38, .2) 70%);
+  color: inherit; font: inherit; transition: border-color .2s, transform .2s;
+}
+.ans-best:hover, .ans-best:focus-visible { border-color: color-mix(in srgb, var(--lc) 70%, transparent); outline: 0; transform: translateY(-1px); }
+.ans-best .ring { transform: scale(1.12); margin: 4px 6px 0 2px; }
+.ab-text { display: grid; gap: 3px; min-width: 0; }
+.ab-k { font: 600 10px var(--mono); letter-spacing: 1.4px; text-transform: uppercase; color: var(--lc); }
+.ab-name { font: 700 22px/1.25 var(--mono); color: #fff; letter-spacing: -.3px; overflow-wrap: break-word; }
+.ab-covers { font-size: 14.5px; font-weight: 600; color: #dfe6ff; }
+.ab-path { font: 12px var(--mono); color: var(--faint); }
+.ans-also { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 2px; }
+.aa-row {
+  display: grid; grid-template-columns: 18px minmax(0, max-content) minmax(0, 1fr) auto; align-items: baseline; gap: 12px;
+  width: 100%; padding: 7px 18px 7px 18px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.aa-row:hover, .aa-row:focus-visible { background: rgba(130, 150, 255, .08); outline: 0; }
+.aa-n { font: 12px var(--mono); color: var(--faint); text-align: right; }
+.aa-name { font: 600 14.5px var(--mono); color: #eef3ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aa-covers { font-size: 13.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.aa-pct { font: 700 13px var(--mono); color: var(--lc); padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--lc) 12%, transparent); font-variant-numeric: tabular-nums; }
+/* the analyst's prose: folded, one line peeks out */
+.ans-why { margin-top: 12px; border-top: 1px dashed rgba(140, 165, 255, .16); padding-top: 10px; }
+.ans-why > summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer; list-style: none; min-width: 0; }
+.ans-why > summary::-webkit-details-marker { display: none; }
+.aw-k { flex: none; font-size: 13px; font-weight: 600; color: var(--muted); }
+.aw-k::before { content: "▸ "; display: inline-block; transition: transform .15s; }
+.ans-why[open] .aw-k::before { transform: rotate(90deg); }
+.aw-peek { min-width: 0; font-size: 13px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ans-why[open] .aw-peek { display: none; }
+.ans-why > summary:hover .aw-k { color: var(--text); }
+.ans-why .ans-title { margin-top: 10px; font-size: 15.5px; font-weight: 600; }
+/* clamped prose */
+.clamp { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; cursor: pointer; }
+.clamp.open { -webkit-line-clamp: unset; display: block !important; cursor: auto; }
+.ans .res-warn > .clamp { -webkit-line-clamp: 2; }
+.note-list details > summary { cursor: pointer; list-style: none; }
+.note-list details > summary::-webkit-details-marker { display: none; }
+.note-list details > summary:hover b { color: #fff; text-decoration: underline; text-decoration-color: rgba(140, 165, 255, .4); }
+.note-list details > div { margin-top: 4px; }
+@container ans (max-width: 560px) {
+  .ans .ans-head { padding: 16px 16px 18px; }
+  .av-word { font-size: 25px; }
+  .ab-name { font-size: 18px; }
+  .ans-best { padding: 12px 12px; gap: 12px; }
+  .aa-row { grid-template-columns: 18px minmax(0, 1fr) auto; padding: 7px 8px; }
+  .aa-covers { grid-column: 2 / 4; grid-row: 2; margin-top: -2px; }
+  .ans-title { font-size: 17px; }
+}
+/* ---------- compact answer: the suggestions as rows, the result on one screen ----------
+   A suggestion is a row (rank · name · confidence); a click opens its details under it,
+   one at a time. The guide cards fold. (The headline above keeps its own look.) */
+.ans-main, .ans-side { font-size: 14px; }
+.ans-grid { margin-top: 12px; gap: 12px; }
+.pick-list { display: grid; gap: 6px; }
+.pick {
+  border: 1px solid rgba(140, 165, 255, .16); border-radius: 12px; background: rgba(12, 16, 38, .62);
+  backdrop-filter: blur(16px) saturate(140%); animation: rise .3s ease both; animation-delay: calc(var(--i, 0) * 40ms);
+  scroll-margin-top: 100px; scroll-margin-bottom: 16px; transition: border-color .2s;
+}
+.pick.open { border-color: rgba(124, 244, 255, .35); }
+.pick.dim { opacity: .7; }
+.pick.flash { animation: flash 1.2s ease; }
+.pick-row {
+  display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(60px, 150px) 40px 46px 12px; gap: 12px; align-items: center;
+  width: 100%; padding: 9px 14px; border: 0; border-radius: 12px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.pick-row:hover, .pick-row:focus-visible { background: rgba(130, 150, 255, .07); outline: 0; }
+.pk-n { font: 12px var(--mono); color: var(--faint); text-align: right; }
+.pk-name { font: 600 13.5px var(--mono); color: #eef3ff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ans-main > .pick-list > .pick:first-child .pk-name { color: #fff; }
+.pk-mark { font-style: normal; font-family: var(--sans); font-weight: 700; margin-left: 6px; }
+.pk-mark.up { color: var(--high); } .pk-mark.down { color: var(--mid); }
+.pk-bar { height: 6px; border-radius: 3px; background: rgba(140, 165, 255, .12); overflow: hidden; }
+.pk-bar i { display: block; height: 100%; width: var(--w); border-radius: 3px; background: var(--lc); animation: grow .8s cubic-bezier(.16, 1, .3, 1) both; }
+.pk-pct { font: 700 13px var(--mono); color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+.pk-lv { font-size: 11px; color: var(--muted); }
+.pk-chev { font-size: 11px; color: var(--faint); transition: transform .15s; }
+.pick.open .pk-chev { transform: rotate(90deg); color: var(--text); }
+.pick-body { display: none; padding: 0 16px 10px 48px; }
+.pick.open .pick-body { display: block; animation: rise .2s ease both; }
+.pick-body .res-path { margin: 0; }
+.pick-body .vb { margin: 0 0 0 4px; vertical-align: 1px; }
+.ans .pick-body .res-covers { margin-top: 8px; font-size: 12.5px; }
+.ans .pick-body .res-reason { margin-top: 8px; font-size: 13.5px; line-height: 1.6; }
+.ans .pick-body .res-warn { font-size: 12.5px; }
+.pick-body .cols { margin-top: 8px; }
+.pick-body .col { font-size: 12px; padding: 2px 8px; }
+.pick-body .res-foot { margin-top: 8px; padding-top: 6px; }
+.ans-main .answer-fb { margin-top: 12px; padding: 10px 14px; }
+.ans-main .answer-fb > div:first-child b { font-size: 14px; }
+.ans-main .ask-more { margin: 10px 0; }
+.ans-main .ask-more .pick-list { margin-top: 6px; }
+@container ans (max-width: 560px) {
+  .pick-row { grid-template-columns: 18px minmax(0, 1fr) 40px 12px; gap: 8px; padding: 9px 10px; }
+  .pk-bar, .pk-lv { display: none; }
+  .pick-body { padding: 0 12px 10px; }
+}
+/* the guide folds: the matrix open, the prose cards closed with a count */
+.side-card { padding: 10px 14px; border-radius: 14px; }
+details.side-card > summary.side-h { cursor: pointer; list-style: none; margin: 0; }
+details.side-card > summary::-webkit-details-marker { display: none; }
+details.side-card[open] > summary.side-h { margin-bottom: 8px; }
+details.side-card > summary.side-h::after { content: "▸"; margin-left: auto; transition: transform .15s; }
+details.side-card[open] > summary.side-h::after { transform: rotate(90deg); }
+details.side-card > summary.side-h:hover { color: var(--text); }
+.side-n { font: 600 10px var(--mono); letter-spacing: 0; color: var(--muted); background: rgba(140, 165, 255, .12); border-radius: 999px; padding: 0 6px; }
+.steps, .watch { font-size: 13px; line-height: 1.55; }
+.note-list { font-size: 12.5px; }
+</style>
+</head>
+<body>
+<canvas id="cosmos" aria-hidden="true"></canvas>
+<div id="hud" aria-hidden="true"><div><b>Veri evreni</b> · <span id="hud-count"></span></div><div class="focus" id="hud-focus"></div></div>
+<div id="star-tip" role="tooltip"></div>
+<aside class="dossier" id="dossier" role="dialog" aria-labelledby="ds-name" aria-hidden="true">
+  <header class="ds-head">
+    <div class="ds-planet" aria-hidden="true"></div>
+    <div class="ds-title">
+      <div class="ds-kicker" id="ds-kicker"></div>
+      <h2 id="ds-name"></h2>
+      <div class="ds-path"><code id="ds-path"></code><button class="ds-mini" id="ds-copy" type="button" title="Tam adı kopyala">Kopyala</button></div>
+    </div>
+    <button class="ds-close" id="ds-close" type="button" aria-label="Kapat (Esc)" title="Kapat (Esc)">✕</button>
+  </header>
+  <div class="ds-stats" id="ds-stats"></div>
+  <div class="ds-tools">
+    <label class="ds-search">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg>
+      <input id="ds-q" type="search" placeholder="Kolon, açıklama, eş anlamlı ara…" aria-label="Kolonlarda ara" autocomplete="off">
+      <span class="ds-count" id="ds-count"></span>
+    </label>
+    <div class="ds-filters" id="ds-filters"></div>
+  </div>
+  <div class="ds-list" id="ds-list" tabindex="-1"></div>
+  <div class="ds-foot" id="ds-foot"></div>
+</aside>
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" title="Yeni başlangıç">
+      <svg class="compass" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="#1F3864"/><circle cx="16" cy="16" r="10.5" fill="none" stroke="#F2B84B" stroke-opacity=".45"/><g class="needle"><path d="M16 5l4 11-4 11-4-11z" fill="#F2B84B"/><path d="M16 16l4 0-4 11-4-11z" fill="#fff" fill-opacity=".85"/></g></svg>
+      <div><b>DWH Navigator</b><span>Veri ambarı rehberi</span></div>
+    </a>
+    <div class="slot" id="bar-slot"></div>
+    <div class="tools">
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="tab-ask">
+    <div class="hero" id="hero">
+      <h1>Hangi veriye ihtiyacınız var?</h1>
+      <div class="searchbox">
+        <textarea id="q" rows="1" placeholder="Örn. Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?" aria-label="Talep"></textarea>
+        <button class="attach" id="xl" type="button" data-tip="Excel listesiyle ara · A sütunu, ilk satır başlık" aria-label="Excel listesiyle toplu arama"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="3"/><path d="M3.5 9h17M9 9v11M12 13h5.5M12 16.5h5.5"/></svg></button>
+        <div class="drop-hint" aria-hidden="true"><div>Excel listesini bırakın<small>A sütunu · ilk satır başlık · altında her satırda bir terim</small></div></div>
+        <button class="primary" id="go">Ara <kbd>↵</kbd></button>
+      </div>
+      <div class="model-warn" id="model-warn" role="status"></div>
+      <input type="file" id="xl-file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
+    </div>
+    <div id="ask-out"></div>
+  </section>
+
+</main>
+<footer id="foot"></footer>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- helpers
+const $ = (s, r = document) => r.querySelector(s);
+function h(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "style") e.style.cssText = v;  // CSSOM: allowed by the page's strict CSP
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) {
+    if (kid == null || kid === false) continue;
+    e.append(kid instanceof Node ? kid : document.createTextNode(String(kid)));
+  }
+  return e;
+}
+const pct = x => Math.round((x || 0) * 100);
+// Long identifiers may wrap only at CamelCase / underscore boundaries.
+const breakable = name => name.split(/(?<=[a-z0-9])(?=[A-Z])|(?<=_)/).flatMap((part, i) => i ? [h("wbr"), part] : [part]);
+// replaceChildren() would print null/false as text; drop them first.
+const put = (el, ...kids) => el.replaceChildren(...kids.flat().filter(k => k != null && k !== false));
+async function api(path, opts = {}) {
+  const r = await fetch(path, opts);
+  const data = await r.json().catch(() => ({ error: "Beklenmeyen yanıt" }));
+  if (!r.ok) throw new Error(data.error || r.statusText);
+  return data;
+}
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+const verdictClass = v => "v-" + (v || "").split(" ")[0];
+
+// ---------------------------------------------------------------- status
+let STATUS = null;
+async function loadStatus() {
+  try {
+    STATUS = await api("/api/status");
+    const s = STATUS;
+    // One quiet indicator; the details live in its tooltip.
+    const m = s.llm_state || { state: "none", reason: "" };
+    const tip = [
+      `Sözlük: ${s.columns.toLocaleString("tr-TR")} kolon · ${s.objects} tablo`,
+      m.state === "ok" ? `Analist: ${m.model}` : `Model: ${m.reason || "bağlı değil"}`,
+    ].join("\n");
+    const [cls, label, warn] = m.state === "ok" ? ["", "Hazır", ""]
+      : m.state === "down" ? ["bad", "Modele ulaşılamıyor",
+        `${m.reason.replace(/\.?$/, ".")} Model çalışmadan soru analiz edilemez.`]
+      : ["warn", "Model bağlı değil",
+        `Sohbet modeli bağlı değil: soru analiz edilemez. Yönetim → Yapay zekâ sayfasından bir model bağlayın.`];
+    $("#status").replaceChildren(h("span", { class: "pill " + cls, title: tip }, h("i", { class: "dot" + (cls ? "" : " on") }), label));
+    const mw = $("#model-warn");
+    mw.className = "model-warn" + (m.state === "down" ? " bad" : ""); mw.textContent = warn;
+    centreHero();
+  } catch (e) {
+    $("#status").replaceChildren(h("span", { class: "pill" }, "Sunucuya ulaşılamadı"));
+  }
+}
+setInterval(loadStatus, 60000);  // the model server may come and go
+
+// ---------------------------------------------------------------- ask
+const q = $("#q");
+function autosize() {
+  if (docked()) return;  // one line in the heading (CSS height)
+  q.style.height = "auto";
+  q.style.height = Math.min(q.scrollHeight, 180) + "px";
+  q.style.overflowY = q.scrollHeight > 180 ? "auto" : "hidden";  // no scrollbar while it fits
+}
+q.addEventListener("input", autosize);
+addEventListener("resize", () => requestAnimationFrame(autosize));
+q.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } });
+$("#go").onclick = () => (running ? stopAsk() : ask());
+
+// Header and footer differ in height; balance them so the landing block sits at the window's centre.
+function centreHero() {
+  const d = $("header.top").getBoundingClientRect().bottom - $("#foot").offsetHeight;
+  hero.style.setProperty("--shift-top", Math.max(0, -d) + "px");
+  hero.style.setProperty("--shift-bottom", Math.max(0, d) + "px");
+}
+addEventListener("resize", centreHero);
+addEventListener("load", centreHero);
+
+// ---------------------------------------------------------------- the search bar becomes the heading
+// Landing: title and search bar in the middle of the sky. After the first question the bar
+// glides up into the empty middle of the top line and stays there as the page's heading,
+// at the answer's width, with the question in it ("/" focuses it, Esc leaves it).
+const hero = $("#hero"), searchbox = $("#hero .searchbox"), root = document.documentElement;
+const docked = () => root.classList.contains("docked");
+function foldSearch() {
+  if (docked()) return;
+  const first = searchbox.getBoundingClientRect();
+  $("#bar-slot").append(searchbox);
+  hero.classList.add("compact");
+  root.classList.add("docked");
+  q.setAttribute("wrap", "off");  // one line in the heading
+  q.style.height = ""; q.style.overflowY = "";
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches || !searchbox.animate) return;
+  const last = searchbox.getBoundingClientRect();
+  searchbox.animate([
+    { transformOrigin: "0 0", transform: `translate(${first.left - last.left}px, ${first.top - last.top}px) scale(${first.width / last.width}, ${first.height / last.height})` },
+    { transformOrigin: "0 0", transform: "none" },
+  ], { duration: 560, easing: "cubic-bezier(.6,0,.2,1)" });
+}
+document.addEventListener("keydown", e => {
+  if (!docked()) return;
+  if (e.key === "Escape" && running) { e.preventDefault(); stopAsk(); }
+  else if (e.key === "Escape" && document.activeElement === q) q.blur();
+  else if (e.key === "/" && !/^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName)) { e.preventDefault(); q.focus(); q.select(); }
+});
+
+// The question in progress: its id lets the server stop it (and its LLM calls).
+let running = null;
+const newAskId = () => Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, "0")).join("");
+function setBusy(busy) {
+  const go = $("#go");
+  go.classList.toggle("busy", busy);
+  go.title = busy ? "Analizi durdur (Esc)" : "";
+  go.setAttribute("aria-label", busy ? "Analizi durdur" : "Ara");
+}
+function stopAsk() {
+  if (!running || running.stopped) return;
+  running.stopped = true;
+  const id = running.id;
+  running.ctrl.abort();
+  fetch("/api/ask/cancel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ask_id: id }) }).catch(() => {});
+}
+
+async function ask(fresh = false) {  // fresh: skip the kept answer (ADR-035)
+  if (running) return;
+  fresh = fresh === true;  // also bound as an event handler
+  const text = q.value.trim(); if (!text) { q.focus(); return; }
+  const exact = Cosmos.find(text);  // a table's own name: open it as if its star was clicked
+  if (exact) { q.blur(); Dossier.open(exact.key); return; }
+  Dossier.close(); foldSearch(); q.blur(); scrollTo({ top: 0 });
+  q.title = text;
+  $("#ask-out").replaceChildren(); document.documentElement.classList.remove("has-results");
+  const job = running = { id: newAskId(), ctrl: new AbortController(), stopped: false };
+  setBusy(true);
+  root.classList.remove("found"); root.classList.add("busy");  // the compass starts searching
+  if (Cosmos.active) {
+    // The voyage runs through the real candidates: the LLM-free explorer search answers
+    // in ~100 ms while the analyst's answer takes much longer.
+    Cosmos.begin({ read: !!(STATUS && STATUS.llm), columns: STATUS ? STATUS.columns : 0 });
+    api("/api/objects?q=" + encodeURIComponent(text))
+      .then(c => Cosmos.candidates(c.items.filter(i => i.score != null).map(i => ({ key: i.key, name: i.name, score: i.score }))))
+      .catch(() => {});
+  }
+  const radarDone = new Promise(res => {  // "Durdur" also ends this wait (a kept answer is back at once)
+    const timer = setTimeout(res, Cosmos.active ? Cosmos.radarMs : 0);
+    job.ctrl.signal.addEventListener("abort", () => { clearTimeout(timer); res(); }, { once: true });
+  });
+  try {
+    const r = await api("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ query: text, top: 5, ask_id: job.id, fresh, voter: VOTER }), signal: job.ctrl.signal });
+    if (r.cancelled) throw new DOMException("stopped", "AbortError");
+    await radarDone;  // a fast answer still lets the radar finish its turns
+    if (job.stopped) throw new DOMException("stopped", "AbortError");
+    renderAsk(r);
+    Bulk.pill();
+    if (!r.analyst) loadStatus();
+  } catch (e) {
+    $("#ask-out").replaceChildren(job.stopped || e.name === "AbortError"
+      ? h("div", { class: "stopped", role: "status" }, "Analiz durduruldu. Soruyu düzenleyip yeniden arayabilirsiniz.")
+      : h("div", { class: "error" }, "Analiz başarısız: " + e.message));
+  } finally {
+    running = null; setBusy(false);
+    root.classList.remove("busy"); root.classList.add("found");  // ...and settles
+    setTimeout(() => root.classList.remove("found"), 1200);
+    Cosmos.end();
+  }
+}
+
+function conceptChip(c) {
+  const [kind, ...rest] = c.split(":"); const label = rest.join(":");
+  const cls = { "zaman": "k-zaman", "kırılım": "k-kirilim", "ölçü": "k-olcu", "kırılım değeri": "k-deger" }[kind] || "";
+  const prefix = kind === "terim" || kind === label ? "" : kind + " · ";
+  return h("span", { class: "chip " + cls }, prefix, h("b", {}, label));
+}
+
+function svg(markup) { const t = document.createElement("template"); t.innerHTML = markup; return t.content.firstChild; }
+
+const COMP = { best_column: "En iyi kolon", coverage: "Kavram kapsama", time: "Zaman boyutu", granularity: "Müşteri seviyesi", topic: "Konu uyumu" };
+function bars(m) {
+  const items = Object.entries(m.components).map(([k, v]) =>
+    h("div", { class: "bar" }, `${COMP[k] || k} · %${pct(v)}`, h("div", { class: "track" }, h("div", { class: "fill", style: `width:${pct(v)}%` }))));
+  if (m.llm != null) items.push(h("div", { class: "bar llm" }, `Analist güveni · %${pct(m.llm)}`, h("div", { class: "track" }, h("div", { class: "fill", style: `width:${pct(m.llm)}%` }))));
+  return h("div", { class: "bars" }, items);
+}
+
+const ROLE = { "eşleşme": "eşleşme", "kavram": "kavram", "zaman": "zaman", "kırılım": "kırılım", "yapısal": "anahtar", "türetme": "türetme" };
+const SHOWN_COLUMNS = 6;
+function columnChips(m) {
+  const detail = h("div", { class: "detail" });
+  const chips = m.columns.map(c => {
+    const role = c.role ? (ROLE[c.role] || c.role) + " · " : "";
+    const b = h("button", { class: "col", "aria-expanded": "false", title: role + c.description },
+      h("span", {}, breakable(c.column)),
+      c.pii ? h("span", { class: "flag", title: "Kişisel veri (KVKK)" }, "●") : null);
+    b.onclick = () => {
+      const open = b.getAttribute("aria-expanded") === "true";
+      chips.forEach(x => x.setAttribute("aria-expanded", "false"));
+      if (open) { detail.classList.remove("on"); return; }
+      b.setAttribute("aria-expanded", "true");
+      detail.replaceChildren(
+        h("div", {}, h("span", { class: "k" }, c.column), h("span", { class: "faint" }, "  " + c.object)),
+        h("div", { style: "margin-top:4px" }, c.description),
+        c.synonyms.length ? h("div", { class: "syn" }, "Eş anlamlılar: " + c.synonyms.join(", ")) : null,
+        ...c.signals.map(s => h("div", { class: "sig" }, "✓ " + s)),
+        ...c.caveats.map(s => h("div", { class: "faint", style: "color:var(--mid)" }, "! " + s)));
+      detail.classList.add("on");
+    };
+    return b;
+  });
+  const rest = chips.slice(SHOWN_COLUMNS);
+  rest.forEach(b => b.classList.add("hidden"));
+  const more = rest.length ? h("button", { class: "col more", onclick: e => { rest.forEach(b => b.classList.remove("hidden")); e.currentTarget.remove(); } }, `+${rest.length} kolon`) : null;
+  return [h("div", { class: "cols" }, chips, more), detail];
+}
+
+// ---------------------------------------------------------------- feedback (ADR-036)
+// 👍/👎 on every suggested table and on the whole answer. Each browser votes under an
+// anonymous id, so a person's latest vote counts once. The server weighs earlier votes
+// into the answer: rejected tables step aside, approved ones rise, scores are nudged.
+const VOTER = (() => { let v = store.get("vsa-voter"); if (!v) { v = newAskId(); store.set("vsa-voter", v); } return v; })();
+const REASONS = ["Konu farklı", "Gereken kolon yok", "Eski / kullanılmıyor", "Doğru ama yetersiz"];
+function sendVote(r, body) {
+  return api("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: r.query, voter: VOTER, report_id: r.report_id || "", analyst: r.analyst,
+      reused: !!r.reused, answer_at: (r.feedback || {}).answer_at || "", ...body }) });
+}
+const people = n => `${n} kişi`;
+// What earlier votes say about a table, in a few words (and the reasons in the tooltip).
+function voteBadge(m) {
+  const v = m.votes;
+  if (m.promoted) return h("span", { class: "vb up", title: "Analiz bu tabloyu yakın aday saymıştı; kullanıcılar bu soru için doğruladı" }, "↑ Kullanıcı onayıyla eklendi");
+  if (!v || !(v.up || v.down)) return null;
+  const why = v.reasons.length ? "\nGerekçeler: " + v.reasons.join(" · ") : "";
+  const moved = m.score_before != null && Math.round(m.score_before * 100) !== Math.round(m.score * 100)
+    ? `\nGüven, oylarla %${pct(m.score_before)} → %${pct(m.score)}` : "";
+  const [cls, text] = {
+    approved: ["up", `✓ ${people(v.up)} doğruladı`],
+    rejected: ["down", `✕ ${people(v.down)} uygun bulmadı`],
+    doubted: ["warn", `⚠ ${people(v.down)} uygun bulmadı`],
+    disputed: ["mix", `Görüşler karışık · ${v.up} 👍 ${v.down} 👎`],
+  }[v.status] || ["mix", `${v.up} 👍 ${v.down} 👎`];
+  return h("span", { class: "vb " + cls, title: `Bu soruda (ya da aynı anlamdaki sorularda) kullanıcı oyları: ${v.up} 👍, ${v.down} 👎${why}${moved}` }, text);
+}
+// "İşinize yarar mı?": a vote is sent at once; a 👎 then offers a reason (optional).
+function voteBar(r, { label, mine, send, onSent }) {
+  const box = h("div", { class: "fb" });
+  const reasons = h("div", { class: "fb-why hidden" });
+  const msg = h("span", { class: "fb-msg", role: "status" });
+  const btn = (vote, text) => h("button", { class: "fb-btn " + vote, type: "button", "aria-pressed": String(mine === vote),
+    onclick: () => cast(vote) }, text);
+  const up = btn("up", "👍 Evet"), down = btn("down", "👎 Hayır");
+  async function cast(vote, note = "") {
+    up.setAttribute("aria-pressed", String(vote === "up")); down.setAttribute("aria-pressed", String(vote === "down"));
+    try {
+      const res = await send(vote, note);
+      msg.textContent = note ? "Gerekçe kaydedildi, teşekkürler." : vote === "up" ? "Teşekkürler." : "";
+      if (onSent) onSent(res, vote);
+    } catch (e) { msg.textContent = "Kaydedilemedi: " + e.message; }
+    reasons.classList.toggle("hidden", vote !== "down" || !!note);
+    if (vote === "down" && !note) reasons.querySelector("input").focus();
+  }
+  const input = h("input", { type: "text", maxlength: "300", placeholder: "Neden? (isteğe bağlı)", "aria-label": "Gerekçe",
+    onkeydown: e => { if (e.key === "Enter") { e.preventDefault(); cast("down", input.value.trim() || "—"); } } });
+  put(reasons,
+    REASONS.map(t => h("button", { class: "fb-chip", type: "button", onclick: () => cast("down", t) }, t)),
+    h("span", { class: "fb-note" }, input,
+      h("button", { class: "fb-send", type: "button", onclick: () => input.value.trim() && cast("down", input.value.trim()) }, "Gönder")));
+  put(box, h("span", { class: "fb-q" }, label), up, down, msg, reasons);
+  return box;
+}
+function tableVote(r, m) {
+  return voteBar(r, { label: "İşinize yarar mı?", mine: ((r.feedback || {}).mine || {})[m.key] || "",
+    send: (vote, note) => sendVote(r, { object: m.key, vote, note, rank: m.rank, score: m.score }) });
+}
+
+// Confidence as a ring: the arc is the score, its colour the level (the number and the
+// level's name are written too: never colour alone).
+function ring(m) {
+  const R = 22, C = 2 * Math.PI * R, p = Math.max(0, Math.min(1, m.score || 0));
+  const before = m.score_before != null && Math.round(m.score_before * 100) !== Math.round(m.score * 100)
+    ? ` (oylardan önce %${pct(m.score_before)})` : "";
+  return h("div", { class: "ring lc-" + m.level, role: "img", "aria-label": `Güven %${pct(m.score)}, ${m.level}`, title: `Güven skoru %${pct(m.score)}${before}` },
+    svg(`<svg viewBox="0 0 52 52" width="52" height="52" aria-hidden="true"><circle cx="26" cy="26" r="${R}" class="ring-track"/><circle cx="26" cy="26" r="${R}" class="ring-arc" stroke-dasharray="0 ${C.toFixed(1)}" data-to="${(C * p).toFixed(1)}" transform="rotate(-90 26 26)"/></svg>`),
+    h("b", {}, pct(m.score)), h("span", {}, m.level));
+}
+// The arcs grow once the cards are on the page.
+function growRings(rootEl) {
+  requestAnimationFrame(() => requestAnimationFrame(() => rootEl.querySelectorAll(".ring-arc[data-to]").forEach(a => {
+    const c = a.getAttribute("stroke-dasharray").split(" ")[1];
+    a.setAttribute("stroke-dasharray", `${a.dataset.to} ${c}`);
+  })));
+}
+const cardId = m => "res-" + m.key.replace(/[^A-Za-z0-9_-]/g, "_");
+// A link to a suggestion (ranking, matrix, a name in the prose) opens its row and brings
+// it into view; the rest of the list stays put.
+function jumpTo(m) {
+  const el = document.getElementById(cardId(m)); if (!el) return;
+  if (el.openPick) el.openPick(true);
+  const from = scrollY;
+  el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "nearest" });
+  // Some browsers drop a smooth scroll (busy page, background tab): then jump.
+  setTimeout(() => { const r = el.getBoundingClientRect(); if (scrollY === from && (r.top < 90 || r.top > innerHeight - 60)) el.scrollIntoView({ block: "start" }); }, 250);
+  el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+}
+
+// A result shows what the reader needs to decide: table, confidence, why, caveats, columns.
+// Concept coverage, score components and usage wait behind "Ayrıntılar".
+// Long prose shows its first lines; a click (or Enter) opens the rest. Only when cut.
+function clamp(el) {
+  el.classList.add("clamp");
+  const toggle = e => {
+    if (e.target.closest("a, button")) return;  // a table chip leads to its card
+    if (!el.classList.contains("open") && el.scrollHeight <= el.clientHeight + 1) return;
+    el.classList.toggle("open");
+  };
+  el.addEventListener("click", toggle);
+  return el;
+}
+// A suggestion is one row: rank, table name, confidence. A click opens what used to be
+// its card (why, warnings, columns, details, vote) under the row; one row open at a time,
+// so the first five suggestions stay on one screen.
+// Opens the table's every column in the same panel the universe uses for a star.
+function colsButton(m) {
+  const ic = svg('<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h16M4 20h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>');
+  return h("button", { class: "res-cols", type: "button", title: `${m.key} — sözlükteki tüm kolonlarını aç`,
+    onclick: e => { e.stopPropagation(); Dossier.open(m.key); } }, ic, "Kolonlar");
+}
+function resultCard(m, r, opts = {}) {
+  const rich = opts.rich || richOf(r);
+  const covered = new Set(m.covered), longv = new Set(m.long_format);
+  const concepts = [...m.covered, ...m.missing].map(c =>
+    h("span", { class: "chip " + (longv.has(c) ? "long" : covered.has(c) ? "on" : "off"), title: longv.has(c) ? `${m.dimension} değerleri üzerinden (uzun format)` : covered.has(c) ? "Karşılanıyor" : "Karşılanmıyor" }, c));
+  const before = m.score_before != null && Math.round(m.score_before * 100) !== Math.round(m.score * 100)
+    ? ` · oylardan önce %${pct(m.score_before)}` : "";
+  const v = m.votes, mark = m.promoted ? h("i", { class: "pk-mark up", title: "Kullanıcı onayıyla eklendi" }, "↑")
+    : v && v.status === "approved" ? h("i", { class: "pk-mark up", title: `${people(v.up)} doğruladı` }, "✓")
+    : v && (v.status === "rejected" || v.status === "doubted") ? h("i", { class: "pk-mark down", title: `${people(v.down)} uygun bulmadı` }, "!") : null;
+  const body = h("div", { class: "pick-body", id: opts.aside ? null : cardId(m) + "-body" },
+    h("div", { class: "res-path" }, h("code", {}, `${m.database}.${m.schema}`), m.groups.length ? " · " + m.groups.join(", ") : null, " ", voteBadge(m),
+      colsButton(m)),
+    m.covers ? h("div", { class: "res-covers" }, m.covers) : null,
+    clamp(h("p", { class: "res-reason" }, rich(m.reason))),
+    m.caveat.length ? h("div", { class: "res-warn" }, m.caveat.map(c => clamp(h("div", {}, h("span", { class: "res-warn-i", "aria-hidden": "true" }, "⚠ "), rich(c))))) : null,
+    ...columnChips(m),
+    h("div", { class: "res-foot" },
+      h("details", {}, h("summary", {}, "Ayrıntılar"),
+        m.usage ? h("div", { class: "usage res-usage" }, h("span", { class: "res-use-i", "aria-hidden": "true" }, "→"), h("span", {}, rich(m.usage))) : null,
+        concepts.length ? h("div", { class: "chips" }, concepts) : null,
+        bars(m)),
+      tableVote(r, m)));
+  const row = h("button", { class: "pick-row", type: "button", "aria-expanded": "false", "aria-controls": body.id,
+      title: `${m.key} · güven %${pct(m.score)} (${m.level})${before}` },
+    h("span", { class: "pk-n" }, !opts.aside && m.rank ? m.rank : "·"),
+    h("span", { class: "pk-name" }, m.name, mark),
+    h("span", { class: "pk-bar", "aria-hidden": "true" }, h("i", { style: `--w:${pct(m.score)}%` })),
+    h("span", { class: "pk-pct" }, "%" + pct(m.score)),
+    h("span", { class: "pk-lv" }, m.level),
+    h("span", { class: "pk-chev", "aria-hidden": "true" }, "▸"));
+  const el = h("article", { class: `pick lc-${m.level}` + (opts.dim ? " dim" : ""), id: opts.aside ? null : cardId(m), style: `--i:${m.rank || 0}` }, row, body);
+  el.openPick = open => {
+    if (open) for (const s of el.parentElement ? el.parentElement.children : []) if (s !== el && s.openPick && s.classList.contains("open")) s.openPick(false);
+    el.classList.toggle("open", open); row.setAttribute("aria-expanded", String(open));
+  };
+  row.onclick = () => el.openPick(!el.classList.contains("open"));
+  return el;
+}
+
+// ---------------------------------------------------------------- "Bir bakışta"
+// The answer at a glance: which table covers which part of the request (the matrix in
+// the side column). A row leads to its suggestion.
+function answerConcepts(objs) {
+  const concepts = [];
+  for (const m of objs) for (const c of [...m.covered, ...m.missing]) if (!concepts.includes(c)) concepts.push(c);
+  return concepts;
+}
+function overview(r) {
+  const objs = r.objects;
+  if (!objs.length) return null;
+  const concepts = answerConcepts(objs);
+  const SHOWN = 8, cols = concepts.slice(0, SHOWN);
+  const CELL = { on: ["●", "karşılıyor"], long: ["◐", "değerleri üzerinden karşılıyor"], off: ["○", "karşılamıyor"] };
+  const matrix = cols.length ? h("div", { class: "ov-mx-wrap" },
+    h("table", { class: "ov-mx" },
+      h("thead", {}, h("tr", {}, h("th", { scope: "col" }, h("span", { class: "sr" }, "Tablo")),
+        cols.map(c => h("th", { scope: "col", title: c }, h("span", {}, c))))),
+      h("tbody", {}, objs.map(m => h("tr", {},
+        h("th", { scope: "row" }, h("button", { type: "button", onclick: () => jumpTo(m), title: m.name }, h("span", { class: "ov-n" }, m.rank), m.name)),
+        cols.map(c => {
+          const k = m.long_format.includes(c) ? "long" : m.covered.includes(c) ? "on" : "off";
+          return h("td", { class: "cv-" + k, title: `${m.name} — ${c}: ${CELL[k][1]}` }, h("span", { "aria-label": CELL[k][1] }, CELL[k][0]));
+        }))))),
+    h("div", { class: "ov-legend" }, h("span", {}, h("i", { class: "cv-on" }, "●"), " karşılıyor"),
+      h("span", {}, h("i", { class: "cv-long" }, "◐"), " değerleri üzerinden"), h("span", {}, h("i", { class: "cv-off" }, "○"), " karşılamıyor"),
+      concepts.length > SHOWN ? h("span", { class: "faint" }, `+${concepts.length - SHOWN} kavram Ayrıntılar'da`) : null)) : null;
+  return matrix ? [sideCard("Hangi tablo neyi karşılıyor", "matrix", matrix)] : [];
+}
+// The headline is the find itself: the verdict in two words, the best table large, the
+// others one line each with what they cover. Every row leads to its card.
+const VERDICT_WORD = { "VAR": ["✓", "Bulundu"], "KISMEN VAR": ["◐", "Kısmen bulundu"], "BULUNAMADI": ["✕", "Bulunamadı"] };
+function foundBlock(r) {
+  const [icon, word] = VERDICT_WORD[r.verdict] || ["", r.verdict];
+  const objs = r.objects, best = objs[0];
+  const verdict = h("div", { class: "ans-verdict" },
+    h("span", { class: "av-icon", "aria-hidden": "true" }, icon), h("span", { class: "av-word" }, word),
+    r.missing && r.missing.length ? h("span", { class: "av-miss", title: "Talebin bu cevapta karşılanmayan kısmı" }, "eksik: " + r.missing.join(", ")) : null,
+    h("span", { class: "av-for" }, objs.length ? `${objs.length} tablo önerildi` : "eşik üstünde tablo yok"));
+  if (!best) return [verdict];
+  const ok = m => m.votes && m.votes.status === "approved" ? h("i", { class: "ov-ok", title: "Kullanıcılar doğruladı" }, "✓") : m.promoted ? h("i", { class: "ov-ok", title: "Kullanıcı onayıyla eklendi" }, "↑") : null;
+  const top = h("button", { class: "ans-best lc-" + best.level, type: "button", onclick: () => jumpTo(best), title: `${best.key} — ayrıntıyı aç` },
+    ring(best),
+    h("span", { class: "ab-text" },
+      h("span", { class: "ab-k" }, "En iyi eşleşme"),
+      h("span", { class: "ab-name" }, breakable(best.name), ok(best)),
+      best.covers ? h("span", { class: "ab-covers" }, best.covers) : null,
+      h("span", { class: "ab-path" }, `${best.database}.${best.schema}` + (best.groups.length ? " · " + best.groups[0] : ""))));
+  const rest = objs.slice(1);
+  const also = rest.length ? h("ol", { class: "ans-also", start: 2 }, rest.map(m => h("li", {},
+    h("button", { class: "aa-row lc-" + m.level, type: "button", onclick: () => jumpTo(m), title: `${m.key} · güven %${pct(m.score)} (${m.level}) — ayrıntıyı aç` },
+      h("span", { class: "aa-n" }, m.rank),
+      h("span", { class: "aa-name" }, m.name, ok(m)),
+      h("span", { class: "aa-covers" }, m.covers || ""),
+      h("span", { class: "aa-pct" }, "%" + pct(m.score)))))) : null;
+  return [verdict, top, also];
+}
+// Guide cards fold: the coverage matrix starts open, the prose ones closed with a count,
+// so the side column fits next to the list.
+function sideCard(title, cls, ...body) {
+  const n = cls === "matrix" ? 0 : body.reduce((k, b) => k + (b && b.children ? b.children.length : 0), 0);
+  return h("details", { class: "side-card " + cls, open: cls === "matrix" },
+    h("summary", { class: "side-h" }, title, n ? h("span", { class: "side-n" }, n) : null), ...body);
+}
+
+// Table and column names inside the analyst's prose, made light to read: a table is a
+// chip with its short name (the full key on hover) that leads to its card, or to its
+// dossier when it is not among the suggestions; a CamelCase column name is set in mono.
+const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function richOf(r) {
+  const known = new Map();
+  for (const m of [...r.objects, ...(r.near || []), ...(r.rejected || [])]) { if (!known.has(m.key)) known.set(m.key, m); if (!known.has(m.name)) known.set(m.name, m); }
+  const names = [...new Set([...known.keys()].filter(k => !k.includes(".")))].sort((a, b) => b.length - a.length).map(reEsc);
+  const re = new RegExp(String.raw`\b(?:[A-Za-z]\w*\.[A-Za-z]\w*\.\w+` + (names.length ? "|" + names.join("|") : "") +
+    String.raw`|[A-Z][a-z0-9]+(?:[A-Z]+[a-z0-9]*)+)\b`, "g");
+  const cards = new Set(r.objects.map(m => m.key));
+  return text => {
+    if (!text) return [];
+    const out = []; let at = 0;
+    for (const hit of text.matchAll(re)) {
+      const w = hit[0], i = hit.index;
+      if (i > at) out.push(text.slice(at, i));
+      at = i + w.length;
+      const full = w.split(".").length === 3, m = known.get(w);
+      if (!full && !m) { out.push(h("code", { class: "cn" }, w)); continue; }  // a column name
+      const key = m ? m.key : w, name = m ? m.name : w.split(".").pop();
+      const go = m && cards.has(m.key) ? () => jumpTo(m) : Cosmos.node(key) ? () => Dossier.open(key) : null;
+      out.push(go ? h("button", { class: "tn", type: "button", title: key + (m && cards.has(m.key) ? " — ayrıntıyı aç" : " — sözlükte aç"), onclick: go }, breakable(name))
+        : h("span", { class: "tn", title: key }, breakable(name)));
+    }
+    if (at < text.length) out.push(text.slice(at));
+    return out;
+  };
+}
+// A note's scope, as a tone: warnings amber, scope limits blue, derivations violet.
+const NOTE_TONE = { "Uyarı": "t-warn", "Veri kalitesi": "t-warn", "Kapsam": "t-scope", "Netleştirme": "t-ask", "Türetme": "t-derive", "Top 5 dışı": "t-near", "Yakın aday": "t-near" };
+// The summary as a headline (its first sentence) and a lead (the rest).
+function splitSummary(s) {
+  s = s.replace(/^(KISMEN VAR|VAR|BULUNAMADI)\s*[.—–-]\s*/, "").replace(/^[A-ZÇĞİÖŞÜ ]+ — /, "").trim();
+  const cut = s.search(/[.!?]\s+(?=[A-ZÇĞİÖŞÜ"“'])/);
+  return cut > 30 ? [s.slice(0, cut + 1), s.slice(cut + 1).trim()] : [s, ""];
+}
+
+// Tables people rejected for this question (not hidden: shown apart, with the reasons)
+// and tables they approved that this answer does not hold.
+function crowdSections(r) {
+  const rej = r.rejected || [], end = r.endorsed || [];
+  return [
+    end.length ? h("section", { class: "guide crowd" }, h("div", { class: "label" }, "Kullanıcıların bu soru için doğruladığı diğer tablolar"),
+      h("div", { class: "crowd-list" }, end.map(e => h("button", { class: "crowd-item", type: "button", onclick: () => Dossier.open(e.key), title: "Sözlükteki kolonlarını aç" },
+        h("b", {}, breakable(e.name)), h("span", {}, e.schema), h("span", { class: "vb up" }, `✓ ${people(e.votes.up)}`))))) : null,
+    rej.length ? h("details", { class: "ask-more" }, h("summary", {}, `Kullanıcıların uygun bulmadığı tablolar (${rej.length})`),
+      h("div", { class: "inner" }, h("p", { class: "faint" }, "Analiz bu tabloları önerdi ama birden fazla kullanıcı bu soru için uygun bulmadı; öneriler arasından çıkarıldı."),
+        h("div", { class: "pick-list" }, rej.map(m => resultCard(m, r, { aside: true, dim: true }))))) : null,
+  ];
+}
+
+// "Bu cevap işinize yaradı mı?" — enough 👎 retire a kept answer (ADR-035/036).
+function answerVote(r) {
+  const fb = r.feedback || {}, a = fb.answer || { up: 0, down: 0 };
+  const past = a.up + a.down ? h("div", { class: "faint" }, `Bu cevabı ${people(a.up + a.down)} değerlendirdi: ${a.up} faydalı, ${a.down} yetersiz buldu.`) : null;
+  const after = h("div", { class: "fb-after", role: "status" });
+  return h("section", { class: "answer-fb" },
+    h("div", {}, h("b", {}, "Bu cevap işinize yaradı mı?"), past),
+    voteBar(r, { label: "", mine: (fb.mine || {})[""] || "", send: (vote, note) => sendVote(r, { scope: "answer", vote, note }),
+      onSent: (res, vote) => after.textContent = res.forgotten
+        ? "Bu cevabı birden fazla kişi yetersiz buldu: kayıtlı cevap silindi, bu soru bir dahaki sefere yeniden analiz edilecek."
+        : vote === "down" ? "Not alındı. Tablo kartlarındaki 👍/👎 hangi önerinin yanlış olduğunu da gösterir." : "" }),
+    after);
+}
+
+function renderAsk(r) {
+  put($("#ask-out"), answerView(r));
+  growRings($("#ask-out"));
+  document.documentElement.classList.add("has-results");
+  Cosmos.focus(r.objects.map(o => ({ key: o.key, name: o.name, score: o.score })), r.query);
+}
+
+function ruleNote(r) {
+  const why = r.fallback ? r.fallback.replace(/\.?$/, ".") : "Sohbet modeli bağlı değil.";
+  return `Analiz yapılamadı: ${why} Cevabı yalnız analist (sohbet modeli) yazar; model çalışınca soruyu yeniden sorun.`;
+}
+
+// The same warning in one line; the full explanation stays in its tooltip.
+function ruleShort(r) {
+  return `Analiz yapılamadı: ${r.fallback || "sohbet modeli bağlı değil"}`;
+}
+function answerView(r) {
+  const concepts = h("div", { class: "chips" }, r.concepts.map(conceptChip),
+    r.expansion.length ? h("span", { class: "chip", title: r.expansion.join(", ") }, "+ " + r.expansion.length + " genişletme terimi") : null);
+  const rich = richOf(r);
+  const meta = `${(r.elapsed_ms / 1000).toFixed(1)} sn · sözlük ${r.dictionary_version}` + (r.llm_model ? ` · LLM ${r.llm_model}` : "");
+  const [title, lead] = splitSummary(r.summary);
+  // The side column: how to put the tables together, what to watch, the analyst's notes.
+  const plan = r.design && r.design.length ? sideCard("Önerilen kurgu", "plan",
+    h("ol", { class: "steps" }, r.design.map(x => h("li", {}, rich(x))))) : null;
+  const watch = r.attention && r.attention.length ? sideCard("Dikkat edilmesi gerekenler", "warn",
+    h("ul", { class: "watch" }, r.attention.map(x => h("li", {}, rich(x))))) : null;
+  const notes = r.analyst && r.notes.length ? sideCard("Notlar ve öneriler", "notes",
+    h("ul", { class: "note-list" }, r.notes.map(n => h("li", { class: "nt " + (NOTE_TONE[n.scope] || "") },
+      h("details", {}, h("summary", {}, h("span", { class: "nt-tag" }, n.scope), h("b", {}, rich(n.title))), h("div", {}, rich(n.text))))))) : null;
+  const glance = overview(r) || [];
+  const side = [...glance, plan, watch, notes].filter(Boolean);
+  const main = [
+    r.objects.length ? h("div", { class: "pick-list" }, r.objects.map(m => resultCard(m, r, { rich }))) : null,
+    !r.objects.length ? h("div", { class: "empty" }, "Sözlükte bu talebin doğrudan karşılığı bulunamadı. Talebi farklı ifadelerle deneyin.") : null,
+    r.near.length ? h("details", { class: "ask-more" }, h("summary", {}, `Yakın adaylar (${r.near.length})`),
+      h("div", { class: "inner pick-list" }, r.near.map(m => resultCard(m, r, { aside: true, rich })))) : null,
+    ...crowdSections(r),
+    r.objects.length || (r.rejected || []).length ? answerVote(r) : null,
+    h("details", { class: "ask-more" }, h("summary", {}, "Arama ayrıntıları"),
+      h("div", { class: "inner" },
+        h("div", { class: "label" }, "Talepte anlaşılan kavramlar"), concepts,
+        h("div", { class: "label" }, "Yöntem"), h("ul", { class: "method" }, r.method.map(x => h("li", { class: "muted" }, x))),
+        h("div", { class: "faint" }, meta)))].filter(k => k != null && k !== false);
+  return h("div", { class: "ans " + verdictClass(r.verdict) },
+    h("section", { class: "answer ans-head" },
+      h("div", { class: "answer-top" },
+        h("span", { class: "vbadge" }, r.verdict),
+        r.analyst ? h("span", { class: "src ai", title: "Cevabı dil modeli (analist) yazdı" }, "Analist · " + r.llm_model.split("/").pop())
+          : h("span", { class: "src rule", title: ruleNote(r) }, "Analiz yapılamadı"),
+        r.reused ? h("span", { class: "src reused", title: r.reused.match === "aynı soru"
+          ? `Bu soru ${r.reused.at} tarihinde analiz edildi; kayıtlı cevap gösteriliyor.`
+          : `Aynı anlama gelen “${r.reused.query}” sorusu ${r.reused.at} tarihinde analiz edildi; kayıtlı cevap gösteriliyor.` },
+          "Önceki cevap · " + r.reused.at.slice(0, 10)) : null,
+        h("span", { class: "answer-q", title: r.query }, r.query),
+        r.reused ? h("button", { class: "redo", title: "Kayıtlı cevabı kullanmadan baştan analiz et", onclick: () => { q.value = r.query; ask(true); } }, "↻ Yeniden analiz et") : null,
+        r.report_id ? h("a", { class: "dl", href: "/api/report/" + r.report_id, download: "" }, "⬇ Excel raporu") : null),
+      h("div", { class: "ans-hero" },
+        h("div", { class: "ans-text" },
+          foundBlock(r),
+          h("details", { class: "ans-why" },
+            h("summary", {}, h("span", { class: "aw-k" }, "Analistin özeti"), h("span", { class: "aw-peek" }, title)),
+            h("p", { class: "ans-title" }, rich(title)),
+            lead ? h("p", { class: "ans-lead" }, rich(lead)) : null,
+            r.interpretation ? h("p", { class: "ans-read" }, h("span", { class: "ans-read-k" }, "Talep"), h("span", {}, rich(r.interpretation))) : null),
+          r.analyst ? null : h("div", { class: "answer-fallback", title: ruleNote(r) }, ruleShort(r)),
+          r.reused && (r.feedback || {}).answer_rejected ? h("div", { class: "answer-fallback" }, "Bu kayıtlı cevabı kullanıcılar yetersiz buldu; “Yeniden analiz et” ile güncel bir analiz alın.") : null))),
+    h("div", { class: "ans-grid" + (side.length ? "" : " solo") },
+      h("div", { class: "ans-main" }, main),
+      side.length ? h("aside", { class: "ans-side", "aria-label": "Özet ve kılavuz" },
+        glance.length ? h("div", { class: "side-glance" }, glance) : null,
+        plan || watch || notes ? h("div", { class: "side-guide" }, plan, watch, notes) : null) : null));
+}
+
+// ---------------------------------------------------------------- term list (ADR-033)
+// An Excel list: every term of the first column goes through the question flow on the
+// server, one after the other; the page follows the progress and offers one report.
+const Bulk = (() => {
+  let job = null, timer = null, view = null, top = null, items = null;
+  const open = new Map();  // term index -> its opened answer (kept across redraws)
+  const rows = new Map();  // term index -> { sig, li }: only a row whose state changed is redrawn
+  const file = $("#xl-file");
+  const STATE = { "sırada": ["SIRADA", "wait"], "çalışıyor": ["ARANIYOR", "run"], "hata": ["HATA", "err"], "durduruldu": ["DURDU", "wait"] };
+  const dur = ms => ms >= 60000 ? `${Math.round(ms / 60000)} dk` : `${Math.max(1, Math.round(ms / 1000))} sn`;
+  const shown = () => view && view.isConnected;
+  const pick = () => file.click();
+  $("#xl").onclick = pick;
+  // Drop an Excel list anywhere on the page: the bar lights up and says what will happen.
+  let depth = 0;
+  const hasFile = e => [...(e.dataTransfer?.types || [])].includes("Files");
+  addEventListener("dragenter", e => { if (hasFile(e)) { depth++; root.classList.add("dropping"); } });
+  addEventListener("dragleave", e => { if (hasFile(e) && --depth <= 0) { depth = 0; root.classList.remove("dropping"); } });
+  addEventListener("dragover", e => { if (hasFile(e)) e.preventDefault(); });
+  addEventListener("drop", e => {
+    if (!hasFile(e)) return;
+    e.preventDefault(); depth = 0; root.classList.remove("dropping");
+    const f = e.dataTransfer.files[0];
+    if (f) start(f);
+  });
+  file.onchange = () => { const f = file.files[0]; file.value = ""; if (f) start(f); };
+
+  async function start(f) {
+    if (job && job.running) { show(); return; }
+    Dossier.close(); foldSearch(); q.blur(); scrollTo({ top: 0 });
+    q.value = ""; q.title = ""; open.clear();
+    put($("#ask-out"), h("div", { class: "stopped", role: "status" }, `“${f.name}” okunuyor…`));
+    try {
+      job = await api("/api/list", { method: "POST", headers: { "X-Filename": encodeURIComponent(f.name) }, body: f });
+    } catch (e) { put($("#ask-out"), formatHelp(f.name, e.message)); return; }
+    show(); poll();
+  }
+  // A rejected file: what was wrong, and the one layout that is accepted, as a picture.
+  function formatHelp(name, message) {
+    const row = (n, v, cls = "") => h("tr", {}, h("th", {}, n), h("td", { class: cls }, v), h("td", { class: "off" }, ""));
+    return h("section", { class: "xl-help" },
+      h("div", { class: "error" }, h("b", {}, `“${name}” yüklenemedi. `), message.replace(/ Beklenen biçim:.*$/, "")),
+      h("div", { class: "xl-ex" },
+        h("table", {},
+          h("thead", {}, h("tr", {}, h("th", {}, ""), h("th", {}, "A"), h("th", {}, "B"))),
+          h("tbody", {}, row(1, "Terim", "hd"), row(2, "kredi kartı limit doluluk oranı"), row(3, "sektör bazlı mevduat dağılımı"), row(4, "müşterinin kredi risk skoru"))),
+        h("ul", {},
+          h("li", {}, h("b", {}, "Tek sütun: "), "terimler yalnız A sütununda; diğer sütunlar boş."),
+          h("li", {}, h("b", {}, "İlk satır başlıktır: "), "her zaman başlık sayılır ve aranmaz (ör. “Terim”)."),
+          h("li", {}, h("b", {}, "Her satırda bir terim: "), `boş satırlar ve tekrarlar atlanır; en fazla ${200} terim.`),
+          h("li", {}, h("b", {}, "Yalnız ilk sayfa "), "okunur."))));
+  }
+  function poll() { clearTimeout(timer); if (job && job.running) timer = setTimeout(refresh, 1500); }
+  async function refresh() {
+    try { job = await api("/api/list/" + job.id); } catch { job = null; pill(); return; }
+    if (shown()) render(); pill(); poll();
+  }
+  async function stop(btn) {
+    btn.disabled = true;
+    try { job = await api(`/api/list/${job.id}/cancel`, { method: "POST" }); } catch {}
+    render(); poll();
+  }
+
+  async function resume(btn) {
+    btn.disabled = true;
+    try { job = await api(`/api/list/${job.id}/resume`, { method: "POST" }); }
+    catch (e) { btn.disabled = false; alert(e.message); return; }
+    render(); pill(); poll();
+  }
+
+  function show() {
+    foldSearch();  // the list heads the page like an answer does
+    top = h("div");
+    items = h("ol", { class: "list-items" });
+    view = h("section", { class: "list" }, top, items);
+    rows.clear();
+    put($("#ask-out"), view);
+    document.documentElement.classList.add("has-results");
+    render(); pill();
+  }
+  function render() {
+    if (!job || !view) return;
+    const frac = job.total ? job.done / job.total : 0;
+    const progress = job.running
+      ? `${job.done}/${job.total} terim tamamlandı` + (job.eta_ms ? ` · kalan ≈ ${dur(job.eta_ms)}` : "")
+      : job.cancelled ? `Durduruldu · ${job.done}/${job.total} terim cevaplandı` : `Tamamlandı · ${job.total} terim, ${dur(job.elapsed_ms)}`;
+    put(top,
+      h("div", { class: "list-head" },
+        h("div", { class: "ttl" }, h("h2", {}, job.name), h("div", { class: "sub" }, progress,
+          job.header ? h("span", { class: "faint" }, ` · başlık: “${job.header}”`) : null)),
+        job.running ? h("button", { class: "ghost", onclick: e => stop(e.currentTarget) }, "■ Durdur") : null,
+        !job.running && job.cancelled && job.done < job.total
+          ? h("button", { class: "ghost", title: "Cevaplanan terimler korunur; kalan terimler sırayla aranır",
+              onclick: e => resume(e.currentTarget) }, "▶ Devam et") : null,
+        job.done ? h("a", { class: "ghost", href: `/api/list/${job.id}/report`, download: "" },
+          job.running ? "⬇ Şimdiye kadarki rapor" : "⬇ Excel raporu") : null),
+      h("div", { class: "list-bar" + (job.running ? " live" : "") }, h("i", { style: `width:${Math.max(2, frac * 100)}%` })),
+      job.notes && job.notes.length ? h("div", { class: "list-notes" }, job.notes.map(n => h("div", {}, "ℹ " + n))) : null,
+      ruleCount() ? h("div", { class: "answer-fallback" }, `${ruleCount()} terim analiz edilemedi (model bağlı değil ya da çalışamadı). Model çalışınca bu terimleri yeniden arayın.`) : null);
+    // An opened answer must stay put while the list runs: unchanged rows are not touched.
+    for (const it of job.items) {
+      const sig = JSON.stringify([it.state, it.verdict, it.flow, it.elapsed_ms, it.best, it.summary]);
+      const seen = rows.get(it.index);
+      if (seen && seen.sig === sig) continue;
+      const li = row(it);
+      if (seen) seen.li.replaceWith(li); else items.append(li);
+      rows.set(it.index, { sig, li });
+    }
+  }
+  const ruleCount = () => job.items.filter(i => i.state === "bitti" && i.flow === "yapılamadı").length;
+  function row(it) {
+    const done = it.state === "bitti";
+    const [word, cls] = done ? [it.verdict, ""] : STATE[it.state] || [it.state, "wait"];
+    const best = it.best ? h("span", { class: "li-best" }, it.best.name, " · ",
+      h("b", { class: "lc-" + it.best.level }, `%${pct(it.best.score)}`)) : null;
+    const err = it.state === "hata" ? h("span", { class: "li-best" }, it.summary) : null;
+    const btn = h("button", { class: "li-row", type: "button", "aria-expanded": done ? String(open.has(it.index)) : null,
+      onclick: done ? () => toggle(it, li) : null },
+      h("span", { class: "li-n" }, it.index),
+      h("span", { class: "li-term" }, it.term,
+        done && it.flow === "önbellek" ? h("span", { class: "li-flow reused", title: "Bu terim daha önce analiz edilmişti; kayıtlı cevap kullanıldı" }, "ÖNCEKİ CEVAP")
+          : done && it.flow !== "analist" ? h("span", { class: "li-flow", title: "Bu terim analiz edilemedi (model bağlı değil ya da çalışamadı)" }, "YAPILAMADI") : null,
+        best, done && it.missing && it.missing.length ? h("span", { class: "li-miss" }, "eksik: " + it.missing.join(", ")) : null, err),
+      h("span", { class: `st ${cls} ${done ? verdictClass(it.verdict) : ""}` }, word),
+      h("span", { class: "li-ms" }, it.elapsed_ms ? dur(it.elapsed_ms) : ""));
+    const li = h("li", {}, btn, open.get(it.index) || null);
+    return li;
+  }
+  async function toggle(it, li) {
+    if (open.has(it.index)) { open.get(it.index).remove(); open.delete(it.index); li.firstChild.setAttribute("aria-expanded", "false"); return; }
+    const box = h("div", { class: "li-detail" }, h("p", { class: "faint" }, "Yükleniyor…"));
+    open.set(it.index, box); li.append(box); li.firstChild.setAttribute("aria-expanded", "true");
+    try { put(box, answerView(await api(`/api/list/${job.id}/item/${it.index}?voter=${VOTER}`))); growRings(box); }
+    catch (e) { put(box, h("div", { class: "error" }, e.message)); }
+  }
+
+  // Asking a single question replaces the list on the page; the list goes on and a
+  // pill in the top line leads back to it.
+  function pill() {
+    const el = $("#listpill");
+    if (!job || shown()) { if (el) el.remove(); return; }
+    const text = job.running ? `Liste ${job.done}/${job.total}` : "Liste sonucu";
+    const p = el || h("button", { class: "pill listpill", id: "listpill", type: "button", title: "Toplu aramaya dön", onclick: show });
+    p.replaceChildren(h("i", { class: "dot" + (job.running ? " on" : "") }), text);
+    if (!el) $(".tools").prepend(p);
+  }
+  // Leaving or reloading the page ends a running list: the page is the job's only owner.
+  addEventListener("pagehide", () => {
+    if (job && job.running) navigator.sendBeacon(`/api/list/${job.id}/cancel`);
+  });
+  return { pill };
+})();
+
+// ---------------------------------------------------------------- galaxy (Evren)
+// The warehouse as a galaxy: every table is a star, clustered by dataset group.
+// A search is a voyage: the navigator plots a route through the real candidate
+// tables (fetched LLM-free in ~100 ms), a probe travels it, the route narrows to the
+// finalists while the model reads them, and the probe lands on the answer.
+const Cosmos = (() => {
+  const cv = $("#cosmos"), ctx = cv.getContext("2d"), tip = $("#star-tip");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let W = 0, H = 0, dpr = 1, active = false, raf = 0, loaded = false;
+  let nodes = [], byKey = new Map(), groups = [], dust = [];
+  let rot = 0, t = 0, last = performance.now();
+  let focusList = [], focusAt = 0, hover = null;
+  const mouse = { x: 0.5, y: 0.5, sx: 0.5, sy: 0.5 };
+  // A clicked star: the camera glides it into the free space left of the dossier.
+  let selected = null, selectedAt = 0;
+  const cam = { x: 0, y: 0 };
+
+  // voyage state
+  let mode = "idle", modeAt = 0, readExpected = false, origin = [0, 0];
+  let route = [], routeAt = 0, dist = 0, speed = 0, loop = false, arrived = [], trail = [];
+  let candidates = [], hudSteps = [], reading = null, landedAt = 0;
+  // The radar opens every search: its beam turns RADAR_TURNS times before the voyage
+  // moves on. Candidates and answers that arrive earlier wait for it.
+  const RADAR_SPEED = 1.2, RADAR_TURNS = 1;  // rad/s, full turns
+  const RADAR_MS = RADAR_TURNS * 2 * Math.PI / RADAR_SPEED * 1000;
+  const SHIP_PACE = 0.81;  // every route speed below is scaled by this
+  let pendingCandidates = null, pendingFocus = null, pendingEnd = false;
+
+  const hash = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+  const rnd = seed => () => ((seed = Math.imul(seed ^ (seed >>> 15), 2246822507) ^ Math.imul(seed ^ (seed >>> 13), 3266489909)) >>> 0) / 4294967296;
+  const fmt = n => n.toLocaleString("tr-TR");
+
+  function build(stars) {
+    const byGroup = new Map();
+    for (const s of stars) { if (!byGroup.has(s.group)) byGroup.set(s.group, []); byGroup.get(s.group).push(s); }
+    groups = [...byGroup.entries()].sort((a, b) => b[1].length - a[1].length);
+    const G = groups.length, golden = Math.PI * (3 - Math.sqrt(5));
+    nodes = []; byKey = new Map();
+    groups = groups.map(([name, members], gi) => {
+      const r = 0.1 + 0.82 * Math.sqrt((gi + 0.5) / G), a = gi * golden;
+      const hue = (hash(name) % 360);
+      const g = { name, x: Math.cos(a) * r, y: Math.sin(a) * r, hue, n: members.length, members: [] };
+      const R = rnd(hash(name));
+      members.forEach((m, j) => {
+        const rr = 0.018 + 0.022 * Math.sqrt(j) + R() * 0.012, aa = j * golden + R() * 0.8;
+        const node = { ...m, g, x: g.x + Math.cos(aa) * rr, y: g.y + Math.sin(aa) * rr,
+          z: 0.35 + R() * 0.65, size: 0.9 + Math.sqrt(m.columns) * 0.32, tw: R() * Math.PI * 2, hue, sx: 0, sy: 0 };
+        nodes.push(node); byKey.set(m.key, node); g.members.push(node);
+      });
+      return g;
+    });
+    const R = rnd(7);
+    dust = Array.from({ length: 480 }, () => ({ x: R() * 2 - 1, y: R() * 2 - 1, z: R(), tw: R() * 6.3 }));
+    $("#hud-count").textContent = `${nodes.length} tablo · ${groups.length} küme`;
+    loaded = true;
+  }
+
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = document.documentElement.clientWidth; H = document.documentElement.clientHeight;
+    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function screen(n) {
+    const c = Math.cos(rot * n.z), s = Math.sin(rot * n.z);
+    const x = n.x * c - n.y * s, y = n.x * s + n.y * c;
+    const px = (mouse.sx - 0.5) * 60 * n.z, py = (mouse.sy - 0.5) * 40 * n.z;
+    return [W / 2 + x * W * 0.47 + px + cam.x, H / 2 + y * H * 0.46 + py + cam.y];
+  }
+
+  // The voyage starts under the visible search field.
+  function searchOrigin() {
+    const r = searchbox.getBoundingClientRect();
+    return r.width ? [r.left + r.width / 2, Math.min(H - 40, r.bottom + 8)] : [W / 2, 140];
+  }
+  const P = p => (p.n ? [p.n.sx, p.n.sy] : p.xy);
+
+  // --------------------------------------------------------------- route geometry
+  function tour(from, list) {  // nearest-neighbour ordering: a short, readable path
+    const rest = [...list], out = [];
+    let [cx, cy] = from;
+    while (rest.length) {
+      let bi = 0, bd = Infinity;
+      rest.forEach((n, i) => { const d = (n.sx - cx) ** 2 + (n.sy - cy) ** 2; if (d < bd) { bd = d; bi = i; } });
+      const n = rest.splice(bi, 1)[0]; out.push(n); cx = n.sx; cy = n.sy;
+    }
+    return out;
+  }
+  function setRoute(points, pxPerSec, closed = false) {
+    route = points; dist = 0; lastAlong = 0; speed = pxPerSec * SHIP_PACE; loop = closed; routeAt = t; arrived = points.map(() => 0);
+  }
+  function lengths() {
+    const pts = route.map(P); if (loop && pts.length > 1) pts.push(pts[1]);
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+    return { pts, cum, total: cum[cum.length - 1] };
+  }
+  function at(pts, cum, d) {
+    let i = 1; while (i < cum.length - 1 && cum[i] < d) i++;
+    const seg = cum[i] - cum[i - 1] || 1, k = Math.max(0, Math.min(1, (d - cum[i - 1]) / seg));
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    return [x0 + (x1 - x0) * k, y0 + (y1 - y0) * k, Math.atan2(y1 - y0, x1 - x0)];
+  }
+  // Distance along the route; a closed loop circles the finalists (index 1 onwards)
+  // and never returns to the starting point.
+  function along(cum, total) {
+    if (!loop || dist <= cum[1]) return Math.min(dist, total);
+    return cum[1] + (dist - cum[1]) % Math.max(1, total - cum[1]);
+  }
+  let lastAlong = 0;
+  function shipPos() {
+    if (!route.length) return origin;
+    const { pts, cum, total } = lengths();
+    if (pts.length < 2) return pts[0];
+    const [x, y] = at(pts, cum, along(cum, total)); return [x, y];
+  }
+  function hud(step, replaceLast = false) {
+    if (replaceLast) hudSteps.pop();
+    if (step) hudSteps.push(step);
+    const shown = hudSteps.slice(-4);  // the voyage log: latest steps only
+    $("#hud-focus").textContent = (hudSteps.length > shown.length ? "…  →  " : "") + shown.join("  →  ");
+  }
+
+  // --------------------------------------------------------------- frame loop
+  // The chat model shares the (integrated) GPU with the browser: keep the sky light.
+  function frame(now) {
+    if (active) raf = requestAnimationFrame(frame);
+    const budget = mode === "read" || mode === "wait" ? 50 : 33;
+    if (now - last < budget) return;
+    // Real time, so the voyage keeps pace even when frames are sparse (busy GPU);
+    // capped only to avoid a jump after the tab was in the background.
+    const dt = Math.min(1000, now - last); last = now; t += dt;
+    const cruising = mode === "idle" || mode === "done";
+    if (!reduce && cruising) rot += dt * 0.000018;
+    mouse.sx += (mouse.x - mouse.sx) * 0.05; mouse.sy += (mouse.y - mouse.sy) * 0.05;
+    steer(dt);
+    step(dt);
+    draw();
+  }
+
+  function steer(dt) {
+    const panel = $("#dossier").offsetWidth;
+    let tx = 0, ty = 0;
+    if (selected && W - panel > 320) {  // phones: the dossier covers the sky, no need to move it
+      const [x, y] = screen(selected);
+      tx = cam.x + ((W - panel - 12) / 2 - x); ty = cam.y + (H / 2 - y);
+    }
+    const k = reduce ? 1 : 1 - Math.pow(0.94, dt / 16);
+    cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k;
+  }
+
+  function step(dt) {
+    if (mode === "plan" && t - modeAt >= RADAR_MS) radarDone();
+    if (!route.length || !["travel", "read", "final"].includes(mode)) return;
+    if (t - routeAt < (mode === "final" ? 150 : 500)) return;  // the route is drawn first
+    const { cum, total } = lengths();
+    dist += speed * dt / 1000;
+    const d = along(cum, total);
+    if (d < lastAlong) arrived.fill(0);  // a new lap around the finalists
+    lastAlong = d;
+    for (let k = 1; k < route.length; k++) if (!arrived[k] && d >= cum[k] - 0.5) arrived[k] = t;
+    if (mode === "read") {
+      const idx = Math.max(1, cum.findIndex(c => c > d) - 1);
+      const n = route[Math.min(idx, route.length - 1)].n;
+      if (n && n !== reading) { reading = n; hud(`okunuyor: ${n.name}`, hudSteps.at(-1)?.startsWith("okunuyor")); }
+    }
+    if (!loop && dist >= total) {
+      if (mode === "travel") readExpected ? startReading() : (mode = "wait", modeAt = t);
+      else if (mode === "final") { mode = "done"; landedAt = t; }
+    }
+  }
+
+  function radarDone() {
+    const f = pendingFocus, c = pendingCandidates, stop = pendingEnd;
+    pendingFocus = pendingCandidates = null; pendingEnd = false;
+    if (f) { if (c) showCandidates(c); showFocus(...f); }
+    else if (stop) { mode = "idle"; route = []; }
+    else if (c) showCandidates(c);
+    else patrol();
+  }
+
+  function patrol() {  // no candidate list yet: sweep the biggest clusters
+    const stops = groups.slice(0, 9).map(g => g.members[0]).filter(Boolean);
+    setRoute([{ xy: origin }, ...tour(origin, stops).map(n => ({ n }))], 260);
+    mode = "travel"; modeAt = t;
+    hud("veri kümeleri taranıyor");
+  }
+
+  function startReading() {
+    const fin = candidates.slice(0, STATUS && STATUS.shortlist || 8).map(c => byKey.get(c.key)).filter(Boolean);
+    if (fin.length < 2) { mode = "wait"; modeAt = t; return; }
+    const here = shipPos();
+    setRoute([{ xy: here }, ...tour(here, fin).map(n => ({ n }))], 170, true);
+    mode = "read"; modeAt = t; reading = null;
+    hud(`${fin.length} finalist`); hud("model okuyor");
+  }
+
+  // --------------------------------------------------------------- drawing
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    const cx = W / 2, cy = H / 2;
+    for (const d of dust) {
+      const a = 0.25 + 0.35 * Math.sin(t * 0.002 + d.tw);
+      ctx.fillStyle = `rgba(200,215,255,${a * (0.3 + d.z * 0.5)})`;
+      ctx.fillRect(cx + d.x * W * 0.6, cy + d.y * H * 0.6, 1, 1);
+    }
+    if (!loaded) return;
+    const voyage = mode !== "idle";
+    const onRoute = new Set(route.map(p => p.n).filter(Boolean));
+    const dim = voyage && mode !== "done" ? 0.3 : focusList.length ? 0.45 : 1;
+
+    ctx.lineWidth = 0.5;
+    for (const n of nodes) {
+      const [x, y] = screen(n), [gx, gy] = screen({ x: n.g.x, y: n.g.y, z: n.z });
+      ctx.strokeStyle = `hsla(${n.hue},80%,70%,${0.05 * dim})`;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(gx, gy); ctx.stroke();
+    }
+    for (const n of nodes) {
+      const [x, y] = screen(n); n.sx = x; n.sy = y;
+      const tw = 0.65 + 0.35 * Math.sin(t * 0.0022 + n.tw), r = n.size * (0.6 + n.z * 0.7);
+      const kin = !selected || n.g === selected.g ? 1 : 0.4;
+      const a = (0.35 + 0.55 * n.z) * tw * (onRoute.has(n) ? 1 : dim) * kin;
+      ctx.fillStyle = `hsla(${n.hue},90%,${72 + n.z * 18}%,${a})`;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+    }
+    if (mode === "plan") drawPlanning();
+    if (route.length > 1 && mode !== "idle") drawRoute();
+    drawFocus();
+    if (selected) drawSelected();
+    if (hover && hover !== selected) ring(hover.sx, hover.sy, 10, "rgba(255,255,255,.8)", 1.2);
+  }
+
+  function drawSelected() {  // constellation of its cluster + a turning reticle
+    const n = selected, x = n.sx, y = n.sy, age = (t - selectedAt) / 1000, grow = Math.min(1, age * 2.5);
+    ctx.lineWidth = 0.8;
+    for (const m of n.g.members) {
+      if (m === n) continue;
+      ctx.strokeStyle = `hsla(${n.hue},90%,75%,${0.16 * grow})`;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (m.sx - x) * grow, y + (m.sy - y) * grow); ctx.stroke();
+      ctx.fillStyle = `hsla(${n.hue},95%,85%,${0.8 * grow})`; ctx.beginPath(); ctx.arc(m.sx, m.sy, 1.6, 0, 6.2832); ctx.fill();
+    }
+    glow(x, y, 40 * grow, `hsla(${n.hue},95%,68%,.4)`);
+    const r = 15 + 14 * (1 - grow), spin = t * 0.0011;
+    ctx.strokeStyle = `hsla(${n.hue},95%,82%,${0.95 * grow})`; ctx.lineWidth = 1.6;
+    for (let k = 0; k < 4; k++) { const a0 = spin + k * Math.PI / 2 + 0.22; ctx.beginPath(); ctx.arc(x, y, r, a0, a0 + Math.PI / 2 - 0.44); ctx.stroke(); }
+    ctx.strokeStyle = `hsla(${n.hue},95%,82%,${0.35 * grow})`; ctx.lineWidth = 1;
+    for (let k = 0; k < 4; k++) {  // crosshair ticks
+      const a = k * Math.PI / 2; ctx.beginPath();
+      ctx.moveTo(x + Math.cos(a) * (r + 5), y + Math.sin(a) * (r + 5)); ctx.lineTo(x + Math.cos(a) * (r + 12), y + Math.sin(a) * (r + 12)); ctx.stroke();
+    }
+    const p = (age * 0.45) % 1;
+    ring(x, y, r + p * 46, `hsla(${n.hue},95%,75%,${0.45 * (1 - p)})`, 1);
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(x, y, 3, 0, 6.2832); ctx.fill();
+    label(x + 8, y - 6, n.name, "", grow);
+  }
+
+  function drawPlanning() {  // radar pings out of the search field while the route is computed
+    const [ox, oy] = origin, age = (t - modeAt) / 1000;
+    for (let k = 0; k < 3; k++) {
+      const p = (age * 0.45 + k / 3) % 1;
+      ring(ox, oy, 10 + p * Math.max(W, H) * 0.45, `rgba(124,244,255,${0.35 * (1 - p)})`, 1.2);
+    }
+    const sweep = age * RADAR_SPEED;
+    const g = ctx.createConicGradient ? ctx.createConicGradient(sweep, ox, oy) : null;
+    if (g) {
+      g.addColorStop(0, "rgba(124,244,255,.09)"); g.addColorStop(0.035, "rgba(124,244,255,0)"); g.addColorStop(1, "rgba(124,244,255,0)");
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ox, oy, Math.max(W, H), 0, 6.2832); ctx.fill();
+    }
+    drawShip(ox, oy, -Math.PI / 2, 1);
+  }
+
+  function drawRoute() {
+    const { pts, cum, total } = lengths();
+    const reveal = Math.min(1, (t - routeAt) / (mode === "final" ? 300 : 700));
+    const planned = total * reveal;
+    const d = along(cum, total);
+    // planned path ahead (dashed, drawn out progressively)
+    ctx.setLineDash([5, 9]); ctx.lineDashOffset = -t * 0.04;
+    ctx.strokeStyle = mode === "read" ? "rgba(255,93,214,.45)" : "rgba(124,244,255,.4)"; ctx.lineWidth = 1.2;
+    polyline(pts, cum, loop ? 0 : d, planned);
+    ctx.setLineDash([]);
+    // travelled path (solid, glowing)
+    if (!loop) {
+      ctx.strokeStyle = "rgba(124,244,255,.18)"; ctx.lineWidth = 6; polyline(pts, cum, 0, d);
+      ctx.strokeStyle = "rgba(190,250,255,.9)"; ctx.lineWidth = 1.6; polyline(pts, cum, 0, d);
+    }
+    // waypoints
+    route.forEach((p, k) => {
+      if (k === 0 || !p.n) return;
+      const [x, y] = P(p), c = candidates.find(c => c.key === p.n.key) || focusList.find(f => f.key === p.n.key);
+      const since = arrived[k] ? (t - arrived[k]) / 1000 : -1;
+      if (since >= 0 && since < 1.2) ring(x, y, 6 + since * 34, `rgba(124,244,255,${0.8 * (1 - since / 1.2)})`, 1.5);
+      ring(x, y, since >= 0 ? 6 : 4, since >= 0 ? "rgba(255,255,255,.85)" : "rgba(124,244,255,.5)", 1.2);
+      const show = mode === "read" ? p.n === reading : since >= 0 && since < 2.2 && mode !== "final";
+      if (show) label(x, y, mode === "read" ? `okunuyor · ${p.n.name}` : p.n.name,
+        c && c.score != null ? `%${Math.round(c.score * 100)}` : "", 1);
+    });
+    if (mode === "done") {
+      const [x, y] = pts[pts.length - 1], a = (t - landedAt) / 1000;
+      if (a < 1.6) for (let k = 0; k < 3; k++) ring(x, y, 8 + (a + k * 0.18) * 70, `rgba(61,252,180,${Math.max(0, 0.8 - a * 0.5 - k * 0.15)})`, 2);
+      if (a > 4) route = [];
+      return;
+    }
+    const [sx, sy, ang] = at(pts, cum, d);
+    trail.push([sx, sy]); if (trail.length > 26) trail.shift();
+    drawShip(sx, sy, ang, 1);
+  }
+
+  function polyline(pts, cum, from, to) {
+    if (to <= from) return;
+    const [x0, y0] = at(pts, cum, from);
+    ctx.beginPath(); ctx.moveTo(x0, y0);
+    for (let i = 1; i < pts.length; i++) {
+      if (cum[i] <= from) continue;
+      if (cum[i] >= to) { const [x, y] = at(pts, cum, to); ctx.lineTo(x, y); break; }
+      ctx.lineTo(pts[i][0], pts[i][1]);
+    }
+    ctx.stroke();
+  }
+
+  function drawShip(x, y, ang, alpha) {
+    for (let i = 1; i < trail.length; i++) {  // comet trail
+      const k = i / trail.length;
+      ctx.strokeStyle = `rgba(124,244,255,${0.5 * k * alpha})`; ctx.lineWidth = 3.5 * k;
+      ctx.beginPath(); ctx.moveTo(trail[i - 1][0], trail[i - 1][1]); ctx.lineTo(trail[i][0], trail[i][1]); ctx.stroke();
+    }
+    glow(x, y, 26, `rgba(124,244,255,${0.45 * alpha})`);
+    glow(x, y, 12, `rgba(255,93,214,${0.35 * alpha})`);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    ctx.fillStyle = "#ffffff"; ctx.beginPath();
+    ctx.moveTo(9, 0); ctx.lineTo(-6, 5); ctx.lineTo(-3, 0); ctx.lineTo(-6, -5); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function glow(x, y, r, color) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, color); g.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();
+  }
+  function ring(x, y, r, color, w) { ctx.strokeStyle = color; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.stroke(); }
+
+  function drawFocus() {
+    if (!focusList.length || (mode !== "done" && mode !== "idle")) return;
+    const age = (t - focusAt) / 1000;
+    const pts = focusList.map(f => byKey.get(f.key)).filter(Boolean);
+    if (pts.length > 1 && mode === "idle") {
+      ctx.setLineDash([6, 8]); ctx.lineDashOffset = -t * 0.03;
+      ctx.strokeStyle = "rgba(124,244,255,.45)"; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(pts[0].sx, pts[0].sy);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].sx, pts[i].sy);
+      ctx.stroke(); ctx.setLineDash([]);
+    }
+    focusList.forEach((f, i) => {
+      const n = byKey.get(f.key); if (!n) return;
+      const appear = Math.max(0, Math.min(1, age * 2 - i * 0.15));
+      if (!appear) return;
+      const s = Math.max(0.15, f.score || 0), pulse = 1 + 0.2 * Math.sin(t * 0.004 - i);
+      glow(n.sx, n.sy, (16 + 26 * s) * pulse * appear, `rgba(124,244,255,${0.32 * appear})`);
+      ring(n.sx, n.sy, (7 + 9 * s) * pulse, `rgba(255,255,255,${0.7 * appear})`, 1.3);
+      ctx.fillStyle = i === 0 ? "#3dfcb4" : "#fff"; ctx.beginPath(); ctx.arc(n.sx, n.sy, 2.6 + 2 * s, 0, 6.2832); ctx.fill();
+      if (i < 6) label(n.sx, n.sy, `${i + 1}. ${f.name}`, f.score != null ? `%${Math.round(f.score * 100)}` : "", appear);
+    });
+  }
+
+  function label(x, y, text, score, alpha) {
+    ctx.font = "600 12px 'Cascadia Code', Consolas, monospace";
+    const w = ctx.measureText(text).width + (score ? 44 : 14), lx = Math.max(8, Math.min(W - w - 8, x + 14)), ly = y - 24;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "rgba(8,12,30,.85)"; ctx.strokeStyle = "rgba(124,244,255,.45)"; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(lx, ly, w, 20, 9); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#eaf6ff"; ctx.fillText(text, lx + 7, ly + 14);
+    if (score) { ctx.fillStyle = "#3dfcb4"; ctx.fillText(score, lx + w - 37, ly + 14); }
+    ctx.globalAlpha = 1;
+  }
+
+  // --------------------------------------------------------------- interaction
+  // With results on the page the galaxy is only a backdrop: no hover, labels or clicks
+  // (the pointer kept catching stars between the cards).
+  const blocked = el => document.documentElement.classList.contains("has-results")
+    || el.closest("header, .answer, .searchbox, button, a, textarea, input, table, details, footer, .dossier");
+  function nearest(x, y) {
+    let best = null, bd = 14 * 14;
+    for (const n of nodes) { const d = (n.sx - x) ** 2 + (n.sy - y) ** 2; if (d < bd) { bd = d; best = n; } }
+    return best;
+  }
+  addEventListener("pointermove", e => {
+    mouse.x = e.clientX / innerWidth; mouse.y = e.clientY / innerHeight;
+    if (!active) return;
+    const n = !blocked(e.target) ? nearest(e.clientX, e.clientY) : null;
+    hover = n;
+    document.documentElement.classList.toggle("star-hover", !!n);
+    if (n) {
+      tip.replaceChildren(h("div", { class: "t" }, n.name), h("div", { class: "g" }, `${n.schema} · ${n.columns} kolon`), h("div", { class: "g" }, n.group));
+      tip.style.left = e.clientX + "px"; tip.style.top = e.clientY + "px"; tip.classList.add("on");
+    } else tip.classList.remove("on");
+  }, { passive: true });
+  addEventListener("resize", () => { if (active) resize(); });
+  // A click on a star opens its dossier; a click elsewhere closes an open one.
+  document.addEventListener("click", e => {
+    if (!active || !loaded || !e.target.isConnected) return;  // a re-rendered control inside the dossier
+    const n = !blocked(e.target) ? nearest(e.clientX, e.clientY) : null;
+    if (n) { tip.classList.remove("on"); Dossier.open(n.key); }
+    else if (selected && !e.target.closest(".dossier")) Dossier.close();
+  });
+  document.addEventListener("visibilitychange", () => { if (active) { cancelAnimationFrame(raf); if (!document.hidden) raf = requestAnimationFrame(frame); } });
+
+  async function ensureLoaded() {
+    if (loaded) return;
+    try { build(await api("/api/galaxy")); } catch { /* the page still works without the map */ }
+  }
+
+  return {
+    get active() { return active && loaded; },
+    radarMs: RADAR_MS,
+    async setActive(on) {
+      active = on; cancelAnimationFrame(raf); tip.classList.remove("on");
+      if (!on) return;
+      resize(); await ensureLoaded(); last = performance.now(); raf = requestAnimationFrame(frame);
+    },
+    /** A search starts: plot a route out of the search field. */
+    begin({ read = false, columns = 0 } = {}) {
+      origin = searchOrigin(); mode = "plan"; modeAt = t; readExpected = read;
+      route = []; trail = []; candidates = []; focusList = []; reading = null; hudSteps = [];
+      pendingCandidates = pendingFocus = null; pendingEnd = false;
+      hud(columns ? `${fmt(columns)} kolon taranıyor` : "rota planlanıyor");
+    },
+    /** Real candidate tables (LLM-free pipeline): the route runs through them. */
+    candidates(list) {
+      if (!active || !loaded || (mode !== "plan" && mode !== "travel")) return;
+      if (mode === "plan" && t - modeAt < RADAR_MS) { pendingCandidates = list; return; }
+      showCandidates(list);
+    },
+    /** Final answer: fly to it, landing on #1; the results stay as a constellation. */
+    focus(list, query) {
+      if (mode === "plan" && t - modeAt < RADAR_MS && active && loaded) { pendingFocus = [list, query]; return; }
+      showFocus(list, query);
+    },
+    /** Search finished without results / failed: stand down. */
+    end() {
+      if (mode === "plan" && t - modeAt < RADAR_MS) { pendingEnd = true; return; }  // the radar finishes first
+      if (["plan", "travel", "read", "wait"].includes(mode)) { mode = "idle"; route = []; }
+    },
+    /** Mark a star as the open dossier's (null clears); returns its node. */
+    select(key) {
+      const n = key ? byKey.get(key) || null : null;
+      if (n !== selected) { selected = n; selectedAt = t; }
+      return n;
+    },
+    node: key => byKey.get(key) || null,
+    /** The one table whose name (vCustomerInfo), Schema.name or full key is exactly
+     *  ``text``, ignoring case; null when none or several match (vCampaign is in two schemas). */
+    find(text) {
+      const low = s => s.toLocaleLowerCase("tr-TR").replace(/ı/g, "i");
+      const t = low(text.trim());
+      if (!t || /\s/.test(t)) return null;
+      const hits = nodes.filter(n => low(n.key) === t || low(n.key).endsWith("." + t));
+      return hits.length === 1 ? hits[0] : null;
+    },
+  };
+
+  function showCandidates(list) {
+      candidates = list.filter(c => byKey.has(c.key)).sort((a, b) => (b.score || 0) - (a.score || 0));
+      const stops = candidates.slice(0, 12).map(c => byKey.get(c.key));
+      if (!stops.length) return;
+      setRoute([{ xy: origin }, ...tour(origin, stops).map(n => ({ n }))], 250);
+      mode = "travel"; modeAt = t; trail = [];
+      hud(`${candidates.length} aday`); hud("rota çizildi");
+  }
+
+  function showFocus(list, query) {
+      focusList = list.filter(f => f && f.key && byKey.has(f.key));
+      focusAt = t;
+      if (!active || !loaded || !focusList.length) {
+        if (!focusList.length && mode !== "idle") { mode = "idle"; route = []; hud(""); }
+        return;
+      }
+      const from = mode === "idle" ? searchOrigin() : shipPos();
+      const stops = [...focusList].reverse().map(f => ({ n: byKey.get(f.key) }));
+      trail = []; setRoute([{ xy: from }, ...stops], 900);
+      mode = "final"; modeAt = t;
+      if (hudSteps.at(-1)?.startsWith("okunuyor")) hudSteps.pop();
+      if (hudSteps.at(-1) === "model okuyor" || hudSteps.at(-1) === "rota çizildi") hudSteps.pop();
+      if (!hudSteps.length && query) hudSteps.push(`◎ ${query}`);
+      hud(`${focusList.length} sonuç · varış: ${focusList[0].name}`);
+  }
+})();
+
+// ---------------------------------------------------------------- star dossier
+// A click on a star opens that table's dictionary entry: every column with its
+// description, synonyms, KVKK marks and join keys.
+const Dossier = (() => {
+  const el = $("#dossier"), list = $("#ds-list"), input = $("#ds-q");
+  const FILTERS = [["all", "Tümü"], ["key", "Anahtar"], ["pii", "KVKK"]];
+  // Turkish-aware folding: "İŞLEM", "işlem" and "islem" all match.
+  const fold = s => (s || "").toLocaleLowerCase("tr-TR").replace(/ı/g, "i").normalize("NFD").replace(/[̀-ͯ]/g, "");
+  let data = null, keys = new Set(), filter = "all", seq = 0, returnFocus = null;
+
+  // Wraps the matched parts in <mark>; folding keeps one character per character for Turkish text.
+  function marked(text, term) {
+    const f = fold(text);
+    if (!term || f.length !== text.length) return text;
+    const out = []; let i = 0, j;
+    while ((j = f.indexOf(term, i)) !== -1) { out.push(text.slice(i, j), h("mark", {}, text.slice(j, j + term.length))); i = j + term.length; }
+    out.push(text.slice(i));
+    return out;
+  }
+  const kind = c => ({ key: keys.has(c.column), pii: c.pii });
+
+  function row(c, i, term) {
+    const k = kind(c);
+    const r = h("div", { class: "ds-col" + (k.key ? " is-key" : "") + (k.pii ? " is-pii" : ""), role: "button", tabindex: "0", "aria-expanded": "false", style: `--i:${i}` },
+      h("div", { class: "ds-ctop" },
+        h("span", { class: "ds-cname" }, marked(c.column, term)),
+        k.key ? h("span", { class: "ds-badge key", title: "Diğer tablolarla birleştirme anahtarı" }, "ANAHTAR") : null,
+        k.pii ? h("span", { class: "ds-badge pii", title: "Kişisel veri (KVKK)" }, "KVKK") : null),
+      c.description ? h("p", { class: "ds-desc" }, marked(c.description, term)) : h("p", { class: "ds-desc none" }, "Açıklama yok"),
+      h("div", { class: "ds-more" },
+        c.synonyms.length ? h("div", { class: "ds-syn" }, h("b", {}, "Eş anlamlılar"), marked(c.synonyms.join(", "), term)) : null,
+        !c.synonyms.length && c.description.length < 140 ? h("div", { class: "faint" }, "Ek not yok") : null));
+    const toggle = () => r.setAttribute("aria-expanded", r.classList.toggle("open"));
+    r.addEventListener("click", e => { if (!getSelection().toString()) toggle(); e.stopPropagation(); });
+    r.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    return r;
+  }
+
+  function renderList() {
+    if (!data) return;
+    const term = fold(input.value.trim());
+    const cols = data.columns.filter(c => (filter === "all" || kind(c)[filter]) &&
+      (!term || fold(`${c.column} ${c.description} ${c.synonyms.join(" ")}`).includes(term)));
+    $("#ds-count").textContent = cols.length === data.columns.length ? `${cols.length}` : `${cols.length} / ${data.columns.length}`;
+    put(list, cols.length ? cols.map((c, i) => row(c, i, term))
+      : h("div", { class: "ds-empty" }, "Bu filtreye uyan kolon yok."));
+    list.scrollTop = 0;
+  }
+
+  function renderFilters() {
+    put($("#ds-filters"), FILTERS.map(([id, name]) => {
+      const n = id === "all" ? data.columns.length : data.columns.filter(c => kind(c)[id]).length;
+      return h("button", { class: "ds-filter", type: "button", "aria-pressed": String(filter === id), disabled: !n && id !== "all",
+        onclick: () => { filter = id; renderFilters(); renderList(); } }, `${name} · ${n}`);
+    }));
+  }
+
+  function stat(cls, n, label, i) {
+    return h("div", { class: `ds-stat ${cls}${n ? "" : " zero"}`, style: `--i:${i}` }, h("b", {}, n.toLocaleString("tr-TR")), h("span", {}, label));
+  }
+
+  async function open(key) {
+    const node = Cosmos.select(key);
+    const my = ++seq;
+    if (!el.classList.contains("on")) returnFocus = document.activeElement;
+    el.style.setProperty("--hue", node ? node.hue : 190);
+    $("#ds-kicker").textContent = node ? node.group : "Tablo";
+    put($("#ds-name"), breakable(node ? node.name : key.split(".").pop()));
+    $("#ds-path").textContent = key; $("#ds-path").title = key;
+    put($("#ds-stats")); put($("#ds-filters")); put($("#ds-foot")); $("#ds-count").textContent = "";
+    put(list, [0, 1, 2, 3, 4].map(() => h("div", { class: "ds-skel" })));
+    input.value = ""; filter = "all";
+    el.classList.remove("on"); void el.offsetWidth;  // replay the entrance for a new star
+    el.classList.add("on"); el.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("dossier-open");
+    try {
+      const d = await api("/api/object/" + encodeURIComponent(key));
+      if (my !== seq) return;
+      data = d; keys = new Set(d.join_keys || []);
+      if (d.groups && d.groups.length) $("#ds-kicker").textContent = d.groups.join(" · ");
+      const c = d.columns;
+      put($("#ds-stats"),
+        stat("", c.length, "kolon", 0),
+        stat("key", c.filter(x => keys.has(x.column)).length, "anahtar", 1),
+        stat("pii", c.filter(x => x.pii).length, "KVKK", 2));
+      renderFilters(); renderList();
+      const sibs = node ? node.g.members.filter(m => m !== node).sort((a, b) => b.columns - a.columns).slice(0, 14) : [];
+      put($("#ds-foot"), sibs.length ? [h("div", { class: "lbl" }, `Aynı kümede · ${node.g.members.length - 1} tablo`),
+        h("div", { class: "ds-sibs" }, sibs.map(m => h("button", { class: "ds-sib", type: "button", title: `${m.schema} · ${m.columns} kolon`, onclick: () => open(m.key) },
+          m.name, h("small", {}, m.columns))))] : null);
+      if (!$("#ds-foot").childElementCount) $("#ds-foot").classList.add("hidden"); else $("#ds-foot").classList.remove("hidden");
+      $("#ds-close").focus({ preventScroll: true });
+    } catch (e) {
+      if (my === seq) put(list, h("div", { class: "ds-empty" }, "Tablo yüklenemedi: " + e.message));
+    }
+  }
+
+  function close() {
+    if (!el.classList.contains("on")) return;
+    seq++; data = null;
+    el.classList.remove("on"); el.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("dossier-open");
+    Cosmos.select(null);
+    if (returnFocus && document.contains(returnFocus)) returnFocus.focus({ preventScroll: true });
+  }
+
+  input.addEventListener("input", renderList);
+  $("#ds-close").onclick = close;
+  $("#ds-copy").onclick = async e => {
+    const b = e.currentTarget;
+    try { await navigator.clipboard.writeText($("#ds-path").textContent); b.textContent = "Kopyalandı ✓"; }
+    catch { b.textContent = "Kopyalanamadı"; }
+    setTimeout(() => { b.textContent = "Kopyala"; }, 1400);
+  };
+  document.addEventListener("keydown", e => {
+    if (!el.classList.contains("on")) return;
+    if (e.key === "Escape") { e.stopImmediatePropagation(); close(); }
+    else if (e.key === "/" && document.activeElement !== input) { e.preventDefault(); e.stopImmediatePropagation(); input.focus(); }
+  }, true);
+  return { open, close, get isOpen() { return el.classList.contains("on"); } };
+})();
+
+addEventListener("scroll", () => {
+  document.documentElement.classList.toggle("scrolled", scrollY > 120);
+  document.documentElement.classList.toggle("lifted", scrollY > 6);  // veil behind the top line
+}, { passive: true });
+
+// ---------------------------------------------------------------- boot
+Cosmos.setActive(true);
+autosize();
+loadStatus();
+q.focus();
+</script>
+</body>
+</html>
