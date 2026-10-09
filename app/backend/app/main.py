@@ -20,6 +20,9 @@ from app.middleware.cross_site import CrossSiteRequestMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.tenant_context import TenantContextMiddleware
+from app.services.analysis.jobs import AnalysisJobs
+from app.services.analysis.saved_answers import SavedAnswers
+from app.services.llm_connections import llm_gateway
 from app.services.search_index import SearchIndex
 from app.services.super_admin_service import run_super_admin_bootstrap
 
@@ -38,10 +41,15 @@ def _lifespan(settings: Settings) -> Callable[[FastAPI], AbstractAsyncContextMan
         # first search index is built in the background once the database is ready.
         search_index: SearchIndex = application.state.search_index
         index_startup = asyncio.create_task(search_index.run_startup(database_readiness.is_ready))
+        # data-dictionary 004-question-analysis Requirement 12: records an earlier process left
+        # queued or running are interrupted; at the end queued and running jobs are interrupted.
+        analysis_jobs: AnalysisJobs = application.state.analysis_jobs
+        jobs_startup = asyncio.create_task(analysis_jobs.run_startup(database_readiness.is_ready))
         try:
             yield
         finally:
-            for task in (bootstrap, index_startup):
+            await analysis_jobs.shutdown()
+            for task in (bootstrap, index_startup, jobs_startup):
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
@@ -64,6 +72,14 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         lifespan=_lifespan(settings),
     )
     application.state.search_index = SearchIndex(async_session_factory)
+    application.state.analysis_jobs = AnalysisJobs(
+        index=application.state.search_index,
+        models=llm_gateway(settings, async_session_factory),
+        session_factory=async_session_factory,
+        saved_answers=SavedAnswers(async_session_factory),
+        concurrency=settings.analysis_concurrency,
+        queue_limit=settings.analysis_queue_limit,
+    )
     # Starlette makes the middleware added last the outermost. From the outside in: security
     # headers and the 500 envelope, request logging and tracing, CORS, the cross-site guard (before
     # any tenant or session check) and the tenant context.
