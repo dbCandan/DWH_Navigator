@@ -333,3 +333,5 @@ kodlama ajanıdır. `specs/README.md` dosyasına bakın.
 
 Ürüne dönük dokümantasyon `docs/tr/` altındadır. Kabul edilmiş PRD'leri; mühendislik kurallarını veya
 uygulama planlarını ikinci gereksinim kaynağına kopyalamadan güncelleyin.
+
+deneme
