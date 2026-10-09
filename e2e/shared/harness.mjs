@@ -41,7 +41,8 @@ export async function signIn(page, account) {
   await page.getByLabel(message('auth.login.username')).fill(account.username);
   await page.getByLabel(message('auth.login.password'), {exact: true}).fill(account.password);
   await page.getByRole('button', {name: message('auth.login.submit')}).click();
-  const home = page.getByRole('heading', {name: message('explorer.hero.title')});
+  // The question bar: on the landing view, or in the top line when a question of the person runs.
+  const home = page.getByRole('textbox', {name: message('explorer.search.label')});
   const firstLogin = page.getByRole('heading', {name: message('auth.firstLogin.title')});
   await home.or(firstLogin).waitFor();
   if (!(await firstLogin.isVisible())) return false;
@@ -62,39 +63,48 @@ export async function withBrowser(name, scenario) {
   assert.ok(username, 'APP_E2E_SUPER_ADMIN_USER is required');
   assert.ok(password, 'APP_E2E_SUPER_ADMIN_PASS is required');
   const browser = await chromium.launch({headless: true});
-  const context = await browser.newContext();
   const allowedOrigin = new URL(baseUrl).origin;
   const externalRequests = [];
   const consoleErrors = [];
   const pageErrors = [];
   const serverErrors = [];
-  await context.route('**/*', async (route) => {
-    const requestUrl = route.request().url();
-    const protocol = new URL(requestUrl).protocol;
-    if (new URL(requestUrl).origin === allowedOrigin || protocol === 'data:' || protocol === 'blob:') {
-      await route.continue();
-      return;
-    }
-    externalRequests.push(requestUrl);
-    await route.abort('blockedbyclient');
-  });
-  const page = await context.newPage();
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !NETWORK_STATUS_LOG.test(message.text())) {
-      consoleErrors.push(message.text());
-    }
-  });
-  page.on('pageerror', (error) => {
-    pageErrors.push(error.stack || error.message || String(error));
-  });
-  page.on('response', (response) => {
-    const responseUrl = response.url();
-    if (new URL(responseUrl).origin === allowedOrigin && response.status() >= 500) {
-      serverErrors.push(`${response.status()} ${response.request().method()} ${responseUrl}`);
-    }
-  });
+  const contexts = [];
+  const watch = (page) => {
+    page.on('console', (message) => {
+      if (message.type() === 'error' && !NETWORK_STATUS_LOG.test(message.text())) {
+        consoleErrors.push(message.text());
+      }
+    });
+    page.on('pageerror', (error) => {
+      pageErrors.push(error.stack || error.message || String(error));
+    });
+    page.on('response', (response) => {
+      const responseUrl = response.url();
+      if (new URL(responseUrl).origin === allowedOrigin && response.status() >= 500) {
+        serverErrors.push(`${response.status()} ${response.request().method()} ${responseUrl}`);
+      }
+    });
+    return page;
+  };
+  /** A page in a new browser context (another person, another viewport) under the same guards. */
+  const open = async (options = {}) => {
+    const context = await browser.newContext(options);
+    contexts.push(context);
+    await context.route('**/*', async (route) => {
+      const requestUrl = route.request().url();
+      const protocol = new URL(requestUrl).protocol;
+      if (new URL(requestUrl).origin === allowedOrigin || protocol === 'data:' || protocol === 'blob:') {
+        await route.continue();
+        return;
+      }
+      externalRequests.push(requestUrl);
+      await route.abort('blockedbyclient');
+    });
+    return watch(await context.newPage());
+  };
+  const page = await open();
   try {
-    await scenario({page, assert});
+    await scenario({page, assert, open});
     assert.deepEqual(externalRequests, [], 'browser attempted an external network request');
     assert.deepEqual(consoleErrors, [], 'browser emitted console.error output');
     assert.deepEqual(pageErrors, [], 'browser emitted an uncaught page error');
@@ -106,7 +116,7 @@ export async function withBrowser(name, scenario) {
     await page.screenshot({path: `test-results/${artifact || 'scenario'}-failure.png`, fullPage: true});
     throw error;
   } finally {
-    await context.close();
+    for (const context of contexts) await context.close();
     await browser.close();
   }
 }
