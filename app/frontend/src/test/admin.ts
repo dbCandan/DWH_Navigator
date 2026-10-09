@@ -7,7 +7,7 @@ import {SavedAnswersService} from '@/services/savedAnswers';
 import {SearchSettingsService} from '@/services/searchSettings';
 import {VocabularyService} from '@/services/vocabulary';
 import type {DictionaryState, DictionaryTable} from '@/types/dictionary';
-import type {RecordPage, RecordSummary} from '@/types/records';
+import type {RecordDetail, RecordPage, RecordRow, RecordSummary} from '@/types/records';
 import type {SearchIndexState, SearchSettingField, SearchSettings} from '@/types/search';
 import {llmState} from './llm';
 import type {StopwordItem, TermItem, VocabularyListState} from '@/types/vocabulary';
@@ -141,6 +141,50 @@ export const SNAPSHOT_AT = '2026-10-08T12:00:00Z';
 /** A list answer of the analysis records (analysis-records Requirement 6). */
 export function recordPage(overrides: Partial<RecordPage> = {}): RecordPage {
   return {items: [], total: 0, page: 1, page_size: 150, snapshot_at: SNAPSHOT_AT, ...overrides};
+}
+
+let recordCount = 0;
+
+/** A finished record's list row (analysis-records Requirement 6); synthetic people and tables. */
+export function recordRow(query: string, overrides: Partial<RecordRow> = {}): RecordRow {
+  return {
+    public_id: `0b6f6f3e-3e0a-4c58-9a3a-${String(++recordCount).padStart(12, '0')}`,
+    asked_at: '2026-10-08T09:00:00Z',
+    asked_by: {public_id: '00000000-0000-4000-8000-0000000000b1', display_name: 'Ali Veli'},
+    query,
+    origin: 'question',
+    list_public_id: null,
+    list_file_name: null,
+    list_position: null,
+    flow: 'analyst',
+    model: 'org/qwen-32b',
+    verdict: 'VAR',
+    table_keys: ['DWH.Ornek.vCustomer'],
+    unavailable_reason: '',
+    error: null,
+    duration_ms: 12000,
+    ...overrides,
+  };
+}
+
+/** A finished record's detail (analysis-records Requirement 10). */
+export function recordDetail(row: RecordRow, overrides: Partial<RecordDetail> = {}): RecordDetail {
+  return {
+    ...row,
+    summary: '',
+    reused: null,
+    llm_calls: 0,
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    dictionary_version: 'abcdef123456-130',
+    started_at: row.asked_at,
+    finished_at: row.asked_at,
+    queue_wait_ms: 0,
+    phases: {queue: 0, saved_answer_lookup: 0, model_check: 0, rule_hints: 0, analyst_pick: 0, analyst_write: 0},
+    steps_truncated: false,
+    steps: [],
+    ...overrides,
+  };
 }
 
 /** A summary of no records (analysis-records Requirement 7). */
