@@ -175,7 +175,7 @@ html[data-surface="admin"] { background: radial-gradient(1200px 700px at 85% -15
 [data-surface="admin"] .vb.BULUNAMADI { background: var(--bad-bg); color: var(--bad); } [data-surface="admin"] .vb.none { background: var(--surface-3); color: var(--muted); }
 [data-surface="admin"] .flow { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 [data-surface="admin"] .flow.analist { color: var(--ok); } [data-surface="admin"] .flow.önbellek { color: var(--accent); } [data-surface="admin"] .flow.yapılamadı { color: var(--warn); }
-[data-surface="admin"] .flow.hata { color: var(--bad); } [data-surface="admin"] .flow.durduruldu { color: var(--muted); }
+[data-surface="admin"] .flow.hata { color: var(--bad); } [data-surface="admin"] .flow.durduruldu, [data-surface="admin"] .flow.kesildi { color: var(--muted); }
 [data-surface="admin"] td.when { white-space: nowrap; color: var(--faint); font: 12px var(--mono); }
 [data-surface="admin"] td.qq .q { font-weight: 600; overflow-wrap: anywhere; }
 [data-surface="admin"] td.qq .a { color: var(--muted); font-size: 12.5px; margin-top: 2px; }

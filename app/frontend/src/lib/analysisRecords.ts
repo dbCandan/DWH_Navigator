@@ -8,7 +8,7 @@ export const FLOWS: readonly Flow[] = ['analyst', 'reused', 'unavailable', 'canc
 
 /**
  * The flow chip's class: the source's Turkish flow names, which admin.css colours
- * (admin.html flowChip). `interrupted` is new and has no colour of its own.
+ * (admin.html flowChip). `interrupted` is new and takes the stopped flow's colour.
  */
 export const FLOW_CLASS: Record<Flow, string> = {
   analyst: 'analist',

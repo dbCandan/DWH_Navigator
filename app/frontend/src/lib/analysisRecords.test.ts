@@ -1,7 +1,8 @@
 import {describe, expect, it} from 'vitest';
+import adminCss from '@/components/admin/admin.css?raw';
 import {message} from '@/test/render';
 import type {RecordStep} from '@/types/records';
-import {callOutcomeText, shownPhases, stepDetailText, treeOrder, withoutVerdict} from './analysisRecords';
+import {callOutcomeText, FLOW_CLASS, shownPhases, stepDetailText, treeOrder, withoutVerdict} from './analysisRecords';
 
 const t = (key: string, values?: Record<string, string | number>) => message(key, values);
 
@@ -64,5 +65,14 @@ describe('analysis record helpers (analysis-records Requirement 3, 18, 19)', () 
     expect(withoutVerdict('KISMEN VAR — iki tablo yakın.')).toBe('iki tablo yakın.');
     expect(withoutVerdict('VAR. Tablo bulundu.')).toBe('Tablo bulundu.');
     expect(withoutVerdict('Tablo yok.')).toBe('Tablo yok.');
+  });
+});
+
+describe('the interrupted flow chip (analysis-records Requirement 2)', () => {
+  it('has the stopped flow\'s colour, the source\'s "durduruldu" chip', () => {
+    expect(FLOW_CLASS.interrupted).toBe('kesildi');
+    const rule = /([^{}]*\.flow\.kesildi[^{}]*)\{([^}]*)\}/.exec(adminCss);
+    expect(rule?.[1]).toContain('.flow.durduruldu');
+    expect(rule?.[2].trim()).toBe('color: var(--muted);');
   });
 });
