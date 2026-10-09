@@ -129,6 +129,10 @@ async def test_term_list_rejects_bad_files(
     bad = await upload(qa, b"not an excel file")
     assert error(bad) == (422, "term_list_not_xlsx")
     assert "Excel (.xlsx) olarak okunamadı" in bad.json()["detail"]["message"]
+    # An empty body is the source's unreadable file, not the dictionary's "Dosya boş".
+    nothing = await upload(qa, b"")
+    assert error(nothing) == (422, "term_list_not_xlsx")
+    assert nothing.json()["detail"]["message"].startswith("Dosya Excel (.xlsx) olarak okunamadı.")
     empty = await upload(qa, xlsx(["Terim"]))
     assert error(empty) == (422, "term_list_layout_invalid")
     assert "aranacak terim yok" in empty.json()["detail"]["message"]
@@ -151,7 +155,7 @@ async def test_term_list_rejects_bad_files(
             "dwhnavigator_term_list_uploads_rejected_total"
         )
     }
-    assert reasons["term_list_not_xlsx"] == 1 and reasons["unsupported_media_type"] == 1
+    assert reasons["term_list_not_xlsx"] == 2 and reasons["unsupported_media_type"] == 1
 
 
 async def test_a_list_is_its_owners_alone(qa: Qa) -> None:
@@ -176,6 +180,8 @@ async def test_a_list_is_its_owners_alone(qa: Qa) -> None:
     assert refused.json()["detail"]["message"] == (
         "Başka bir kullanıcının listesi çalışıyor; bitince yeniden deneyin."
     )
+    # The running list is checked before the file is read, an empty one too (the source's order).
+    assert error(await upload(qa, b"", qa.other)) == (409, "term_list_running")
     own = await upload(qa, xlsx(["Terim", TERM]))
     assert own.json()["detail"]["message"] == (
         "Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun."

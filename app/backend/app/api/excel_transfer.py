@@ -66,7 +66,11 @@ def upload_filename(raw: str | None, default: str) -> str:
     return name or default
 
 
-async def read_excel_upload(request: Request, *, empty_code: str, default_name: str) -> ExcelUpload:
+async def read_excel_upload(
+    request: Request, *, empty_code: str | None, default_name: str
+) -> ExcelUpload:
+    """The raw workbook and its name. An empty body is refused with ``empty_code`` ("Dosya boş");
+    with ``None`` it is handed on and the caller's reader refuses it as any unreadable file."""
     media_type = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
     if media_type not in ACCEPTED_MEDIA_TYPES:
         raise ApplicationError(
@@ -82,7 +86,7 @@ async def read_excel_upload(request: Request, *, empty_code: str, default_name: 
         body.extend(chunk)
         if len(body) > MAX_UPLOAD_BYTES:
             raise upload_too_large()
-    if not body:
+    if not body and empty_code is not None:
         raise ApplicationError(status.HTTP_422_UNPROCESSABLE_CONTENT, empty_code, "Dosya boş")
     return ExcelUpload(
         upload_filename(request.headers.get("x-filename"), default_name), bytes(body)

@@ -99,9 +99,9 @@ async def upload_list(
 
     tenant, owner = await _caller(session, context)
     try:
-        upload = await read_excel_upload(
-            request, empty_code=Rejection.NOT_XLSX.value, default_name="liste.xlsx"
-        )
+        # An empty body reaches the reader like the source's empty file: after the running
+        # list check, as "Dosya Excel (.xlsx) olarak okunamadı." (Requirement 2-4).
+        upload = await read_excel_upload(request, empty_code=None, default_name="liste.xlsx")
     except ApplicationError as refused:
         telemetry.record_term_list_upload_rejected(refused.code)
         log_event(logger, "term_list.upload_rejected", code=refused.code)
