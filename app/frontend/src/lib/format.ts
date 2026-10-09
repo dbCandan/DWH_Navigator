@@ -40,3 +40,12 @@ export function formatWhen(iso: string, t: Translate, now: Date = new Date()): s
   });
   return t('common.when.date', {date: day, time});
 }
+
+/** Token counts: "950", "12,3 k", "1,2 M" (admin.html kilo). */
+export function formatKilo(value: number | null | undefined, t: Translate): string {
+  const n = value || 0;
+  const short = (scaled: number) => scaled.toLocaleString(LOCALE, {maximumFractionDigits: 1});
+  if (n >= 1e6) return t('common.kilo.millions', {value: short(n / 1e6)});
+  if (n >= 1e3) return t('common.kilo.thousands', {value: short(n / 1e3)});
+  return String(n);
+}

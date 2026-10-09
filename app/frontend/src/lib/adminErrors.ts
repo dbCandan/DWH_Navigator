@@ -20,10 +20,14 @@ const CATALOGUED = new Set([
   'dictionary_import_in_progress',
   'dictionary_not_imported',
   'dictionary_table_not_found',
+  'analysis_record_not_found',
+  'analysis_delete_scope_missing',
+  'invalid_filter',
 ]);
 
 /**
- * The person-facing text of a failed dictionary, word list, settings or index request (rules/31):
+ * The person-facing text of a failed dictionary, word list, settings, index or analysis record
+ * request (rules/31):
  * the server's own sentence for the validation codes above, the catalog text for the other known
  * codes, "Sunucuya ulaşılamadı" for a lost connection and "Beklenmeyen yanıt (HTTP n)" otherwise.
  */
