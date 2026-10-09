@@ -6,6 +6,7 @@ before any database work, so the real application answers them without PostgreSQ
 """
 
 import asyncio
+import base64
 import json
 import logging
 from collections.abc import AsyncIterator, Iterator
@@ -229,8 +230,10 @@ async def test_event_streams_and_downloads_carry_the_headers(client: AsyncClient
 async def test_basic_credentials_mean_nothing_and_no_response_asks_for_them(
     client: AsyncClient,
 ) -> None:
+    # Built at run time so no encoded credential sits in the source for secret scanners to report.
+    basic = base64.b64encode(b"user-placeholder:password-placeholder").decode()
     response = await client.get(
-        f"{PREFIX}/auth/me", headers={**_tenant(), "Authorization": "Basic YWRtaW46cGFyb2xh"}
+        f"{PREFIX}/auth/me", headers={**_tenant(), "Authorization": f"Basic {basic}"}
     )
     assert response.status_code == 401
     _assert_envelope(response, "not_authenticated")
