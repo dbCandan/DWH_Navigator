@@ -22,3 +22,24 @@ id = "generic-api-key"
     regexTarget = "secret"
     paths = ['''(?:^|/)app/backend/tests/.+\.py$''']
     regexes = ['''^[a-z0-9]+(?:-[a-z0-9]+)*-placeholder$''']
+
+    [[rules.allowlists]]
+    description = "Parity snapshots of the source app: SHA-256 cache-key digests"
+    condition = "AND"
+    regexTarget = "secret"
+    paths = ['''(?:^|/)app/backend/tests/parity/snapshots/[^/]+/outputs\.jsonl$''']
+    regexes = ['''^[0-9a-f]{64}$''']
+
+    [[rules.allowlists]]
+    description = "Parity snapshots of the source app: synthetic dictionary table keys (DB.Schema.Object)"
+    condition = "AND"
+    regexTarget = "secret"
+    paths = ['''(?:^|/)app/backend/tests/parity/snapshots/[^/]+/votes\.json$''']
+    regexes = ['''^SYN[A-Z]*\.[A-Za-z0-9_]+\.[A-Za-z0-9_]+$''']
+
+    [[rules.allowlists]]
+    description = "The one-time password alphabet is a public character set, not a secret"
+    condition = "AND"
+    regexTarget = "match"
+    paths = ['''(?:^|/)app/backend/app/core/security\.py$''']
+    regexes = ['''ONE_TIME_PASSWORD_ALPHABET = "[a-z0-9]+"''']
