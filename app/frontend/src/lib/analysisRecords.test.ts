@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {message} from '@/test/render';
 import type {RecordStep} from '@/types/records';
-import {callOutcomeText, shownPhases, treeOrder, withoutVerdict} from './analysisRecords';
+import {callOutcomeText, shownPhases, stepDetailText, treeOrder, withoutVerdict} from './analysisRecords';
 
 const t = (key: string, values?: Record<string, string | number>) => message(key, values);
 
@@ -48,6 +48,16 @@ describe('analysis record helpers (analysis-records Requirement 3, 18, 19)', () 
     );
     expect(callOutcomeText({outcome: 'ok'}, t)).toBe('');
     expect(callOutcomeText(null, t)).toBe('');
+  });
+
+  it('shows a failed server check by the Turkish text of its class, other details as written', () => {
+    expect(stepDetailText(step(0, null, 0, {status: 'error', detail: 'connect_error'}), t)).toBe(
+      message('records.outcome.connect_error'),
+    );
+    expect(stepDetailText(step(0, null, 0, {status: 'error', detail: 'upstream_status', check: {http_status: 502}}), t)).toBe(
+      'Sunucu HTTP 502 döndürdü',
+    );
+    expect(stepDetailText(step(0, null, 0, {detail: '14 aday, 3 benzer tablo'}), t)).toBe('14 aday, 3 benzer tablo');
   });
 
   it('drops the leading verdict word of a summary', () => {

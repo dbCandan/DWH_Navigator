@@ -86,6 +86,16 @@ export function callOutcomeText(call: Record<string, unknown> | null | undefined
   return t(`records.outcome.${outcome}`, {status});
 }
 
+/**
+ * A step's detail as shown: a failed step that names a fixed failure class (the server check
+ * stores the class itself) shows its Turkish text, with the check's HTTP code where named.
+ */
+export function stepDetailText(step: Pick<RecordStep, 'detail' | 'status' | 'check'>, t: Translate): string {
+  if (step.status !== 'error' || !OUTCOMES.has(step.detail)) return step.detail;
+  const status = typeof step.check?.http_status === 'number' ? step.check.http_status : '?';
+  return t(`records.outcome.${step.detail}`, {status});
+}
+
 const OUTCOMES = new Set([
   'not_configured',
   'key_unreadable',

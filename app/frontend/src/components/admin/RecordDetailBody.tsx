@@ -1,5 +1,13 @@
 import {useIntl} from '@/contexts/IntlContext';
-import {callNumber, callOutcomeText, shownPhases, tableName, treeOrder, withoutVerdict} from '@/lib/analysisRecords';
+import {
+  callNumber,
+  callOutcomeText,
+  shownPhases,
+  stepDetailText,
+  tableName,
+  treeOrder,
+  withoutVerdict,
+} from '@/lib/analysisRecords';
 import {formatDuration, formatKilo, formatWhen} from '@/lib/format';
 import type {RecordDetail} from '@/types/records';
 import {FlowChip, VerdictBadge} from './RecordParts';
@@ -41,8 +49,9 @@ export function Timeline({record}: {record: RecordDetail}) {
       (prompt || completion
         ? ' · ' + t('records.timeline.tipTokens', {prompt: formatKilo(prompt, t), completion: formatKilo(completion, t)})
         : '');
+    const detail = stepDetailText(step, t);
     const failure = step.kind === 'llm' && step.status === 'error' ? callOutcomeText(step.call, t) : '';
-    const tip = [t('records.timeline.tipName', {name: step.name, kind: t(`records.timeline.kind.${step.kind}`)}), time, failure, step.detail]
+    const tip = [t('records.timeline.tipName', {name: step.name, kind: t(`records.timeline.kind.${step.kind}`)}), time, failure, detail]
       .filter(Boolean)
       .join('\n');
     const indent = {paddingLeft: `${depth * INDENT_PX}px`};
@@ -60,9 +69,9 @@ export function Timeline({record}: {record: RecordDetail}) {
       <div className="ms" key={`m${step.seq}`}>
         {step.kind === 'event' && !step.ms ? t('records.timeline.eventMark') : formatDuration(step.ms, t)}
       </div>,
-      step.detail && (step.status !== 'ok' || step.kind === 'step') ? (
-        <div className="why" style={indent} title={step.detail} key={`w${step.seq}`}>
-          {step.detail}
+      detail && (step.status !== 'ok' || step.kind === 'step') ? (
+        <div className="why" style={indent} title={detail} key={`w${step.seq}`}>
+          {detail}
         </div>
       ) : null,
     ];
