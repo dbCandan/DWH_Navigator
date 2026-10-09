@@ -6,11 +6,12 @@ import {useAsk} from '@/hooks/useAsk';
 import {ApiError} from '@/lib/apiClient';
 import type {CosmosEngine} from '@/lib/cosmos/engine';
 import {AnalysisService} from '@/services/analyses';
+import {ExplorerService} from '@/services/explorer';
 import {ANALYSIS_ID, answer, job, serveEvents, serviceStatus} from '@/test/explorer';
 import {message} from '@/test/render';
 
 function fakeEngine() {
-  return {active: true, radarMs: 0, begin: vi.fn(), queued: vi.fn(), focus: vi.fn(), end: vi.fn()};
+  return {active: true, radarMs: 0, begin: vi.fn(), queued: vi.fn(), candidates: vi.fn(), focus: vi.fn(), end: vi.fn()};
 }
 
 function setup(engine = fakeEngine(), onUnavailable = vi.fn()) {
@@ -67,6 +68,27 @@ describe('the question flow (question-analysis Requirement 19, 20)', () => {
     expect(onUnavailable).not.toHaveBeenCalled();
     expect(hook.result.current.running).toBe(false);
     expect(hook.result.current.outcome).toMatchObject({kind: 'answer', analysisId: ANALYSIS_ID});
+  });
+
+  it('routes the voyage through the model-free search\'s scored tables (dictionary-explorer Requirement 7)', async () => {
+    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job({state: 'completed'}));
+    vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
+    const search = vi.mocked(ExplorerService.search).mockResolvedValue({
+      query: 'kart limit doluluk oranı',
+      items: [
+        {key: 'DWH.Kart.vCardLimit1', name: 'vCardLimit1', schema: 'DWH.Kart', columns: 8, groups: [], match: 'içerik', score: 0.7},
+        {key: 'DWH.Kart.vLimitAd', name: 'vLimitAd', schema: 'DWH.Kart', columns: 3, groups: [], match: 'ad'},
+      ],
+      counts: {},
+      concepts: [],
+      elapsed_ms: 3,
+    });
+    const {hook, engine} = setup();
+    await act(() => hook.result.current.ask('kart limit doluluk oranı', false));
+    expect(search).toHaveBeenCalledWith('kart limit doluluk oranı');
+    await waitFor(() =>
+      expect(engine.candidates).toHaveBeenCalledWith([{key: 'DWH.Kart.vCardLimit1', name: 'vCardLimit1', score: 0.7}]),
+    );
   });
 
   it('does not write "sırada" for a job that starts at once', async () => {

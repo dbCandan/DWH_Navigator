@@ -573,7 +573,11 @@ html[data-surface="explorer"].dossier-open #hud { opacity: 0; pointer-events: no
 }
 [data-surface="explorer"] .ds-col.is-key::before { background: var(--tone); box-shadow: 0 0 8px var(--tone); }
 [data-surface="explorer"] .ds-col.is-pii::before { background: var(--low); box-shadow: 0 0 8px var(--low); }
-[data-surface="explorer"] .ds-col:hover, [data-surface="explorer"] .ds-col:focus-visible { background: var(--tint-a07); border-color: var(--periwinkle-a14); }
+[data-surface="explorer"] .ds-col:hover, [data-surface="explorer"] .ds-col:has(> .ds-ctop:focus-visible) { background: var(--tint-a07); border-color: var(--periwinkle-a14); }
+/* The row's open action is a native button (Decision 7) that looks like the source's row top. */
+[data-surface="explorer"] .ds-col:has(> .ds-ctop:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-surface="explorer"] button.ds-ctop { width: 100%; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+[data-surface="explorer"] button.ds-ctop:focus-visible { outline: 0; }
 [data-surface="explorer"] .ds-col.open { background: var(--tint-a09); border-color: hsla(var(--hue), var(--cluster-open)); }
 [data-surface="explorer"] .ds-col + .ds-col { margin-top: 2px; }
 [data-surface="explorer"] .ds-ctop { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
