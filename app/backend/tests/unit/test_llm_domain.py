@@ -241,6 +241,28 @@ def test_rule_order_and_still_sent_features() -> None:
     assert refused_feature(fold("bilinmeyen alan"), **every) is None
 
 
+def test_the_thinking_switch_rule_comes_after_the_source_rules() -> None:
+    sent = {
+        "system_role": False,
+        "structured": True,
+        "reasoning_effort": "",
+        "seed": 42,
+        "thinking_off": True,
+    }
+    for text in (
+        "chat_template_kwargs is not supported",
+        "unexpected keyword enable_thinking",
+        "Chat TEMPLATE rejected the arguments",
+    ):
+        assert refused_feature(fold(text), **sent) is AdaptedFeature.CHAT_TEMPLATE_KWARGS
+        # Not sent, never refused.
+        assert refused_feature(fold(text), **{**sent, "thinking_off": False}) is None
+    # The four source rules keep their precedence.
+    both = fold("chat_template_kwargs: schema and seed are not supported")
+    assert refused_feature(both, **sent) is AdaptedFeature.RESPONSE_FORMAT
+    assert refused_feature(both, **{**sent, "structured": False}) is AdaptedFeature.SEED
+
+
 def test_context_exceeded_needs_context_and_a_size_word() -> None:
     assert context_exceeded(fold("maximum context length is 65536 tokens"))
     assert context_exceeded(fold("request exceeds the CONTEXT window"))

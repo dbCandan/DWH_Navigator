@@ -4,7 +4,9 @@ Requirement 6, 7, 8 and 13: for every scenario the fake server receives exactly 
 the source client sent (adaptation and repair resends included), the returned JSON objects are
 equal, and each failure is its Requirement 13 class. The source side is recorded in the snapshot
 by ``tests.llm_parity.run_source``; with ``DWHNAVIGATOR_PARITY_SOURCE_DIR`` naming an export of the
-source at that commit, the source is also run again here and must reproduce the snapshot.
+source at that commit, the source is also run again here and must reproduce the snapshot. The only
+target difference is the declared ``chat_template_kwargs`` field of Requirement 7, rule 3
+(``Scenario.thinking_off_from``); it is added to the source bytes here, never to the snapshot.
 """
 
 import json
@@ -36,6 +38,46 @@ SNAPSHOT = Path(__file__).with_name("snapshots") / "source-76e21a3.json"
 def _snapshot() -> dict[str, Any]:
     data: dict[str, Any] = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
     return data
+
+
+def _with_thinking_off(body: str) -> str:
+    """The source body with ``chat_template_kwargs`` in the place of the dropped effort."""
+
+    fields = json.loads(body)
+    # json.dumps defaults write the source's bytes back unchanged (Decision 6).
+    assert json.dumps(fields) == body
+    assert "reasoning_effort" not in fields and "chat_template_kwargs" not in fields
+    written: dict[str, Any] = {}
+    for name, value in fields.items():
+        written[name] = value
+        if name == "max_tokens":
+            written["chat_template_kwargs"] = {"enable_thinking": False}
+    return json.dumps(written)
+
+
+def target_bodies(scenario: Scenario, source_bodies: list[str]) -> list[str]:
+    """What the target must send: the source's bodies plus the declared difference only."""
+
+    start = scenario.thinking_off_from
+    if start is None:
+        return list(source_bodies)
+    return [
+        _with_thinking_off(body) if index >= start else body
+        for index, body in enumerate(source_bodies)
+    ]
+
+
+def test_the_declared_difference_follows_a_refused_none_effort_only() -> None:
+    for scenario in SCENARIOS:
+        source = _snapshot()["scenarios"][scenario.name]["bodies"]
+        if scenario.thinking_off_from is None:
+            continue
+        assert scenario.reasoning_effort == "none"
+        start = scenario.thinking_off_from
+        # The first request is never changed, and the change starts where the effort was dropped.
+        assert start >= 1
+        assert '"reasoning_effort": "none"' in source[start - 1]
+        assert all('"reasoning_effort"' not in body for body in source[start:])
 
 
 def test_the_snapshot_is_the_source_commit_and_covers_every_scenario() -> None:
@@ -82,7 +124,9 @@ async def test_the_adapter_sends_the_source_bytes(scenario: Scenario) -> None:
     finally:
         server.close()
 
-    assert [body.decode("ascii") for body in server.bodies] == source["bodies"]
+    assert [body.decode("ascii") for body in server.bodies] == target_bodies(
+        scenario, source["bodies"]
+    )
     assert values == source["values"]
     assert outcomes == list(scenario.expected)
     # The source failed exactly where the target failed.

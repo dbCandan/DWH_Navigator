@@ -232,6 +232,20 @@ def test_the_body_is_written_exactly_as_the_source_writes_it() -> None:
         b'{"model": "m", "messages": [{"role": "user", "content": "S\\n\\nU"}, '
         b'{"role": "assistant", "content": "A"}], "temperature": 0.7, "max_tokens": 60}'
     )
+    thinking_off = chat_body(
+        model="m",
+        messages=[{"role": "system", "content": "S"}, {"role": "user", "content": "U"}],
+        system="S",
+        temperature=0.0,
+        max_tokens=60,
+        schema={},
+        features=RequestFeatures(True, False, "", 42, thinking_off=True),
+    )
+    assert thinking_off == (
+        b'{"model": "m", "messages": [{"role": "system", "content": "S"}, '
+        b'{"role": "user", "content": "U"}], "temperature": 0.0, "max_tokens": 60, '
+        b'"chat_template_kwargs": {"enable_thinking": false}, "seed": 42}'
+    )
 
 
 async def test_a_chat_call_posts_the_body_and_returns_the_object(server: FakeLlmServer) -> None:
@@ -318,6 +332,8 @@ async def test_refused_features_are_dropped_in_order_and_remembered(
     assert last["messages"] == [{"role": "user", "content": "Sistem istemi ŞİĞ\n\nsoru 2"}]
     assert "response_format" not in last and "reasoning_effort" not in last
     assert last["seed"] == 42
+    # The refused "none" turned thinking off through the chat template (rule 3, target only).
+    assert last["chat_template_kwargs"] == THINKING_OFF
 
 
 async def test_a_changed_connection_forgets_what_was_learned(server: FakeLlmServer) -> None:
@@ -365,6 +381,137 @@ async def test_at_most_three_features_are_dropped_in_one_call(server: FakeLlmSer
     result = await adapter().chat(connection(server), ask())
     assert result.outcome is LlmOutcome.UPSTREAM_STATUS and result.http_status == 400
     assert result.summary.requests == 4 and len(result.summary.adaptations) == 3
+
+
+# vLLM's refusal of ``reasoning_effort: "none"`` (it accepts only low, medium and high).
+VLLM_EFFORT_REFUSAL = (
+    "[{'type': 'literal_error', 'loc': ('body', 'reasoning_effort'), "
+    "'msg': \"Input should be 'low', 'medium' or 'high'\", 'input': 'none'}]"
+)
+THINKING_OFF = {"enable_thinking": False}
+
+
+async def test_a_refused_none_effort_is_resent_with_thinking_off_and_remembered(
+    server: FakeLlmServer, logs: LogCapture
+) -> None:
+    server.scenario = script(
+        [
+            refusal(f"{VLLM_EFFORT_REFUSAL} {MARKER}"),
+            chat_reply('\n\n{"ok": true}'),
+            chat_reply('{"ok": false}'),
+        ]
+    )
+    chat = adapter()
+    target = connection(server)
+
+    first = await chat.chat(target, ask())
+    second = await chat.chat(target, ask(user="soru 2"))
+
+    assert first.value == {"ok": True} and second.value == {"ok": False}
+    assert first.summary.adaptations == (AdaptedFeature.REASONING_EFFORT,)
+    assert first.summary.requests == 2
+    # Remembered for the connection: the next call pays no second refusal.
+    assert second.summary.requests == 1 and second.summary.adaptations == ()
+    bodies = server.chat_bodies()
+    # The first request is the source's, byte for byte.
+    assert bodies[0] == chat_body(
+        model="deneme-model",
+        messages=[
+            {"role": "system", "content": "Sistem istemi ŞİĞ"},
+            {"role": "user", "content": "soru"},
+        ],
+        system="Sistem istemi ŞİĞ",
+        temperature=0.0,
+        max_tokens=2500,
+        schema=SCHEMA,
+        features=RequestFeatures(True, True, "none", 42),
+    )
+    for body in bodies[1:]:
+        sent = json.loads(body)
+        assert list(sent) == [
+            "model",
+            "messages",
+            "temperature",
+            "max_tokens",
+            "chat_template_kwargs",
+            "seed",
+            "response_format",
+        ]
+        assert sent["chat_template_kwargs"] == THINKING_OFF
+        assert b'"chat_template_kwargs": {"enable_thinking": false}, "seed": 42' in body
+    # Neither the server's refusal nor the reply reaches the log.
+    assert MARKER not in logs.rendered()
+    assert "literal_error" not in logs.rendered() and "enable_thinking" not in logs.rendered()
+
+
+async def test_a_refused_thinking_switch_is_dropped_and_remembered(
+    server: FakeLlmServer,
+) -> None:
+    server.scenario = script(
+        [
+            refusal(VLLM_EFFORT_REFUSAL),
+            refusal("Unrecognized request argument supplied: chat_template_kwargs"),
+            chat_reply('{"ok": true}'),
+            chat_reply('{"ok": false}'),
+        ]
+    )
+    chat = adapter()
+    target = connection(server)
+
+    first = await chat.chat(target, ask())
+    second = await chat.chat(target, ask(user="soru 2"))
+
+    assert first.ok and second.ok
+    assert first.summary.adaptations == (
+        AdaptedFeature.REASONING_EFFORT,
+        AdaptedFeature.CHAT_TEMPLATE_KWARGS,
+    )
+    assert second.summary.requests == 1 and second.summary.adaptations == ()
+    bodies = [json.loads(body) for body in server.chat_bodies()]
+    assert [("chat_template_kwargs" in body) for body in bodies] == [False, True, False, False]
+    assert [("reasoning_effort" in body) for body in bodies] == [True, False, False, False]
+
+
+@pytest.mark.parametrize("effort", ["low", "medium", "high"])
+async def test_a_refused_effort_other_than_none_is_only_dropped(
+    server: FakeLlmServer, effort: str
+) -> None:
+    server.scenario = script([refusal("reasoning_effort is not supported"), chat_reply("{}")])
+    result = await adapter().chat(connection(server, reasoning_effort=effort), ask())
+    assert result.ok and result.summary.adaptations == (AdaptedFeature.REASONING_EFFORT,)
+    first, resent = (json.loads(body) for body in server.chat_bodies())
+    assert first["reasoning_effort"] == effort
+    assert "reasoning_effort" not in resent and "chat_template_kwargs" not in resent
+
+
+@pytest.mark.parametrize("effort", ["none", "low", "medium", "high", ""])
+async def test_an_accepted_first_request_never_carries_the_thinking_switch(
+    server: FakeLlmServer, effort: str
+) -> None:
+    server.scenario = respond(chat_reply('{"ok": true}'))
+    await adapter().chat(connection(server, reasoning_effort=effort), ask())
+    (request,) = server.requests
+    assert b"chat_template_kwargs" not in request.body
+    assert ("reasoning_effort" in request.json()) is bool(effort)
+
+
+async def test_a_connection_test_turns_thinking_off_without_teaching_analyses(
+    server: FakeLlmServer,
+) -> None:
+    server.scenario = script(
+        [
+            refusal(VLLM_EFFORT_REFUSAL),
+            chat_reply('\n\n{"cevap": "Ankara"}'),
+            chat_reply('{"ok": true}'),
+        ]
+    )
+    chat = adapter()
+    target = connection(server)
+    tested = await chat.chat(target, ask(LlmPurpose.CONNECTION_TEST, max_tokens=60))
+    assert tested.value == {"cevap": "Ankara"}
+    await chat.chat(target, ask())
+    last = json.loads(server.chat_bodies()[-1])
+    assert last["reasoning_effort"] == "none" and "chat_template_kwargs" not in last
 
 
 async def test_one_repair_then_invalid_json(server: FakeLlmServer) -> None:

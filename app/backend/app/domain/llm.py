@@ -46,6 +46,9 @@ MAX_REPLIES = 2
 ERROR_TEXT_CHARS = 600
 REPAIR_REPLY_CHARS = 2000
 REPAIR_PROMPT = "Yanıtın geçerli JSON değil. SADECE şemaya uyan JSON döndür."
+# Requirement 7, rule 3 (target only): when the server refuses ``reasoning_effort: "none"``, the
+# resend asks the model's chat template to turn thinking off instead (vLLM serving Qwen).
+THINKING_OFF_KWARGS: Mapping[str, Any] = {"enable_thinking": False}
 
 # Requirement 15: the connection test's chat step, as in the source.
 SERVER_STEP = "Sunucu"
@@ -127,6 +130,7 @@ class AdaptedFeature(StrEnum):
     RESPONSE_FORMAT = "response_format"
     REASONING_EFFORT = "reasoning_effort"
     SEED = "seed"
+    CHAT_TEMPLATE_KWARGS = "chat_template_kwargs"
 
 
 # --- Requirement 13: fixed Turkish texts --------------------------------------------------------
@@ -222,8 +226,13 @@ def refused_feature(
     structured: bool,
     reasoning_effort: str,
     seed: int | None,
+    thinking_off: bool = False,
 ) -> AdaptedFeature | None:
-    """The first Requirement 7 rule a 400 body matches among the features still sent."""
+    """The first Requirement 7 rule a 400 body matches among the features still sent.
+
+    ``thinking_off`` is the target-only ``chat_template_kwargs`` field; its rule comes last, so
+    the four source rules keep their order and precedence.
+    """
 
     text = folded_error
     if system_role and ("developer instruction" in text or "system instruction" in text):
@@ -236,6 +245,10 @@ def refused_feature(
         return AdaptedFeature.REASONING_EFFORT
     if seed is not None and "seed" in text:
         return AdaptedFeature.SEED
+    if thinking_off and any(
+        word in text for word in ("chat_template_kwargs", "enable_thinking", "template")
+    ):
+        return AdaptedFeature.CHAT_TEMPLATE_KWARGS
     return None
 
 
