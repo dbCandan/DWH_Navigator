@@ -198,6 +198,16 @@ export class CosmosEngine {
     this.log(columns ? this.hooks.text('explorer.voyage.scanningColumns', {columns: fmt(columns)}) : this.hooks.text('explorer.voyage.planning'));
   }
 
+  /**
+   * The analysis waits in the queue: the voyage log says "sırada" once, without a count or a
+   * time (question-analysis Requirement 20, Decision 22).
+   */
+  queued(): void {
+    const step = this.hooks.text('explorer.voyage.queued');
+    if (this.hudSteps.includes(step)) return;
+    this.log(step);
+  }
+
   /** Real candidate tables (model-free search): the route runs through them. */
   candidates(list: ScoredTable[]): void {
     if (!this.active || (this.mode !== 'plan' && this.mode !== 'travel')) return;

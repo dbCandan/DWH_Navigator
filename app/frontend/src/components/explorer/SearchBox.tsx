@@ -4,8 +4,14 @@ import {useIntl} from '@/contexts/IntlContext';
 const MAX_HEIGHT = 180;
 
 /** Grow the question field with its text up to 180 px; a scrollbar only when it no longer fits. */
-function autosize(q: HTMLTextAreaElement | null): void {
+function autosize(q: HTMLTextAreaElement | null, docked: boolean): void {
   if (!q) return;
+  if (docked) {
+    // One line in the heading: the stylesheet gives the height.
+    q.style.height = '';
+    q.style.overflowY = '';
+    return;
+  }
   q.style.height = 'auto';
   q.style.height = Math.min(q.scrollHeight, MAX_HEIGHT) + 'px';
   q.style.overflowY = q.scrollHeight > MAX_HEIGHT ? 'auto' : 'hidden';
@@ -17,26 +23,35 @@ interface Props {
   /** Enter (without Shift) or the button. */
   onSubmit: () => void;
   textareaRef?: RefObject<HTMLTextAreaElement | null>;
+  /** The bar sits in the top line as the page's heading (after the first question). */
+  docked?: boolean;
+  /** An analysis runs: the button says "Durdur" and stops it. */
+  busy?: boolean;
+  onStop?: () => void;
+  /** The asked question, as the field's tooltip in the heading. */
+  title?: string;
 }
 
 /**
- * The question bar of the landing view (index.html #hero .searchbox): the question field that
- * grows with its text up to 180 px, the Excel list button with its drop hint, and "Ara ↵".
+ * The question bar (index.html .searchbox): the question field that grows with its text up to
+ * 180 px on the landing view and stays one line in the heading, the Excel list button with its
+ * drop hint, and "Ara ↵", which turns into "Durdur" while an analysis runs (question-analysis
+ * Requirement 19).
  */
-export function SearchBox({value, onChange, onSubmit, textareaRef}: Props) {
+export function SearchBox({value, onChange, onSubmit, textareaRef, docked = false, busy = false, onStop, title}: Props) {
   const {t} = useIntl();
   const own = useRef<HTMLTextAreaElement>(null);
   const field = textareaRef ?? own;
 
   useEffect(() => {
-    autosize(field.current);
-  }, [value, field]);
+    autosize(field.current, docked);
+  }, [value, field, docked]);
 
   useEffect(() => {
-    const onResize = () => requestAnimationFrame(() => autosize(field.current));
+    const onResize = () => requestAnimationFrame(() => autosize(field.current, docked));
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, [field]);
+  }, [field, docked]);
 
   function keyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -56,7 +71,9 @@ export function SearchBox({value, onChange, onSubmit, textareaRef}: Props) {
         value={value}
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={keyDown}
-        autoFocus
+        wrap={docked ? 'off' : undefined}
+        title={title}
+        autoFocus={!docked}
       />
       <button
         className="attach"
@@ -84,7 +101,14 @@ export function SearchBox({value, onChange, onSubmit, textareaRef}: Props) {
           <small>{t('explorer.list.dropHint')}</small>
         </div>
       </div>
-      <button className="primary" id="go" type="button" onClick={onSubmit}>
+      <button
+        className={'primary' + (busy ? ' busy' : '')}
+        id="go"
+        type="button"
+        title={busy ? t('explorer.search.stopTip') : undefined}
+        aria-label={busy ? t('explorer.search.stop') : undefined}
+        onClick={busy ? onStop : onSubmit}
+      >
         {t('explorer.search.submit')} <kbd>↵</kbd>
       </button>
     </div>
