@@ -229,15 +229,23 @@ def target_constants() -> dict[str, Any]:
     return json.loads(done.stdout)  # type: ignore[no-any-return]
 
 
-def source_admin(copy: Path, python: str) -> dict[str, Any]:
-    """The source's settings schema and word list behaviour (tests/parity/admin.py)."""
+# Collector module -> its snapshot file: the source's settings schema and word list behaviour
+# (admin) and the dictionary explorer (explorer).
+COLLECTORS = {
+    "admin": "admin.json",
+    "explorer": "explorer.json",
+}
+
+
+def source_collect(copy: Path, python: str, collector: str) -> dict[str, Any]:
+    """One collector's output on the source side (``tests/parity/<collector>.py``)."""
     env = {
         **os.environ,
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONPATH": os.pathsep.join([str(BACKEND), str(copy / "src")]),
     }
     done = subprocess.run(
-        [python, "-B", "-m", "tests.parity.admin", "source"],
+        [python, "-B", "-m", f"tests.parity.{collector}", "source"],
         cwd=BACKEND,
         env=env,
         check=True,
@@ -337,7 +345,8 @@ def build_snapshot(copy: Path, python: str, folder: Path) -> None:
     folder.mkdir(parents=True, exist_ok=True)
     run_source(copy, python, folder / "outputs.jsonl", hash_seed="0")
     (folder / "constants.json").write_text(_dump_json(source_constants(copy, python)), "utf-8")
-    (folder / "admin.json").write_text(_dump_json(source_admin(copy, python)), "utf-8")
+    for collector, name in COLLECTORS.items():
+        (folder / name).write_text(_dump_json(source_collect(copy, python, collector)), "utf-8")
     (folder / "manifest.json").write_text(_dump_json(manifest()), "utf-8")
 
 
@@ -348,7 +357,7 @@ def verify_snapshot(tmp: Path) -> int:
         other = tmp / "source-4242.jsonl"
         run_source(copy, python, other, hash_seed="4242")
     problems = 0
-    for name in ("outputs.jsonl", "constants.json", "admin.json", "manifest.json"):
+    for name in ("outputs.jsonl", "constants.json", *COLLECTORS.values(), "manifest.json"):
         same = (tmp / "snapshot" / name).read_bytes() == (SNAPSHOT / name).read_bytes()
         print(f"anlık görüntü {name}: {'bayt bayt aynı' if same else 'FARKLI'}")
         problems += not same

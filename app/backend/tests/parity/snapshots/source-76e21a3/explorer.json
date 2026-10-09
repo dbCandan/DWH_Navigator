@@ -1,0 +1,3593 @@
+{
+ "details": {
+  "SYNDM.AIS.vCarOwnershipPrediction": "66becbe0f39eac4412fa145603569215d34891535a9e13ef62165792a5f6c8f7",
+  "SYNDM.AIS.vChurnModelInput": "caf59162d36728bb0458a237e8dab692adc9ae9d92e8398fe0b35f32080fe97b",
+  "SYNDM.AIS.vRetailChurnTrainingInput": "cfe6cccc52c3737f9ad12dff6f216ca373ea7e8de7a9719723986c8be094c221",
+  "SYNDM.AIS.vSegmentationInput": "19e21325ecc6553116cae06574c797aa5bf0de7c8140650d420f921214ee9c43",
+  "SYNDM.BDG.vCustomerProfitabilityAllProduct": "f3bed964e5f8bf5fdb3b81485cffe65384340271120d50329e5e357a7a14685a",
+  "SYNDM.BRN.vAtmList": "0b6220153627fe462e99c5ea8fc36e934f9267866fee699112296c873298979b",
+  "SYNDM.BRN.vBranch": "f681fd2e53d6390a64bd346ae6e6c1455d3ade82cdb06ed6450b4edbc4bb9171",
+  "SYNDM.BRN.vBranchPerformance": "06c309158a51ffe09f7762417b9d67cb5f068685a2bf69e80e414628f2f645f3",
+  "SYNDM.CFM.vCampaign": "6a595b330553dbbbbe5977f0d82316e95fc12dca0c33caf82ef572121e621b73",
+  "SYNDM.CFM.vFinanceCustomerDetail": "da613692989d726e8d0bda17ddb8b2b60f495283504c82257d0b5d824b2f499a",
+  "SYNDM.CMP.vCampaign": "f6729979bd881110a9cb06b061609b31aef9fe25da6ec586d58f0ec40596d945",
+  "SYNDM.CMP.vMarketingPermission": "9656e659110812df01ab40d30a1501ec596a48438b5e90e6484c3985d263912a",
+  "SYNDM.CMP.vSmartTargeting": "a21e3e170e05fcfd0ede27d33d256a507be8813dfb08b7031dd378d667f8ffcf",
+  "SYNDM.CON.vAccountBalanceSummary": "c0f19d20a9133f6723f79c2372d53085b243a2fd57c6ab74161c46cb59a509f2",
+  "SYNDM.CON.vCustomerAssetDepositBalanceDaily": "f4551260e2c68b4c83d7c8718fd5554b46dfef249290887334d2f7a4c1196040",
+  "SYNDM.CON.vExpectedCreditLoss": "bd1bbde802e5e0eb57f9c591fcce942f8f859d31f99afadbe735abb2c5b7817a",
+  "SYNDM.CON.vIFRSAccountStatus": "a5852c01e376e721bb941e53f516c152f454d96451af2b7cca297726d073f1e1",
+  "SYNDM.CON.vLoanApplication": "92b6231d14596c19f15254dbaaa735beed0d2e61af67de2fe1ec6fa1b0db8b91",
+  "SYNDM.CON.vLoanContract": "b62dc42f019fa0d93b402a93bdea9e98fd36fdbdce70628efec0cc79f8233ad3",
+  "SYNDM.CON.vLoanPayment": "579158459d075c2162d233353dba5598a743b9e9151bc55adfcc742d59be20b1",
+  "SYNDM.CON.vProjectRisk": "99d8c542d844420eab98233581f6dc0a8b0c743ccc11293710879bc3510d47ca",
+  "SYNDM.CRD.vCardBalanceSummary": "d27c60efd66b7811f07ced8999d0617ca711707112789b8ec772ba9f814b2040",
+  "SYNDM.CRD.vCardLimit": "afecbb42b045bcdaaa370bc729360408d81d4e647a2f4967f46a1aaf916d3b83",
+  "SYNDM.CRD.vCardLimitUsage": "de9712604f0424b9599caeb4a734f4bee62bb60706253e39cf827b4838f7ff79",
+  "SYNDM.CRD.vCardList": "8f1815c5f758bfb4cbf27c6f2a2b4e01ce3223cb5d0248453c9f3afcf8714efd",
+  "SYNDM.CRD.vCardStatistic": "72e7922089ebbca3508f76b677091605b7394e5787dfb8c4d2a663970a910108",
+  "SYNDM.CUS.vCustomerContact": "1ece73e6f0f8fc9e8158df9c78c949710cd1a2ae85c7a8268094a810a2109b02",
+  "SYNDM.CUS.vCustomerDetail": "1e71203e4aae871db7316fe7295b2021d5181274c1ff60f74cea6744d2612879",
+  "SYNDM.CUS.vCustomerInfo": "6785a0eebfc06147d815a2a37df79ea1c8b3de5cb2ef35d536e30c48839347de",
+  "SYNDM.CUS.vStrategicValue": "abf2df6df78aa38ad3c64153d7b022c2fd033f061385bab3ce1bd7da59e1c789",
+  "SYNDM.DEP.vDemandDepositDaily": "e6cf1863e4f46f867aaa760b17c8e96e7e3b2759eb111b1188c1facc4e3c77fa",
+  "SYNDM.DEP.vParticipationAccount": "d940a4d67933856aa846a7677e63478ae3adad2275aed2189d09d33cf4cefc0e",
+  "SYNDM.DGT.vDigitalLogin": "7c5e4a6f1e367a48c9b209ceba87c5e3a3c69aeecc76dbff7256253a6a90e4cb",
+  "SYNDM.DGT.vMobileTransaction": "a9249c937404302e1eb95b3d1f783abab58b3575622e22d185fbe6d813555e1a",
+  "SYNDM.EWS.vTriggerValue": "98d518877dbeed8f44e624c454d2b7f9813f9f69236bcc034a2bd0034127a63d",
+  "SYNDM.FX.vFxTransaction": "99a07378d22c1ea037aac5bb9ef1bf7c5a4fe0f3239c449695be2cd66f88da0e",
+  "SYNDM.IDM.vKKBReport": "a0c753965961e72b3e5a4df5a7b6ec2490774aef61b5fe161aad4c9523a99537",
+  "SYNDM.INS.vInsurancePolicy": "1a27f9c686c249255acc3d471a47b53f9e09bdc3f3a54ee49732c659b14e4eaf",
+  "SYNDM.LSG.vLeasingContract": "5ae00386d59889e1b185c8add9c57327e1eafd25d9c2f77a22dd7fdaa9d6b63f",
+  "SYNDM.LSG.vMurabahaContract": "1b10ae26da6f96ae914d2c088264eee131502acd33c4c07c241b5d0181cbd0c8",
+  "SYNDM.LSG.vSukukHolding": "678896b2dfd0cc99def094a9583724e73c240154c89fcbc3ec949c19275f228e",
+  "SYNDM.MDL.vCollateral": "3edf693b15a32c1ad30bfd4731ecd0f0957083fe4bb8a55c8bd5118a156a9b0d",
+  "SYNDM.MDL.vCustomerMonthlyProfile": "dd5174c470f550806f667ec5b1e965e72c3cb7c7cb8540f37a795fedd62ff3c1",
+  "SYNDM.MDL.vRiskArrayAllotment": "8721d07f2ce3ef992f43141807386e3f0628ad0d96052d1b75a0114fe9fafa06",
+  "SYNDM.MDL.vRiskArrayCard": "18194e25927d6327c6434821ebe9c9a434daa8d7d2558e5289f06d669b0fcac2",
+  "SYNDM.PB.vPrivateBankingCustomer": "5f8ffa06cc30a115ff5a259ea6699d20eafa2a8cc1743fd6362ed8b901714fde",
+  "SYNDM.PRC.vCustomerGeneralInfo": "a70afffe92c970b381d546892fece21ba5d3fa10ea06f955bc8be49c3871e195",
+  "SYNDM.REF.vCurrencyRate": "3797ad2fe92b588eadb203cd0e57c31bedf39422fcff696ca1ab979c554c9078",
+  "SYNDM.REF.vHoliday": "9be86859b2be0d2d4d30bd6c637b705d555dea2af537d015f32fd60619fa3a16",
+  "SYNDM.REF.vProductCatalog": "1eb1c2587c69aa4ebb4ccb71501d7bedae5a2136445e38c131bbc296435488a9",
+  "SYNDM.RPT.rpt_AgeBandMonthlySummary": "0c85d57e2d4d5abc190bc43c17551bfb04f07c56a24039921576417f8948a246",
+  "SYNDM.RPT.rpt_BranchMonthlySummary": "e5a9b1e77a516e6fdc31c07e8bdc92bdae7490f9bf11d0856d85fde1720acc32",
+  "SYNDM.RPT.rpt_CampaignMonthlySummary": "38f1ef21bf5eb7beeb01ad84b0016638a3d06585b9e327f290349a88eb00cd29",
+  "SYNDM.RPT.rpt_ChannelMonthlySummary": "7c04c7d6f5f380d71344bd46f60c4bea60dc36233c22d17f142cc98c93c844f2",
+  "SYNDM.RPT.rpt_CityMonthlySummary": "074a7754023b5458ab2a3075558bada0ad004f9ff7db9963b6ee59c60f33a1fe",
+  "SYNDM.RPT.rpt_CurrencyMonthlySummary": "aac3f5c2648524b8b135dbfe6276e3cf874ad525508d0a7554534fa8d669e262",
+  "SYNDM.RPT.rpt_DailyLiquidity": "cb4f7020c5839d91f933054dbfbf76a14f2b40516fa6e9a819ae1ecdd2743bcf",
+  "SYNDM.RPT.rpt_DigitalMonthlySummary": "b09e36f3f198c3898301138b3fb7b9502061d53629d9b287a1cb3454cfee4841",
+  "SYNDM.RPT.rpt_DistrictMonthlySummary": "e13f198c2a4e0680c949817f2d782c092804b1b5e82cad0ff6a2d4c48c17fc1b",
+  "SYNDM.RPT.rpt_EducationMonthlySummary": "c2aff280adf23a7e6354ab75ef4f81b2ff3dba1dd5af13b83f8a87358e9e7e8e",
+  "SYNDM.RPT.rpt_GenderMonthlySummary": "13431c756b0c93f1a97727a4dc1b67b808ad05d2ecc12b4a38f0a83e5757fa6e",
+  "SYNDM.RPT.rpt_IncomeMonthlySummary": "20e306985ccd6a33908b29aea81788e3f27939c6f4c9de6369c43cc626c5df26",
+  "SYNDM.RPT.rpt_MonthlyRiskReport": "4076e2529b105ed95c090ccc2c985a0f8075d6a817e74d8d9028a07e90d74f81",
+  "SYNDM.RPT.rpt_OccupationMonthlySummary": "69c625992e2204341481ad97cb5ef05d73f4b4fd148ff0621240d5abfe96b845",
+  "SYNDM.RPT.rpt_PortfolioMonthlySummary": "55d07957cdf9e6c02f4fc8ad5d9d97d3225df4cc49daf890f8e5aa2d27a3bf9e",
+  "SYNDM.RPT.rpt_ProductMonthlySummary": "377c6c1e768ce6c2fd3c8409d8bf9bfc8eda7a03beb219a5e2c1d1eb3dc59928",
+  "SYNDM.RPT.rpt_RatingMonthlySummary": "d47349c389aab4b7003d15d192e1fe72798c303e026aa6583107aaaeed4ca945",
+  "SYNDM.RPT.rpt_RegionMonthlySummary": "474e0abc5c21c40ea09ce946375422365fc1da25c9f4c0438ec7fb81cf70e2d9",
+  "SYNDM.RPT.rpt_RiskGroupMonthlySummary": "4c8e8737c717f33d951bd3e9f20728b5b5e39e70872593995990acf7bd222e6a",
+  "SYNDM.RPT.rpt_SectorMonthlySummary": "7882c135d41150495ff8e6eea58899682081bea79691db11265ea66a47a61b35",
+  "SYNDM.RPT.rpt_SegmentMonthlySummary": "2c041102863ee92daeab35d7de55691347e89795f68fb865d80bec83561b0bf0",
+  "SYNDM.RPT.rpt_TenureMonthlySummary": "c01ce28353c43737de233c343b52004df226d8979005774c623262c2eb5e0d9e",
+  "SYNDM.RPT.rpt_VintageMonthlySummary": "e2835f5c33c9576a535a8c9025aad919592b47c1349eab9aeb263e8616d43b18",
+  "SYNDM.RSK.vNplFollowUp": "22b9a28fb5674937c841cc4f46bd790d81c5e9781d58d65d4cfa260899a97b3d",
+  "SYNDM.RSK.vRiskProductMonthly": "8aaa4a17e3eecd32f44466af7359caa94291e980ae47be8658cf8145a1537c4f",
+  "SYNDM.TRX.vAtmTransaction": "2639eff398bb4f544400c44716a9094f2c516647a489d5ecdc0f7d9d6dea7332",
+  "SYNDM.TRX.vCardTurnover": "5c3defb502250edb0d9e31fbd7c8aee691e8793f1906c837566b66a525f967b0",
+  "SYNDM.TRX.vChequeTransaction": "1ff996a52dfeecb028764f8379ad8ae6fe3421da020177570650ada2d1ddd642",
+  "SYNDM.TRX.vCustomerMoneyTransferSummary": "bac03bfd8fe8b97f852eae8ba4dac58c1b1287131dea0fef96bd05aa4d0bd185",
+  "SYNDM.TRX.vEFTIncoming": "94a23079d2dcca93b096c752da2596e93dbdb6c7134204cb743173dcc547c2ef",
+  "SYNDM.TRX.vFASTOutgoing": "c5c4d9ef159a31a8bcefb7df066afe9235c1d2dcb6279555c5dbc38a868ffbbb",
+  "SYNDM.TRX.vHavaleTransaction": "7516f36f7d534e73f26ad1046d722f15688006403ae3356df63b56dac01cdad5",
+  "SYNDM.TRX.vPosMerchant": "80a1de28d9d20eb0678de84af8a26d7843006e8bc8e72b8b2287520f1d3c6f55",
+  "SYNDM.TRX.vPosTransaction": "e8dd9f0c736e89825decc1a020220438a855b6852ee53e77e83e04165756b444",
+  "SYNDM.TRX.vSwiftTransfer": "8a6ab0ef2f9452958d58426fb9397f8a4fb640f0a21034c7df5ff4cbfe6fe55f",
+  "SYNERP.HRM.vEmployee": "33d7ddadb94415374a0a9ace090c598fcc1299d4dae7e679df01d18509a4354e",
+  "SYNERP.HRM.vPersonKKB": "0040a30cec9d9d0160aa7b9acc0d91ee84f3adfb981a127d09d2d62ddbf1967e"
+ },
+ "galaxy": [
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_AgeBandMonthlySummary",
+   "name": "rpt_AgeBandMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_BranchMonthlySummary",
+   "name": "rpt_BranchMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_CampaignMonthlySummary",
+   "name": "rpt_CampaignMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_ChannelMonthlySummary",
+   "name": "rpt_ChannelMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_CityMonthlySummary",
+   "name": "rpt_CityMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_CurrencyMonthlySummary",
+   "name": "rpt_CurrencyMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 3,
+   "group": "Hazine",
+   "key": "SYNDM.RPT.rpt_DailyLiquidity",
+   "name": "rpt_DailyLiquidity",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_DigitalMonthlySummary",
+   "name": "rpt_DigitalMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_DistrictMonthlySummary",
+   "name": "rpt_DistrictMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_EducationMonthlySummary",
+   "name": "rpt_EducationMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_GenderMonthlySummary",
+   "name": "rpt_GenderMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_IncomeMonthlySummary",
+   "name": "rpt_IncomeMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 3,
+   "group": "Risk",
+   "key": "SYNDM.RPT.rpt_MonthlyRiskReport",
+   "name": "rpt_MonthlyRiskReport",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_OccupationMonthlySummary",
+   "name": "rpt_OccupationMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_PortfolioMonthlySummary",
+   "name": "rpt_PortfolioMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_ProductMonthlySummary",
+   "name": "rpt_ProductMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_RatingMonthlySummary",
+   "name": "rpt_RatingMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_RegionMonthlySummary",
+   "name": "rpt_RegionMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_RiskGroupMonthlySummary",
+   "name": "rpt_RiskGroupMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_SectorMonthlySummary",
+   "name": "rpt_SectorMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_SegmentMonthlySummary",
+   "name": "rpt_SegmentMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_TenureMonthlySummary",
+   "name": "rpt_TenureMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 42,
+   "group": "Raporlama",
+   "key": "SYNDM.RPT.rpt_VintageMonthlySummary",
+   "name": "rpt_VintageMonthlySummary",
+   "schema": "SYNDM.RPT"
+  },
+  {
+   "columns": 9,
+   "group": "Mevduat",
+   "key": "SYNDM.CON.vAccountBalanceSummary",
+   "name": "vAccountBalanceSummary",
+   "schema": "SYNDM.CON"
+  },
+  {
+   "columns": 2,
+   "group": "Şube",
+   "key": "SYNDM.BRN.vAtmList",
+   "name": "vAtmList",
+   "schema": "SYNDM.BRN"
+  },
+  {
+   "columns": 5,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vAtmTransaction",
+   "name": "vAtmTransaction",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 4,
+   "group": "Şube",
+   "key": "SYNDM.BRN.vBranch",
+   "name": "vBranch",
+   "schema": "SYNDM.BRN"
+  },
+  {
+   "columns": 5,
+   "group": "Şube",
+   "key": "SYNDM.BRN.vBranchPerformance",
+   "name": "vBranchPerformance",
+   "schema": "SYNDM.BRN"
+  },
+  {
+   "columns": 4,
+   "group": "Kampanya - Hedef Kitle",
+   "key": "SYNDM.CMP.vCampaign",
+   "name": "vCampaign",
+   "schema": "SYNDM.CMP"
+  },
+  {
+   "columns": 5,
+   "group": "Kampanya - Hedef Kitle",
+   "key": "SYNDM.CFM.vCampaign",
+   "name": "vCampaign",
+   "schema": "SYNDM.CFM"
+  },
+  {
+   "columns": 4,
+   "group": "Analitik",
+   "key": "SYNDM.AIS.vCarOwnershipPrediction",
+   "name": "vCarOwnershipPrediction",
+   "schema": "SYNDM.AIS"
+  },
+  {
+   "columns": 8,
+   "group": "Kart",
+   "key": "SYNDM.CRD.vCardBalanceSummary",
+   "name": "vCardBalanceSummary",
+   "schema": "SYNDM.CRD"
+  },
+  {
+   "columns": 6,
+   "group": "Kart",
+   "key": "SYNDM.CRD.vCardLimit",
+   "name": "vCardLimit",
+   "schema": "SYNDM.CRD"
+  },
+  {
+   "columns": 7,
+   "group": "Kart",
+   "key": "SYNDM.CRD.vCardLimitUsage",
+   "name": "vCardLimitUsage",
+   "schema": "SYNDM.CRD"
+  },
+  {
+   "columns": 12,
+   "group": "Kart",
+   "key": "SYNDM.CRD.vCardList",
+   "name": "vCardList",
+   "schema": "SYNDM.CRD"
+  },
+  {
+   "columns": 33,
+   "group": "Kart",
+   "key": "SYNDM.CRD.vCardStatistic",
+   "name": "vCardStatistic",
+   "schema": "SYNDM.CRD"
+  },
+  {
+   "columns": 7,
+   "group": "Kart",
+   "key": "SYNDM.TRX.vCardTurnover",
+   "name": "vCardTurnover",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 3,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vChequeTransaction",
+   "name": "vChequeTransaction",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 152,
+   "group": "Analitik",
+   "key": "SYNDM.AIS.vChurnModelInput",
+   "name": "vChurnModelInput",
+   "schema": "SYNDM.AIS"
+  },
+  {
+   "columns": 4,
+   "group": "Risk",
+   "key": "SYNDM.MDL.vCollateral",
+   "name": "vCollateral",
+   "schema": "SYNDM.MDL"
+  },
+  {
+   "columns": 2,
+   "group": "Diğer",
+   "key": "SYNDM.REF.vCurrencyRate",
+   "name": "vCurrencyRate",
+   "schema": "SYNDM.REF"
+  },
+  {
+   "columns": 12,
+   "group": "Mevduat",
+   "key": "SYNDM.CON.vCustomerAssetDepositBalanceDaily",
+   "name": "vCustomerAssetDepositBalanceDaily",
+   "schema": "SYNDM.CON"
+  },
+  {
+   "columns": 5,
+   "group": "Müşteri",
+   "key": "SYNDM.CUS.vCustomerContact",
+   "name": "vCustomerContact",
+   "schema": "SYNDM.CUS"
+  },
+  {
+   "columns": 10,
+   "group": "Müşteri",
+   "key": "SYNDM.CUS.vCustomerDetail",
+   "name": "vCustomerDetail",
+   "schema": "SYNDM.CUS"
+  },
+  {
+   "columns": 9,
+   "group": "Müşteri",
+   "key": "SYNDM.PRC.vCustomerGeneralInfo",
+   "name": "vCustomerGeneralInfo",
+   "schema": "SYNDM.PRC"
+  },
+  {
+   "columns": 15,
+   "group": "Müşteri",
+   "key": "SYNDM.CUS.vCustomerInfo",
+   "name": "vCustomerInfo",
+   "schema": "SYNDM.CUS"
+  },
+  {
+   "columns": 25,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vCustomerMoneyTransferSummary",
+   "name": "vCustomerMoneyTransferSummary",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 92,
+   "group": "Analitik",
+   "key": "SYNDM.MDL.vCustomerMonthlyProfile",
+   "name": "vCustomerMonthlyProfile",
+   "schema": "SYNDM.MDL"
+  },
+  {
+   "columns": 5,
+   "group": "Bütçe",
+   "key": "SYNDM.BDG.vCustomerProfitabilityAllProduct",
+   "name": "vCustomerProfitabilityAllProduct",
+   "schema": "SYNDM.BDG"
+  },
+  {
+   "columns": 3,
+   "group": "Mevduat",
+   "key": "SYNDM.DEP.vDemandDepositDaily",
+   "name": "vDemandDepositDaily",
+   "schema": "SYNDM.DEP"
+  },
+  {
+   "columns": 4,
+   "group": "Dijital",
+   "key": "SYNDM.DGT.vDigitalLogin",
+   "name": "vDigitalLogin",
+   "schema": "SYNDM.DGT"
+  },
+  {
+   "columns": 7,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vEFTIncoming",
+   "name": "vEFTIncoming",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 3,
+   "group": "İnsan Kaynakları",
+   "key": "SYNERP.HRM.vEmployee",
+   "name": "vEmployee",
+   "schema": "SYNERP.HRM"
+  },
+  {
+   "columns": 5,
+   "group": "Risk",
+   "key": "SYNDM.CON.vExpectedCreditLoss",
+   "name": "vExpectedCreditLoss",
+   "schema": "SYNDM.CON"
+  },
+  {
+   "columns": 7,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vFASTOutgoing",
+   "name": "vFASTOutgoing",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 5,
+   "group": "Risk",
+   "key": "SYNDM.CFM.vFinanceCustomerDetail",
+   "name": "vFinanceCustomerDetail",
+   "schema": "SYNDM.CFM"
+  },
+  {
+   "columns": 5,
+   "group": "Hazine",
+   "key": "SYNDM.FX.vFxTransaction",
+   "name": "vFxTransaction",
+   "schema": "SYNDM.FX"
+  },
+  {
+   "columns": 7,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vHavaleTransaction",
+   "name": "vHavaleTransaction",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 2,
+   "group": "Diğer",
+   "key": "SYNDM.REF.vHoliday",
+   "name": "vHoliday",
+   "schema": "SYNDM.REF"
+  },
+  {
+   "columns": 8,
+   "group": "Risk",
+   "key": "SYNDM.CON.vIFRSAccountStatus",
+   "name": "vIFRSAccountStatus",
+   "schema": "SYNDM.CON"
+  },
+  {
+   "columns": 4,
+   "group": "Sigorta",
+   "key": "SYNDM.INS.vInsurancePolicy",
+   "name": "vInsurancePolicy",
+   "schema": "SYNDM.INS"
+  },
+  {
+   "columns": 5,
+   "group": "Risk",
+   "key": "SYNDM.IDM.vKKBReport",
+   "name": "vKKBReport",
+   "schema": "SYNDM.IDM"
+  },
+  {
+   "columns": 6,
+   "group": "Finansman",
+   "key": "SYNDM.LSG.vLeasingContract",
+   "name": "vLeasingContract",
+   "schema": "SYNDM.LSG"
+  },
+  {
+   "columns": 5,
+   "group": "Finansman",
+   "key": "SYNDM.CON.vLoanApplication",
+   "name": "vLoanApplication",
+   "schema": "SYNDM.CON"
+  },
+  {
+   "columns": 7,
+   "group": "Finansman",
+   "key": "SYNDM.CON.vLoanContract",
+   "name": "vLoanContract",
+   "schema": "SYNDM.CON"
+  },
+  {
+   "columns": 4,
+   "group": "Finansman",
+   "key": "SYNDM.CON.vLoanPayment",
+   "name": "vLoanPayment",
+   "schema": "SYNDM.CON"
+  },
+  {
+   "columns": 3,
+   "group": "Kampanya - Hedef Kitle",
+   "key": "SYNDM.CMP.vMarketingPermission",
+   "name": "vMarketingPermission",
+   "schema": "SYNDM.CMP"
+  },
+  {
+   "columns": 4,
+   "group": "Dijital",
+   "key": "SYNDM.DGT.vMobileTransaction",
+   "name": "vMobileTransaction",
+   "schema": "SYNDM.DGT"
+  },
+  {
+   "columns": 6,
+   "group": "Finansman",
+   "key": "SYNDM.LSG.vMurabahaContract",
+   "name": "vMurabahaContract",
+   "schema": "SYNDM.LSG"
+  },
+  {
+   "columns": 5,
+   "group": "Risk",
+   "key": "SYNDM.RSK.vNplFollowUp",
+   "name": "vNplFollowUp",
+   "schema": "SYNDM.RSK"
+  },
+  {
+   "columns": 5,
+   "group": "Mevduat",
+   "key": "SYNDM.DEP.vParticipationAccount",
+   "name": "vParticipationAccount",
+   "schema": "SYNDM.DEP"
+  },
+  {
+   "columns": 3,
+   "group": "İnsan Kaynakları",
+   "key": "SYNERP.HRM.vPersonKKB",
+   "name": "vPersonKKB",
+   "schema": "SYNERP.HRM"
+  },
+  {
+   "columns": 2,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vPosMerchant",
+   "name": "vPosMerchant",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 5,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vPosTransaction",
+   "name": "vPosTransaction",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 5,
+   "group": "Özel Bankacılık",
+   "key": "SYNDM.PB.vPrivateBankingCustomer",
+   "name": "vPrivateBankingCustomer",
+   "schema": "SYNDM.PB"
+  },
+  {
+   "columns": 3,
+   "group": "Diğer",
+   "key": "SYNDM.REF.vProductCatalog",
+   "name": "vProductCatalog",
+   "schema": "SYNDM.REF"
+  },
+  {
+   "columns": 5,
+   "group": "Risk",
+   "key": "SYNDM.CON.vProjectRisk",
+   "name": "vProjectRisk",
+   "schema": "SYNDM.CON"
+  },
+  {
+   "columns": 5,
+   "group": "Analitik",
+   "key": "SYNDM.AIS.vRetailChurnTrainingInput",
+   "name": "vRetailChurnTrainingInput",
+   "schema": "SYNDM.AIS"
+  },
+  {
+   "columns": 42,
+   "group": "Risk",
+   "key": "SYNDM.MDL.vRiskArrayAllotment",
+   "name": "vRiskArrayAllotment",
+   "schema": "SYNDM.MDL"
+  },
+  {
+   "columns": 5,
+   "group": "Risk",
+   "key": "SYNDM.MDL.vRiskArrayCard",
+   "name": "vRiskArrayCard",
+   "schema": "SYNDM.MDL"
+  },
+  {
+   "columns": 8,
+   "group": "Risk",
+   "key": "SYNDM.RSK.vRiskProductMonthly",
+   "name": "vRiskProductMonthly",
+   "schema": "SYNDM.RSK"
+  },
+  {
+   "columns": 4,
+   "group": "Analitik",
+   "key": "SYNDM.AIS.vSegmentationInput",
+   "name": "vSegmentationInput",
+   "schema": "SYNDM.AIS"
+  },
+  {
+   "columns": 4,
+   "group": "Kampanya - Hedef Kitle",
+   "key": "SYNDM.CMP.vSmartTargeting",
+   "name": "vSmartTargeting",
+   "schema": "SYNDM.CMP"
+  },
+  {
+   "columns": 5,
+   "group": "Müşteri",
+   "key": "SYNDM.CUS.vStrategicValue",
+   "name": "vStrategicValue",
+   "schema": "SYNDM.CUS"
+  },
+  {
+   "columns": 6,
+   "group": "Finansman",
+   "key": "SYNDM.LSG.vSukukHolding",
+   "name": "vSukukHolding",
+   "schema": "SYNDM.LSG"
+  },
+  {
+   "columns": 7,
+   "group": "İşlem",
+   "key": "SYNDM.TRX.vSwiftTransfer",
+   "name": "vSwiftTransfer",
+   "schema": "SYNDM.TRX"
+  },
+  {
+   "columns": 5,
+   "group": "Risk",
+   "key": "SYNDM.EWS.vTriggerValue",
+   "name": "vTriggerValue",
+   "schema": "SYNDM.EWS"
+  }
+ ],
+ "searches": {
+  "s0001": {
+   "digest": "5413d1fec55efe9f2ab2de978198af4911acc80b9d9333423c8aa7ef20bac234",
+   "query": ""
+  },
+  "s0002": {
+   "digest": "5413d1fec55efe9f2ab2de978198af4911acc80b9d9333423c8aa7ef20bac234",
+   "query": "   "
+  },
+  "s0003": {
+   "digest": "fc84111aa5166ee17bb177b1949e23839b8ef976cba76f6d0d57b57d18f4b0ad",
+   "query": "ab"
+  },
+  "s0004": {
+   "digest": "47b4372fb7445111ba97820dd5bc8d30c7b40a497d7766f350269e4ea62a8ae8",
+   "query": "limit"
+  },
+  "s0005": {
+   "digest": "c1dd27540ec6461f489260fbb36361a8c81583cc308596dd379c1e0eeeb40cc0",
+   "query": "doluluk oranı"
+  },
+  "s0006": {
+   "digest": "e99b2e83599b29ec686a824dfbc6cbb5c79f0121bfbd7d7c8a4f2d2011aba715",
+   "query": "PartyId"
+  },
+  "s0007": {
+   "digest": "cd5904a1fc95089fa405644df9a38335782a613b515150d27f883db23225ff43",
+   "query": "  kart  "
+  },
+  "s0008": {
+   "digest": "5aa0c798c509179493efbc82e6ca71c02ce6f5bce435c300d161e968319014d1",
+   "query": "Müşterilerin risk bilgilerini aylık bazda ve kırılımlı olarak (kredi kartı, gayr"
+  },
+  "s0009": {
+   "digest": "efe1539d2d805d7414013c89d7a416c0b6d863744c4d0a1a38cbed08cca5d99d",
+   "query": "Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?"
+  },
+  "s0010": {
+   "digest": "d980f1caf51013590909a1ec446f44fd041f09587cc9d2f502f87e51c75cade9",
+   "query": "Müşteri bazında aylık para transferi özeti: transfer tipi, transfer adedi, topla"
+  },
+  "s0011": {
+   "digest": "365707a6794dc4ede8ef1c9c3f290ea940ee6fceeea18ab607ca547ccfe74cee",
+   "query": "Müşterinin kredi kartlarının bilgisi"
+  },
+  "s0012": {
+   "digest": "67059f158e69918c685ac547dc76efbc3b24437bb20cf7eed9cfe93549008ca6",
+   "query": "Müşterinin sektör bazlı mevduat dağılımı"
+  },
+  "s0013": {
+   "digest": "911cf966431b04c6ba836d3ac5fca661691edd2b8c9e43d9bcef1f67f37ffe33",
+   "query": "Müşterinin kredi risk skoru"
+  },
+  "s0014": {
+   "digest": "20865717fda7901c57c6cfae43ce0dda21221bff91b8c353348e3d51202b5c00",
+   "query": "Müşterinin müşterilik yaşı"
+  },
+  "s0015": {
+   "digest": "d5cec907d0a9ba2fcb02a48806df0c7077d10f8d1ef522fc5f82860bd8f9842a",
+   "query": "Uzay gemisi yakıt seviyesi"
+  },
+  "s0016": {
+   "digest": "6f1eb4144aa1fcbcefbe8118f510967e3e381489d495e3ed16f42f1f154450da",
+   "query": "Futbol maçlarının skorları ve gol atan oyuncular"
+  },
+  "s0017": {
+   "digest": "30ad6be076e474e47a58c78eb3ff1a77550f3e5d7fea1cd1f455508ad2b38cea",
+   "query": "Şehirlere göre günlük hava sıcaklığı tahmini"
+  },
+  "s0018": {
+   "digest": "aa76eb5ac9623fbb61b8e029f01aa9c5f4337310f87f23a4abc8fe44c4f34e70",
+   "query": "Çalışanların yemekhane menü tercihleri"
+  },
+  "s0019": {
+   "digest": "005c091181e3e84a0c5c10ef52a50cd2e8395dd20a56953cf667142e58630bf6",
+   "query": "Tarladaki buğday hasat nem ölçümü sensör verisi"
+  },
+  "s0020": {
+   "digest": "02528b9d597d0d1ef5c0953e8362241e651f099716c469849547668050adae52",
+   "query": "Aylık kredi kartı harcama tutarı"
+  },
+  "s0021": {
+   "digest": "1ce8b8f8a86ede4efda089fc6d41da026f10e2659a1e3ea03c0ff5b410c07e0b",
+   "query": "Günlük mevduat bakiyesi nerede?"
+  },
+  "s0022": {
+   "digest": "0509417c36dbe7d1f92e48b007043f8cad67f1bcacf1545efcdb417461389a0e",
+   "query": "Haftalık ATM çekim adedi"
+  },
+  "s0023": {
+   "digest": "f2d480cf75631dcbab1cb64693da245e987d0f0b38af9a985970b02c20b613c7",
+   "query": "Yıllık müşteri karlılığı"
+  },
+  "s0024": {
+   "digest": "264024f63e93df2b94999b56f1180d41d2108a0ef7b4e1c6e6320a6a227a7496",
+   "query": "Çeyreklik risk raporu"
+  },
+  "s0025": {
+   "digest": "509adad5edee738ad778432133d1a42db221d1186bbfaa9b05a12c5f0ac9b752",
+   "query": "Dönemsel şube performansı"
+  },
+  "s0026": {
+   "digest": "18c6ea67c96c9d9bf9caa146415081fbf32e91061928098d9cd7989660c368a4",
+   "query": "Ay sonu katılma hesabı bakiyesi"
+  },
+  "s0027": {
+   "digest": "180443598fcbfb94d59f42a9344cdcb020e741c4e15568085b2b7beb6d84e480",
+   "query": "monthly card spend amount"
+  },
+  "s0028": {
+   "digest": "83abdbeb7d3a97bd132cdad1d430a62d0015d151db7da2ea279d9841b0dea325",
+   "query": "daily deposit balance per customer"
+  },
+  "s0029": {
+   "digest": "b58ee0c38d8b2f29b392b7155b45fc9e0483592f5ff216b41c61ad61db2324f9",
+   "query": "Periyodik kampanya yanıtları"
+  },
+  "s0030": {
+   "digest": "9d89fa20efedb6c16eb356cc1a9f7aa8cae0d102aab3c80b9d540d530428eca1",
+   "query": "Ürün kırılımlı aylık risk (kredi kartı, konut kredisi, taşıt kredisi)"
+  },
+  "s0031": {
+   "digest": "816ad5e6cd8451561c0cb00a9039c69d7f1722446c5af57b0b5b8a9ca664a93c",
+   "query": "Müşteri bazında kırılımlı risk (KMH, ihtiyaç kredisi vb.) tablosu"
+  },
+  "s0032": {
+   "digest": "ee57f5311b08f62197b91cab727a347433d5194c7ddee134cfc323e69d5924b9",
+   "query": "Segment kırılımında mevduat dağılımı"
+  },
+  "s0033": {
+   "digest": "82cd3bf1707df4ce9067de6de2cffdec9ef6d5749d698dc772949be18c5e9636",
+   "query": "Şube detayında yeni müşteri sayısı"
+  },
+  "s0034": {
+   "digest": "6a9a4906e2994991d88ac885563c384b2eaed54c93162fcdcddfc57531ed5b52",
+   "query": "Ürün breakdown risk amount (card, housing)"
+  },
+  "s0035": {
+   "digest": "2e02efbaced5656d431ed8d368ef25a288c9e149d35df0cf416e7583606284f3",
+   "query": "Kırılımlı olarak (altın hesabı, döviz hesabı) günlük bakiyeler"
+  },
+  "s0036": {
+   "digest": "f2bcf10142c768e11b5384279290676896fee41dd2a7718b84b0ba0478344efb",
+   "query": "Kart limit kullanım oranı"
+  },
+  "s0037": {
+   "digest": "142c6d0e6ef7eb4a90077ba669d7c7f44f6734a295ad2f22932ca31c51b39f99",
+   "query": "Taksitli harcama yüzdesi"
+  },
+  "s0038": {
+   "digest": "9be6f3f2315dd88509f538bfac4bfb3c02e480f7df2f29721360f856a93651ee",
+   "query": "Gecikmiş kart borcu tutarı"
+  },
+  "s0039": {
+   "digest": "cf319bf663c608219f82c15482bb89d3e99196b34d0e79105f1c5e1bf309aa3b",
+   "query": "Kredi kartı adedi"
+  },
+  "s0040": {
+   "digest": "8a79446c6713dda61b1b4c13535f42583848d399b305d2509b87536999e9c437",
+   "query": "Transfer sayısı ve tutarı"
+  },
+  "s0041": {
+   "digest": "13617f34b19117c210a7d9fac7c738cf208dbde0718da0dc53dabcadab73bbb4",
+   "query": "Ortalama bakiye"
+  },
+  "s0042": {
+   "digest": "39c4aaeed3abda11c2e2ed0669efd788d595e5b08a1c8526c55e783486d91112",
+   "query": "likidite oranı"
+  },
+  "s0043": {
+   "digest": "14843bf86d2160c1a423210376f74c70314ca14502ce4d4aa04c84d8ee2e9135",
+   "query": "NPL oranı aylık"
+  },
+  "s0044": {
+   "digest": "98983b17d5ff8fa0d6c1fbb6ecdd13cf6ca04f955cfa6488397e8833f61b3781",
+   "query": "Kâr payı oranı katılma hesabı"
+  },
+  "s0045": {
+   "digest": "1050882febcc57fb48fc9be8f150776035306527fe7de4e44e85b4f3abcb3ee6",
+   "query": "Toplam risk bakiyesi"
+  },
+  "s0046": {
+   "digest": "fcc32afd1a2aa746d4e6b6d5eb6f637090080f4a376278dbb0c2a8dd15409100",
+   "query": "Kartı olmayan müşteriler"
+  },
+  "s0047": {
+   "digest": "0738ca8ec5fbc21a8e0335c6a99cffd0210ec4fcd50b4f7365706e4deae7ef58",
+   "query": "Virman hariç para transferleri"
+  },
+  "s0048": {
+   "digest": "98fd673cee868588f705a422e0fa72a343f27510943582c754e8c6fdb90910e0",
+   "query": "Kredi kartı değil banka kartı"
+  },
+  "s0049": {
+   "digest": "65d6f4d22da35d776affbcdc7a221402b3e9822a041186ded1536fd93284e76d",
+   "query": "FAST dışında giden transferler"
+  },
+  "s0050": {
+   "digest": "f884dba60f5aedfd1e3e9f9f276b3115b461bf5fd3110591be0a959b1fb211e4",
+   "query": "Kart bazlı değil toplam limit doluluğu"
+  },
+  "s0051": {
+   "digest": "acbf54727825bcaf543fd7b8a1432cebb18cfa4e4ebab7efa5428754505e72d7",
+   "query": "İzni olmayan müşterilerin kampanya yanıtı"
+  },
+  "s0052": {
+   "digest": "682ddaea95445afe6cb91cb0de654090ddc5609abff59b0e2a74b504ec0fdd34",
+   "query": "except FAST outgoing transfers"
+  },
+  "s0053": {
+   "digest": "a7add81cb2a4782a9584c3c9a5ec0f9dee513c0cb5690d6ed6fc60ae3153c57d",
+   "query": "Son 3 ay kart harcaması"
+  },
+  "s0054": {
+   "digest": "553a575c104165c6adccf307d8732f164e979bf0fb53d80a0629f75f9d3314b1",
+   "query": "Son 6 ay kart harcaması"
+  },
+  "s0055": {
+   "digest": "6f9639b9f1d82bee64b2f11356b2b5ef14a89e54cce88f8d991fe05fc9d886a3",
+   "query": "Son 12 ayın SWIFT adedi"
+  },
+  "s0056": {
+   "digest": "06eabc91e4851626bc837d4fb6f70cb2330638327862d80269923361e2cf47c0",
+   "query": "2024 yılı mevduat bakiyesi"
+  },
+  "s0057": {
+   "digest": "f623e42d49bbb91b3946df1b55e93a6a075177b8f854c5395923e12f2a99b79f",
+   "query": "30 günlük ortalama bakiye"
+  },
+  "s0058": {
+   "digest": "550047de73b8a95ae3aed6e9b8cbf3b508204c02d0d79b07fa0a2c03ddd06113",
+   "query": "Son 1 ay nakit avans tutarı"
+  },
+  "s0059": {
+   "digest": "ac34b0ec1ad76ba1547233348e80efacf2d36a5dcc6857fdc96076eba50e4103",
+   "query": "Fon kullandırım bakiyesi"
+  },
+  "s0060": {
+   "digest": "2d41e8568a8fa3d69be9c0cf6995c62c55bdbae4fbf8e16465c8be527a47e41b",
+   "query": "Kredi bakiyesi"
+  },
+  "s0061": {
+   "digest": "34f726856bd0c19eaef6273589ef19506a0f091ca55a3d47c5f1cba04a3fa706",
+   "query": "Kâr payı tutarı"
+  },
+  "s0062": {
+   "digest": "0fd601b80551ea28563cc89b67dd72e180f3de2cc1faecca8b097e6a622714f1",
+   "query": "Faiz oranı"
+  },
+  "s0063": {
+   "digest": "86ca0aa6b236b03ab2e740038862572bb693df496a72380f707d84ca5b8017f0",
+   "query": "Leasing sözleşmeleri"
+  },
+  "s0064": {
+   "digest": "9d255ceb597fe423ad995f56a090475efaf8af36a30e532e38217c375b8126de",
+   "query": "İcare sözleşme tutarı"
+  },
+  "s0065": {
+   "digest": "0954f589f6c4fa96ac67dbe4d7320f1325edf31f28c762c86556970458df608a",
+   "query": "Murabaha vadeli satış"
+  },
+  "s0066": {
+   "digest": "0229330efb6d4f06724f2509c267ea4e9b2a5d2ac60a79552383ac5e8f40f91f",
+   "query": "Sukuk varlıkları"
+  },
+  "s0067": {
+   "digest": "a11d51d6c3e8e3189dc47298a152a9d417f53d7cef92fcb1c0701aecf7a01a4b",
+   "query": "Kira sertifikası"
+  },
+  "s0068": {
+   "digest": "8c078fdd4d50e150ac2939f9199d4e4c1ff009eaad71b9141460f402ab12e06b",
+   "query": "Müşteri numarası ile hesap numarası eşlemesi"
+  },
+  "s0069": {
+   "digest": "9aa681e64c60a1b2a66e67ed904fa2e50e9f6a9b71684bc54a6b1f8cd2bd7f65",
+   "query": "CIF bazında bakiye"
+  },
+  "s0070": {
+   "digest": "5156354dd985883fda32d1947066c2f8af040960df5bb1a52adf8e44c098d0f0",
+   "query": "Hesap no ile kart eşleşmesi"
+  },
+  "s0071": {
+   "digest": "29b3317d3be6ae8994d2399ac31ea7b288b95a6ed1c44d601c18f6b4b4d43069",
+   "query": "EFT ve havale adetleri"
+  },
+  "s0072": {
+   "digest": "a20225d3e06497bd6fdbf38d202125cb008a69d6233dacb49a58ae5412f3e300",
+   "query": "Findeks skoru"
+  },
+  "s0073": {
+   "digest": "b1950ea22f0cf1d46439eb3d3f77e47e3df0d377f04491c7c72b390c3bf49079",
+   "query": "Kredi kayıt bürosu skoru"
+  },
+  "s0074": {
+   "digest": "c593b6ffa73cda437588380be3d79815f8bba6252564126bbcbf4aa0a2cc9b96",
+   "query": "Memzuç toplam risk"
+  },
+  "s0075": {
+   "digest": "03062e767ae9cd92d183b2ec2a389cb744d69d59c10124bad7e07bcf9238fa32",
+   "query": "Donuk alacak tutarı"
+  },
+  "s0076": {
+   "digest": "101856ca09aefe71b1909c58027280b1fdaef62f95aec5b3cd0e3cdd1f53664a",
+   "query": "Takipteki alacak tahsilatı"
+  },
+  "s0077": {
+   "digest": "9072da721f25111a7eb1ee0a75a930c86ea2c0e5e76afc120b4fec2f1dc2bef7",
+   "query": "Temerrüt olasılığı"
+  },
+  "s0078": {
+   "digest": "e930df75b532d041f24fbd24a79dc2a46a454c7f4f707dc5d615aaa329001cff",
+   "query": "İçsel derecelendirme notu"
+  },
+  "s0079": {
+   "digest": "e9d0b50149c080b00203681f2a8527a4a7a54c62d2aca56d8f43bd00fd235792",
+   "query": "IFRS 9 aşaması"
+  },
+  "s0080": {
+   "digest": "6b0974aae71bdd9cac2b85dcd66e17c330a4f230ce4e33ed2783c355b46a8c33",
+   "query": "Teminat mektubu riski"
+  },
+  "s0081": {
+   "digest": "885dbf89955ee405f92683239c96ed17122cae07b51f3fac07daa98812a28e4f",
+   "query": "Nakit avans kullanımı"
+  },
+  "s0082": {
+   "digest": "d254446a8f1059cf7c94a97ac55d9e648a4b56599cb388016c7074246b919307",
+   "query": "Konut finansmanı bakiyesi"
+  },
+  "s0083": {
+   "digest": "03e610dea4e9cf959898b4d3751edccf438c63bae27035ad86838f7d71f87adf",
+   "query": "Taşıt kredisi limiti"
+  },
+  "s0084": {
+   "digest": "c0eeb85e22e6f9678408cf00707508a88c35be11febf1f82685fd751ccbc373a",
+   "query": "KMH limiti"
+  },
+  "s0085": {
+   "digest": "b524ff95b63b3ef3df86a2cce2952b86d941f0c73defc516a77382f7b7b12156",
+   "query": "Anlık transfer adedi"
+  },
+  "s0086": {
+   "digest": "651e078c4d5652c6b009f025efd35e34e5e9e933813c1dd6b25bc5fd8973b1ca",
+   "query": "Uluslararası transfer tutarı"
+  },
+  "s0087": {
+   "digest": "5500bdbe2514612adc56d790d163100bb75867c0a346c68f3679c53ed831032d",
+   "query": "Kendi hesabına para transferi"
+  },
+  "s0088": {
+   "digest": "8b94fc321781083d14bf9a518dabcae0685af38c5e00a928f3ce3bf1c9f8f0a7",
+   "query": "Kampanya hedef kitlesi"
+  },
+  "s0089": {
+   "digest": "53cc27e46e99dc3c0521a7415ed4c666e2ee6cc56e1ef088e333361d22c53c91",
+   "query": "Hedef kitle büyüklüğü"
+  },
+  "s0090": {
+   "digest": "efef3153a2bee64bb9e8050c2249f831e849b69d00500a92126998d155cd81d8",
+   "query": "Kart ciro hacmi"
+  },
+  "s0091": {
+   "digest": "2e60280a657d3bef2365ba0f04b065a1f2961e2bbadf2225803f899d291763f7",
+   "query": "harcama tutarı ciro"
+  },
+  "s0092": {
+   "digest": "f63085fed041276b61bcf7d1a7b469e93f9ed29a690bf7538db534f0dcaa57a5",
+   "query": "CardLimitUsageToday"
+  },
+  "s0093": {
+   "digest": "5d0e3017bfacc5cdd889f8a43facb28a3e7e0738dea05c21100acbc694abe355",
+   "query": "KKB_DATE"
+  },
+  "s0094": {
+   "digest": "2e7e5f951b518b8788dccd2b700ec13b42da8a8b4c8d5f2ffadfdf3a9c24e803",
+   "query": "IFRS9_STAGE"
+  },
+  "s0095": {
+   "digest": "45112faa236e18b19ef4130950046b68c259b1707fd093f9b89df7c1ed99466c",
+   "query": "CustomerPartyId"
+  },
+  "s0096": {
+   "digest": "ea74bb6091925942b781c482050e4830ed0bf67064e56ee02a74ba5cca17b5cb",
+   "query": "SWIFTCountL12M"
+  },
+  "s0097": {
+   "digest": "3135afe71316ad633cb64d096331b5e328e5bb955aa738c11bf09d803b1431cb",
+   "query": "Avg30dBalance"
+  },
+  "s0098": {
+   "digest": "d43aed21c2e1a82f11c26c30fc7a0ff8d92e8ad7adfbcaf7ac67f7d62deb8ecc",
+   "query": "TotalLimitUsage nedir?"
+  },
+  "s0099": {
+   "digest": "5a8ac5b39b5cd0892f3c130773a7ea8904b8f0e557b8735cd84366cbfc196d1f",
+   "query": "CreditCardLimitRate verisi"
+  },
+  "s0100": {
+   "digest": "3b9a6a4eceeaada22ac7a58a2a8ee822fb437528f6a595ea9138bae0c35f7c29",
+   "query": "Feature042"
+  },
+  "s0101": {
+   "digest": "8eacaf7cc5660729f5b75cff75bb1ac38887340f4cfdcf48682c127c4fb2c404",
+   "query": "musteri kredi karti limit doluluk orani"
+  },
+  "s0102": {
+   "digest": "6e0d47f9a70e42dcb7a246843899dbd544407c124ff662f13c0dbcb7b484d0e9",
+   "query": "ihtiyac kredisi bakiyesi aylik"
+  },
+  "s0103": {
+   "digest": "45c5a346e28d62ae42bac7c6e3ce548d46418f838c25bbed6b03bdc3f8a2c83e",
+   "query": "musterilik suresi"
+  },
+  "s0104": {
+   "digest": "dabd02f129e6855f681ad911e82ca6d00830b7eaffa53bb9337c9c1e95e2701c",
+   "query": "sube bazinda yeni musteri sayisi"
+  },
+  "s0105": {
+   "digest": "2fb0760cd91ea3a2ed701f5eb4ca2a543c7cd0e1b750947caa480e889d50592f",
+   "query": "kar payi orani"
+  },
+  "s0106": {
+   "digest": "55ec8e55630afcd5b91f3861690d1d5331f5a0be85dca85119eb3148f2fe551c",
+   "query": "MÜŞTERİ İHTİYAÇ KREDİSİ RİSKİ"
+  },
+  "s0107": {
+   "digest": "051e93b5579b477b857d1f3a099883b0715e35ce680079b8a029c46bd0a85a48",
+   "query": "KARTIN LİMİTİ VE DOLULUĞU"
+  },
+  "s0108": {
+   "digest": "b08485757e0efae99646a1f2cc4c88681f792b09b24fb54d55a882324b951c04",
+   "query": "IŞIK SEKTÖRÜ MÜŞTERİLERİ"
+  },
+  "s0109": {
+   "digest": "2f11594e39ccbbc1b0a56d15442bb6c2950ab4506fe0b2ba6ca010e6f1c2e96e",
+   "query": "İŞLEM KANALI ADI"
+  },
+  "s0110": {
+   "digest": "fe6d05da405a84afe5024151642d474e0228c11debade4fe4d03bbe290c4ed14",
+   "query": "ÜRÜNGRUBU"
+  },
+  "s0111": {
+   "digest": "4c091c549cb284e11f58066626b70f90ce6d5dd3197589ab733e8a6a77e82ddf",
+   "query": "?!.,;"
+  },
+  "s0112": {
+   "digest": "2a1143cd4c37a993857ea8fd8e8b6c345e214f451a898f2d1bf9a4a19891915d",
+   "query": "— … —"
+  },
+  "s0113": {
+   "digest": "946a939bece1618f9ea237adccacab3f72cd75d8f6538f31bcf0f674d57375bc",
+   "query": "Merhaba"
+  },
+  "s0114": {
+   "digest": "6e0265c8d44d38bdce814048c5ef0a757179bc873bcce360d48fb982e7963b78",
+   "query": "ve ile için"
+  },
+  "s0115": {
+   "digest": "33ca0fc5cfe092cee447759a68fd5a28bf43189c57bc8e180a16ec796d924922",
+   "query": "bir şey lazım"
+  },
+  "s0116": {
+   "digest": "862076daa4aaefa7a179e746ac11da23bc49374c60bdfa981e091cc649e7222d",
+   "query": "nerede var mı"
+  },
+  "s0117": {
+   "digest": "e5a8eaf83d2f65aea931d9a603f00170daaeea576453a96f562a01156af04315",
+   "query": "SYNDM.CRD.vCardList"
+  },
+  "s0118": {
+   "digest": "52a72b346c8442fdafeec4819df5d7b55a35be608342b01d15642f11951d6646",
+   "query": "vCardList"
+  },
+  "s0119": {
+   "digest": "a1b57647bb8788e0cc3e4bbfe9cb0d3103bb21f3fee034ac99bee38186169f52",
+   "query": "rpt_DailyLiquidity tablosu"
+  },
+  "s0120": {
+   "digest": "e4d0cebfb25c80dd251982a55cc5226aaa676baa2cfd284cf4c62c5727400cfb",
+   "query": "SYNERP.HRM.vPersonKKB"
+  },
+  "s0121": {
+   "digest": "3133f8c2c335538873c143271a77d995996eb738d3d19d30237e053ee9e9cc83",
+   "query": "vCampaign"
+  },
+  "s0122": {
+   "digest": "96487b0695c052ab50d73891c608590ce4a6b0a6c2fe0a33254631bd4ddd2d60",
+   "query": "SYNDM.REF.vHoliday"
+  },
+  "s0123": {
+   "digest": "01ab3748a8cd1e5e9cde6ed8d9236ac276d545d9ee8d171e688a8e6cb204a5ea",
+   "query": "Müşteri adı soyadı ve telefon numarası"
+  },
+  "s0124": {
+   "digest": "85a4c178589590ab8b7e66ae10c9963d8c675c6d76b703fc0f3227c78b14e0b5",
+   "query": "Alıcı kimlik numarası"
+  },
+  "s0125": {
+   "digest": "4fd6380a52f46df761c5614d1812c70ece5653201cfcb65d813d004ea5c0b082",
+   "query": "TCKN listesi"
+  },
+  "s0126": {
+   "digest": "b19efa76743c71aeca888651644456f455d425ef6761904f608d03a3f16c0a54",
+   "query": "Özel bankacılık müşterilerinin mevduatı"
+  },
+  "s0127": {
+   "digest": "813274528c28cb39860974538d73cf9659535ba2ce26a9e06c650c9c09af330d",
+   "query": "Churn modeli girdileri"
+  },
+  "s0128": {
+   "digest": "62846ecc46e90859fa43afb343781ee032208f4ee0b47f78f5ebaf2d97bb2a32",
+   "query": "Akıllı hedefleme skoru"
+  },
+  "s0129": {
+   "digest": "a7c74a872d7fe5ddc58298610db95532bc9725ea2352d408daf2e75ad09133a4",
+   "query": "Segmentasyon girdisi davranış skoru"
+  },
+  "s0130": {
+   "digest": "3a09d6d34cee12f60cc5305cbb7fb180ca68f5a5dd23bc5b822390346a37ec4c",
+   "query": "Personelin KKB skoru"
+  },
+  "s0131": {
+   "digest": "8a9eda7a2f5ef0d6fdaec2c0d17da0b2c35670683bf5f8d01cb1c6e8b467b749",
+   "query": "Virman tutarı müşteri bazında"
+  },
+  "s0132": {
+   "digest": "568540bd124a71d2ca8569db85ac3e9f3f331049f3897dab0992ed1c3f0e7477",
+   "query": "Kampanya kitlesindeki müşterilerin kart harcaması"
+  },
+  "s0133": {
+   "digest": "c519f1fdf085eb317321f3b01bfed701e2baa3fa602f9d7140e918cc70dc9a33",
+   "query": "Müşteri bazında aylık kredi kartı ve mevduat bakiyesi"
+  },
+  "s0134": {
+   "digest": "cbca8d8a97ca18d94c3e5cb596e220e14e6f52cf12f15e7d8b507875b10717d4",
+   "query": "Sektör ve segment bazında risk"
+  },
+  "s0135": {
+   "digest": "a57faa95e80d08f4d84698f46931708b3896e9c7d8aa5b821139c8ea32bb87d5",
+   "query": "Şube ve bölge bazında mevduat hacmi"
+  },
+  "s0136": {
+   "digest": "1ba856d46e8e80e51906092e4d2870e458665299dd71fd9590470c065538e0fc",
+   "query": "Müşterinin yaşı ve müşterilik süresi"
+  },
+  "s0137": {
+   "digest": "02a4a42f638676dc26066ce88bb81aef64d8c00b8a24ec74d4cf54fe92dfc026",
+   "query": "Firma yaşı ve sektör"
+  },
+  "s0138": {
+   "digest": "99049439a127badd6da4cd942e725320064e15bedf7b2f6f5973ca2997ea5d1d",
+   "query": "Kart statüsü ve asıl kart sahibi"
+  },
+  "s0139": {
+   "digest": "e5364859720d9e87397ccd03a2343785f0128be34ee01b6479e6dd7d802be33e",
+   "query": "Ek kart sahibi müşteri numarası"
+  },
+  "s0140": {
+   "digest": "6ebbe52ca8a3c271565cbfd91a282ca2d5dcbac86cce507ba0bd982254f02696",
+   "query": "Kredi kartı limit doluluk oranı ve gecikme gün sayısı"
+  },
+  "s0141": {
+   "digest": "3dcee6249eaf483101481027ac7093e69d36f6d37ff81fc0769161f1dd5e4f2a",
+   "query": "Hesap türü bazında bakiye"
+  },
+  "s0142": {
+   "digest": "04953eee9e98d2a0af489e102f3f2c33d4656f5a2179451760afeac7e03c24a6",
+   "query": "Döviz alım satım kuru ve tutarı"
+  },
+  "s0143": {
+   "digest": "314bf22174848a399548b07ba3b945a7f27dcaa1ecb20e455ae002b412eba452",
+   "query": "Tekafül prim tutarı"
+  },
+  "s0144": {
+   "digest": "abb50edf31508f5110eda25302fe213625168b38f2c3679571c2966ffbcf7fb6",
+   "query": "Mobil şube giriş sayısı"
+  },
+  "s0145": {
+   "digest": "aa5bee0df2d0bab4e269ad97c48153974de6ba7da9ae4416ff45f03f576a5e0a",
+   "query": "Dijital kanal işlem türü"
+  },
+  "s0146": {
+   "digest": "840c596a0aaeccd1b66b53e88d28b51777dcf28fb44b8a2e30da3d0cb42c8096",
+   "query": "Fon kullandırım başvuru durumu"
+  },
+  "s0147": {
+   "digest": "60dec5a67f6dd7f0c8d16b1da5095ba1833f7b28f3873bc8ed5da1c8167fe2cd",
+   "query": "Taksit ödeme tutarı"
+  },
+  "s0148": {
+   "digest": "db818e110df999461af972d2a2222adfb981d8215661bf9cd27aad36ff1f41fe",
+   "query": "Çek tutarı aylık"
+  },
+  "s0149": {
+   "digest": "15f1d3a196b8fc231fe6ef4a2387ee9a26671b554aed3c420086365ac390ceb4",
+   "query": "Üye işyeri kategorisi"
+  },
+  "s0150": {
+   "digest": "92f063c8e94512a522f15dcda7dc128283adc4674530eec93a59657ed1b2369f",
+   "query": "ATM listesi şube bazında"
+  },
+  "s0151": {
+   "digest": "88c6764552e3db717dd3ae0de6ccba6f2c22b2189ffdec3488578c6ad9b6758c",
+   "query": "Proje finansmanı riski"
+  },
+  "s0152": {
+   "digest": "6dff20795a28f3f2119f6f4832d3d2425c243fcf740c59b05929058cc2c51214",
+   "query": "Erken uyarı rengi"
+  },
+  "s0153": {
+   "digest": "2c9c5edc09675d43047af7a80b36c8b8ea7db900ac97dc436f99422e44c9fe19",
+   "query": "Beklenen kredi zararı ECL"
+  },
+  "s0154": {
+   "digest": "9374163e0b109d9afd4eb31996ef1552be0c75b06320ea3bcc42f3b04d205654",
+   "query": "Teminat türü ve tutarı"
+  },
+  "s0155": {
+   "digest": "9c9cfe2a77254ef1384a0fe85b1b94b33dfc812d09131cea56c7dc571407618c",
+   "query": "Araç sahipliği tahmini"
+  },
+  "s0156": {
+   "digest": "4fce9cc4523280f51cd311852b4b08ab6b2d605cbe6e3464af5602f9947fd866",
+   "query": "Kart rengi"
+  },
+  "s0157": {
+   "digest": "94bcdcde6859e3ffd749f5a7bfb19c6124251a677aebd5639d503db2a772ae59",
+   "query": "Bölge bazında aylık yönetim raporu"
+  },
+  "s0158": {
+   "digest": "b1faabf57780555f352717bba866e37fe9747482bb923df7c9b471a84bbc42fa",
+   "query": "Kanal bazında ürün bakiyeleri"
+  },
+  "s0159": {
+   "digest": "ed28c8516aa8b1ace63c48c2371645e5c2d3abdc82a356dd9cb59a7c730a8f0d",
+   "query": "credit card limit utilization"
+  },
+  "s0160": {
+   "digest": "a3603a6f706bc1166acbc0810b4ea7631cc9cc5462e7f0314eed51f53f2a920d",
+   "query": "customer churn score"
+  },
+  "s0161": {
+   "digest": "b8863d6c8d15819e46bb22ba53cb016024889a0fc7033ea29143cc6328d9a9d9",
+   "query": "deposit balance by sector"
+  },
+  "s0162": {
+   "digest": "aad99088afdae66268e714c6f660e2c27368c362e564bdb42914ba33a2e1cc71",
+   "query": "Kartın bugünkü limit doluluk oranı nedir ve hangi tabloda bulunur, kart bazlı mı"
+  },
+  "s0163": {
+   "digest": "a9fe24a2affe7f14869d39dfa8a2223fe45727216e815f883ad7a8a4d776b6da",
+   "query": "Müşteri bazında aylık kredi kartı harcama tutarı, limit doluluk oranı ve gecikme"
+  },
+  "s0164": {
+   "digest": "ed6b36569b8d91056d26e6c0348f0623f6ee20ada7f59e4fa8315ab5fc7d3852",
+   "query": "Kredi kartı harcamaları aylık"
+  },
+  "s0165": {
+   "digest": "e1f0e9881a44593541620be49f051f67f435d75eabff46cab86295c1389a094f",
+   "query": "Müşteri bazında mevduat bakiyesi"
+  },
+  "s0166": {
+   "digest": "3b4ceeda9fab4ebd8ba70429a78ca40fdb83ba4e5bea8315bd2535f80f61a34a",
+   "query": "Uzay istasyonu oksijen seviyesi"
+  },
+  "s0167": {
+   "digest": "e8784fd0b076cf75cd1d8220a31fedfbc26a7f98c33dbe13513be4c62f982b49",
+   "query": "Kart limit doluluk oranı günlük"
+  },
+  "s0168": {
+   "digest": "83ec6912f3e2a260e73dc2d7b113582fad665fc8cacbd0093b0c5f269675628a",
+   "query": "Para transferi adedi aylık"
+  },
+  "s0169": {
+   "digest": "702f9ce685266dc96ea3ebaf1c3b47b3e32e53c243df7156d12a8915429070f5",
+   "query": "KKB skoru müşteri bazında"
+  },
+  "s0170": {
+   "digest": "30ecece46b49af648dfd25f16977654764e3884d6d2a28b04f251bce5394d1aa",
+   "query": "Katılma hesabı kâr payı"
+  },
+  "s0171": {
+   "digest": "87e8fe51fc4d9843bbe2dfc5fb1c5b867a4fcb3dda47ca22af6d5da05efd81fb",
+   "query": "Kredi risk skoru"
+  },
+  "s0172": {
+   "digest": "1a74e1877479857a4669d25f32ead7c7fc4ada5ac7bf92c1abf373d42a7e9174",
+   "query": "Şube performansı"
+  },
+  "s0173": {
+   "digest": "e82be7fb4110432978bdc41a07960d1a0ebb8613711a4af0222a28d881c4bc36",
+   "query": "Müşterilik süresi"
+  },
+  "s0174": {
+   "digest": "97491a0b1a2f9e672d03d14982b0295a0992dac0572b0ac20bc5c44735979b45",
+   "query": "Kredi kartı limiti"
+  },
+  "s0175": {
+   "digest": "4819fc8c345cd65280eb9377cd14439438262a6b85427f0c3114e8d3a8640ab6",
+   "query": "Mevduat dağılımı sektör bazlı"
+  },
+  "s0176": {
+   "digest": "df4ec5953fed967e93cbbb60bd8f9fff5d9bd64bda3f49554d61092b81003dc1",
+   "query": "Ürün kırılımlı risk"
+  },
+  "s0177": {
+   "digest": "9db320bfedb15b66c4d8927535cee0f827a977cace8e42959890570dba201b1f",
+   "query": "rpt_AgeBandMonthlySummary"
+  },
+  "s0178": {
+   "digest": "4ce859b88fc467f0af71cf2bd8b27e168f10cc0709cfded73ebbbe896e5798d1",
+   "query": "RPT_AGEBANDMONTHLYSUMMARY"
+  },
+  "s0179": {
+   "digest": "fc323c93d64d1032a2d558756537db19e6c05e1371016e33370957ff830a52e6",
+   "query": "rpt_agebandmonthlysummary"
+  },
+  "s0180": {
+   "digest": "df8adf66ae4b0092ac0d81f6e6de65d2772dec69c4e2926a58ce69ce37a90f8e",
+   "query": "RPT.rpt_AgeBandMonthlySummary"
+  },
+  "s0181": {
+   "digest": "7cb059e26b2c717f06f8d88d69bc5c22fcb3879a225f00ae8fd60f47806eb0fd",
+   "query": "SYNDM.RPT.rpt_AgeBandMonthlySummary"
+  },
+  "s0182": {
+   "digest": "22c484d70cf40f2b9c69da3c183d3eb9304e9f1fa1ca7c50cabb3ede1bdde39b",
+   "query": "rpt"
+  },
+  "s0183": {
+   "digest": "64a102596993b0b43c9ce2545dc5759d5b633a66384608166ab54e814bf46738",
+   "query": "rp"
+  },
+  "s0184": {
+   "digest": "1a408cc4ab3cf4f5bc7918ee9b038d333160604bc0efe867f72a201051852ab9",
+   "query": "Period"
+  },
+  "s0185": {
+   "digest": "7294a42f2772a1adc5e7ead23cd3e2c784e9a8bebdb52f91e9776c99de5325c2",
+   "query": "Cheque"
+  },
+  "s0186": {
+   "digest": "ab36889153715666d7838bc9a05896254b6a60adf24a3f0d6a1de4b3fe240e24",
+   "query": "rpt_BranchMonthlySummary"
+  },
+  "s0187": {
+   "digest": "1f31fbbf533a0c7f9f6e074d122f5cb6f0d0ae3433bb8112a22af8049cf5f62f",
+   "query": "RPT_BRANCHMONTHLYSUMMARY"
+  },
+  "s0188": {
+   "digest": "67ac44a971ed99aa56ab13a53c6cb8bc2ca527044966fd43410be2de170dc2e3",
+   "query": "rpt_branchmonthlysummary"
+  },
+  "s0189": {
+   "digest": "75eb94cc53d043c37cb6d001f6458f9d8d70a3c11d2aa318f65a0516f3d9a422",
+   "query": "RPT.rpt_BranchMonthlySummary"
+  },
+  "s0190": {
+   "digest": "d6eb9979b4678ea3b764e42e609d587472cae5fcfe977f8004f4ccb143112587",
+   "query": "SYNDM.RPT.rpt_BranchMonthlySummary"
+  },
+  "s0191": {
+   "digest": "231e806f2dd1f854086c99584bba7557f23a022b9fc44da50b725f754c9f7ba8",
+   "query": "rpt_CampaignMonthlySummary"
+  },
+  "s0192": {
+   "digest": "a3e564d30bc63918b4a03dbdb77d15d9a27b40dce30335848c0f8d41e093441a",
+   "query": "RPT_CAMPAIGNMONTHLYSUMMARY"
+  },
+  "s0193": {
+   "digest": "40b0b5285a44d1b29badd224e6bc874816e514e64c0d4499d5385e11172c2011",
+   "query": "rpt_campaignmonthlysummary"
+  },
+  "s0194": {
+   "digest": "f1404198dad4a7154775ed390b17ac20ed9ca63cd9b1c00ecdff72b8f35601fe",
+   "query": "RPT.rpt_CampaignMonthlySummary"
+  },
+  "s0195": {
+   "digest": "db32cbe947b1eb7a3d612cb803d3859d2d9e2d2f27c0a3d0e779d9848fede50b",
+   "query": "SYNDM.RPT.rpt_CampaignMonthlySummary"
+  },
+  "s0196": {
+   "digest": "6862b67132755e03b1ec0123c7d6a8bceced0417b781d801b5e4e6f8fd3d1d10",
+   "query": "rpt_ChannelMonthlySummary"
+  },
+  "s0197": {
+   "digest": "99e255d14dfc276f06a0a40d7a38657f5d77e4d3c3fc00de3bb2da3ba6173c32",
+   "query": "RPT_CHANNELMONTHLYSUMMARY"
+  },
+  "s0198": {
+   "digest": "2cafa89e0e1652c89034b03623adc3d29227dede23a3e00a8df889aafcf69fd7",
+   "query": "rpt_channelmonthlysummary"
+  },
+  "s0199": {
+   "digest": "e5ad53f454108e732707b015bd3a6213d84273263e9b64911c93b1f6541e401c",
+   "query": "RPT.rpt_ChannelMonthlySummary"
+  },
+  "s0200": {
+   "digest": "c55a529e45b457648f1dce183a9b332e475c35786f7850dc0d35ce50fa569b02",
+   "query": "SYNDM.RPT.rpt_ChannelMonthlySummary"
+  },
+  "s0201": {
+   "digest": "350d4e682081fea4dfd3a51590518653d63517593502faede67e91625f44977d",
+   "query": "rpt_CityMonthlySummary"
+  },
+  "s0202": {
+   "digest": "feb35de8cd1d630544a252c8b36b2727471b7be89406d937f5936980e85cd2ea",
+   "query": "RPT_CITYMONTHLYSUMMARY"
+  },
+  "s0203": {
+   "digest": "11e6a98d5d3ed3e75dc6f5b2881ce847ef9c0be9ca636faf207ba248c5b2e91a",
+   "query": "rpt_citymonthlysummary"
+  },
+  "s0204": {
+   "digest": "9852118f3f5e676095a783b5ba4df93c4c184b896aca8c36680c2d0bed3b3043",
+   "query": "RPT.rpt_CityMonthlySummary"
+  },
+  "s0205": {
+   "digest": "b511c8667dae4346e14a324b4e2424fe1f0f8cd3889aab5337c96ee34d436912",
+   "query": "SYNDM.RPT.rpt_CityMonthlySummary"
+  },
+  "s0206": {
+   "digest": "7a6c191d7fb975898327a345f1ffd1105ceef0f6f42e7c06f276354c98fcdf64",
+   "query": "rpt_CurrencyMonthlySummary"
+  },
+  "s0207": {
+   "digest": "8dec7828bb52faa74199898e20891b2acfaf527702500ab1e6c036b9a0b1564c",
+   "query": "RPT_CURRENCYMONTHLYSUMMARY"
+  },
+  "s0208": {
+   "digest": "e52973083d348276121c56a661d67ab440eb6c31bd8f56eeced1f3b2b1781f4b",
+   "query": "rpt_currencymonthlysummary"
+  },
+  "s0209": {
+   "digest": "350b27fde9710536aa3c1e784acf30d09939dd08ea47ec38b52175e18e788029",
+   "query": "RPT.rpt_CurrencyMonthlySummary"
+  },
+  "s0210": {
+   "digest": "033c5f4849841f97636e085971c5fc74cea94c797c5de223eda30dfdbd6a14a4",
+   "query": "SYNDM.RPT.rpt_CurrencyMonthlySummary"
+  },
+  "s0211": {
+   "digest": "8cabb23dea786888e67a6d802e7c0fe1b05667d57672a64971e9b4bd7b640ba4",
+   "query": "rpt_DailyLiquidity"
+  },
+  "s0212": {
+   "digest": "286c5b098b12fd5acbd6775f28a3ce776aaede74409cd54138a44492fb1aad8c",
+   "query": "RPT_DAILYLIQUIDITY"
+  },
+  "s0213": {
+   "digest": "b59d7955887cbd08e139ff7cf6c7e70a04f14cb4a2be474d8d190c2a3336dba4",
+   "query": "rpt_dailyliquidity"
+  },
+  "s0214": {
+   "digest": "365cf61b4680bda8f489643188ac50ad4962613ee7a71b01258e4267ff1a19a5",
+   "query": "RPT.rpt_DailyLiquidity"
+  },
+  "s0215": {
+   "digest": "fb7a432e6afff1c9d678c0ae2620184f7c5ea12e1a0e1145bff52114204ef608",
+   "query": "SYNDM.RPT.rpt_DailyLiquidity"
+  },
+  "s0216": {
+   "digest": "b35d7022128bba2e02bad60960f2e4e5d8fcd8ae3f362efe1a94a134057789cd",
+   "query": "ReportDate"
+  },
+  "s0217": {
+   "digest": "1ec2b9566dbc0d126edab74ce1c7a379bd0a90e6d79cfe03fdc5354ef3551bd2",
+   "query": "CashAm"
+  },
+  "s0218": {
+   "digest": "39ccf1f68baddc643010e64655c86e54d5eef28a241c48d22d08f6687533c434",
+   "query": "rpt_DigitalMonthlySummary"
+  },
+  "s0219": {
+   "digest": "47f2352c738aecd8bc659d2dd6af8d220c28bcb5a093d6a2e30ad7523f0b1937",
+   "query": "RPT_DIGITALMONTHLYSUMMARY"
+  },
+  "s0220": {
+   "digest": "3a513d022bcffd6546947c9d1f69a5989b55c1bd139f2ff3ae077ed52d5a4aa1",
+   "query": "rpt_digitalmonthlysummary"
+  },
+  "s0221": {
+   "digest": "b8f05f3f05a908e57dae521cd40fef50487284d2a2be653de07d02f9094db1ba",
+   "query": "RPT.rpt_DigitalMonthlySummary"
+  },
+  "s0222": {
+   "digest": "eafb09be231af8c1a41d4918a965494e331479ef01dac86472844409f0606ac1",
+   "query": "SYNDM.RPT.rpt_DigitalMonthlySummary"
+  },
+  "s0223": {
+   "digest": "d641ebad4eedce1b46bd600c63547e2a242b71065dd5a6e6200d09e0112a2f9e",
+   "query": "rpt_DistrictMonthlySummary"
+  },
+  "s0224": {
+   "digest": "0cfdc65df43b5d8b21d6056191c2149bb2e59d7b339f5a6f9b0ae300c85c2a95",
+   "query": "RPT_DISTRICTMONTHLYSUMMARY"
+  },
+  "s0225": {
+   "digest": "f16066e9adca53dcdc10139b2d3545fbed46035da4df6138d474b4efaff2936e",
+   "query": "rpt_districtmonthlysummary"
+  },
+  "s0226": {
+   "digest": "a84a3e021df49a31471bb7e7490473e16ca5a369792ddb2f749438148d4f371d",
+   "query": "RPT.rpt_DistrictMonthlySummary"
+  },
+  "s0227": {
+   "digest": "04e9ba459620dc7e2d4c5ca2edbbf69baaae57b2aedd91af23e34485478cc603",
+   "query": "SYNDM.RPT.rpt_DistrictMonthlySummary"
+  },
+  "s0228": {
+   "digest": "00676efc4516f336d8af0e7adfa3b6c79e193c1f833cae278479397913ad9556",
+   "query": "rpt_EducationMonthlySummary"
+  },
+  "s0229": {
+   "digest": "b8122e9561d5693862efd93ca63ec2ed36fd1cfc97839fc7ddc331c128ce83ce",
+   "query": "RPT_EDUCATIONMONTHLYSUMMARY"
+  },
+  "s0230": {
+   "digest": "c97cb2374d3b79a413568eaa67e40584510d2238ac4d7fbfdf0ad428c1504cd1",
+   "query": "rpt_educationmonthlysummary"
+  },
+  "s0231": {
+   "digest": "1c976fa6c63d5bc17a5c896b1390228273efaca53041efd2b88a02c2bc601faf",
+   "query": "RPT.rpt_EducationMonthlySummary"
+  },
+  "s0232": {
+   "digest": "7f5d79e1a13e27417926a6671dd9c5a5e270ef00b65d56273b4c71c871b88cbf",
+   "query": "SYNDM.RPT.rpt_EducationMonthlySummary"
+  },
+  "s0233": {
+   "digest": "cc69afadf681a1d0867af9c2990894098f0e1554969884f9d2b472067f55635c",
+   "query": "rpt_GenderMonthlySummary"
+  },
+  "s0234": {
+   "digest": "43b2c68001e74042bff53fbdb831aa94d4c35d5d15e37a262e4a3f9a0d6cea27",
+   "query": "RPT_GENDERMONTHLYSUMMARY"
+  },
+  "s0235": {
+   "digest": "fa9c0dfd95a7792bb705da13e349a50229eec9d5910cedbf8fd24febf78acc23",
+   "query": "rpt_gendermonthlysummary"
+  },
+  "s0236": {
+   "digest": "a20b6eaf08a9e98461072e32adffae2dfdf92ee2baf4da164c59745a91bfdc56",
+   "query": "RPT.rpt_GenderMonthlySummary"
+  },
+  "s0237": {
+   "digest": "b4857db6c26fc09644c4f8b916b655c5fd922d27b19034439debc054fa539693",
+   "query": "SYNDM.RPT.rpt_GenderMonthlySummary"
+  },
+  "s0238": {
+   "digest": "8763819be81d8b7add74ee98b68db0651484c8593fb7ceb6b84decb103cb68ac",
+   "query": "rpt_IncomeMonthlySummary"
+  },
+  "s0239": {
+   "digest": "174957b97fe433035a10c020b35fbcb63e2b725722cf2221edbf3d350b7b0e2c",
+   "query": "RPT_INCOMEMONTHLYSUMMARY"
+  },
+  "s0240": {
+   "digest": "dd7a756f3c8017456cc679cae4d693514f7ea49e9b3cf12056d9ae9e8de8e9f7",
+   "query": "rpt_incomemonthlysummary"
+  },
+  "s0241": {
+   "digest": "9b1f5201f9ae063a85cd1d4c59e0e7182178765d678c9bb7bf887dfbf44e9555",
+   "query": "RPT.rpt_IncomeMonthlySummary"
+  },
+  "s0242": {
+   "digest": "e5969ba167539ab84fa2d699f454007a4553711d2f2957f5c99bcf9e8aa4a79c",
+   "query": "SYNDM.RPT.rpt_IncomeMonthlySummary"
+  },
+  "s0243": {
+   "digest": "683338f611ca67139a0e1437f3aa8ae12a2cea3207b49e5d24478be8660fcc4e",
+   "query": "rpt_MonthlyRiskReport"
+  },
+  "s0244": {
+   "digest": "c9309959db7c8a325ab0c1e2ac81ed9173950116d7501e1e7116054d4e4162af",
+   "query": "RPT_MONTHLYRISKREPORT"
+  },
+  "s0245": {
+   "digest": "90846c9e0e45043c1cbe630c33d8a3ca85ba26f9c5377071d8127a619155298c",
+   "query": "rpt_monthlyriskreport"
+  },
+  "s0246": {
+   "digest": "28cd57a37eea8cd1728e160585737f5bef3a01c1a75e53a3a82f3472e0f7724c",
+   "query": "RPT.rpt_MonthlyRiskReport"
+  },
+  "s0247": {
+   "digest": "ad160465c7728025ec79daa8b9cfe611946fc863bcb3f1f50eeaa1bf45a24808",
+   "query": "SYNDM.RPT.rpt_MonthlyRiskReport"
+  },
+  "s0248": {
+   "digest": "d10c7c039ee532f5cd7e8065bcefa383720695c0ca849e40df9c289f247a4c7d",
+   "query": "NplRat"
+  },
+  "s0249": {
+   "digest": "df931de5604b712a5ffc09ca8d93988b17714ccee86da56a8d142ffa523bbd0b",
+   "query": "rpt_OccupationMonthlySummary"
+  },
+  "s0250": {
+   "digest": "3f0a813a4bcce6411a1d60d18260e6f97aaf7cd2e754557e4196f0a0b60a73b6",
+   "query": "RPT_OCCUPATIONMONTHLYSUMMARY"
+  },
+  "s0251": {
+   "digest": "79e24897164d8764bb0610ff8b8b2004717e2c42d9f6713bfe7838ae85ef070f",
+   "query": "rpt_occupationmonthlysummary"
+  },
+  "s0252": {
+   "digest": "f21bbeec4c125226ef22dbcbafb89945c0aae07737f450312a6ad5d547c54ab3",
+   "query": "RPT.rpt_OccupationMonthlySummary"
+  },
+  "s0253": {
+   "digest": "b9e1db97424d8a68bb535efc05a556faf6a525eedba3a0d5e88fbfd002b2c918",
+   "query": "SYNDM.RPT.rpt_OccupationMonthlySummary"
+  },
+  "s0254": {
+   "digest": "48fa7747dac97314fe1f3897fee0814a6c4ca0c507820d94058b98495b906a5b",
+   "query": "rpt_PortfolioMonthlySummary"
+  },
+  "s0255": {
+   "digest": "322e560e062f0a4bf0534cad40d6718edd5b24b33577c773b37e20ffb0278ba8",
+   "query": "RPT_PORTFOLIOMONTHLYSUMMARY"
+  },
+  "s0256": {
+   "digest": "0ffa4aa64cc8ec88ef4b0a3bf5d7b3faee589351a7680a862e3b65d316a452d7",
+   "query": "rpt_portfoliomonthlysummary"
+  },
+  "s0257": {
+   "digest": "f463231a2bdfac987ecf72bb484e5bf55dfceeae629b36c17a6c23940fb6769b",
+   "query": "RPT.rpt_PortfolioMonthlySummary"
+  },
+  "s0258": {
+   "digest": "f042b079759380ecd03e1f58c58f2af275827dfdbcf77273587b7ddf40479b8a",
+   "query": "SYNDM.RPT.rpt_PortfolioMonthlySummary"
+  },
+  "s0259": {
+   "digest": "683a04ad131816262c189d23a9cf65f0a29b053b6210c9be0df758c324fea87a",
+   "query": "rpt_ProductMonthlySummary"
+  },
+  "s0260": {
+   "digest": "22e4691b26bbd493bc2bd16ee85e44444d6b0d763273e3b48542d5daf10ec584",
+   "query": "RPT_PRODUCTMONTHLYSUMMARY"
+  },
+  "s0261": {
+   "digest": "6dab0501bd69a7b02bd6b88741d811f954bd6a984510ee0ca10df57cd260cf1c",
+   "query": "rpt_productmonthlysummary"
+  },
+  "s0262": {
+   "digest": "47e1cb384bc5c56438b054dc9bde75a38daa414d091101ffb46f862861312bb5",
+   "query": "RPT.rpt_ProductMonthlySummary"
+  },
+  "s0263": {
+   "digest": "678ded2abaf578f1274bec08a2261bb4916309dc2d6b95947eada6061f5e9ebc",
+   "query": "SYNDM.RPT.rpt_ProductMonthlySummary"
+  },
+  "s0264": {
+   "digest": "568df7c729c59f3273a567332c9edf1e17473c1ffaae75ee8efda495ac213c05",
+   "query": "rpt_RatingMonthlySummary"
+  },
+  "s0265": {
+   "digest": "b13af0882eac9c661e0fe1866b894ac7cdfad74df399a35bb9262f2b3f58c9d7",
+   "query": "RPT_RATINGMONTHLYSUMMARY"
+  },
+  "s0266": {
+   "digest": "739ebedf4274ab73920949dfd97a1b3ca67b10e35f9e8c89c75ebd7acf23adfc",
+   "query": "rpt_ratingmonthlysummary"
+  },
+  "s0267": {
+   "digest": "6dc58539010bcb740dc6bd816080314ff30d08b532fbcd3a7fb3718475afb84e",
+   "query": "RPT.rpt_RatingMonthlySummary"
+  },
+  "s0268": {
+   "digest": "28b14f51d65bfefe62f7c896a3406aa7ce6d4ee3f3089337b9776adcb3a3396e",
+   "query": "SYNDM.RPT.rpt_RatingMonthlySummary"
+  },
+  "s0269": {
+   "digest": "33b8d21ba5a7990bf6d934064a41590e8b81176c749c5b98a322fdca356fc79d",
+   "query": "rpt_RegionMonthlySummary"
+  },
+  "s0270": {
+   "digest": "fb6fc03fe02f74476739a9e98d855a563b74a86540b166fd1c3673abe6039e76",
+   "query": "RPT_REGIONMONTHLYSUMMARY"
+  },
+  "s0271": {
+   "digest": "77bebff195f8a7568d0d9c932a11314b08744b378eb7a73ccf757112eaba93ce",
+   "query": "rpt_regionmonthlysummary"
+  },
+  "s0272": {
+   "digest": "4f6ecdcdee72facb4bc2bf72203035afd36dfb42020c236511b57ae4e824519d",
+   "query": "RPT.rpt_RegionMonthlySummary"
+  },
+  "s0273": {
+   "digest": "b9824fce039c172140b4fe7933f89db4955e372b14a861466bd8b814e24001a7",
+   "query": "SYNDM.RPT.rpt_RegionMonthlySummary"
+  },
+  "s0274": {
+   "digest": "6a728ce1ff2b5c2cb4dec0ecd7964a0a49526d3b33a1f92f8a9870b3cd5552b0",
+   "query": "rpt_RiskGroupMonthlySummary"
+  },
+  "s0275": {
+   "digest": "96cd4511079075a3588c3cfb46011dc9c8917154c12eed88a380ef646c9d8c89",
+   "query": "RPT_RISKGROUPMONTHLYSUMMARY"
+  },
+  "s0276": {
+   "digest": "0c952ea3bf43d2f8d76d49ea5743993ec833803ba93b362e2aea8a2e78232179",
+   "query": "rpt_riskgroupmonthlysummary"
+  },
+  "s0277": {
+   "digest": "64f43040feeead111903ca2f0395fd02095f62ae2acce931a975794f5418810f",
+   "query": "RPT.rpt_RiskGroupMonthlySummary"
+  },
+  "s0278": {
+   "digest": "4c3153a64a1c43b31b140aafb53ecafd95de6d0a875b6e0bc796c86b93fad6c1",
+   "query": "SYNDM.RPT.rpt_RiskGroupMonthlySummary"
+  },
+  "s0279": {
+   "digest": "a51519084298e66bc2716d0284d6eae13ac7c287419bedfad75b7d2baef55625",
+   "query": "rpt_SectorMonthlySummary"
+  },
+  "s0280": {
+   "digest": "7c6e00fa73f78a6accc31b890491e717309b56563ed27aa0822cc252b10a132f",
+   "query": "RPT_SECTORMONTHLYSUMMARY"
+  },
+  "s0281": {
+   "digest": "067b806a39499af82a943fda3310eba08e981307958c69f235634de4625a9409",
+   "query": "rpt_sectormonthlysummary"
+  },
+  "s0282": {
+   "digest": "fa6319a31c205e56844d5728aac5e9867cfb05ea20f886622dfffa262b1ec0a0",
+   "query": "RPT.rpt_SectorMonthlySummary"
+  },
+  "s0283": {
+   "digest": "740af9b6f13a7242bcaeb1dad70f36cc835cd7f500d766fd748b07deadaf0732",
+   "query": "SYNDM.RPT.rpt_SectorMonthlySummary"
+  },
+  "s0284": {
+   "digest": "076872d0e8f60d6c9eb5b8db6c8bf942feecea75e4965a099dea957e99084cf1",
+   "query": "rpt_SegmentMonthlySummary"
+  },
+  "s0285": {
+   "digest": "89b8fcd6ca69fa53c110790e18ba115ca2608d618795d15d22f15f9c5cba7afb",
+   "query": "RPT_SEGMENTMONTHLYSUMMARY"
+  },
+  "s0286": {
+   "digest": "65ea096dbd49e816c9bd35f4313c3d8c7e8459c47c3fda68481241410e6ce2b9",
+   "query": "rpt_segmentmonthlysummary"
+  },
+  "s0287": {
+   "digest": "7df7144e868b88a032015f6fc86672a4d0ae97ebdc9f01e393201f3288c82f75",
+   "query": "RPT.rpt_SegmentMonthlySummary"
+  },
+  "s0288": {
+   "digest": "437bd41590b2e1bc30f64343db115d7a9aea6aa17411b79980f34673d9a441e2",
+   "query": "SYNDM.RPT.rpt_SegmentMonthlySummary"
+  },
+  "s0289": {
+   "digest": "2d2b510f6d29439edbdeb737354d19187e5ca5d8d4ee95cab32fe0a2301ef4df",
+   "query": "rpt_TenureMonthlySummary"
+  },
+  "s0290": {
+   "digest": "31e5053a08f431d7fe2ac75cbaf7ada965ca9689255f0d1f393201c61b081ba1",
+   "query": "RPT_TENUREMONTHLYSUMMARY"
+  },
+  "s0291": {
+   "digest": "c44546ad640b76fa515d64d42354226031c346d140b7dd3322330bdf2dbeccf5",
+   "query": "rpt_tenuremonthlysummary"
+  },
+  "s0292": {
+   "digest": "39d7ca742176c90d9b6bcbe1b8964a67b98afb8bbf213f6f539a5d642e322972",
+   "query": "RPT.rpt_TenureMonthlySummary"
+  },
+  "s0293": {
+   "digest": "4ef8aef1303516b7cf466c5ffc2234b27c5f80a6f1eb1eb68c985ec3a3c0edaf",
+   "query": "SYNDM.RPT.rpt_TenureMonthlySummary"
+  },
+  "s0294": {
+   "digest": "557673bd2624e5e5c2474fd40e17ebaa9256339b669184e479ee080bdab0dab1",
+   "query": "rpt_VintageMonthlySummary"
+  },
+  "s0295": {
+   "digest": "ef6953583dd4d90deeed607e928ee49aa71f715f379c38f95b97f969af343dc0",
+   "query": "RPT_VINTAGEMONTHLYSUMMARY"
+  },
+  "s0296": {
+   "digest": "85fcfe41fbe14d84e7a7090a21f29843a825955207c45a90a76810763c92c42a",
+   "query": "rpt_vintagemonthlysummary"
+  },
+  "s0297": {
+   "digest": "c417c0b7295a3decbebfb106b82eac95a1578bfff7d0e8fd576f23facf3ab66c",
+   "query": "RPT.rpt_VintageMonthlySummary"
+  },
+  "s0298": {
+   "digest": "48f2cf36437791e197b26d5731d4e2bc01126fcc5d42d993513e7c3be275b388",
+   "query": "SYNDM.RPT.rpt_VintageMonthlySummary"
+  },
+  "s0299": {
+   "digest": "eae67046ba44aaa61daf1847321ae602b5f801810821f2b7d412875b1e03c1b4",
+   "query": "vAccountBalanceSummary"
+  },
+  "s0300": {
+   "digest": "c648668e035b208ad3caa6597964b9429ed4c4cb5e963159033a32434cb2c9aa",
+   "query": "VACCOUNTBALANCESUMMARY"
+  },
+  "s0301": {
+   "digest": "01e3a57f22b15112d81a1d86af5b6b7df8f4833f182f6bf0166ae6f67dc75285",
+   "query": "vaccountbalancesummary"
+  },
+  "s0302": {
+   "digest": "fe6c38670b5ebfa9eadd9a3a5c90209489a6a53add2c9135dd07611c910fd633",
+   "query": "CON.vAccountBalanceSummary"
+  },
+  "s0303": {
+   "digest": "fe9868a042c3af242fb996d50b436f1c7cfd1896340f3a2d73965707a520da2a",
+   "query": "SYNDM.CON.vAccountBalanceSummary"
+  },
+  "s0304": {
+   "digest": "00d9d928bd0d04895b3dac44c23872b9d59220c154b02f2984e4c023f257f4e8",
+   "query": "vAc"
+  },
+  "s0305": {
+   "digest": "cbd51b8ddcbae2781b3e80d73a13ceebd39f6b380c24bb2ceb8193d69dc2a3df",
+   "query": "vA"
+  },
+  "s0306": {
+   "digest": "27a91096aefd71b15a4ee5c3c03565b3fd731878b3ab9c81aecadd2f37a4a4a9",
+   "query": "AccountNumber"
+  },
+  "s0307": {
+   "digest": "fb81a84dc097effdd8bb045dd4a2d952d547abae5e33e7cf4d463341bd427054",
+   "query": "Averag"
+  },
+  "s0308": {
+   "digest": "9e46c512d73693468c9dfc8c9e6c4e81c90d2357c19f9f47affba292fb0515c3",
+   "query": "vAtmList"
+  },
+  "s0309": {
+   "digest": "744d37cfde49f09b291fa64419cebd5e5ef7eb3acd087d7aa60d88b7d392bea4",
+   "query": "VATMLIST"
+  },
+  "s0310": {
+   "digest": "b60c68bce0b2185b544e18de268892c4cf06558010a73dd18a39b1808a22a198",
+   "query": "vatmlist"
+  },
+  "s0311": {
+   "digest": "a1e9dc0b4a4063549f8a3a89ca4764207ff8c78eb62ab1de7151e0d9fe8629e0",
+   "query": "BRN.vAtmList"
+  },
+  "s0312": {
+   "digest": "c24461f6cba21a0c461e5ebaae0dcb51af81d1b0ea21a1185df4b741e3969419",
+   "query": "SYNDM.BRN.vAtmList"
+  },
+  "s0313": {
+   "digest": "3bc1c33a79afd6983b4b1c76ec4909d4b5aa244e2819c89d3b7ada2061195d98",
+   "query": "vAt"
+  },
+  "s0314": {
+   "digest": "bafa2b1f8d286f5c8810ddd1e093d0d40c3d8252d1a1c07a675c4c777b275cfe",
+   "query": "AtmId"
+  },
+  "s0315": {
+   "digest": "0f7fa6ea52ff39390615c7090f8ff87558535e9f222d87004c5a99968b3ab1cb",
+   "query": "Branch"
+  },
+  "s0316": {
+   "digest": "c29db8c9720df01abe134d238e64984b2887993c217e0af017fcbd6b9dd2dc54",
+   "query": "vAtmTransaction"
+  },
+  "s0317": {
+   "digest": "991175f0ff26ca822beb4ea195a4076d918d9db4e24942464394c65525a599f3",
+   "query": "VATMTRANSACTION"
+  },
+  "s0318": {
+   "digest": "da1476afa48b52d94075b36f81ae1da5230ee375e19005a26de027f1da468a99",
+   "query": "vatmtransaction"
+  },
+  "s0319": {
+   "digest": "56623ab102dc670d0cff8403761e28afcf662cb8fbb245c5e4b774add1b57679",
+   "query": "TRX.vAtmTransaction"
+  },
+  "s0320": {
+   "digest": "a7719aa05526f11a688de1501a187d37b1501a6bc24306a91feb500f7b423a9b",
+   "query": "SYNDM.TRX.vAtmTransaction"
+  },
+  "s0321": {
+   "digest": "7ea9e011968d21ae8226d5ea55dc7f40d65582b4b150585530ff36c23f89064d",
+   "query": "Channe"
+  },
+  "s0322": {
+   "digest": "e2df2263772b4b2562175bd5a64a711dcd4ba5c238cd3744bfc7033ed1905be0",
+   "query": "vBranch"
+  },
+  "s0323": {
+   "digest": "1e10119248d0c6482cc2ffa8c6454af2c4f2aad1ce40e03b2c2dd55f2bb93fed",
+   "query": "VBRANCH"
+  },
+  "s0324": {
+   "digest": "74429ccc3bdeb91119ce71562a35b339c11d9f73de20f71985a20d99bf0c88fb",
+   "query": "vbranch"
+  },
+  "s0325": {
+   "digest": "feee703f97eb57c773c9fea72c08c383c59eecbc1ad0daa24555010d387b093d",
+   "query": "BRN.vBranch"
+  },
+  "s0326": {
+   "digest": "f8c95cfdf357c1cd51a675d5c6ba677b961aaf6c76d909a37e210f0f4f3f349b",
+   "query": "SYNDM.BRN.vBranch"
+  },
+  "s0327": {
+   "digest": "1e1a5fdae504beb45be1e71351076ae3660ef98e91bccc8665ea2487cd07186e",
+   "query": "vBr"
+  },
+  "s0328": {
+   "digest": "94ae398be68808718dc170838be8b43be63ba034a04b0bfa6fbfbdd703697603",
+   "query": "vB"
+  },
+  "s0329": {
+   "digest": "83a34db60bce4b78bd30fb749d8e79adb99472395b3fcf7a34187cfccdb49328",
+   "query": "BranchCode"
+  },
+  "s0330": {
+   "digest": "07e9b3d08548e20b0b85ae1fb1457e6f121c665928bb3d15a34c1e0269327d0d",
+   "query": "CityNa"
+  },
+  "s0331": {
+   "digest": "664570e50966b5674f8fe4b6d91c2488b2c7fe6cc9069c7879db7e40480a846d",
+   "query": "vBranchPerformance"
+  },
+  "s0332": {
+   "digest": "599151b6b918738400912000917b52a0c7ad60eb6af79443619d117518f7abdc",
+   "query": "VBRANCHPERFORMANCE"
+  },
+  "s0333": {
+   "digest": "798a497bba662810a6aa2427a84fa4714a221bb3314dc6fa8139a2309320f971",
+   "query": "vbranchperformance"
+  },
+  "s0334": {
+   "digest": "3b39a2ebb2bfd21468b6f56e33adfe8021664192520077920c37f6ee6223f8da",
+   "query": "BRN.vBranchPerformance"
+  },
+  "s0335": {
+   "digest": "4541ddfb38583f30ef3421e2f5d88cac7b89fb8a3b94a43f467582813e0cb663",
+   "query": "SYNDM.BRN.vBranchPerformance"
+  },
+  "s0336": {
+   "digest": "b9b246947505904f896fe6cbc0d1689ac16f120f15634a063576e0fa3569819f",
+   "query": "Deposi"
+  },
+  "s0337": {
+   "digest": "13729547a6923b1efe31947c476b3d6fa5cb05bb8a35b87ce6c38911d5ea60e5",
+   "query": "VCAMPAIGN"
+  },
+  "s0338": {
+   "digest": "f63cbd195117f1b1e59d2dab50d03c1e85bf985d3bbb22251f6cebb7a9e0b7fb",
+   "query": "vcampaign"
+  },
+  "s0339": {
+   "digest": "7fbd5eac3c4ab7c82ce1806562538f017dd24ec053d353e84da663d9d0c9f750",
+   "query": "CMP.vCampaign"
+  },
+  "s0340": {
+   "digest": "83e5c49dadd14baa7e1f624ca3f581c1afe32e3ce61de381dab85d851b8e1ac3",
+   "query": "SYNDM.CMP.vCampaign"
+  },
+  "s0341": {
+   "digest": "5f8fdda68d60276c2b460a0ce87e08d9e071e5083ca162f7f61d33e19df16b72",
+   "query": "vCa"
+  },
+  "s0342": {
+   "digest": "3715144697f4a9ea5f7a0f698af0fcbec9c31562b285d473514ce996b4f4348b",
+   "query": "vC"
+  },
+  "s0343": {
+   "digest": "ba0edd549a2fe15e5f7236037bb291a41483ea53f6211b53e255cce5f89c9b91",
+   "query": "CampaignId"
+  },
+  "s0344": {
+   "digest": "06f2f997295b676921bdcc93160978100f2a126e678122452ac56f3e5e66c12a",
+   "query": "Target"
+  },
+  "s0345": {
+   "digest": "81e224da01238a6b5d2047a255a00a40f42f6b3020b599044999d8c589d60788",
+   "query": "CFM.vCampaign"
+  },
+  "s0346": {
+   "digest": "549f9adb3b41d5d0ee1191bccd810e0e5ed38631857a4d9e850e305c12d6bbd6",
+   "query": "SYNDM.CFM.vCampaign"
+  },
+  "s0347": {
+   "digest": "a68c44b31910b86b459ea338b770bcb04ccd1e7320a4d9e5de421da86f54fe52",
+   "query": "Custom"
+  },
+  "s0348": {
+   "digest": "41dd98c9db795759a6bfcb4ee62107208247f8e8b7515ba8f43bdab97439280f",
+   "query": "vCarOwnershipPrediction"
+  },
+  "s0349": {
+   "digest": "890112e0a0a41c8550bb1e07c9401934224a57a990377f9920afe92040ed6804",
+   "query": "VCAROWNERSHIPPREDICTION"
+  },
+  "s0350": {
+   "digest": "6962068ea776c431622483d2d20c247fa235aedbc81e9be4936794629483409c",
+   "query": "vcarownershipprediction"
+  },
+  "s0351": {
+   "digest": "2c60962f887323fc977d2dc6e1566004fb815029156b7480bce1dcc33bc21aac",
+   "query": "AIS.vCarOwnershipPrediction"
+  },
+  "s0352": {
+   "digest": "0590f4415fab6768ff9469aba47d33d94a50f5c6455b04faa0f1c4e7a0c6630a",
+   "query": "SYNDM.AIS.vCarOwnershipPrediction"
+  },
+  "s0353": {
+   "digest": "bfac5a326e3d692a637366fd860b103e1dbc65b676f9906472d40e9df18749cf",
+   "query": "CarOwn"
+  },
+  "s0354": {
+   "digest": "1228d4b47804f472cc74ee7fbf1abb0c53aa08af02b72d07f106df1c14cb9ac4",
+   "query": "vCardBalanceSummary"
+  },
+  "s0355": {
+   "digest": "3cffa9fcd87b4e94f8469a87a7f5e1717e86108cc5f55adb4f88b35036839fca",
+   "query": "VCARDBALANCESUMMARY"
+  },
+  "s0356": {
+   "digest": "b931af782d9d4ed9e2da7347f2d1424e85aaf19b1b18615ad431f14af903312b",
+   "query": "vcardbalancesummary"
+  },
+  "s0357": {
+   "digest": "e3f1b984638dcceeea93ae4272008e60da4f8a6e418eb951873fade13b93bfab",
+   "query": "CRD.vCardBalanceSummary"
+  },
+  "s0358": {
+   "digest": "f9fac5974a3d9cee769553c779c015039f2bac2482dae702b4925b3b34c2ac02",
+   "query": "SYNDM.CRD.vCardBalanceSummary"
+  },
+  "s0359": {
+   "digest": "31991af06db94c932c2162df92be2c4b2b483ef445e9de811897ee21ffa6f8b9",
+   "query": "CardRefNumber"
+  },
+  "s0360": {
+   "digest": "1d303f2927d4ade4060bbaf137b0ba237dbfd6fc7784f48457d37f6eb590154b",
+   "query": "CashAd"
+  },
+  "s0361": {
+   "digest": "e8d38ee22f0d07f86556a99a0ce45c8452e46c29ebde7d0fbe5334e32d0d72a6",
+   "query": "vCardLimit"
+  },
+  "s0362": {
+   "digest": "c341e6d80d901376c3a5f99246e548ce7b850b7673a1dca73c658bd29b7716bf",
+   "query": "VCARDLIMIT"
+  },
+  "s0363": {
+   "digest": "b8dc177c45c65f2f97fe45e2cdf8539d4e9b7c69c4578018a84e2d3dad7f9509",
+   "query": "vcardlimit"
+  },
+  "s0364": {
+   "digest": "9cd877578eda452a89112857c91b9fb245c80718c52bd56de84828410dd30f9f",
+   "query": "CRD.vCardLimit"
+  },
+  "s0365": {
+   "digest": "9d8ce24f0704d23afbcbbb1e4d42cbf9fd5dc1e930bd10df4160eae24481b9c7",
+   "query": "SYNDM.CRD.vCardLimit"
+  },
+  "s0366": {
+   "digest": "d7ecc31a71f68e842bbd1fd87415b4e25b21eae7d73ffb33b48744aaecb67e4f",
+   "query": "LimitC"
+  },
+  "s0367": {
+   "digest": "e00d3d081bfeed796d67c856af371e7085f66be5081cdd580431ebf443cd92b0",
+   "query": "vCardLimitUsage"
+  },
+  "s0368": {
+   "digest": "4436eaea77630214f677fe52da0d96f16dc928a9983e8c48ed192c5e0ed23375",
+   "query": "VCARDLIMITUSAGE"
+  },
+  "s0369": {
+   "digest": "c2b32ac161db101183f7ef7f798c4426647062456faf578cc8ee6c4f0e2e5731",
+   "query": "vcardlimitusage"
+  },
+  "s0370": {
+   "digest": "ef43db459af2685f03d076dd75ce6c510b6cbda8e170df5066bd17e8f9ebef6d",
+   "query": "CRD.vCardLimitUsage"
+  },
+  "s0371": {
+   "digest": "b0d3556c0b7d5c358435168d9ec1d9172c1a1b021d431ea787dd774e17155f59",
+   "query": "SYNDM.CRD.vCardLimitUsage"
+  },
+  "s0372": {
+   "digest": "4659c2a8bf5fb7e32710305e9453b7ac443babbfe05d42ea3386c40a071647dc",
+   "query": "UsedAm"
+  },
+  "s0373": {
+   "digest": "11e4c3b6e367b2a09a43e39b19c2a32b5615a6c5b9ab1f5aade14c14a6299cd8",
+   "query": "VCARDLIST"
+  },
+  "s0374": {
+   "digest": "002bed501c876f3c7fa0b7fffb6662b017632b8a9746cd65d0a879deefdf4137",
+   "query": "vcardlist"
+  },
+  "s0375": {
+   "digest": "f75451e7e7e5dee3d914ca149a710bf4bb56be769ca48858bb14aa68d578e913",
+   "query": "CRD.vCardList"
+  },
+  "s0376": {
+   "digest": "45217242497fe994d118ea51c8846154f6b4e29666fea701e358a721fd8582e0",
+   "query": "CardCo"
+  },
+  "s0377": {
+   "digest": "435a987ce9b7ba7c771955a16c2d4d196f973e14c66462b4f1a83d24bc772c09",
+   "query": "vCardStatistic"
+  },
+  "s0378": {
+   "digest": "f2d2abdea8eb704bef5635c309e2d56c1874430a29ad9cb3c30214034b87a572",
+   "query": "VCARDSTATISTIC"
+  },
+  "s0379": {
+   "digest": "2cbe231f8c61fbce6be79ed3353ba082aa56dbebbd6b3d1d0095ceb119e54b29",
+   "query": "vcardstatistic"
+  },
+  "s0380": {
+   "digest": "11517ddb4eaa609813e48fafab834e4df7cb7c386a47b6fc26363163535a8900",
+   "query": "CRD.vCardStatistic"
+  },
+  "s0381": {
+   "digest": "b16c3edbcebdef43ccdb2532f5296f97f63b36eafdf7e7087565efb8f2d5ac27",
+   "query": "SYNDM.CRD.vCardStatistic"
+  },
+  "s0382": {
+   "digest": "d848d41d9056e9d60c218755ebba58d6811dc0f66854893471d810b0e388f13f",
+   "query": "Avg30d"
+  },
+  "s0383": {
+   "digest": "223108ff9e74af81211c0b85030ff61b16f385637ee337056fc4f2fbd8845f72",
+   "query": "vCardTurnover"
+  },
+  "s0384": {
+   "digest": "e32e0ba6dd05ffbb8dab2fd7efa096454caa58f01e2905875fd01e32c2f22a64",
+   "query": "VCARDTURNOVER"
+  },
+  "s0385": {
+   "digest": "ec0e780f105fd4cb10a17bd8df266c6bd1d61f56aa58503a369f5783664ed0e6",
+   "query": "vcardturnover"
+  },
+  "s0386": {
+   "digest": "4bb3438df3f841be2114df3f6e88abf82d580bb2a0287de1c06b2304f03bbd52",
+   "query": "TRX.vCardTurnover"
+  },
+  "s0387": {
+   "digest": "8492fcc52ac1084278581e996ef69c2d1ed6016fa11e9c9319f656885943fafe",
+   "query": "SYNDM.TRX.vCardTurnover"
+  },
+  "s0388": {
+   "digest": "3a4c44e2350e5ed4da5a99c1c33e59203054326e8370b3754d7e7b8d5a770748",
+   "query": "IsFore"
+  },
+  "s0389": {
+   "digest": "0d786a2866c7c5a015d021dd71daa1bec97542abf96664cce128b386dd52fe91",
+   "query": "vChequeTransaction"
+  },
+  "s0390": {
+   "digest": "163082bc35a193e644d946e664c7496cef5a73b9362639f44f8304ba45edd804",
+   "query": "VCHEQUETRANSACTION"
+  },
+  "s0391": {
+   "digest": "da829eca7bd9e82f8f517292429888ec158c33f2c10fa351127894018fe6f9be",
+   "query": "vchequetransaction"
+  },
+  "s0392": {
+   "digest": "03f434e21becb728a1f04aaf9e5bd5c18b7af8b1c973be8a91816dab0b1d132a",
+   "query": "TRX.vChequeTransaction"
+  },
+  "s0393": {
+   "digest": "c807cba36bc37e925d6f5fa93ed381e12574c08a95bfa9783f028167c2c7b738",
+   "query": "SYNDM.TRX.vChequeTransaction"
+  },
+  "s0394": {
+   "digest": "3e0d09a81ae8bc1e0317a3468cea3a835073c15be4c85573fd6bebca6fa2ddad",
+   "query": "vCh"
+  },
+  "s0395": {
+   "digest": "46756d38399870f5843af74241034f51eabdb184650014fcf81817c5ed18440a",
+   "query": "vChurnModelInput"
+  },
+  "s0396": {
+   "digest": "a7e857c3a0955376a0d6ad387098ffb1a2b326e88772eafb4a0daeac7bdb47f6",
+   "query": "VCHURNMODELINPUT"
+  },
+  "s0397": {
+   "digest": "ea663a3adbea3644551010a916336cb68bc1efafff33079233508744ce5e9395",
+   "query": "vchurnmodelinput"
+  },
+  "s0398": {
+   "digest": "1b4785fae49c0c0f4b4153531f392c2f6ac340e8652703479d219406518fb715",
+   "query": "AIS.vChurnModelInput"
+  },
+  "s0399": {
+   "digest": "8c67c3dfebdf5e509d883c8f41294a10788d3dbc132ed21d6f70eada78c02196",
+   "query": "SYNDM.AIS.vChurnModelInput"
+  },
+  "s0400": {
+   "digest": "a21c5d599eed67425e7f4762ae210a150f75285abc73758ac17b9c204cb08096",
+   "query": "Featur"
+  },
+  "s0401": {
+   "digest": "341db3c81b5453c5868fd91d24c4b55ed240306fcecf12df0c33cc25f52eb938",
+   "query": "vCollateral"
+  },
+  "s0402": {
+   "digest": "2ee59ff15ebd99229c5fff05f71d74a3b69265b62efd2b4d9ecafa8fcd61cb9e",
+   "query": "VCOLLATERAL"
+  },
+  "s0403": {
+   "digest": "0e02ef1c97ff591c2b4cc9840c8f954318f9dd2a382afe17fee0ebc5da06f51d",
+   "query": "vcollateral"
+  },
+  "s0404": {
+   "digest": "b7ceba2d59e510858c39126f7d94f37dcf33fc7730c843039d88b7b73149a632",
+   "query": "MDL.vCollateral"
+  },
+  "s0405": {
+   "digest": "e0f768188b6d33be128a17fe9cf80e60244a9849ae0ec554867cc14288e6567a",
+   "query": "SYNDM.MDL.vCollateral"
+  },
+  "s0406": {
+   "digest": "322d6a104273b1776c5659dfc688221ac6b0ab509c924e2007c9427dd6fed67e",
+   "query": "vCo"
+  },
+  "s0407": {
+   "digest": "94ca8b7d724b221a32724b5d37c14ac92e75694cd2a82f722bd0f653c267352b",
+   "query": "ContractId"
+  },
+  "s0408": {
+   "digest": "64603d207a857ecbf20b7c9316f165d7c0c548a71f9f42508f36add416fde49c",
+   "query": "Collat"
+  },
+  "s0409": {
+   "digest": "cea1d58dbcc8f248fe3d66e5c32fe7ce3d6ef2da44b1f064241524c820544151",
+   "query": "vCurrencyRate"
+  },
+  "s0410": {
+   "digest": "0e9099ce7507a687c35eae41142bdeb9f1ab1240195ab4142301162003028836",
+   "query": "VCURRENCYRATE"
+  },
+  "s0411": {
+   "digest": "dbe39d7e9509ca45680601b0107b69400820aaae31eca0c64b90bcca3be239ff",
+   "query": "vcurrencyrate"
+  },
+  "s0412": {
+   "digest": "0e0761635219824023f1009e6fce9b1a39bc76c0a17ad4e983e547249dbb907a",
+   "query": "REF.vCurrencyRate"
+  },
+  "s0413": {
+   "digest": "1a987f9a389bfa6fd97852d45ae3fe649e1740d1a6cff762b064855a0f4e8088",
+   "query": "SYNDM.REF.vCurrencyRate"
+  },
+  "s0414": {
+   "digest": "984bc2df5d901493480c205198b89dfcb4b9391eee5630bf45868ac5e04b53ad",
+   "query": "vCu"
+  },
+  "s0415": {
+   "digest": "67915582b6bb26dea4ab9ff181d7d1776dcf5348fce244b1f55d2ddde3b22f17",
+   "query": "CurrencyRate"
+  },
+  "s0416": {
+   "digest": "67fa819a76fbf857ad3006c51f85c1faec3ac2fe4bcabae7b2d3cfb65e3faea6",
+   "query": "DataDa"
+  },
+  "s0417": {
+   "digest": "cf2d7cc42df5cfb67f0fe4db00f6343ad974c9684bc5f0c718d91a09a6103f02",
+   "query": "vCustomerAssetDepositBalanceDaily"
+  },
+  "s0418": {
+   "digest": "a42629dd18b85e2ae7627e199ac804825bda8ce6346487699aeab2c0b4922871",
+   "query": "VCUSTOMERASSETDEPOSITBALANCEDAILY"
+  },
+  "s0419": {
+   "digest": "e6b34d92cee5415654b2b4f34992e7b5abbb6d02c7e707b93a307ccb646f04d5",
+   "query": "vcustomerassetdepositbalancedaily"
+  },
+  "s0420": {
+   "digest": "8592f9aed33ee6d5d41069cef10663c7d818535c89f17c8528bce31b9d84c378",
+   "query": "CON.vCustomerAssetDepositBalanceDaily"
+  },
+  "s0421": {
+   "digest": "d9c91108a38836f80845c9d76f04b05de99b95f66ff4936d10747ae512229cbb",
+   "query": "SYNDM.CON.vCustomerAssetDepositBalanceDaily"
+  },
+  "s0422": {
+   "digest": "113856c50141eed5666c275825e3cc10a90963cf24b0276e49d9500972556e24",
+   "query": "FxCoun"
+  },
+  "s0423": {
+   "digest": "aa9a8e919eb3d96593d71ac6b5a689640eb83d65917039f7076111156a130ca7",
+   "query": "vCustomerContact"
+  },
+  "s0424": {
+   "digest": "c0d761aa51ce16b45a91db926729cf66f6928fc47c81619295bac6b3d3f0ec50",
+   "query": "VCUSTOMERCONTACT"
+  },
+  "s0425": {
+   "digest": "a2bb41af7d15e3bddf2486422ac8c81bc6182220dd7f56656b39c965e1435d39",
+   "query": "vcustomercontact"
+  },
+  "s0426": {
+   "digest": "7cf971b6b9225acb36be343f411b7aac9fbb55ac44820ea5aeb546606bf927e1",
+   "query": "CUS.vCustomerContact"
+  },
+  "s0427": {
+   "digest": "d78efc7ea2f6a237deca9fb218f9134717d4bb1328dd4289e8902d26f3277e0a",
+   "query": "SYNDM.CUS.vCustomerContact"
+  },
+  "s0428": {
+   "digest": "b99387b11e8a8e32f7fa0b1c7ceb3e775cd75d6b68f8a93c067705717383a1e4",
+   "query": "Contac"
+  },
+  "s0429": {
+   "digest": "210af5e64b9d24b9ecfd024d9e3f0e2c5bae8e61f9dbbbf8baf9994461364d57",
+   "query": "vCustomerDetail"
+  },
+  "s0430": {
+   "digest": "267673e69b7c7b120acfc95d2130448e59e3f565def0a249d4c735037e36643a",
+   "query": "VCUSTOMERDETAIL"
+  },
+  "s0431": {
+   "digest": "c1bb79fbda462a4adc26b5e0ea49d105cae3215da69fad180af374142103ede9",
+   "query": "vcustomerdetail"
+  },
+  "s0432": {
+   "digest": "2d8c3ae17984a42bb90b0ce1f071cba53c1af9d46d831676cfaa3e261ad0e929",
+   "query": "CUS.vCustomerDetail"
+  },
+  "s0433": {
+   "digest": "0d91a18c9fd67c9a30af1015cfba901d4ed6077399fad236f8d2ebdd710121ba",
+   "query": "SYNDM.CUS.vCustomerDetail"
+  },
+  "s0434": {
+   "digest": "479c793f842d7d54993692ce91521b9fd8c46b00dc7175459fbccce123b14ae6",
+   "query": "Legacy"
+  },
+  "s0435": {
+   "digest": "9ba0e79d719c4ebc93eda8a63c7f30fa26c9f75a99375faf56777137e4ce4e53",
+   "query": "vCustomerGeneralInfo"
+  },
+  "s0436": {
+   "digest": "00c86329bada25dd0beece47a4a461e633dec33fad018ee8de0aa5fb47f270f8",
+   "query": "VCUSTOMERGENERALINFO"
+  },
+  "s0437": {
+   "digest": "40d66d54faf8b8debb058351ee7fbe18065d59b2f3cbba737be6d10973fb3663",
+   "query": "vcustomergeneralinfo"
+  },
+  "s0438": {
+   "digest": "88cfe3102f07ead7e09e01074dd8825b6e500b6c6081e2b681d97ae368da3e0e",
+   "query": "PRC.vCustomerGeneralInfo"
+  },
+  "s0439": {
+   "digest": "a81a7a39157a7df10cdf3241215c33e9313cfd6e79187961662f8652e6bc44d5",
+   "query": "SYNDM.PRC.vCustomerGeneralInfo"
+  },
+  "s0440": {
+   "digest": "8a89a98ead8966d5433d243902c35836c01ca8d065912b79e8e4aff44eedfebd",
+   "query": "Segmen"
+  },
+  "s0441": {
+   "digest": "ad4555caee36bd00e431d1c4539394ec820257aec974dfdc1fe50c7c5e5abebe",
+   "query": "vCustomerInfo"
+  },
+  "s0442": {
+   "digest": "6aadd9f94b81c29e8425a2539ab3f9e1f796828e8417a77ad4a2057998311f21",
+   "query": "VCUSTOMERINFO"
+  },
+  "s0443": {
+   "digest": "f9fa2054082b8d50e03e9791b1ebdded41dae5ba766135ee28ee93e79cd346e3",
+   "query": "vcustomerinfo"
+  },
+  "s0444": {
+   "digest": "698d03c8c2820beed87af6676bc8885b1d5f1eb4a37bb1b3db8d700d3ba95da6",
+   "query": "CUS.vCustomerInfo"
+  },
+  "s0445": {
+   "digest": "23b0d2c4608741f165c761812b79be76ae9dd538f209c170d8e92e2377c2ca00",
+   "query": "SYNDM.CUS.vCustomerInfo"
+  },
+  "s0446": {
+   "digest": "9fa1032d83e236269ab4d3ab2eea9c253dc76acb1f95d850863920d2f61f3166",
+   "query": "vCustomerMoneyTransferSummary"
+  },
+  "s0447": {
+   "digest": "135b7887e5e98a1f5407f3e540fad325d6677f8793e4d7bdd01e69c2953c614d",
+   "query": "VCUSTOMERMONEYTRANSFERSUMMARY"
+  },
+  "s0448": {
+   "digest": "717be2641c50351a4fcc36588ddcad89614fb35d1cdf2a30b479fcfd26f22566",
+   "query": "vcustomermoneytransfersummary"
+  },
+  "s0449": {
+   "digest": "f3fd5156b9e7c8341c5ffd80149a23428ebae177aeb894e6f435652b660861a5",
+   "query": "TRX.vCustomerMoneyTransferSummary"
+  },
+  "s0450": {
+   "digest": "df2bc8d3457f8b2928ed56bc55e6e0ba5f2d9064d794b84b43ebe9df001ffd21",
+   "query": "SYNDM.TRX.vCustomerMoneyTransferSummary"
+  },
+  "s0451": {
+   "digest": "97cb211f5533177ea0e3e98820f9cae2f38555f099e05267ed68ed8726eb4cf0",
+   "query": "SWIFTC"
+  },
+  "s0452": {
+   "digest": "1b622aed23c25ee5435df6473fd7cce95a5a9879f0da92c68b019c82ff7fcd29",
+   "query": "vCustomerMonthlyProfile"
+  },
+  "s0453": {
+   "digest": "49a8f699b1eef50e5977e05320f36f83f90398c75756e4057cd7818e92cd3dc0",
+   "query": "VCUSTOMERMONTHLYPROFILE"
+  },
+  "s0454": {
+   "digest": "cfd7fe9481142dc6d3f069bbf87bdee02eb4a2918abb7859f1888a51f16874f6",
+   "query": "vcustomermonthlyprofile"
+  },
+  "s0455": {
+   "digest": "8997acf96cb6491504905551f7d86b98e9cf2e8d1c9ae10d4fde86e9e029b168",
+   "query": "MDL.vCustomerMonthlyProfile"
+  },
+  "s0456": {
+   "digest": "1d7674eb3d0b3542b9441cf8b741fb5011b8510e02aa6159c01d80f835a2bd69",
+   "query": "SYNDM.MDL.vCustomerMonthlyProfile"
+  },
+  "s0457": {
+   "digest": "9e39c46e35b62f8ce29ca3de660549337081ef6fa4e6bc22f145ed8f8e14d974",
+   "query": "vCustomerProfitabilityAllProduct"
+  },
+  "s0458": {
+   "digest": "fca9c9285db88b12eecd2d29b7d014a3fc1c150496e3140b292f9371f617bb74",
+   "query": "VCUSTOMERPROFITABILITYALLPRODUCT"
+  },
+  "s0459": {
+   "digest": "3b9419c6957e4767b66a67f2401df980e69a6f71db5f2ea271ed6cc9728ef4be",
+   "query": "vcustomerprofitabilityallproduct"
+  },
+  "s0460": {
+   "digest": "810f419792f65d05c6915c18e6be6b85f75043b7cd78a43974f7d1168ff9b4bb",
+   "query": "BDG.vCustomerProfitabilityAllProduct"
+  },
+  "s0461": {
+   "digest": "1dd6cf243892c45ff3e5df58b56c4ff1dd4a25482770244bb05290ddd5d6f6e2",
+   "query": "SYNDM.BDG.vCustomerProfitabilityAllProduct"
+  },
+  "s0462": {
+   "digest": "cdb22ca0ac86e3fe525570d802dba4095564830b3267d9909f019badddc54169",
+   "query": "vDemandDepositDaily"
+  },
+  "s0463": {
+   "digest": "dfeb628314641177f1fba1f4cf8886905560c21cbebfff7f0a029884ce68d15e",
+   "query": "VDEMANDDEPOSITDAILY"
+  },
+  "s0464": {
+   "digest": "bb8b495743462fad2f03f81a5ef0ec267aec149c30a5241de00bd5f6f268dd87",
+   "query": "vdemanddepositdaily"
+  },
+  "s0465": {
+   "digest": "72dc176f11ae16ecf4072e2fb832f15cc5e397f4945597d785323202b8053992",
+   "query": "DEP.vDemandDepositDaily"
+  },
+  "s0466": {
+   "digest": "3cfab23c6bef60d2d8d7afb066fca1c79e4330866fd4fd1f205097bc7b3816ce",
+   "query": "SYNDM.DEP.vDemandDepositDaily"
+  },
+  "s0467": {
+   "digest": "9c17ca88c231b42e1ac7cd158c3e743494e1665ba9416239fb11724422312b80",
+   "query": "vDe"
+  },
+  "s0468": {
+   "digest": "8585f5eda03708a6a0c64afc6a808031926039ba7cf2e495cb319eec55343dd3",
+   "query": "vD"
+  },
+  "s0469": {
+   "digest": "d15edfdae798b66030690da50a29f4d3db0c1ca67287385cf96d71c0ddb5fbae",
+   "query": "Demand"
+  },
+  "s0470": {
+   "digest": "b6e4528c30dc0d2a350e872d7df4bbedda1fcae1e8f6add41fc097f7f93c66da",
+   "query": "vDigitalLogin"
+  },
+  "s0471": {
+   "digest": "242455840af7e1b0b505bb483999f4ef3edb2f5c26ef323454ba97a7d950abd3",
+   "query": "VDIGITALLOGIN"
+  },
+  "s0472": {
+   "digest": "2190c3080ad1a252fd9bab59aaf34612c98fc57b99b510bbf6bf2a2648ccacb2",
+   "query": "vdigitallogin"
+  },
+  "s0473": {
+   "digest": "c8260b4c510352850d341810b4ccc0ece8dd2d94943ca7928c33eb403150fd57",
+   "query": "DGT.vDigitalLogin"
+  },
+  "s0474": {
+   "digest": "62787aaa33174b1f38ec9de2a4f71421687704d3bcecf75a3de8f069bbdc2571",
+   "query": "SYNDM.DGT.vDigitalLogin"
+  },
+  "s0475": {
+   "digest": "92a7fd0c094362f67f72e62c2f6176ab2169c68b494d56022de238ede6def3eb",
+   "query": "vDi"
+  },
+  "s0476": {
+   "digest": "718bef59566bfe030740b00a98ed7535a9b05a5adcb5842e96e6280c594ff0e6",
+   "query": "LoginC"
+  },
+  "s0477": {
+   "digest": "dca29f9b2f0ee93195acd005ff1e16fd56ca616f583d1b9c955f17c76e87cc7c",
+   "query": "vEFTIncoming"
+  },
+  "s0478": {
+   "digest": "43702d469df457c21d2ad84d87df915cfdc89295107b93bc6cb0f3196d5d284b",
+   "query": "VEFTINCOMING"
+  },
+  "s0479": {
+   "digest": "47fa77792fc03cc15704efc1af820563fe153b941ebce68818e5c3a58d4b5b33",
+   "query": "veftincoming"
+  },
+  "s0480": {
+   "digest": "4e01c348fdf249731bfc8ed0a26ec9a15d987e5779e81718f0ba1c314a4f3153",
+   "query": "TRX.vEFTIncoming"
+  },
+  "s0481": {
+   "digest": "2f81282e44214e222f476a32953dbee97ac652c1e8a7ca857409123970d5dbb7",
+   "query": "SYNDM.TRX.vEFTIncoming"
+  },
+  "s0482": {
+   "digest": "c42a30f61698768dff826c69340448432cce509aaa8c663beac0baabfca02183",
+   "query": "vEF"
+  },
+  "s0483": {
+   "digest": "e163640cb7ab85abbf3c9a2eeab4549a12421d44e4aa7d2dd14adafb8fcc79dd",
+   "query": "vE"
+  },
+  "s0484": {
+   "digest": "37625473472f8b57b479bf52697941c4a5c00d25556c9fe205742be80ebc56e1",
+   "query": "Counte"
+  },
+  "s0485": {
+   "digest": "3ca07e61cea41012e2ebe7656d78e090e019c509c10d52d71b991abd6c460972",
+   "query": "vEmployee"
+  },
+  "s0486": {
+   "digest": "647eea2c8daaf505b6dd9c1c82ccb6236d466f3a14614cdb53932b7aa35f11f5",
+   "query": "VEMPLOYEE"
+  },
+  "s0487": {
+   "digest": "fcffd334922e440a4fbdd6a1d20fd9118fe87e635cb2ac308aca5bd2fdd674fe",
+   "query": "vemployee"
+  },
+  "s0488": {
+   "digest": "7850c4ac4b273e4f29bcfba7cf1b23dd1766f67645e47285762966a3460263a4",
+   "query": "HRM.vEmployee"
+  },
+  "s0489": {
+   "digest": "c5545793930df3621cb5994c993553b5b85a7022d675f371d044fe872b146249",
+   "query": "SYNERP.HRM.vEmployee"
+  },
+  "s0490": {
+   "digest": "ce5a0dccc824e020a4ba617f7b4ba31aba025343020322af0b246395a66f7bc3",
+   "query": "vEm"
+  },
+  "s0491": {
+   "digest": "d3c3f2ba878d822b9b6317a197b939544d04e6948d7be3726c35aaf1de2a3c71",
+   "query": "PersonId"
+  },
+  "s0492": {
+   "digest": "48300b94f35284d85e183e72eb74e079bb7f65ff4160104e5d6933444cb42285",
+   "query": "Depart"
+  },
+  "s0493": {
+   "digest": "6e9e50f429178eed4c26c328313556edadd2614ec3fedb6bdaaaaeb59dfec91f",
+   "query": "vExpectedCreditLoss"
+  },
+  "s0494": {
+   "digest": "b081aba202350b08cd1630aaeacbdcce94ba1f62782bc925995a1b7335b29a58",
+   "query": "VEXPECTEDCREDITLOSS"
+  },
+  "s0495": {
+   "digest": "4328ebfefe1c82eec5c926d454eb58102c54afd12fbade0b477cf7e3308473b8",
+   "query": "vexpectedcreditloss"
+  },
+  "s0496": {
+   "digest": "cd65c1489578134c97507c34742c9c7014d55ee5d607c5818a6cac7a9e0d821e",
+   "query": "CON.vExpectedCreditLoss"
+  },
+  "s0497": {
+   "digest": "c386b3e85566da1e436648a8889c8935599cd8698a1abe652c13b1394de7c4d8",
+   "query": "SYNDM.CON.vExpectedCreditLoss"
+  },
+  "s0498": {
+   "digest": "cf727c3644f02e6f0e6388d46fb89676633ed3dcce1e1981b50d94417bcf3b5a",
+   "query": "vEx"
+  },
+  "s0499": {
+   "digest": "336a327dd75578393a118f1d6fbc835c923094a20a7ad742ae1021f4c461145b",
+   "query": "LGD"
+  },
+  "s0500": {
+   "digest": "56fb34321efe0926581a808132981c8783c6aba45b4a853c2a953c5d7f36fcf6",
+   "query": "vFASTOutgoing"
+  },
+  "s0501": {
+   "digest": "90f9d4aa477ba5fe6dc2ab4090a3cc2ef496561109a28dc3746c0194d68efe2f",
+   "query": "VFASTOUTGOING"
+  },
+  "s0502": {
+   "digest": "d28f1af4ff50e7c1aa69192a081528e1ccc5c5ce307a8d98c3a9603412410720",
+   "query": "vfastoutgoing"
+  },
+  "s0503": {
+   "digest": "358d4db27cf87219c0eaf12f7dec0f97eb40e58ff7cb466cb5c1e5b940afd7d3",
+   "query": "TRX.vFASTOutgoing"
+  },
+  "s0504": {
+   "digest": "208a0eb376bef9acf620ba9e23a4def90eda583c0f0a75ecd9e318e8ec92c2f1",
+   "query": "SYNDM.TRX.vFASTOutgoing"
+  },
+  "s0505": {
+   "digest": "ecf145a172a677d603af139c35e9c98ec7c7b182a3f740aaa6b133096d452753",
+   "query": "vFA"
+  },
+  "s0506": {
+   "digest": "33ac47c66ae4a0580078b84204fb29e2c6f7aa6642e7f1e4b4d7012e0acaf024",
+   "query": "vF"
+  },
+  "s0507": {
+   "digest": "4648ba3d296e11697a69dd250275390972ed0c300a0e7143e921e49793be60c7",
+   "query": "vFinanceCustomerDetail"
+  },
+  "s0508": {
+   "digest": "32c47d2d15187186311b8272a2e4905439365d15ed570b65141a4389136ea935",
+   "query": "VFINANCECUSTOMERDETAIL"
+  },
+  "s0509": {
+   "digest": "4f4de4aeb8a1c0fc4098992635d214d3fb9d3da422d56f220f86d24424e8685d",
+   "query": "vfinancecustomerdetail"
+  },
+  "s0510": {
+   "digest": "18b9227744ec49bed0f77b00e456c8bfc12600f237ed57a2541d97e565a6f4c7",
+   "query": "CFM.vFinanceCustomerDetail"
+  },
+  "s0511": {
+   "digest": "5daf005cc038b871234674639d2a4a8c857c5737486c3f85534b02cb137531d4",
+   "query": "SYNDM.CFM.vFinanceCustomerDetail"
+  },
+  "s0512": {
+   "digest": "e1bc3cefb07b89c7ea03fc1870ae60e88821bb2d3b3bd6e7b750104c8fdf6af6",
+   "query": "vFi"
+  },
+  "s0513": {
+   "digest": "0dff0edfaa4263dfa96adda1f539aa2c4b77df01b5df1f1699663bae46395617",
+   "query": "Income"
+  },
+  "s0514": {
+   "digest": "fbbb15c488f050a33bd072bce68a93edcf469f9f1a8bf466bfc674fbda33567e",
+   "query": "vFxTransaction"
+  },
+  "s0515": {
+   "digest": "9020617f5be1704c42abd6ab7f8a2eb3a3c7b98daa8e7849136f390522dba923",
+   "query": "VFXTRANSACTION"
+  },
+  "s0516": {
+   "digest": "f22664c34aa28b40dd77cb39811d7d0996f460cb2eab763e387b8740a243c692",
+   "query": "vfxtransaction"
+  },
+  "s0517": {
+   "digest": "c8375f7f5e2eb97065a2b78ea0e2c90d84f6c9ed3ddcd2b3f6781ca587d45753",
+   "query": "FX.vFxTransaction"
+  },
+  "s0518": {
+   "digest": "2d7cca15b0debe27cc91501ba35b8cf0e365c4c3365ad233351ff3f0a247ce2e",
+   "query": "SYNDM.FX.vFxTransaction"
+  },
+  "s0519": {
+   "digest": "39934b6085422a47ba743e953bfdb8ae77bd124e2464c2643686875467fba998",
+   "query": "vFx"
+  },
+  "s0520": {
+   "digest": "af7b9dc2e499e9e665f2fc295e57435f7c988a0dc72d988a93bb39dc427c510d",
+   "query": "Exchan"
+  },
+  "s0521": {
+   "digest": "3e24c953a44bff525440e5c5c405b79e9974b29875ea66b1f88c44b107ccba10",
+   "query": "vHavaleTransaction"
+  },
+  "s0522": {
+   "digest": "5969398ab387522aa4702edef441d7c5183ad36d2939c87f84728a5b3b304934",
+   "query": "VHAVALETRANSACTION"
+  },
+  "s0523": {
+   "digest": "daa59ba5f55d9e1d8b0715467f2602128c8de3f8d8acfbb9a63370cff0e37742",
+   "query": "vhavaletransaction"
+  },
+  "s0524": {
+   "digest": "2cfb92b278b38af0ffc12bb8c8911574e6739aa343615d731593197cca423cb6",
+   "query": "TRX.vHavaleTransaction"
+  },
+  "s0525": {
+   "digest": "eb9484d8f320a084a0649e43dd2388ddaa7fe72f86bdbeaaceeecda535be0113",
+   "query": "SYNDM.TRX.vHavaleTransaction"
+  },
+  "s0526": {
+   "digest": "79a61b6261d84f59c74e84131cbbb432eba3ac7f3a22df8cb05be4d07a8ad623",
+   "query": "vHa"
+  },
+  "s0527": {
+   "digest": "c5c60f05749d0c4ff49fb7b30cf5b52a92a95f5ab91c3bc8a7a9227b9842b2e7",
+   "query": "vH"
+  },
+  "s0528": {
+   "digest": "9ec5140ed51bd53a0912ba4284c787a7088dde095ade4946a07e97430999bfd1",
+   "query": "vHoliday"
+  },
+  "s0529": {
+   "digest": "b89eefb8b79adef1ffbc47d7c8e9982c2d2ba86bde9686ae80ef313d48a0a84d",
+   "query": "VHOLIDAY"
+  },
+  "s0530": {
+   "digest": "84ce22686dc798526c5fd2d2dbfad34a54eaa43489440cc1d5e95417f1f8e6e6",
+   "query": "vholiday"
+  },
+  "s0531": {
+   "digest": "dee5c5c9b427b2179364bfa0e9426fe44af06fbfcc3b41dcd924588375b25d8a",
+   "query": "REF.vHoliday"
+  },
+  "s0532": {
+   "digest": "7b43787527354f68d13d16404c3103a3c39b2cc1fa5b6cc1a9fce20bf9dec242",
+   "query": "vHo"
+  },
+  "s0533": {
+   "digest": "adf7e0f61d07fd6461f3fd9f3afeec50269433d54bfcdef34841abe425b25b18",
+   "query": "HolidayDate"
+  },
+  "s0534": {
+   "digest": "ae10b142a34178e0824eada19f6bbf55973f333cd9cdbf1425582b296573e917",
+   "query": "vIFRSAccountStatus"
+  },
+  "s0535": {
+   "digest": "991cf7f64de089dedcd5e2fea81cad0b8afe520e58d9da25cc9fab50df9efdd0",
+   "query": "VIFRSACCOUNTSTATUS"
+  },
+  "s0536": {
+   "digest": "6f7587699409c68b27520bf6539bab0f4aa47aca5aff40295d311b064358a1cc",
+   "query": "vifrsaccountstatus"
+  },
+  "s0537": {
+   "digest": "f498d660027caa7a04136de1436eca90836d67284a467201d13580f83c002367",
+   "query": "CON.vIFRSAccountStatus"
+  },
+  "s0538": {
+   "digest": "895af8f35286063b80256e9c4958520118117c8162b8560ecc9d34fd2d75ded1",
+   "query": "SYNDM.CON.vIFRSAccountStatus"
+  },
+  "s0539": {
+   "digest": "fda2e56224a009e5c8a17bf4b2678b8f2ce5d8760dcbad232a16e8b232915512",
+   "query": "vIF"
+  },
+  "s0540": {
+   "digest": "1bdfff6c17a6aed3de82905a3f5bb9b0c14649871f98cce4ef109abaa277cba2",
+   "query": "vI"
+  },
+  "s0541": {
+   "digest": "ac6e7c7c37f9070de36acc0deb53eb87cb1e38b1b16f4437635a6a78d8cc0957",
+   "query": "StageC"
+  },
+  "s0542": {
+   "digest": "dadf40eb9f5d20a407236387eeb1ea3e073277ab192b4763f529638258305624",
+   "query": "vInsurancePolicy"
+  },
+  "s0543": {
+   "digest": "631aeab211a0bcce6d24b031076f4079ec861acee31d2eb9b97f611909767d51",
+   "query": "VINSURANCEPOLICY"
+  },
+  "s0544": {
+   "digest": "f44b06b18d18f9c78a751255b4528f95836a4bfcb7879dfaabd11f33ba63176c",
+   "query": "vinsurancepolicy"
+  },
+  "s0545": {
+   "digest": "5440503a4bb9aa8cad9f13a1cd359a7fc7a880a5a12a4b08f39763b03115a8f1",
+   "query": "INS.vInsurancePolicy"
+  },
+  "s0546": {
+   "digest": "20ec8e68990423deb66ad212468cecc620736fe4c10211fe93175fea3fe0c3a3",
+   "query": "SYNDM.INS.vInsurancePolicy"
+  },
+  "s0547": {
+   "digest": "23466f17f1a7e7537bac8350c0e3e07fca2c66ad2dd83590d0c0b77c92619733",
+   "query": "vIn"
+  },
+  "s0548": {
+   "digest": "033f062374f9938c73110b12d7ab1d9fa22409b38c110fe411f8abba3454a275",
+   "query": "PolicyId"
+  },
+  "s0549": {
+   "digest": "b52a806b7113296efc278e6588567b6a213cfdd147e3dc7a189ede8f28c4dd41",
+   "query": "vKKBReport"
+  },
+  "s0550": {
+   "digest": "cb4a70185784b2b8e58b29a5a92386565ef94002b759c48997475cdbdec33a87",
+   "query": "VKKBREPORT"
+  },
+  "s0551": {
+   "digest": "6f038c01bbd56c227731febe90a43f20f30182e59f1c42335e9816cdb426a591",
+   "query": "vkkbreport"
+  },
+  "s0552": {
+   "digest": "ecf49197534915e50f1df1f63761380321a373ac3859c9d539c1d5e695f30735",
+   "query": "IDM.vKKBReport"
+  },
+  "s0553": {
+   "digest": "ccbe7de1c584301f86eccb605b8244a12f7ec09e938bfbbd4863fadda4560081",
+   "query": "SYNDM.IDM.vKKBReport"
+  },
+  "s0554": {
+   "digest": "fa5a28c18a2212a336a1d40c1319abb9021fb71947bcefbf9eba6f01465771ee",
+   "query": "vKK"
+  },
+  "s0555": {
+   "digest": "8773429ae88daa314525b3b4dcc2435262eecac69c91adbb089e4ab83dc29012",
+   "query": "vK"
+  },
+  "s0556": {
+   "digest": "ad58bcd3af9da8acae6cd79ac8920eec3b9f63af4278194c2fa6838816376870",
+   "query": "Overdu"
+  },
+  "s0557": {
+   "digest": "5308e69e5186033c87d804ce220e4e9b9fec6a81cc0a52c935ef724e7a5c9d20",
+   "query": "vLeasingContract"
+  },
+  "s0558": {
+   "digest": "025478427bb3abd2eabf8d36399477bfd45baff9faf38323a6a40bfb71230722",
+   "query": "VLEASINGCONTRACT"
+  },
+  "s0559": {
+   "digest": "a57d77b370ebf787fbd9255bb3a7240576055b15ae46c091cbf8cff4547121c6",
+   "query": "vleasingcontract"
+  },
+  "s0560": {
+   "digest": "f46c933424cca7e36affe85de7b237dca514e199151a9404946bf7850dee8e3d",
+   "query": "LSG.vLeasingContract"
+  },
+  "s0561": {
+   "digest": "5e5e5882721c0e580d91d50f4467bb9af0ca582b8051760fbae8c904edc8826a",
+   "query": "SYNDM.LSG.vLeasingContract"
+  },
+  "s0562": {
+   "digest": "47bd20975abb077b92dccfadee2cb6f07c29d4627d8ca72720f4e84c085709ae",
+   "query": "vLe"
+  },
+  "s0563": {
+   "digest": "bcc247b5bc7337401dbd1ae6c9b6cebfb44a75b41b9cf583b0b6d2b579d5c4de",
+   "query": "vL"
+  },
+  "s0564": {
+   "digest": "c41d4a32017d0dfa0c0e4a452191adf97784197e4dd07ed3330308f95290151e",
+   "query": "Maturi"
+  },
+  "s0565": {
+   "digest": "5ad38190a53bfeeb5edbca1cc250792a023769a706bc17bb16423c3d7a07c2a8",
+   "query": "vLoanApplication"
+  },
+  "s0566": {
+   "digest": "760a30d5fee659e31ec3ae0e741d7d511d712d493ac8d88e524b0d2daa158d0c",
+   "query": "VLOANAPPLICATION"
+  },
+  "s0567": {
+   "digest": "af788d7781ef62af6a0dd5aa39154a8b2dcf437f197d1336a50ff7b7a05f4dfd",
+   "query": "vloanapplication"
+  },
+  "s0568": {
+   "digest": "95ad0a667ecb707ef495ebd84848d3caa283337e669217e574c0eda047f8cf7d",
+   "query": "CON.vLoanApplication"
+  },
+  "s0569": {
+   "digest": "ea5dc65bcf27a663a6aa3baf130e33f8ec414bd06adabe0e1ffb55ed70842eab",
+   "query": "SYNDM.CON.vLoanApplication"
+  },
+  "s0570": {
+   "digest": "d7057176d4b19aec34b6d7ae0f5a5d629b0e391a151c90219d0fb445ead818b0",
+   "query": "vLo"
+  },
+  "s0571": {
+   "digest": "15698d8e4c4611472bf136a90a1462d254949d41d801f99ec76487e94fa3797b",
+   "query": "ApplicationId"
+  },
+  "s0572": {
+   "digest": "58b9f6cb9f5e0844e96b3e9581bec5b1d0c66959c51b2e242f3086acc131494d",
+   "query": "TranDa"
+  },
+  "s0573": {
+   "digest": "5affbf21ec24f0bc98156e5125ffbf661006c4ce575ccecbcb5444c11316a0f1",
+   "query": "vLoanContract"
+  },
+  "s0574": {
+   "digest": "364531ede1c573d09d1371e031b05acb9b3b2ff9c97dbdc8abd9bf1098a0f21f",
+   "query": "VLOANCONTRACT"
+  },
+  "s0575": {
+   "digest": "d98082d090754ba9f6c3daf334d3138b1635af6118edbba754f4a2c38305345d",
+   "query": "vloancontract"
+  },
+  "s0576": {
+   "digest": "6230d443d827952bfe4e3e0ccbdfc52019d9bba980147614b42e51da3179f207",
+   "query": "CON.vLoanContract"
+  },
+  "s0577": {
+   "digest": "35f65b1b18aeb3884d7ed52ec29936982b6902511132c8090e51d6aa4d9e7b42",
+   "query": "SYNDM.CON.vLoanContract"
+  },
+  "s0578": {
+   "digest": "d6b776997bbdf6f603318ad4fbd206a15256895074abfc43cb6f85d5653606f1",
+   "query": "vLoanPayment"
+  },
+  "s0579": {
+   "digest": "2e886ada57bc776fbbb9d5147b1a5111ecfce06e9da2069cf056e93dbe8d645d",
+   "query": "VLOANPAYMENT"
+  },
+  "s0580": {
+   "digest": "6adf6c5b37e77783fc135f8214b4bf6e948e7062b09d7c14f0d1797963e994d0",
+   "query": "vloanpayment"
+  },
+  "s0581": {
+   "digest": "751c397936afd67788136c2ec3e988dd81103a7117d68fb96ca72445f0667a23",
+   "query": "CON.vLoanPayment"
+  },
+  "s0582": {
+   "digest": "156ad3025ad84fd4732e0b24cf25b12f59724c614a3c093acd9677f1f09a745f",
+   "query": "SYNDM.CON.vLoanPayment"
+  },
+  "s0583": {
+   "digest": "56629f8666107b401659c8582767d5051de096956d6ba0da0b91eee0b01ec433",
+   "query": "PaidAm"
+  },
+  "s0584": {
+   "digest": "1c3cc52fe5cc1c483c3f9950a0cf0b14c6fc48b46a0113bc7ab580a9911d5007",
+   "query": "vMarketingPermission"
+  },
+  "s0585": {
+   "digest": "f2abb7d6c307d693f8cfb3c5168c85dc16753df511fe9146491777fae790952a",
+   "query": "VMARKETINGPERMISSION"
+  },
+  "s0586": {
+   "digest": "baeafbe8d1e9875da1be1bc8dd15de3c9d9416e790dfef287b6d3234ae9d9b54",
+   "query": "vmarketingpermission"
+  },
+  "s0587": {
+   "digest": "ea143bd4cd6ba39d44d43426e3d05ec5f502cc56492a0872a4c3b998f4b4fd70",
+   "query": "CMP.vMarketingPermission"
+  },
+  "s0588": {
+   "digest": "75bc257681da50779a0df8a01c0ad059634e3e5355256b8d5c588ea84093527c",
+   "query": "SYNDM.CMP.vMarketingPermission"
+  },
+  "s0589": {
+   "digest": "7f44b58d1e56ace27aab9b2901d0c830cc435633dfbc8a23b2e85f0b71ebcbe1",
+   "query": "vMa"
+  },
+  "s0590": {
+   "digest": "1d4d39c2cdfa36aa7caf63e42ca74a98fe0429017038e8e64cfc2041f94dbcea",
+   "query": "vM"
+  },
+  "s0591": {
+   "digest": "f3742a0c0890b22ff3af477246c2bdfd900ae89c52906700981fccba9c6515e3",
+   "query": "EmailP"
+  },
+  "s0592": {
+   "digest": "de618c67f35fcb276e0a5988d551db56cd23d538e1a53e817662e9a67ca3cca6",
+   "query": "vMobileTransaction"
+  },
+  "s0593": {
+   "digest": "f2fc89651d5acd655cd47897f6a1dc7f34ce32c27b2897ad1e801f0649eea98a",
+   "query": "VMOBILETRANSACTION"
+  },
+  "s0594": {
+   "digest": "b7ded208bb0e8a8d62292e6edea0e12fcc20011e3c7352d7a97926b28c9b17c4",
+   "query": "vmobiletransaction"
+  },
+  "s0595": {
+   "digest": "341bbd2710283324ddce5c874fbb366cf37ce43c5f4271edccc58ef7c95cc6d1",
+   "query": "DGT.vMobileTransaction"
+  },
+  "s0596": {
+   "digest": "69956eb48214925014041ca90e704f8f74edd637c2bfc5b3248977986698eba0",
+   "query": "SYNDM.DGT.vMobileTransaction"
+  },
+  "s0597": {
+   "digest": "ed8a146e60fd9bd4da0b74e0e96ab1f9d728d761a121292eeaab5d7632dff1e5",
+   "query": "vMo"
+  },
+  "s0598": {
+   "digest": "12d8a62c70261a81df2308a31d273f13b67f29d21dcdc56671ac0fca9b6df6d2",
+   "query": "Transa"
+  },
+  "s0599": {
+   "digest": "0872cf16a916d614a954633a98dea911de17c9127df627cd3fef8a11a12bc895",
+   "query": "vMurabahaContract"
+  },
+  "s0600": {
+   "digest": "a461425afbcb42d8e5925d4fa5beebde86b914b865e9f2adae83ad75efe6b040",
+   "query": "VMURABAHACONTRACT"
+  },
+  "s0601": {
+   "digest": "b28ace470b6b5df4849ff0fa2671c88d01722d840bbc88e95988af2273a6d52d",
+   "query": "vmurabahacontract"
+  },
+  "s0602": {
+   "digest": "293c750429a8f5c5121cf4d90f4c4b549513a9f033029ca400d6ff2165ec1740",
+   "query": "LSG.vMurabahaContract"
+  },
+  "s0603": {
+   "digest": "0b40d9fa2e67ccf541b13c5377f5078de029168282c95d5b6ca72501b7eaac16",
+   "query": "SYNDM.LSG.vMurabahaContract"
+  },
+  "s0604": {
+   "digest": "02f7f9fc343c9341f3d18bb7500b51a465914c4c1c52d91fa672d0d58c1da4ee",
+   "query": "vMu"
+  },
+  "s0605": {
+   "digest": "dfb221da46ddd6af5a7d298639ec37fe0a208daca2ebd70f74ed5c69c14ad824",
+   "query": "vNplFollowUp"
+  },
+  "s0606": {
+   "digest": "98a38320d520764a1fe42a52643f081137b55c9a8fdd5457ef01999a47d58bf6",
+   "query": "VNPLFOLLOWUP"
+  },
+  "s0607": {
+   "digest": "cb2523c599f4fa011586f1f0b68b01b3b3cb5ffb8b061f7e94a4228e2c946604",
+   "query": "vnplfollowup"
+  },
+  "s0608": {
+   "digest": "84a5d5cde0c7121ec7eb34c13fb43217a71eb3b122b3156c45dbfcb019387ead",
+   "query": "RSK.vNplFollowUp"
+  },
+  "s0609": {
+   "digest": "ebf10e4f42a6cfae11ec8e3e1f1bee997da6ff1aad4ca48a6254d60099cde3c5",
+   "query": "SYNDM.RSK.vNplFollowUp"
+  },
+  "s0610": {
+   "digest": "af7d54c9b72abd8bf9c2b392ae14ad9f4eb6bbc4d3ad4024585459306bea17b7",
+   "query": "vNp"
+  },
+  "s0611": {
+   "digest": "4f03993e41af54a6d74b9f04c7c287bfae1dcef9d610af37814dc308eb969570",
+   "query": "vN"
+  },
+  "s0612": {
+   "digest": "9b74a30a73501a61b9e720aad0eacd49c2ce90867051b8dccb1a0879d52f4753",
+   "query": "Collec"
+  },
+  "s0613": {
+   "digest": "177e4dc9e32de751642de3229ca682fdde92651d804ba58db2c4ab4163301978",
+   "query": "vParticipationAccount"
+  },
+  "s0614": {
+   "digest": "c13cbbfa4e4adcbc70788db0d37e2be200be16525e21799281c63969f6f976de",
+   "query": "VPARTICIPATIONACCOUNT"
+  },
+  "s0615": {
+   "digest": "e6d3eced9257e48f6b48a47f069947df46e60da0e51a547c44a5e5f839047426",
+   "query": "vparticipationaccount"
+  },
+  "s0616": {
+   "digest": "9dd86e6e8907e9fb1a8b1935786a3573105db34e2cdbe0c24f1a3482c072dbcb",
+   "query": "DEP.vParticipationAccount"
+  },
+  "s0617": {
+   "digest": "eb0de62f0711c96830bed1b1fc06c733974cd93794439fd3437ac88c58c1416b",
+   "query": "SYNDM.DEP.vParticipationAccount"
+  },
+  "s0618": {
+   "digest": "86afe8e6c6276db2e752762412d7597ee7e5b83306add6bb1537f3755e8a30d8",
+   "query": "vPa"
+  },
+  "s0619": {
+   "digest": "faa302b261185530365c18aa30bd2da67bc7a7069d88bc259404928001d0df6b",
+   "query": "vP"
+  },
+  "s0620": {
+   "digest": "f5ac4c1927f9fb651a6344d4ea7ab2a885c35e20d784504d662bd2ec0f2b2fae",
+   "query": "PoolNa"
+  },
+  "s0621": {
+   "digest": "91bc522c42e550aa8d4df8f7a2d9d811d964472a019040e3333c3355110b0108",
+   "query": "vPersonKKB"
+  },
+  "s0622": {
+   "digest": "ab3920a05c3c8da77bd947d02498cdba6a71e9a2ed5e1d8e4f38ff2cc0fc084e",
+   "query": "VPERSONKKB"
+  },
+  "s0623": {
+   "digest": "28b6f4dbe86c6336b9c6e3da9c75bc4392ff53261994712d4ec529a9b81571f4",
+   "query": "vpersonkkb"
+  },
+  "s0624": {
+   "digest": "fcf8aeace13f94c2ae3721793e049bc6a7f855efe50cb8b9f3a78bbaa7f2aa04",
+   "query": "HRM.vPersonKKB"
+  },
+  "s0625": {
+   "digest": "2348bc754e63f678686eadbbe9e554ed07ab448f9ac881e84df354f2ca459017",
+   "query": "vPe"
+  },
+  "s0626": {
+   "digest": "660e7b15356a046acd4ec4be69149b447108d920ec21a55e4f70d455eb7ed9a4",
+   "query": "KKB_DA"
+  },
+  "s0627": {
+   "digest": "738e0fd9295cfbb3ce574c6e197a78284d509a36e6d6f31b99ead6ff384f866b",
+   "query": "vPosMerchant"
+  },
+  "s0628": {
+   "digest": "f08aa299bf7e28299d0369e391ebcce13f81be18e0e13cb8b4c99d3970fb7911",
+   "query": "VPOSMERCHANT"
+  },
+  "s0629": {
+   "digest": "64512ac2766bb9c1745a7149ec95cfcf40409027025a9977be2fd66336f2e51c",
+   "query": "vposmerchant"
+  },
+  "s0630": {
+   "digest": "4e789a246c1e72e0f0361e97f6021a60b8fe5a4237a14fdc625f35bb4336aac3",
+   "query": "TRX.vPosMerchant"
+  },
+  "s0631": {
+   "digest": "a43ead6b7713c055a1d6d982754f2205b19cb853a7e0d58ae0dbc137b39c6666",
+   "query": "SYNDM.TRX.vPosMerchant"
+  },
+  "s0632": {
+   "digest": "f21ae6a3ade52cb621ace7307d7750ec1d281af7ffb5c9877652e328ebb2f3c5",
+   "query": "vPo"
+  },
+  "s0633": {
+   "digest": "d3bdad9f25917e55ae350e3bb8d69ebe094c83eab8ce6a979440265e9615a533",
+   "query": "MerchantId"
+  },
+  "s0634": {
+   "digest": "428df77c53e1463a8a79a206d5b8a3cb4c0ca51ff768f0d4d7bdfd1e8e1b7f40",
+   "query": "Mercha"
+  },
+  "s0635": {
+   "digest": "723c35012312eb38be1ab58760c2845e062c5db727e8aba62c9f953d6bf11427",
+   "query": "vPosTransaction"
+  },
+  "s0636": {
+   "digest": "e8620b19c8daae700be4194f09f690c0708987f6f0dfe76c6c96dfd8e8f3f92c",
+   "query": "VPOSTRANSACTION"
+  },
+  "s0637": {
+   "digest": "3f9934c7646d79c968c1786649605d4388aef6fbd6ed816ef584b955cc49e9c5",
+   "query": "vpostransaction"
+  },
+  "s0638": {
+   "digest": "47bdba3658aef56117486f329e3e299c9abfe9adf2d9f9cf875db8694b3080a2",
+   "query": "TRX.vPosTransaction"
+  },
+  "s0639": {
+   "digest": "b5f836057fe7a8055925b93206c108eea1456cf8f092f15822efa6c64a28c9e5",
+   "query": "SYNDM.TRX.vPosTransaction"
+  },
+  "s0640": {
+   "digest": "f240ddf5f0ce46803c3e0a6b104fbfa3c2e15dc0a2db820589e074378213ebde",
+   "query": "vPrivateBankingCustomer"
+  },
+  "s0641": {
+   "digest": "34c57c66db555ba8b6b66b3fc38229ee7c61722740f08e500da12cd7ec90e45b",
+   "query": "VPRIVATEBANKINGCUSTOMER"
+  },
+  "s0642": {
+   "digest": "7ccea57c59a3b960c1bf657fb252db8bbfb442579d2adb63e39b8311c6874af7",
+   "query": "vprivatebankingcustomer"
+  },
+  "s0643": {
+   "digest": "a2665b3aea44c2e9ee42ffc4dfa47ee95c93558de17c498beccc8cfcbd017189",
+   "query": "PB.vPrivateBankingCustomer"
+  },
+  "s0644": {
+   "digest": "ec61d4827f4d458ec8fdd5bb1a870d954b937e2c84a8dbcb14eb9fb3fc0740eb",
+   "query": "SYNDM.PB.vPrivateBankingCustomer"
+  },
+  "s0645": {
+   "digest": "720402a6e1cd7e832cecfdfd9e2aabfecae8663b92e54ea173c2fabd4cd69bb8",
+   "query": "vPr"
+  },
+  "s0646": {
+   "digest": "da6bc8f2aa8edcbfd4bf76a9bf24fdd2ab3c2da989e1acf1d48109fdd003c905",
+   "query": "Compan"
+  },
+  "s0647": {
+   "digest": "ef42fb055bb6de6970cecce99015336400f63fc84d6c892c9afd7fcadff4349d",
+   "query": "vProductCatalog"
+  },
+  "s0648": {
+   "digest": "56c315a1f68e07ba02c761a5c43cfaaae71b67fd2732142a2e79b17b6990f31a",
+   "query": "VPRODUCTCATALOG"
+  },
+  "s0649": {
+   "digest": "9193b8f898a043d35d8aa566ed83ba1d252448f0358fa986d1b4f02dcb43f9ca",
+   "query": "vproductcatalog"
+  },
+  "s0650": {
+   "digest": "5c27302573c93c45a2d0bf114b1ffeeb2716a6d742201091887a52aad24ebf11",
+   "query": "REF.vProductCatalog"
+  },
+  "s0651": {
+   "digest": "4c91c15f4c97bb400dc5b7010fbe98b94e2c8b0d5640b732843b4d4969cd3aa6",
+   "query": "SYNDM.REF.vProductCatalog"
+  },
+  "s0652": {
+   "digest": "9ee04947c0206bdbf529e8414830d1cf957f50a7ed8dccf7c7889ca40957571f",
+   "query": "ÜrünGrubu"
+  },
+  "s0653": {
+   "digest": "26a4c65f0cc043864fe2a15abfccb30b32407d767b8dada46713aafc0b35fa51",
+   "query": "vProjectRisk"
+  },
+  "s0654": {
+   "digest": "651810299671160741f784fe681994b923a1f6b4dfaee41418f731c564944937",
+   "query": "VPROJECTRISK"
+  },
+  "s0655": {
+   "digest": "f6c80f4a65998e4d83bfe21fd0eab444b42f45480f235e3c355a42b8598f068c",
+   "query": "vprojectrisk"
+  },
+  "s0656": {
+   "digest": "959e5c063a6737ea313927f025db2fe46370ef3911b15aae3f973cb9d0df313c",
+   "query": "CON.vProjectRisk"
+  },
+  "s0657": {
+   "digest": "18613381e759c5b0e83b7dd9b1b5566eb50b0049dd07e29c5de259d24500d8b9",
+   "query": "SYNDM.CON.vProjectRisk"
+  },
+  "s0658": {
+   "digest": "cc933bc0c14aceefd1cbf778f0aacf41490233e7b126fa1cb9e21e64e99f9168",
+   "query": "Projec"
+  },
+  "s0659": {
+   "digest": "baf6ec68b01bf208b438d3fdca5b0e5254af05846d81d844b317d20efaff5996",
+   "query": "vRetailChurnTrainingInput"
+  },
+  "s0660": {
+   "digest": "4a8f0eec6bf047b7bf22d45bf2cbea759b3256319b65048c47c8c9ef02f4e949",
+   "query": "VRETAILCHURNTRAININGINPUT"
+  },
+  "s0661": {
+   "digest": "8bc31e0fd1c92494db9be59c4399bc2d99c203467fd685cc192c246f74993e18",
+   "query": "vretailchurntraininginput"
+  },
+  "s0662": {
+   "digest": "6c91c0dffa7e29cac0f2b2edcfcb6dcefb1fc060ca58e06c6d93c0748bf1dade",
+   "query": "AIS.vRetailChurnTrainingInput"
+  },
+  "s0663": {
+   "digest": "959874dabba7b678cbe14695efe8bbf3a365b8337c57365ae14c20705d007510",
+   "query": "SYNDM.AIS.vRetailChurnTrainingInput"
+  },
+  "s0664": {
+   "digest": "bc9367a1221337a4e2b005dfa00f014a31d1b0c468879b16d5b31b3a2e9b96cc",
+   "query": "vRe"
+  },
+  "s0665": {
+   "digest": "4adc8324b820b886bdde94bcf3aa39b498b5aa1ac41ec86c63a6a141d3c3cc56",
+   "query": "vR"
+  },
+  "s0666": {
+   "digest": "972b4306bc565bd72c09d52e0983a3f93fb3805480c358b422938d9ea00e3240",
+   "query": "ChurnF"
+  },
+  "s0667": {
+   "digest": "3c2f7a0bfd0182a21a7d78045af3a4ca1dc6514393a09e69c23591093e22e058",
+   "query": "vRiskArrayAllotment"
+  },
+  "s0668": {
+   "digest": "a2efc4efdbdb60669a1b6f09b574516241c2937a5c7148f01d49a0589c1626dc",
+   "query": "VRISKARRAYALLOTMENT"
+  },
+  "s0669": {
+   "digest": "ce58b4d284454c3139f3c4e416b722e7b624f75c4c37cbd85ff799aef2357369",
+   "query": "vriskarrayallotment"
+  },
+  "s0670": {
+   "digest": "f319710ffea2ec3b8cab3998e36f421e854fef6b3aaf8edbebbe444dbc024666",
+   "query": "MDL.vRiskArrayAllotment"
+  },
+  "s0671": {
+   "digest": "6700b5d581f28d23c97a917ae9ea6225a82d0f351fc36dd88567208e1298df82",
+   "query": "SYNDM.MDL.vRiskArrayAllotment"
+  },
+  "s0672": {
+   "digest": "d983582a8140ec99060bec5b9eef18f0fd6028fccca347e6b9b17130655be9ed",
+   "query": "vRi"
+  },
+  "s0673": {
+   "digest": "2f82190318592e22f3bace38232aad805f1e9dc36a1687126a44fea43bfc3e04",
+   "query": "vRiskArrayCard"
+  },
+  "s0674": {
+   "digest": "a04ad998ab0166a9a91c3ad5949d417bbe7907b6f5fd267b569b7861c82099c7",
+   "query": "VRISKARRAYCARD"
+  },
+  "s0675": {
+   "digest": "da88f9fe33fb28042a2f52b0c47df0eb2abddb6538d915292e7bc39009dafaf5",
+   "query": "vriskarraycard"
+  },
+  "s0676": {
+   "digest": "33f21006a3e84d5b58c88b1e18bb4c4aa1575ae396e014f889c0d24120d612cc",
+   "query": "MDL.vRiskArrayCard"
+  },
+  "s0677": {
+   "digest": "4a8a4f048d289f21e08971f273386245c8e58164834e05c9b10d22f67555e13b",
+   "query": "SYNDM.MDL.vRiskArrayCard"
+  },
+  "s0678": {
+   "digest": "4b0c11a1c8d8112bd24843e548be7837f0f6e5caaed9410ba0802008ec750962",
+   "query": "vRiskProductMonthly"
+  },
+  "s0679": {
+   "digest": "99cce431773d430c32a2d9d0ef4ac35e19482733a6430218dfcdb51f268ebfcf",
+   "query": "VRISKPRODUCTMONTHLY"
+  },
+  "s0680": {
+   "digest": "980ba296ea546898607e6b3f4136e73dc043072a2d1144826cabe7666404bfdc",
+   "query": "vriskproductmonthly"
+  },
+  "s0681": {
+   "digest": "9d6d995a30a70a2282d68b3fca7734b47ed6c68a74ac86f5986b0f3295773fbe",
+   "query": "RSK.vRiskProductMonthly"
+  },
+  "s0682": {
+   "digest": "0157519e0349e2ccb07fe134e2b76029839e2e5808d3bf3c5766ba60e85d0566",
+   "query": "SYNDM.RSK.vRiskProductMonthly"
+  },
+  "s0683": {
+   "digest": "11308d901f63a0d8202831eaf7b76d86b7df46e89171490c7a97e1560a88bea4",
+   "query": "vSegmentationInput"
+  },
+  "s0684": {
+   "digest": "1537146e5436de3056255fb9497b6782a48f9aecf15852bd16dff6b509d66aef",
+   "query": "VSEGMENTATIONINPUT"
+  },
+  "s0685": {
+   "digest": "3dbbabe9db09e195eb04a31e99782712d771ded9eec59035988856e509d53d97",
+   "query": "vsegmentationinput"
+  },
+  "s0686": {
+   "digest": "586c4714c90922d74893172ba4caf2e90bdfc09b4052a2110a7a4355776676e4",
+   "query": "AIS.vSegmentationInput"
+  },
+  "s0687": {
+   "digest": "b210eabaece9a6a11ceda6fb2d88933abda81b18aacf5151833751e61ca6f01f",
+   "query": "SYNDM.AIS.vSegmentationInput"
+  },
+  "s0688": {
+   "digest": "f050187f5d2cdcccc088a7559a9cf9770e571d68d49b610fce970d6ffc17b034",
+   "query": "vSe"
+  },
+  "s0689": {
+   "digest": "ec4f5b067ddf4aaf5834527cef9ee4af38d9dd8b9ae0451fc250bad660527720",
+   "query": "vS"
+  },
+  "s0690": {
+   "digest": "b95e0bb37ff5748e67088da2bf2e99853769f8e93c20b671e4c540c9b5ab31e1",
+   "query": "vSmartTargeting"
+  },
+  "s0691": {
+   "digest": "bef34bb644d96896c68bab24801e0c95bf4481737d3e4cdb786aefa5c6fc173f",
+   "query": "VSMARTTARGETING"
+  },
+  "s0692": {
+   "digest": "f11281ad325cc89559aa04ff2914a40ad4fbe1cba5624d871e9ceaff2e8fa96e",
+   "query": "vsmarttargeting"
+  },
+  "s0693": {
+   "digest": "573ca6bc6eddc4dc867f06c66e8dc7929b2f99691a73350e62bd16c47a6bdc32",
+   "query": "CMP.vSmartTargeting"
+  },
+  "s0694": {
+   "digest": "8f3350edc3d8736b023ea36b0ffefb098b0cd90d919cfc7459a85242a2e4ed0f",
+   "query": "SYNDM.CMP.vSmartTargeting"
+  },
+  "s0695": {
+   "digest": "4628a75f38152fcaa1faa09dd06b35a64b790bc86cdd111aafa836f868bf804e",
+   "query": "vSm"
+  },
+  "s0696": {
+   "digest": "ac0257c4f7b5c1b4dee970fd2fd2775c3b8cbfeca9763807cbcbee538bf06677",
+   "query": "vStrategicValue"
+  },
+  "s0697": {
+   "digest": "6452aaa336bbd1d91ab76961e81417ed4156465e62e3087d45d4c63e92c076e2",
+   "query": "VSTRATEGICVALUE"
+  },
+  "s0698": {
+   "digest": "8ef8590974e2616dbfe0b6c6fd2a7040aad3315f8c8708d72dc550edd29b4411",
+   "query": "vstrategicvalue"
+  },
+  "s0699": {
+   "digest": "926c9a2a67720c807973b3d2979d7b359a61c823e435bbff17c7aed9dd93076b",
+   "query": "CUS.vStrategicValue"
+  },
+  "s0700": {
+   "digest": "5cae1dfa72a19d2bdb3192f68f4c81c3c125ef0b1f178ac725885be6bb14bd6e",
+   "query": "SYNDM.CUS.vStrategicValue"
+  },
+  "s0701": {
+   "digest": "03a53a03217604fd2ee035f5cac2ba7871ca54207c1b489f7b7ab48aa8eed6e4",
+   "query": "vSt"
+  },
+  "s0702": {
+   "digest": "2e6971709bf280159abc16ff0a92f61ec1a50c46a0407be76d73c6f74f00d14c",
+   "query": "ValueS"
+  },
+  "s0703": {
+   "digest": "c11bbb7ba683e19a6ce7521ddebdff57ecbf6a2a3a7c70b9080faf75b3593ae2",
+   "query": "vSukukHolding"
+  },
+  "s0704": {
+   "digest": "8af3684e5fed5a01586b286494b750bcb0c0964c86ef6a9bad0090ec78d1e8ba",
+   "query": "VSUKUKHOLDING"
+  },
+  "s0705": {
+   "digest": "0a10bc797c1534795346b69152bac670f5d5c356f53370b09f064b7264adf825",
+   "query": "vsukukholding"
+  },
+  "s0706": {
+   "digest": "ef1f2512025b8455e839dc08a5205ccd105d257f0a9dba8d5a07c2168ac8c271",
+   "query": "LSG.vSukukHolding"
+  },
+  "s0707": {
+   "digest": "e6d8d3c117188e8944d4734fba216b8399788bf29bcbe587bec9952070d9cd90",
+   "query": "SYNDM.LSG.vSukukHolding"
+  },
+  "s0708": {
+   "digest": "bba844be9e558f9b56fcb4194b830d479042714cff9060b9a85fb04e5899d18a",
+   "query": "vSu"
+  },
+  "s0709": {
+   "digest": "dca451fa613017090119d73d02ad56da0950739e56c1c0e9d555d223d00fdfd2",
+   "query": "vSwiftTransfer"
+  },
+  "s0710": {
+   "digest": "2a979f51776c4ac3c66bcf8064bc582a089aca21debddb26b0caa46f947f1dfa",
+   "query": "VSWIFTTRANSFER"
+  },
+  "s0711": {
+   "digest": "43e54e90c50d8b1f4f7efae73d11cd65190ff35d2a0af196465501c066289ae5",
+   "query": "vswifttransfer"
+  },
+  "s0712": {
+   "digest": "6283c56b2713ac43327cd667e76242e98db897806b37ede4891f213397806392",
+   "query": "TRX.vSwiftTransfer"
+  },
+  "s0713": {
+   "digest": "5f8ca7e6382ca2a839584702d6fb08a9ab2aa337475d52192b58445ed7a06398",
+   "query": "SYNDM.TRX.vSwiftTransfer"
+  },
+  "s0714": {
+   "digest": "b2663e763984885ee67592cb07e2c66c793e48eebd3fff66dcffd5b7b9284388",
+   "query": "vSw"
+  },
+  "s0715": {
+   "digest": "ad7f5e280830a8943a7e535794875c14078c24f55a783596f0864f74135b1c77",
+   "query": "vTriggerValue"
+  },
+  "s0716": {
+   "digest": "543daa5f7923a07d06b618e12fa1d81e45639dda2138f127149badf0a32be981",
+   "query": "VTRIGGERVALUE"
+  },
+  "s0717": {
+   "digest": "3c2003697fac640155266b9a07aec0f68e1d58f293f0e1a21762c94b4525564a",
+   "query": "vtriggervalue"
+  },
+  "s0718": {
+   "digest": "e561431a7d641914f0ff7d839c67c60a54ea2a7385f06ac4cd734da8c7f4ac26",
+   "query": "EWS.vTriggerValue"
+  },
+  "s0719": {
+   "digest": "40a77f99f066ff0942c0cffc468bee410dfa7d41e46edd2acbbd5746ad22e04a",
+   "query": "SYNDM.EWS.vTriggerValue"
+  },
+  "s0720": {
+   "digest": "946eb2aee9dd1cf2656c7691804b3a1daf8bb77dbc84075e0614baf9b60333a2",
+   "query": "vTr"
+  },
+  "s0721": {
+   "digest": "ab411102852094110307c5b00f0953c4b2397fff83a668a1bea35e800d13383c",
+   "query": "vT"
+  },
+  "s0722": {
+   "digest": "27e74994e82022d3212bc2cd7fbb1213688670e54f605548fee2b20f48de98c2",
+   "query": "Colour"
+  }
+ },
+ "unknown_detail": null
+}

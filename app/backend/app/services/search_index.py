@@ -85,6 +85,17 @@ class SearchIndexNotReady(Exception):
     """No engine serves yet: the first build after the start has not finished."""
 
 
+def search_index_not_ready() -> ApplicationError:
+    """The 503 of every reader of the serving engine while the first build runs."""
+
+    return ApplicationError(
+        503,
+        "search_index_not_ready",
+        "Arama indeksi hazırlanıyor; biraz sonra yeniden deneyin.",
+        headers={"Retry-After": "5"},
+    )
+
+
 def search_change_busy() -> ApplicationError:
     return ApplicationError(
         503,

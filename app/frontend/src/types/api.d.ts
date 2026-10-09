@@ -2107,6 +2107,237 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/explorer/galaxy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Galaxy
+         * @description Every served table with its main dataset group, by name.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Galaxy"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_not_ready: ilk arama indeksi kuruluyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/explorer/table-searches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search Tables
+         * @description The name, content and column-name layers of the source's table search; nothing is kept.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TableSearch"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TableSearchResult"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description query_too_long: 4000 karakterden uzun; invalid_request */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_not_ready: ilk arama indeksi kuruluyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/explorer/tables/{table_key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Table
+         * @description A table's columns in dictionary order and its join keys.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    table_key: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TableDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description table_not_found: tablo hizmetteki indekste yok */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description search_index_not_ready: ilk arama indeksi kuruluyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/liveness": {
         parameters: {
             query?: never;
@@ -3833,6 +4064,33 @@ export interface components {
              */
             type: "failed";
         };
+        FoundTable: {
+            columns: number;
+            covered?: string[] | null;
+            groups: string[];
+            key: string;
+            level?: ("Yüksek" | "Orta" | "Düşük") | null;
+            /** @enum {string} */
+            match: "" | "ad" | "içerik" | "kolon adı";
+            matched?: string[] | null;
+            missing?: string[] | null;
+            name: string;
+            schema: string;
+            score?: number | null;
+            signal?: string | null;
+        };
+        /** @description Requirement 3: every served table in one response. */
+        Galaxy: {
+            items: components["schemas"]["GalaxyTable"][];
+            total: number;
+        };
+        GalaxyTable: {
+            columns: number;
+            group: string;
+            key: string;
+            name: string;
+            schema: string;
+        };
         HTTPValidationError: {
             detail?: components["schemas"]["ValidationError"][];
         };
@@ -4303,6 +4561,37 @@ export interface components {
         StopwordItem: {
             group: string;
             word: string;
+        };
+        TableColumn: {
+            column: string;
+            description: string;
+            group: string | null;
+            key: string;
+            object: string;
+            pii: boolean;
+            synonyms: string[];
+        };
+        /** @description Requirement 11: the table's columns in dictionary order and its join keys. */
+        TableDetail: {
+            columns: components["schemas"]["TableColumn"][];
+            groups: string[];
+            join_keys: string[];
+            key: string;
+            name: string;
+            schema: string;
+        };
+        /** @description Requirement 10: the search text in the body, never in the address. */
+        TableSearch: {
+            query: string;
+        };
+        TableSearchResult: {
+            concepts: string[];
+            counts: {
+                [key: string]: number;
+            };
+            elapsed_ms: number;
+            items: components["schemas"]["FoundTable"][];
+            query: string;
         };
         TermItem: {
             domain: string;

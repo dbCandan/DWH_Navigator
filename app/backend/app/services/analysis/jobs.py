@@ -69,7 +69,7 @@ from app.services.analysis.model_view import JobModel, sampling_of
 from app.services.analysis.pipeline import Engine
 from app.services.analysis.saved_answers import Reuse, SavedAnswers
 from app.services.analysis.steps import PHASES, record_steps
-from app.services.search_index import SearchIndex
+from app.services.search_index import SearchIndex, search_index_not_ready
 
 logger = logging.getLogger("app.analysis")
 
@@ -247,15 +247,6 @@ def _unavailable() -> ApplicationError:
     )
 
 
-def _index_not_ready() -> ApplicationError:
-    return ApplicationError(
-        503,
-        "search_index_not_ready",
-        "Arama indeksi hazırlanıyor; biraz sonra yeniden deneyin.",
-        headers={"Retry-After": "5"},
-    )
-
-
 def _queue_full() -> ApplicationError:
     return ApplicationError(
         503,
@@ -398,7 +389,7 @@ class AnalysisJobs:
         if not self.accepting:
             raise _unavailable()
         if not self.index.is_serving:
-            raise _index_not_ready()
+            raise search_index_not_ready()
 
     async def start(
         self,

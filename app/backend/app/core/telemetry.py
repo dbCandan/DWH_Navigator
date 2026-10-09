@@ -116,11 +116,19 @@ SAVED_ANSWER_LOOKUP_RESULTS = frozenset(
 SAVED_ANSWER_WRITE_RESULTS = frozenset({"stored", "skipped", "error"})
 REPORT_RESULTS = frozenset({"ok", "error"})
 
+# Fixed label sets of data-dictionary/PRDs/007-dictionary-explorer.
+EXPLORER_ENDPOINTS = frozenset({"galaxy", "search", "table"})
+EXPLORER_OUTCOMES = frozenset({"ok", "not_found", "not_ready", "invalid", "error"})
+EXPLORER_SEARCH_MODES = frozenset({"browse", "name_only", "full"})
+
 # An analysis waits in the queue and runs for up to an hour of model time.
 _ANALYSIS_BUCKETS = (0.5, 1, 2, 5, 10, 20, 30, 45, 60, 90, 120, 180, 300, 600, 900, 1800, 3600)
 
 # A chat call reads for up to timeout_seconds (at most 3600 s) after waiting for a slot.
 _LLM_BUCKETS = (0.25, 0.5, 1, 2.5, 5, 10, 20, 30, 60, 120, 300, 600, 900, 1800, 2700, 3600)
+
+# A table search answers in milliseconds; the content layer can take a second on a large dictionary.
+_EXPLORER_BUCKETS = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5)
 
 # Reading, checking and writing a dictionary of up to 200,000 rows; building the search index.
 _IMPORT_BUCKETS = (0.1, 0.25, 0.5, 1, 2.5, 5, 10, 20, 30, 45, 60, 90, 120)
@@ -312,6 +320,18 @@ class _Instruments:
             "dwhnavigator_analysis_records_deleted_total",
             unit="{record}",
             description="Analysis records a manager deleted",
+        )
+        # data-dictionary/PRDs/007-dictionary-explorer
+        self.explorer_requests = meter.create_counter(
+            "dwhnavigator_explorer_requests_total",
+            unit="{request}",
+            description="Dictionary explorer requests, by endpoint and outcome",
+        )
+        self.explorer_search_duration = meter.create_histogram(
+            "dwhnavigator_explorer_search_duration_seconds",
+            unit="s",
+            description="Duration of table searches, by mode",
+            explicit_bucket_boundaries_advisory=_EXPLORER_BUCKETS,
         )
 
 
@@ -830,3 +850,42 @@ def record_analysis_report(result: str) -> None:
 def record_analysis_records_deleted(count: int) -> None:
     if count:
         _signals.instruments.analysis_records_deleted.add(count)
+
+
+# --- Dictionary explorer (data-dictionary/PRDs/007-dictionary-explorer) ------------------------
+
+
+def record_explorer_request(endpoint: str, outcome: str) -> None:
+    _signals.instruments.explorer_requests.add(
+        1,
+        {
+            "endpoint": bounded(endpoint, EXPLORER_ENDPOINTS),
+            "outcome": bounded(outcome, EXPLORER_OUTCOMES),
+        },
+    )
+
+
+@dataclass
+class ExplorerSearchRecord:
+    """What the ``explorer search`` span reports: the mode and the number of tables only."""
+
+    results: int = 0
+
+
+@contextmanager
+def explorer_search_span(mode: str) -> Iterator[ExplorerSearchRecord]:
+    """One table search, without its text; the duration is recorded by mode."""
+
+    record = ExplorerSearchRecord()
+    bounded_mode = bounded(mode, EXPLORER_SEARCH_MODES)
+    started = perf_counter()
+    with _content_free_span(
+        "explorer search", SpanKind.INTERNAL, {"dwhnavigator.explorer.mode": bounded_mode}
+    ) as span:
+        try:
+            yield record
+        finally:
+            span.set_attribute("dwhnavigator.explorer.results", record.results)
+            _signals.instruments.explorer_search_duration.record(
+                perf_counter() - started, {"mode": bounded_mode}
+            )

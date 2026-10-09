@@ -22,6 +22,7 @@ from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.middleware.tenant_context import TenantContextMiddleware
 from app.services.analysis.jobs import AnalysisJobs
 from app.services.analysis.saved_answers import SavedAnswers
+from app.services.explorer import ExplorerIndex
 from app.services.llm_connections import llm_gateway
 from app.services.search_index import SearchIndex
 from app.services.super_admin_service import run_super_admin_bootstrap
@@ -72,6 +73,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         lifespan=_lifespan(settings),
     )
     application.state.search_index = SearchIndex(async_session_factory)
+    application.state.explorer_index = ExplorerIndex()
     application.state.analysis_jobs = AnalysisJobs(
         index=application.state.search_index,
         models=llm_gateway(settings, async_session_factory),
