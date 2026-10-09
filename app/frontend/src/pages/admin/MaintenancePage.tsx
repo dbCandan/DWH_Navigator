@@ -14,7 +14,8 @@ import {adminErrorText} from '@/lib/adminErrors';
 import {dictionaryStatus, indexStatus, type IndexStatus} from '@/lib/adminStatus';
 import {formatNumber, formatWhen} from '@/lib/format';
 import {pageOfSection} from '@/lib/settingsDraft';
-import {SavedAnswersService, type SavedAnswersSummary} from '@/services/savedAnswers';
+import {SavedAnswersService} from '@/services/savedAnswers';
+import type {SavedAnswersSummary} from '@/types/analysis';
 import type {SearchIndexState} from '@/types/search';
 import './maintenance.css';
 
