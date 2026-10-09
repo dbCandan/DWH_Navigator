@@ -1,6 +1,7 @@
 import {useEffect, useRef, type KeyboardEvent, type ReactNode} from 'react';
 import {createPortal} from 'react-dom';
 import {useIntl} from '@/contexts/IntlContext';
+import {trapTab} from '@/lib/focusTrap';
 import {Icon} from './Icon';
 
 interface Props {
@@ -11,8 +12,6 @@ interface Props {
   wide?: boolean;
   onClose: () => void;
 }
-
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * The panel that opens from the right (search-settings Requirement 24): title, optional
@@ -46,18 +45,7 @@ export function Drawer({title, sub, children, foot, wide, onClose}: Props) {
   }, []);
 
   function trap(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== 'Tab' || !panel.current) return;
-    const items = [...panel.current.querySelectorAll<HTMLElement>(FOCUSABLE)];
-    if (!items.length) return;
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
+    trapTab(event, panel.current);
   }
 
   return createPortal(

@@ -1,6 +1,8 @@
 import {vi} from 'vitest';
 import type {StreamEvent} from '@/lib/eventStream';
 import {AnalysisService} from '@/services/analyses';
+import {ExplorerService} from '@/services/explorer';
+import {TermListService} from '@/services/termLists';
 import type {
   AnalysisAnswer,
   AnalysisJob,
@@ -8,6 +10,9 @@ import type {
   AnswerObject,
   ServiceStatus,
 } from '@/types/analysis';
+import type {GalaxyTable, TableColumn, TableDetail} from '@/types/explorer';
+import type {Tally} from '@/types/feedback';
+import type {TermList, TermRow} from '@/types/termLists';
 
 /*
  * Synthetic fixtures of the question flow (no real dictionary): a status answer, job envelopes,
@@ -115,8 +120,106 @@ export function serveEvents(...events: AnalysisStreamEvent[]) {
   });
 }
 
+/**
+ * A small synthetic galaxy: two clusters, a table without a group ("Diğer") and `vCampaign` in two
+ * schemas (dictionary-explorer test strategy).
+ */
+export const GALAXY: GalaxyTable[] = [
+  {key: 'DWH.Kart.vCardLimit1', name: 'vCardLimit1', schema: 'DWH.Kart', group: 'Kartlar', columns: 8},
+  {key: 'DWH.Kart.vCardLimit2', name: 'vCardLimit2', schema: 'DWH.Kart', group: 'Kartlar', columns: 8},
+  {key: 'DWH.Kart.vCardStatistic', name: 'vCardStatistic', schema: 'DWH.Kart', group: 'Kartlar', columns: 33},
+  {key: 'DWH.Kart.vCampaign', name: 'vCampaign', schema: 'DWH.Kart', group: 'Kartlar', columns: 4},
+  {key: 'DWH.Musteri.vCampaign', name: 'vCampaign', schema: 'DWH.Musteri', group: 'Müşteri', columns: 5},
+  {key: 'DWH.Musteri.vCustomerInfo', name: 'vCustomerInfo', schema: 'DWH.Musteri', group: 'Müşteri', columns: 21},
+  {key: 'DWH.Ortak.vTakvim', name: 'vTakvim', schema: 'DWH.Ortak', group: 'Diğer', columns: 3},
+];
+
+export const column = (name: string, overrides: Partial<TableColumn> = {}): TableColumn => ({
+  key: `DWH.Kart.vCardLimit1.${name}`,
+  column: name,
+  object: 'DWH.Kart.vCardLimit1',
+  description: `${name} açıklaması`,
+  synonyms: [],
+  pii: false,
+  group: 'Kartlar',
+  ...overrides,
+});
+
+export const tableDetail = (overrides: Partial<TableDetail> = {}): TableDetail => ({
+  key: 'DWH.Kart.vCardLimit1',
+  name: 'vCardLimit1',
+  schema: 'DWH.Kart',
+  groups: ['Kartlar'],
+  columns: [
+    column('CustomerPartyId', {description: 'Müşteri anahtarı'}),
+    column('CardLimitAmount', {description: 'Kartın İŞLEM limiti', synonyms: ['limit tutarı', 'kredi limiti']}),
+    column('CustomerName', {description: '', pii: true}),
+    column('DataDate', {description: 'x'.repeat(150)}),
+  ],
+  join_keys: ['CustomerPartyId', 'DataDate'],
+  ...overrides,
+});
+
+export const tally = (overrides: Partial<Tally> = {}): Tally => ({
+  up: 0,
+  down: 0,
+  support: 0,
+  status: '',
+  reasons: [],
+  ...overrides,
+});
+
+export const termRow = (position: number, overrides: Partial<TermRow> = {}): TermRow => ({
+  position,
+  term: `terim ${position}`,
+  state: 'queued',
+  verdict: '',
+  summary: '',
+  missing: [],
+  best: null,
+  flow: null,
+  elapsed_ms: 0,
+  ...overrides,
+});
+
+export const LIST_ID = '22222222-2222-4222-8222-222222222222';
+
+export const termList = (overrides: Partial<TermList> = {}): TermList => ({
+  id: LIST_ID,
+  name: 'terimler.xlsx',
+  owner: {public_id: '00000000-0000-4000-8000-000000000001', display_name: 'Ayşe Yılmaz'},
+  header: 'Terim',
+  notes: [],
+  status: 'running',
+  stop_requested: false,
+  total: 3,
+  done: 1,
+  elapsed_ms: 4000,
+  eta_ms: 8000,
+  created_at: '2026-10-09T08:00:00Z',
+  finished_at: null,
+  dictionary_version: 'abcdef12-11136',
+  items: [
+    termRow(1, {
+      state: 'answered',
+      verdict: 'VAR',
+      flow: 'analyst',
+      summary: 'Bulundu',
+      best: {key: 'DWH.Kart.vCardLimit1', name: 'vCardLimit1', score: 0.82, level: 'Yüksek'},
+      elapsed_ms: 3000,
+    }),
+    termRow(2, {state: 'running'}),
+    termRow(3),
+  ],
+  ...overrides,
+});
+
 /** The main screen's reads answered with a ready installation and no running question. */
 export function serveExplorerDefaults() {
   vi.spyOn(AnalysisService, 'status').mockResolvedValue(serviceStatus());
   vi.spyOn(AnalysisService, 'active').mockResolvedValue(null);
+  vi.spyOn(ExplorerService, 'galaxy').mockResolvedValue({items: GALAXY, total: GALAXY.length});
+  vi.spyOn(ExplorerService, 'search').mockResolvedValue({query: '', items: [], counts: {}, concepts: [], elapsed_ms: 1});
+  vi.spyOn(ExplorerService, 'table').mockResolvedValue(tableDetail());
+  vi.spyOn(TermListService, 'newest').mockResolvedValue({items: [], page: 1, page_size: 1, total: 0});
 }
