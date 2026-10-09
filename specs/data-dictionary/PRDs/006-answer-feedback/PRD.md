@@ -61,7 +61,7 @@ yeniden analiz edilir. Oylar yalnız ekranı şekillendirir; Excel raporları de
 
 ## Mevcut davranış
 
-Kaynak: `~/codes/kt-dwhnavigator` (`76e21a3`). Her maddenin sonundaki **Hedefte:** notu hedefteki
+Kaynak: bu deponun geçmişindeki `76e21a3`. Her maddenin sonundaki **Hedefte:** notu hedefteki
 davranışı söyler.
 
 - **Oy ucu** (`src/vsa/web/server.py` `POST /api/feedback`, `App.feedback`): Gövde `query`, `object`

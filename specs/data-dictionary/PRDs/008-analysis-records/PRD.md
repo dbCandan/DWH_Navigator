@@ -85,7 +85,7 @@ değişmez, yalnız silinir. Silme kalıcıdır; yedek tutulmaz.
 
 ## Mevcut davranış
 
-Kaynak: `~/codes/kt-dwhnavigator` (`76e21a3`). Her maddenin sonundaki **Hedefte** notu bilinçli
+Kaynak: bu deponun geçmişindeki `76e21a3`. Her maddenin sonundaki **Hedefte** notu bilinçli
 değişikliktir.
 
 - **Adım kaydı** (`src/vsa/trace.py`): `recording()` bloğu içinde açılan her adım (`span`) bellekte

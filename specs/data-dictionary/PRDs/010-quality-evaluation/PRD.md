@@ -69,7 +69,7 @@ istekler sonucu koşudan koşuya yaklaşık ±2 puan oynatıyordu; seri koşu ay
 
 ## Mevcut davranış
 
-Kaynak: `~/codes/kt-dwhnavigator` (`76e21a3`). Her maddenin sonundaki **Hedefte** notu bilinçli
+Kaynak: bu deponun geçmişindeki `76e21a3`. Her maddenin sonundaki **Hedefte** notu bilinçli
 değişikliktir.
 
 - **Ölçüm** (`src/vsa/evaluation.py` `evaluate`): İki grup vardır: serbest metin talepleri (`mode: ask`)

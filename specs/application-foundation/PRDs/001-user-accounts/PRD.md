@@ -69,7 +69,7 @@ durum ve parola sıfırlama bir denetim olayı üretir.
 
 ## Mevcut davranış
 
-Kaynak `~/codes/kt-dwhnavigator` (`76e21a3`) ve hedef iskelet `~/codes/dwhnavigator-kt` bugün şöyle
+Kaynak (bu deponun geçmişindeki `76e21a3`) ve hedef iskeletin ilk hali (`43635ec`) bugün şöyle
 çalışır; her maddenin sonunda hedefteki değişiklik yazılıdır.
 
 - **Yönetim ekranı parolası** (`src/vsa/web/security.py` `AdminGuard`, `is_admin_path`,

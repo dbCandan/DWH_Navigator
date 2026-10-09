@@ -89,7 +89,7 @@ menüyü veya düğmeyi gizlemek yetki denetiminin yerini tutmaz; denetim backen
 
 ## Mevcut davranış
 
-Kaynak: `~/codes/kt-dwhnavigator`, `76e21a3`. Her maddenin sonunda hedefteki karşılığı yazılıdır.
+Kaynak: bu deponun geçmişindeki `76e21a3`. Her maddenin sonunda hedefteki karşılığı yazılıdır.
 
 - **Depo** (`src/vsa/dictionary_store.py`, ADR-049/050): Tek sözlük `data/dictionary.jsonl`
   dosyasıdır: ilk satır meta (`format` 1, `version`, `digest`, `source`, `imported_at`, `objects`,

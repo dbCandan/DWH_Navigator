@@ -67,7 +67,7 @@ liste ve o ana kadarki cevaplar kaybolmaz.
 
 ## Mevcut davranış
 
-Kaynak: `~/codes/kt-dwhnavigator` (`76e21a3`). Her maddenin sonundaki **Hedefte:** notu hedefteki
+Kaynak: bu deponun geçmişindeki `76e21a3`. Her maddenin sonundaki **Hedefte:** notu hedefteki
 davranışı söyler.
 
 - **Yükleme** (`src/vsa/web/server.py` `POST /api/list`, `App.list_start`): Gövde ham `.xlsx`
