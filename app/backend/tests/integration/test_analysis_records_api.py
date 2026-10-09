@@ -182,11 +182,12 @@ async def test_periods_text_and_wildcards(ar: DataDictionary) -> None:
 
 
 async def test_pages_follow_the_snapshot(ar: DataDictionary) -> None:
-    created = [await add(ar.manager, asked_at=NOW - timedelta(minutes=10)) for _ in range(3)]
+    now = datetime.now(UTC)  # not the module's NOW: a long run makes that one the past
+    created = [await add(ar.manager, asked_at=now - timedelta(minutes=10)) for _ in range(3)]
     first = (await ar.get("/analysis-records?page_size=2")).json()
     assert first["total"] == 3 and len(first["items"]) == 2
     snapshot = first["snapshot_at"]
-    newer = await add(ar.manager, asked_at=NOW + timedelta(seconds=30))
+    newer = await add(ar.manager, asked_at=datetime.now(UTC) + timedelta(seconds=30))
 
     second = (await ar.get(f"/analysis-records?page_size=2&page=2&until={quote(snapshot)}")).json()
     shown = [i["public_id"] for i in first["items"] + second["items"]]
