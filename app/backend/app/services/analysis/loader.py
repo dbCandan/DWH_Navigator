@@ -24,14 +24,7 @@ from app.domain import dictionary as dictionary_domain
 from app.domain.analysis import DictColumn, ObjectProfile
 from app.domain.term_lists import Rejection, TermListRejected
 from app.domain.turkish_text import fold
-from app.infrastructure.excel.reader import (
-    TooManyRows as SheetTooManyRows,
-)
-from app.infrastructure.excel.reader import (
-    WorkbookTooLarge,
-    WorkbookUnreadable,
-    open_workbook,
-)
+from app.infrastructure.excel import reader as excel_reader
 
 _PII_MARKER = re.compile(r"kvkk|kişisel\s+veri", re.IGNORECASE)
 
@@ -331,20 +324,20 @@ def load_term_list(data: bytes) -> TermList:
     """A term list from uploaded workbook bytes (first sheet; the other sheets are only checked),
     read in memory by the shared safe reader; ``TermListRejected`` when it cannot be read."""
     try:
-        with open_workbook(data) as book:
+        with excel_reader.open_workbook(data) as book:
             sheets = {
                 name: book.rows(name, max_rows=MAX_LIST_ROWS + 1, max_cols=MAX_LIST_COLUMNS)
                 for name in book.sheet_names
             }
-    except SheetTooManyRows:
+    except excel_reader.TooManyRows:
         raise TermListRejected(Rejection.TOO_MANY_ROWS,
                                f"Dosyada çok fazla satır var (en fazla {MAX_LIST_ROWS}); listeyi "
                                "bölüp ayrı ayrı yükleyin.") from None  # fmt: skip
-    except WorkbookTooLarge:
+    except excel_reader.WorkbookTooLarge:
         raise TermListRejected(
             Rejection.TOO_LARGE_UNPACKED, dictionary_domain.UNPACKED_TOO_LARGE_MESSAGE
         ) from None
-    except (WorkbookUnreadable, ValueError, KeyError, OSError):
+    except (excel_reader.WorkbookUnreadable, ValueError, KeyError, OSError):
         # not an Excel file, a damaged one, an old .xls…
         raise TermListRejected(Rejection.NOT_XLSX,
                                f"Dosya Excel (.xlsx) olarak okunamadı. Beklenen biçim: "
