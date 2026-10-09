@@ -96,6 +96,18 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
     engine.destroy();
   });
 
+  it('writes "sırada" once in the voyage log while the analysis waits, without a count', () => {
+    const log: string[] = [];
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log), true);
+    engine.start();
+    engine.load(ITEMS);
+    engine.begin({columns: 1200});
+    engine.queued();
+    engine.queued();
+    expect(log.at(-1)).toBe('explorer.voyage.scanningColumns {"columns":"1.200"}explorer.voyage.separatorexplorer.voyage.queued');
+    engine.destroy();
+  });
+
   it('finds a table by its typed name only once the map has data', () => {
     const engine = new CosmosEngine(fakeCanvas(), palette, hooks([]), true);
     expect(engine.find('vA')).toBeNull();
