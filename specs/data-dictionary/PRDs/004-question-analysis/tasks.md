@@ -21,8 +21,8 @@
 - [x] Task 6 — Dağıtım etkisi (yerel): iki ayar, `.env.example` ve Compose ortam bloğu. Kanıt:
   `python3 scripts/check-config-sync.py`. Yerel yığında sahte OpenAI uyumlu sunucuyla `curl`
   denemesi (başlat, akış, sonuç, rapor, durdur, kayıtlı cevap).
-- [ ] Task 7 — Requirement 7'nin oy tarafı: answer-feedback'in oy uygulamasının
-  `AnalysisJobs.overlay` noktasına bağlanması (answer-feedback dalgası).
+- [x] Task 7 — Requirement 7'nin oy tarafı: answer-feedback'in oy uygulamasının
+  `AnalysisJobs.overlay` noktasına bağlanması. Kanıt: `tests/integration/test_votes_api.py`.
 - [ ] Task 8 — Requirement 19-22 / Acceptance 6: soru çubuğu, ilerleme, cevap görünümü, Vitest
   testleri (ön yüz dalgası).
 - [ ] Task 9 — Acceptance 7: yerel Compose'da onaylı gerçek model ucuyla tarayıcı senaryosu.

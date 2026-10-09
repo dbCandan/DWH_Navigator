@@ -13,9 +13,9 @@
 - [x] Task 3 — Requirement 4 ve Gözlemlenebilirlik / Acceptance 2: işaret dizesi sızıntı testi,
   silme olayı ve ölçümü. Kanıt: `tests/integration/test_analysis_signals.py`,
   `tests/integration/test_analysis_records_api.py`.
-- [ ] Task 4 — Requirement 1'in toplu arama kısmı: list-search terimlerinin kaydı (`origin=list`,
-  liste kimliği, dosya adı, sıra) list-search dalgasında `AnalysisJobs.start(origin=..., list_term=...)`
-  ile.
+- [x] Task 4 — Requirement 1'in toplu arama kısmı: list-search terimlerinin kaydı (`origin=list`,
+  liste kimliği, dosya adı, sıra) `AnalysisJobs.start(origin=..., list_term=...)` ile. Kanıt:
+  `tests/integration/test_term_lists_api.py` (`test_term_list_end_to_end`).
 - [ ] Task 5 — Requirement 13-23 / Acceptance 3: Genel bakış ve Analizler sayfaları, Vitest testleri
   (ön yüz dalgası).
 - [ ] Task 6 — Acceptance 4 ve 5: yerel Compose'da tarayıcıyla senaryo.
