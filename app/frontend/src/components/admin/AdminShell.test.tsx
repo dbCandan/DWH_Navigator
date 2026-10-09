@@ -47,7 +47,7 @@ describe('admin shell (search-settings Requirement 20-22, 24)', () => {
     for (const group of ['admin.nav.monitoring', 'admin.nav.data', 'admin.nav.settings'])
       expect(within(nav).getByText(message(group))).toBeInTheDocument();
     const links = within(nav).getAllByRole('link');
-    expect(links.map((link) => link.textContent)).toEqual(NAV_PAGES.filter((p) => !p.superAdmin).map((p) => label(p.id)));
+    expect(links.map((link) => link.querySelector('.lbl')?.textContent)).toEqual(NAV_PAGES.filter((p) => !p.superAdmin).map((p) => label(p.id)));
     expect(within(nav).getByRole('link', {name: label('bakim')})).toHaveAttribute('title', message('admin.page.bakim.tip'));
     expect(screen.getByText('Ayşe Yılmaz')).toBeInTheDocument();
     expect(screen.getByRole('link', {name: message('session.changePassword')})).toHaveAttribute('href', '/parola');
@@ -98,10 +98,11 @@ describe('admin shell (search-settings Requirement 20-22, 24)', () => {
     expect(box).toHaveAttribute('placeholder', message('admin.palette.placeholder'));
     expect(screen.getByText(message('admin.palette.pages'))).toBeInTheDocument();
     expect(screen.getByText(message('admin.palette.actions'))).toBeInTheDocument();
-    // The pages, then "Yeni model entegrasyonu", "Model envanteri" and "Uygulamaya dön".
-    expect(screen.getAllByRole('option')).toHaveLength(NAV_PAGES.length + 3);
+    // The pages, then the dictionary's three, the index rebuild, "Yeni model entegrasyonu",
+    // "Model envanteri" and "Uygulamaya dön".
+    expect(screen.getAllByRole('option')).toHaveLength(NAV_PAGES.length + 7);
 
-    fireEvent.change(box, {target: {value: 'kull'}});
+    fireEvent.change(box, {target: {value: 'kullanici'}});
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([
       label('kullanicilar') + message('admin.page.kullanicilar.tip'),
     ]);

@@ -5,15 +5,28 @@ import {PersonIcon} from '@/components/auth/PersonIcon';
 import {useAuth} from '@/contexts/AuthContext';
 import {useIntl} from '@/contexts/IntlContext';
 import {useDocumentTitle} from '@/hooks/useDocumentTitle';
+import {pickDictionaryWorkbook, useDownload, useIndexRebuild} from '@/hooks/useAdminActions';
+import {useDictionaryState} from '@/hooks/useDictionaryState';
 import {useLlmState} from '@/hooks/useLlmState';
+import {useSearchState} from '@/hooks/useSearchState';
 import {useSurface} from '@/hooks/useSurface';
+import {useVocabularyDraft} from '@/hooks/useVocabularyDraft';
+import {dictionaryStatus, indexStatus, type IndexStatus} from '@/lib/adminStatus';
+import {formatNumber} from '@/lib/format';
 import {modelStatus, type ModelStatus} from '@/lib/modelStatus';
 import type {PaletteEntry} from '@/lib/paletteSearch';
+import {changedKeys, settingFields, type SettingField} from '@/lib/settingsDraft';
+import {DictionaryService} from '@/services/dictionary';
 import {CommandPalette} from './CommandPalette';
+import {DictionaryDrop} from './DictionaryDrop';
+import {DictionaryStateProvider} from './DictionaryStateProvider';
 import {Icon} from './Icon';
 import {LlmStateProvider} from './LlmStateProvider';
-import {adminPath, NAV, NAV_PAGES, type AdminPageId, type AiDrawerRequest} from './nav';
+import {adminPath, dictionaryTablePath, NAV, NAV_PAGES, type AdminPageId, type AiDrawerRequest} from './nav';
+import {SaveBar} from './SaveBar';
+import {SearchStateProvider} from './SearchStateProvider';
 import {ToastProvider} from './Toasts';
+import {VocabularyDraftProvider} from './VocabularyDraftProvider';
 import './admin.css';
 import './session.css';
 
@@ -33,6 +46,54 @@ const led = (state: ModelStatus['state']) => (state === 'ok' ? 'ok' : state === 
 const modelBadge = (state: ModelStatus['state']) =>
   state === 'ok' ? 'ok' : state === 'down' ? 'bad' : state === 'none' ? 'warn' : null;
 
+const INDEX_LINE: Record<IndexStatus, string> = {
+  ok: 'admin.sys.indexOk',
+  building: 'admin.sys.indexBuilding',
+  stale: 'admin.sys.indexStale',
+  empty: 'admin.sys.indexEmpty',
+  unknown: 'admin.sys.indexPending',
+};
+
+interface Badge {
+  kind: 'ok' | 'warn' | 'bad' | 'count';
+  text: string;
+  title: string;
+}
+
+/** A menu item's badge (admin.html Shell.badge): a dot without text, else the text. */
+function MenuBadge({badge}: {badge: Badge | null}) {
+  if (!badge) return null;
+  return (
+    <span className={`bdg ${badge.kind}${badge.text ? '' : ' dot'}`} title={badge.title}>
+      {badge.text}
+    </span>
+  );
+}
+
+/**
+ * Bring a setting into view (search-settings Requirement 22; admin.html Settings.focus): open its
+ * page, unfold its section, centre and flash its row and focus its control. The page may still be
+ * loading, so the row is looked for a few times.
+ */
+function focusSettingRow(key: string) {
+  let tries = 0;
+  const find = () => {
+    const row = document.getElementById('row-' + key);
+    if (!row) {
+      if (++tries < 40) window.setTimeout(find, 75);
+      return;
+    }
+    const fold = row.closest('details');
+    if (fold) fold.open = true;
+    row.scrollIntoView?.({block: 'center', behavior: 'smooth'});
+    row.classList.remove('flash');
+    void row.offsetWidth;
+    row.classList.add('flash');
+    row.querySelector<HTMLElement>('input, select')?.focus({preventScroll: true});
+  };
+  window.setTimeout(find, 60);
+}
+
 /**
  * The admin screen's shell (search-settings Requirement 20-22, 24, 25): the sidebar with the
  * brand, "Ara veya git…", the menu in three groups, the system status, the session area and
@@ -44,7 +105,13 @@ export function AdminShell() {
   return (
     <ToastProvider>
       <LlmStateProvider>
-        <ShellLayout />
+        <SearchStateProvider>
+          <DictionaryStateProvider>
+            <VocabularyDraftProvider>
+              <ShellLayout />
+            </VocabularyDraftProvider>
+          </DictionaryStateProvider>
+        </SearchStateProvider>
       </LlmStateProvider>
     </ToastProvider>
   );
@@ -54,6 +121,11 @@ function ShellLayout() {
   const {t} = useIntl();
   const {user, access, logout} = useAuth();
   const {llm, reload: reloadLlm} = useLlmState();
+  const {settings, form, index, reloadSettings, reloadIndex} = useSearchState();
+  const {dictionary, tables, reload: reloadDictionary} = useDictionaryState();
+  const vocabulary = useVocabularyDraft();
+  const rebuild = useIndexRebuild();
+  const download = useDownload();
   const location = useLocation();
   const navigate = useNavigate();
   const page = pageOf(location.pathname);
@@ -63,11 +135,41 @@ function ShellLayout() {
   const pages = useMemo(() => NAV_PAGES.filter((item) => !item.superAdmin || access.manageUsers), [access.manageUsers]);
 
   const model = modelStatus(llm, t);
+  const dict = dictionaryStatus(dictionary);
+  const ix = indexStatus(index);
+  const fields = useMemo(() => (settings ? settingFields(settings) : new Map<string, SettingField>()), [settings]);
+  const changedByPage = useMemo(() => {
+    const counts: Partial<Record<AdminPageId, number>> = {};
+    if (settings)
+      for (const key of changedKeys(settings, form)) {
+        const owner = fields.get(key)?.page as AdminPageId | undefined;
+        if (owner) counts[owner] = (counts[owner] ?? 0) + 1;
+      }
+    return counts;
+  }, [settings, form, fields]);
+  const unsaved = Object.keys(changedByPage).length > 0 || vocabulary.dirty('terms') || vocabulary.dirty('stopwords');
 
   // The states are read when the shell opens and on every page change (search-settings Requirement 21).
   useEffect(() => {
     void reloadLlm();
-  }, [page, reloadLlm]);
+    void reloadSettings();
+    void reloadIndex();
+    void reloadDictionary();
+  }, [page, reloadLlm, reloadSettings, reloadIndex, reloadDictionary]);
+
+  // Closing or reloading the tab with unsaved settings or word lists asks first (Requirement 23).
+  useEffect(() => {
+    if (!unsaved) return;
+    const ask = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', ask);
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [unsaved]);
+
+  /** Leaving the admin screen with unsaved changes asks first; moving between its pages does not. */
+  const mayLeave = useCallback(() => !unsaved || window.confirm(t('admin.leave.confirm')), [unsaved, t]);
 
   useDocumentTitle(
     page ? t('admin.documentTitle', {page: t(`admin.page.${page}.label`)}) : t('admin.documentTitleFallback'),
@@ -139,6 +241,38 @@ function ShellLayout() {
       {
         groupId: 'actions',
         group: actionGroup,
+        icon: 'import' as const,
+        title: t('admin.palette.importDictionary'),
+        subtitle: t('admin.palette.importDictionaryTip'),
+        run: pickDictionaryWorkbook,
+      },
+      {
+        groupId: 'actions',
+        group: actionGroup,
+        icon: 'export' as const,
+        title: t('admin.palette.exportDictionary'),
+        subtitle: t('admin.palette.exportDictionaryTip'),
+        run: () => void download(DictionaryService.exportWorkbook),
+      },
+      {
+        groupId: 'actions',
+        group: actionGroup,
+        icon: 'file' as const,
+        title: t('admin.palette.template'),
+        subtitle: t('admin.palette.templateTip'),
+        run: () => void download(DictionaryService.template),
+      },
+      {
+        groupId: 'actions',
+        group: actionGroup,
+        icon: 'refresh' as const,
+        title: t('admin.palette.rebuild'),
+        subtitle: t('admin.palette.rebuildTip'),
+        run: () => void rebuild(),
+      },
+      {
+        groupId: 'actions',
+        group: actionGroup,
         icon: 'plus' as const,
         title: t('admin.palette.newIntegration'),
         subtitle: t('admin.palette.newIntegrationTip'),
@@ -158,10 +292,52 @@ function ShellLayout() {
         icon: 'arrow' as const,
         title: t('admin.palette.backToApp'),
         subtitle: t('admin.palette.backToAppTip'),
-        run: () => navigate('/'),
+        run: () => {
+          if (mayLeave()) navigate('/');
+        },
       },
+      ...[...fields.values()].map((field) => ({
+        groupId: 'settings',
+        group: t('admin.palette.settings'),
+        icon: 'sliders' as const,
+        title: field.label,
+        subtitle: t(field.help ? 'admin.palette.settingTipHelp' : 'admin.palette.settingTip', {
+          page: t(`admin.page.${field.page}.label`),
+          section: field.section,
+          help: field.help,
+        }),
+        run: () => {
+          navigate(adminPath(field.page));
+          focusSettingRow(field.key);
+        },
+      })),
+      ...(dict.active && tables
+        ? tables.map((table) => ({
+            groupId: 'tables',
+            group: t('admin.palette.tables'),
+            icon: 'db' as const,
+            title: table.name,
+            subtitle: t('admin.palette.tableTip', {
+              where: table.group || table.key.split('.').slice(0, 2).join('.'),
+              columns: table.columns,
+            }),
+            run: () => navigate(dictionaryTablePath(table.key)),
+          }))
+        : []),
     ];
-  }, [pages, navigate, t]);
+  }, [pages, navigate, t, download, rebuild, mayLeave, fields, dict.active, tables]);
+
+  const modelDot = modelBadge(model.state);
+  const badges: Partial<Record<AdminPageId, Badge | null>> = {
+    'yapay-zeka': modelDot ? {kind: modelDot, text: '', title: model.label} : null,
+    sozluk: dict.state === 'none' ? {kind: 'warn', text: '!', title: t('admin.badge.noDictionary')} : null,
+    arama: changedByPage.arama ? {kind: 'count', text: String(changedByPage.arama), title: t('admin.badge.unsaved')} : null,
+    bakim: changedByPage.bakim
+      ? {kind: 'count', text: String(changedByPage.bakim), title: t('admin.badge.unsaved')}
+      : ix === 'stale'
+        ? {kind: 'warn', text: '!', title: t('admin.badge.indexStale')}
+        : null,
+  };
 
   const name = user?.display_name || user?.username || '';
   return (
@@ -196,9 +372,7 @@ function ShellLayout() {
                   <Icon name={entry.icon} />
                   <span className="lbl">{t(`admin.page.${entry.id}.label`)}</span>
                   <span className="nb">
-                    {entry.id === 'yapay-zeka' && modelBadge(model.state) ? (
-                      <span className={`bdg ${modelBadge(model.state)} dot`} title={model.label} />
-                    ) : null}
+                    <MenuBadge badge={badges[entry.id] ?? null} />
                   </span>
                 </NavLink>
               ),
@@ -219,12 +393,21 @@ function ShellLayout() {
                 </span>
               </div>
               <div>
-                <i className="led" />
-                <span>{t('admin.sys.dictionaryPending')}</span>
+                <i className={'led ' + (dict.state === 'ok' ? 'ok' : dict.state === 'unknown' ? '' : 'warn')} />
+                <span>
+                  {dict.state === 'none'
+                    ? t('admin.sys.dictionaryNone')
+                    : dict.active
+                      ? t('admin.sys.dictionary', {
+                          objects: formatNumber(dict.active.object_count),
+                          columns: formatNumber(dict.active.column_count),
+                        })
+                      : t('admin.sys.dictionaryPending')}
+                </span>
               </div>
               <div>
-                <i className="led" />
-                <span>{t('admin.sys.indexPending')}</span>
+                <i className={'led ' + (ix === 'ok' ? 'ok' : ix === 'unknown' ? '' : 'warn')} />
+                <span>{t(INDEX_LINE[ix])}</span>
               </div>
             </div>
             <button
@@ -243,16 +426,35 @@ function ShellLayout() {
                 <span className="nm">{name}</span>
               </div>
               <div>
-                <Link className="who-act" to="/parola" state={{from: location.pathname}}>
+                <Link
+                  className="who-act"
+                  to="/parola"
+                  state={{from: location.pathname}}
+                  onClick={(event) => {
+                    if (!mayLeave()) event.preventDefault();
+                  }}
+                >
                   {t('session.changePassword')}
                 </Link>
                 <span aria-hidden="true">·</span>
-                <button className="who-act" type="button" onClick={() => void logout()}>
+                <button
+                  className="who-act"
+                  type="button"
+                  onClick={() => {
+                    if (mayLeave()) void logout();
+                  }}
+                >
                   {t('session.signOut')}
                 </button>
               </div>
             </div>
-            <Link className="back" to="/">
+            <Link
+              className="back"
+              to="/"
+              onClick={(event) => {
+                if (!mayLeave()) event.preventDefault();
+              }}
+            >
               {t('admin.back')}
             </Link>
           </div>
@@ -271,6 +473,8 @@ function ShellLayout() {
           </linearGradient>
         </defs>
       </svg>
+      <SaveBar />
+      <DictionaryDrop onWordsPage={page === 'kelimeler'} />
       {paletteOpen && <CommandPalette entries={entries} onClose={() => setPaletteOpen(false)} />}
     </>
   );

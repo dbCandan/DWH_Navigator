@@ -19,11 +19,23 @@ export function ToastProvider({children}: {children: ReactNode}) {
   const nextId = useRef(0);
   const unreachableAt = useRef(0);
 
-  const toast = useCallback((title: string, lines: (string | null | undefined | false)[] = [], bad = false) => {
+  const show = useCallback((title: string, lines: (string | null | undefined | false)[], bad: boolean) => {
     const id = ++nextId.current;
     setToasts((current) => [...current, {id, title, lines: lines.filter((line): line is string => Boolean(line)), bad}]);
-    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), bad ? 11000 : 6500);
+    return () => setToasts((current) => current.filter((item) => item.id !== id));
   }, []);
+
+  const toast = useCallback(
+    (title: string, lines: (string | null | undefined | false)[] = [], bad = false) => {
+      window.setTimeout(show(title, lines, bad), bad ? 11000 : 6500);
+    },
+    [show],
+  );
+
+  const hold = useCallback(
+    (title: string, lines: (string | null | undefined | false)[] = []) => show(title, lines, false),
+    [show],
+  );
 
   const reportUnreachable = useCallback(
     (error: unknown) => {
@@ -37,7 +49,7 @@ export function ToastProvider({children}: {children: ReactNode}) {
     [t, toast],
   );
 
-  const value = useMemo(() => ({toast, reportUnreachable}), [toast, reportUnreachable]);
+  const value = useMemo(() => ({toast, hold, reportUnreachable}), [toast, hold, reportUnreachable]);
   return (
     <ToastContext.Provider value={value}>
       {children}

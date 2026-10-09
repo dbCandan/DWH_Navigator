@@ -42,6 +42,9 @@ export const NAV_PAGES: readonly NavPage[] = NAV.filter((entry): entry is NavPag
 
 export const adminPath = (id: AdminPageId) => `/admin/${id}`;
 
+/** A dictionary table's deep link: `/admin/sozluk/<DB.Şema.Obje>` (search-settings Requirement 20). */
+export const dictionaryTablePath = (key: string) => `${adminPath('sozluk')}/${encodeURIComponent(key)}`;
+
 /**
  * The drawer the command palette's "Yeni model entegrasyonu" and "Model envanteri" open on the AI
  * page (search-settings Requirement 25); it travels in the address's navigation state.
