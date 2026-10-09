@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Project chart test: the nonprod render of helm/dwhnavigator with values-project.yaml, exactly as
 # `deploy.sh --render` produces it (specs/application-foundation/PRDs/002-kubernetes-delivery
-# Requirement 1, 2, 3, 8, 10, 11; Acceptance 1). The factory structure checks run separately in
-# scripts/render-charts.sh; this test pins the project's own values.
+# Requirement 1, 2, 3, 8, 10, 11; Acceptance 1), together with the release image facts the values
+# depend on: the model trust store path and the shutdown budget. The factory structure checks run
+# separately in scripts/render-charts.sh; this test pins the project's own values.
 # Needs helm and the pinned kt-iskelet CLI on PATH (its Python carries PyYAML, as for
 # scripts/render-charts.sh). Run: tests/helm/values-project.test.sh
 set -euo pipefail
@@ -19,12 +20,15 @@ env -u IMAGE_TAG -u BUILD_SOURCEVERSION -u TF_BUILD \
   "$root/helm/dwhnavigator/deploy.sh" --render > "$scratch/rendered.yaml" 2> "$scratch/lint.log" \
   || { cat "$scratch/lint.log" >&2; echo 'deploy.sh --render failed' >&2; exit 1; }
 
-"$python_bin" - "$scratch/rendered.yaml" "$root/helm/dwhnavigator/values-project.yaml" <<'PY'
+"$python_bin" - "$scratch/rendered.yaml" "$root/helm/dwhnavigator/values-project.yaml" "$root" <<'PY'
+import json
+import re
 import sys
+from pathlib import Path
 
 import yaml
 
-rendered_path, layer_path = sys.argv[1], sys.argv[2]
+rendered_path, layer_path, root = sys.argv[1], sys.argv[2], Path(sys.argv[3])
 documents = [d for d in yaml.safe_load_all(open(rendered_path, encoding="utf-8")) if d]
 layer = yaml.safe_load(open(layer_path, encoding="utf-8"))
 failures = 0
@@ -72,11 +76,33 @@ check(
     container["resources"]
     == {"requests": {"cpu": "100m", "memory": "512Mi"}, "limits": {"cpu": "1000m", "memory": "2Gi"}},
 )
-# The application drains for about 25 s on shutdown (analysis jobs 20 s, term lists 5 s); the pod
-# keeps the Kubernetes default grace of 30 s unless the chart sets a larger one.
+# Shutdown budget: on SIGTERM uvicorn first waits for open responses (an analysis event stream
+# stays open), at most --timeout-graceful-shutdown seconds; then the application ends analysis jobs
+# and term lists as interrupted within their own waits. All of it must fit the pod's grace period
+# (Kubernetes default 30 s unless the chart sets one).
+grace = pod.get("terminationGracePeriodSeconds", 30)
+dockerfile = (root / "app/infra/Dockerfile.backend.release").read_text(encoding="utf-8")
+(entrypoint,) = re.findall(r"^ENTRYPOINT (\[.*\])$", dockerfile, re.MULTILINE)
+command = json.loads(entrypoint)
+uvicorn_wait = (
+    float(command[command.index("--timeout-graceful-shutdown") + 1])
+    if "--timeout-graceful-shutdown" in command
+    else float("inf")
+)
+
+
+def shutdown_wait(relative: str) -> float:
+    source = (root / "app/backend/app" / relative).read_text(encoding="utf-8")
+    (value,) = re.findall(r"^SHUTDOWN_WAIT_SECONDS = ([0-9.]+)$", source, re.MULTILINE)
+    return float(value)
+
+
+budget = uvicorn_wait + shutdown_wait("services/analysis/jobs.py") + shutdown_wait(
+    "services/term_lists.py"
+)
 check(
-    "backend shutdown grace is at least 30 seconds",
-    pod.get("terminationGracePeriodSeconds", 30) >= 30,
+    f"backend shutdown ({budget:g} s) fits the pod grace period ({grace} s)",
+    budget < grace,
 )
 check(
     "backend reads the runtime Secret the hook prepares",
@@ -92,10 +118,17 @@ check(
     and env.get("DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_USERNAME") == "admin"
     and env.get("DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT") == "",
 )
+model_settings = {"DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS", "DWHNAVIGATOR_LLM_CA_BUNDLE"}
 check(
     "backend settings carry no model address, model name or key",
-    not any(key.startswith("DWHNAVIGATOR_LLM_") and key != "DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS"
-            for key in env),
+    not any(key.startswith("DWHNAVIGATOR_LLM_") and key not in model_settings for key in env),
+)
+copied = re.findall(
+    r"^COPY app/backend/certs/corporate-inference-root\.crt (\S+)$", dockerfile, re.MULTILINE
+)
+check(
+    "the model trust store is the root CA file the release image carries",
+    copied == [env.get("DWHNAVIGATOR_LLM_CA_BUNDLE")],
 )
 
 (backend_policy,) = component("NetworkPolicy", "backend")

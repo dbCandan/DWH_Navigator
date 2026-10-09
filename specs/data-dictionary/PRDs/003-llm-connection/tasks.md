@@ -33,8 +33,13 @@
   kartları, düzenleyici ve envanter çekmeceleri, onaylar ve bildirimler), kabuktaki rozet, sistem
   durumu satırı ve Ctrl K'daki iki eylem; Vitest testleri, OpenAPI ve üretilmiş tiplerin güncelliği.
   Kanıt: `app/frontend/src/pages/admin/AiPage.test.tsx`, `scripts/quality-gate.sh frontend`.
-- [ ] Task 9 — Dağıtım etkisi (nonprod): `deploy-hooks.sh`'ın şifreleme anahtarını bir kez
+- [x] Task 9 — Dağıtım etkisi (nonprod): `deploy-hooks.sh`'ın şifreleme anahtarını bir kez
   üretmesi, kurum kök sertifikasının imaja eklenmesi, ağ çıkış kuralı (kubernetes-delivery).
+  Kanıt: `tests/helm/deploy-hooks.test.sh`, `tests/helm/values-project.test.sh`,
+  `app/backend/tests/unit/test_corporate_ca.py`; sertifika release imajında sistem güven deposunda
+  ve `DWHNAVIGATOR_LLM_CA_BUNDLE` ile adlandırılmış, ayar imajın içinde doğrulandı. Çıkış kuralının
+  adresini ağ ekibinin doğrulaması işletim ekibindedir (kubernetes-delivery, Riskler); kümede
+  erişim Task 11'de görülür.
 - [ ] Task 10 — Acceptance 6 ve 7: yerel Compose'da tarayıcıyla ekle → test et → aktif et → soru
   akışı ve `nonprod` ayarlarıyla yerel koşum. Yerel çıkış kapısı ve sahte model sunucusuyla API
   düzeyinde ve tarayıcıda ekle → test et → aktif et denendi; soru adımı Task 6-7'ye bağlıdır.

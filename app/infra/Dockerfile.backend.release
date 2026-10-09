@@ -16,6 +16,13 @@ ENV HOME=/tmp \
 RUN addgroup -g "${APP_GID}" app \
     && adduser -D -H -u "${APP_UID}" -G app app
 
+# Organization root CA of the internal model server (data-dictionary/PRDs/003-llm-connection,
+# Dağıtım etkisi): added to the system trust store; nonprod also names this file in
+# DWHNAVIGATOR_LLM_CA_BUNDLE (helm/dwhnavigator/values-project.yaml).
+COPY app/backend/certs/corporate-inference-root.crt /usr/local/share/ca-certificates/corporate-inference-root.crt
+RUN chmod 0644 /usr/local/share/ca-certificates/corporate-inference-root.crt \
+    && update-ca-certificates >/dev/null 2>&1
+
 WORKDIR /workspace/app/backend
 COPY app/backend/requirements.txt /tmp/dependencies/requirements.txt
 RUN --mount=type=bind,from=python_wheelhouse,source=/,target=/opt/wheelhouse \

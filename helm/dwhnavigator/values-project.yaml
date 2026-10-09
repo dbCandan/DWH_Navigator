@@ -23,6 +23,9 @@ backend:
     DWHNAVIGATOR_BOOTSTRAP_SUPER_ADMIN_USERNAME: admin
     # The cluster runs no telemetry collector (user-accounts Requirement 19).
     DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT: ""
+    # Only the organization root CA the release image carries verifies the model server
+    # (data-dictionary/PRDs/003-llm-connection Requirement 1; app/infra/Dockerfile.backend.release).
+    DWHNAVIGATOR_LLM_CA_BUNDLE: /usr/local/share/ca-certificates/corporate-inference-root.crt
     # Process-wide model call limit (data-dictionary/PRDs/003-llm-connection Requirement 1,
     # Decision 11); the RunAI capacity owner may change it here.
     DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: 2
