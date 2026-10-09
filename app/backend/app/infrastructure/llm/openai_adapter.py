@@ -48,6 +48,7 @@ from app.domain.llm import (
     REPAIR_REPLY_CHARS,
     TEST_CHAT_BUDGET_SECONDS,
     TEST_CHAT_TIMEOUT_SECONDS,
+    THINKING_OFF_KWARGS,
     USER_AGENT,
     AdaptedFeature,
     CancelSignal,
@@ -109,12 +110,17 @@ class LlmTimeouts:
 
 @dataclass(slots=True)
 class RequestFeatures:
-    """What a chat request still sends; a feature the server refused is dropped (Requirement 7)."""
+    """What a chat request still sends; a feature the server refused is dropped (Requirement 7).
+
+    ``thinking_off`` sends ``chat_template_kwargs`` (target only): it is set when the server
+    refuses ``reasoning_effort: "none"`` and is never sent in a first request.
+    """
 
     system_role: bool
     structured: bool
     reasoning_effort: str
     seed: int | None
+    thinking_off: bool = False
 
     @classmethod
     def initial(cls, connection: LlmConnection) -> "RequestFeatures":
@@ -128,6 +134,7 @@ class RequestFeatures:
             structured=self.structured,
             reasoning_effort=self.reasoning_effort,
             seed=self.seed,
+            thinking_off=self.thinking_off,
         )
 
     def drop(self, feature: AdaptedFeature) -> None:
@@ -136,7 +143,11 @@ class RequestFeatures:
         elif feature is AdaptedFeature.RESPONSE_FORMAT:
             self.structured = False
         elif feature is AdaptedFeature.REASONING_EFFORT:
+            # Thinking was asked off: ask the chat template instead of the refused field.
+            self.thinking_off = self.reasoning_effort == "none"
             self.reasoning_effort = ""
+        elif feature is AdaptedFeature.CHAT_TEMPLATE_KWARGS:
+            self.thinking_off = False
         else:
             self.seed = None
 
@@ -165,6 +176,8 @@ def chat_body(
     }
     if features.reasoning_effort:
         body["reasoning_effort"] = features.reasoning_effort
+    if features.thinking_off:  # in the refused field's place (Requirement 7, rule 3)
+        body["chat_template_kwargs"] = dict(THINKING_OFF_KWARGS)
     if features.seed is not None:
         body["seed"] = features.seed
     if features.structured:

@@ -81,7 +81,9 @@ LLM_OUTCOMES = frozenset(
 )
 LLM_PROBE_OPERATIONS = frozenset({"health", "models", "inventory"})
 LLM_TOKEN_KINDS = frozenset({"prompt", "completion"})
-LLM_FEATURES = frozenset({"system_role", "response_format", "reasoning_effort", "seed"})
+LLM_FEATURES = frozenset(
+    {"system_role", "response_format", "reasoning_effort", "seed", "chat_template_kwargs"}
+)
 # Fixed label sets of data-dictionary/PRDs/001-dictionary-management (Gözlemlenebilirlik).
 DICTIONARY_IMPORT_OUTCOMES = frozenset(
     {"created", "unchanged", "invalid", "too_large", "unsupported_type", "conflict", "error"}

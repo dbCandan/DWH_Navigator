@@ -1,6 +1,6 @@
 # Plan — llm-connection
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.1). Uygulama dört parçadır: backend
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.2). Uygulama dört parçadır: backend
 (veri modeli, model portu ve bağdaştırıcısı, yönetim uçları, gözlemlenebilirlik), motorun portu
 kullanması ([question-analysis](../004-question-analysis/PRD.md)), çağrı özetinin analiz kaydına
 yazılması ([analysis-records](../008-analysis-records/PRD.md)) ve ön yüzdeki Yapay zekâ sayfası.

@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.1
+Version: 1.0.2
 
 Acceptance date: 2026-10-08
 
@@ -155,7 +155,11 @@ maddede belirtilmiştir.
   özellik olmadan gider. Uyarlama, sunucu metninin 160 karakteriyle uygulama loguna, 300 karakteriyle
   analiz izine olay olarak yazılır. **Hedefte:** aynı kurallar ve sıra; öğrenilen durum bağlantı
   alanları değişene ya da süreç yeniden başlayana kadar bellekte kalır; sunucu metni hiçbir yere
-  yazılmaz (Requirement 7, Decision 12).
+  yazılmaz (Requirement 7, Decision 12). Yalnız hedefte bir ek vardır: RunAI'deki vLLM, Qwen
+  modelinde `reasoning_effort: "none"`'ı 400 ile reddeder ve düşünmeyi yalnız
+  `chat_template_kwargs: {"enable_thinking": false}` kapatır; bu yüzden reddedilen değer `"none"`
+  ise yeniden gönderilen istek bu alanı taşır, sunucu onu da reddederse o da bırakılır
+  (Requirement 7 kural 3 ve 5, Decision 19).
 - **Yanıt ayrıştırma ve onarım** (`parse_json_reply`, `_chat_json`): Cevap
   `choices[0].message.content`'tir; `<think>…</think>` ve `<thought>…</thought>` blokları ile kod
   çitleri atılır, metin JSON değilse ilk `{` ile son `}` arası denenir. JSON nesnesi çıkmazsa bir kez
@@ -358,9 +362,12 @@ sırayla gelir:
 7. `response_format`: önce `"type": "json_schema"`, sonra `"json_schema"` nesnesi; bu nesnede
    sırasıyla `"name": "result"`, `"strict": true` ve `"schema": <şema>`.
 
-`stream` ve başka alan gönderilmez. Aynı girdiler ve aynı sunucu yanıtları için sunucunun aldığı
-gövde dizisi, Requirement 7 ve 8'deki uyarlama ve onarım tekrarları dahil, kaynak `76e21a3`
-`OpenAICompatibleClient`'ın gönderdiğiyle bayt bayt aynıdır. Başlıklar bu karşılaştırmaya girmez.
+`stream` ve başka alan gönderilmez; tek ayrık durum, Requirement 7 kural 3'ün yeniden gönderilen
+istekte 5. sıraya (`reasoning_effort`'ın yerine) koyduğu `chat_template_kwargs` alanıdır. İlk istek
+bu alanı hiçbir zaman taşımaz. Aynı girdiler ve aynı sunucu yanıtları için sunucunun aldığı gövde
+dizisi, Requirement 7 ve 8'deki uyarlama ve onarım tekrarları dahil, kaynak `76e21a3`
+`OpenAICompatibleClient`'ın gönderdiğiyle bayt bayt aynıdır; fark yalnız bu alandır (Decision 19).
+Başlıklar bu karşılaştırmaya girmez.
 
 Requirement 7: Yalnız 400 kodlu yanıtta, yanıt gövdesinin ilk 600 karakteri uygulamanın Türkçe
 katlama yardımcısıyla (`fold`: Türkçe kurallarla küçük harf ve aksansız biçim) çevrilip şu sırayla
@@ -372,16 +379,25 @@ denetlenir; ilk uyan kural uygulanır ve aynı istek o özellik olmadan yeniden 
 2. `response_format` hâlâ gönderiliyorsa ve metin "json mode", "response_format",
    "response_mime_type" ya da "schema" içeriyorsa `response_format` gönderilmez.
 3. `reasoning_effort` hâlâ gönderiliyorsa ve metin "reasoning" ya da "thinking" içeriyorsa
-   `reasoning_effort` gönderilmez.
+   `reasoning_effort` gönderilmez. **Hedefte:** gönderilen değer `"none"` idiyse (bağlantı düşünmeyi
+   kapalı istiyorsa) yeniden gönderilen istek onun yerine, `max_tokens`'tan sonra ve `seed`'den önce,
+   `"chat_template_kwargs": {"enable_thinking": false}` taşır (gövde yine `json.dumps`
+   varsayılanıyla yazılır). `low`, `medium` ve `high` reddedildiğinde kaynaktaki gibi yalnız alan
+   bırakılır.
 4. `seed` hâlâ gönderiliyorsa ve metin "seed" içeriyorsa `seed` gönderilmez.
+5. **Hedefte:** `chat_template_kwargs` gönderiliyorsa ve metin "chat_template_kwargs",
+   "enable_thinking" ya da "template" içeriyorsa `chat_template_kwargs` gönderilmez. Kural kaynağın
+   dört kuralından sonra gelir; onların sırası ve önceliği değişmez.
 
 Bir sohbet çağrısında en çok 3 uyarlama yapılır; uyan kural yoksa ya da sınır dolduysa çağrı
 Requirement 13 sınıfıyla biter. Öğrenilen durum aynı bağlantının sonraki çağrılarında da geçerlidir;
 bağlantı alanlarından biri (adres, anahtar, model, `temperature`, `timeout_seconds`,
 `reasoning_effort`, `seed`) değişince ya da süreç yeniden başlayınca sıfırlanır (Decision 12).
 Bağlantı testi kendi boş durumuyla başlar ve analizlerin durumunu değiştirmez. Bırakılan özellikler
-çağrı özetine sırasıyla `system_role`, `response_format`, `reasoning_effort`, `seed` olarak yazılır;
-sunucu metni hiçbir yere yazılmaz.
+çağrı özetine sırasıyla `system_role`, `response_format`, `reasoning_effort`, `seed`,
+`chat_template_kwargs` olarak yazılır; düşünmenin kapatılması da öğrenilen durumun parçasıdır, yani
+aynı bağlantının sonraki çağrıları ilk istekten itibaren `chat_template_kwargs` ile (ya da o da
+bırakıldıysa onsuz) gider. Sunucu metni, model yanıtı ve modelin düşünme metni hiçbir yere yazılmaz.
 
 Requirement 8: Başarılı yanıtın gövdesi JSON nesnesi olmalı ve `choices[0].message` taşımalıdır;
 değilse sonuç `invalid_response` olur ve onarım istenmez. Modelin metni
@@ -710,11 +726,11 @@ kalıcı değildir.
     sohbet isteği sayısı)
   - `dwhnavigator_llm_tokens_total{kind}` (`kind`: `prompt`, `completion`)
   - `dwhnavigator_llm_adaptations_total{feature}` (`feature`: `system_role`, `response_format`,
-    `reasoning_effort`, `seed`)
+    `reasoning_effort`, `seed`, `chat_template_kwargs`)
   - `dwhnavigator_llm_probes_total{operation,outcome}`
 
   Etiket kümeleri sabittir: `purpose` 3 değer, `outcome` `ok` ve Requirement 13'ün 15 sınıfı,
-  `operation` 3, `kind` 2, `feature` 4 değer; kümede olmayan değer `other` yazılır. Model,
+  `operation` 3, `kind` 2, `feature` 5 değer; kümede olmayan değer `other` yazılır. Model,
   entegrasyon, kullanıcı ve analiz kimliği etikete girmez.
 - **İz (trace):** Her sohbet çağrısı için `llm chat` aralığı (öznitelikler: `purpose`, `outcome`,
   `http_status`, `requests`, uyarlama sayısı, `repaired`) ve her yoklama için `llm probe` aralığı
@@ -779,8 +795,11 @@ kalıcı değildir.
   seed reddi (tek tek ve art arda, kaynak `tests/test_client.py` metinleriyle); JSON olmayan ilk yanıt
   ve onarım; iki kez JSON olmayan yanıt; `choices` yok; 401; 500; 504; bağlam aşımı metinli 400;
   `seed` −1 ve boş `reasoning_effort`. Sunucunun aldığı gövde dizisi bayt bayt aynı, dönen JSON
-  nesnesi eşit olmalıdır. Analiz sebebi metinleri [question-analysis](../004-question-analysis/PRD.md)
-  Requirement 5'in testlerindedir.
+  nesnesi eşit olmalıdır. Tek beyan edilmiş fark, `reasoning_effort: "none"` reddinden sonraki
+  isteklerdeki `chat_template_kwargs` alanıdır (Requirement 7 kural 3); kaynak kaydı değişmez, fark
+  testte kaynağın baytlarına bu alan eklenerek karşılaştırılır. Düşünme kapatma yolu (ret, alanın
+  reddi, hatırlanması, `low`/`medium`/`high`'ın değişmemesi) birim testlerindedir. Analiz sebebi
+  metinleri [question-analysis](../004-question-analysis/PRD.md) Requirement 5'in testlerindedir.
 - **Sahte sunucuyla gerçek ağ bağlantısı:** askıda kalan sunucu (zaman aşımı), 4 MiB aşımı, 307
   yönlendirmesi, test sertifika otoritesiyle imzalanmamış sertifika, ortamda `HTTPS_PROXY`
   tanımlıyken doğrudan bağlantı, genel adrese çözülen ad ve bağlantı anında adres değiştiren sahte
@@ -827,8 +846,8 @@ Bu yetenek vektör araması ve gömme kullanmaz; kaynak vektör aramasını ADR-
   sütun ve açıklama kapıları; `python3 scripts/check-config-sync.py` geçer.
 - [ ] Acceptance 2: L1 — Otomatik testlerden geçti: Requirement 6, 7, 8 ve 13 fark testleri kaynak
   `76e21a3` paketiyle yan yana geçer: Test stratejisindeki her senaryoda sahte sunucunun aldığı istek
-  gövdeleri bayt bayt aynıdır, dönen JSON nesnesi eşittir, hata sınıfı ve neden metni Requirement 13
-  tablosundakidir.
+  gövdeleri, Requirement 7 kural 3'ün beyan edilmiş farkı dışında, bayt bayt aynıdır, dönen JSON
+  nesnesi eşittir, hata sınıfı ve neden metni Requirement 13 tablosundakidir.
 - [ ] Acceptance 3: L1 — Otomatik testlerden geçti: Requirement 9, 10, 11, 12 ve 17 sahte sunucu
   testleri geçer: özel ağ dışı adreste ve güvenilmeyen sertifikada sunucu istek gövdesi almaz;
   yönlendirme izlenmez; 4 MiB aşımı kesilir; ortam vekili kullanılmaz; sağlık denetimi kapalı portta
@@ -943,6 +962,15 @@ set ve büyük referans setle ölçer; sonuç kaynağın `gemma-4-31b` ölçüm�
 DGX Spark sunucusundaki `gemma-4-31b`'dir ama o sunucu şifresiz `http` kullanır ve kümeden erişimi
 bilinmez; RunAI ucu şifreli, anahtarsız ve kümeden kullanılmaktadır.
 
+Decision 19: `reasoning_effort: "none"` reddedilince yeniden gönderilen istek düşünmeyi
+`chat_template_kwargs: {"enable_thinking": false}` ile kapatır; sunucu bu alanı da reddederse o da
+bırakılır ve bağlantı için hatırlanır (Requirement 7 kural 3 ve 5). İlk istek kaynakla bayt bayt aynı
+kalır. Gerekçe: `nonprod`'daki RunAI vLLM'i Qwen modelinde `"none"`'ı 400 ile reddeder, `low`
+düşünmeyi kapatmaz ve kaynağın uyarlaması alanı bırakınca düşünme açık kalır; bağlantı testi ve
+analizler "model geçerli JSON üretmedi" ile biter. Ek alan yalnız sunucu düşünme kapatmayı
+reddettiğinde gider, bu yüzden kaynağın ölçüldüğü sunucularda gövde değişmez. Karar geliştiricinindir
+(2026-10-09).
+
 ## Teslim akışı
 
 Belirtim → Plan → Görevler → Uygulama
@@ -955,9 +983,11 @@ Belirtim → Plan → Görevler → Uygulama
   `gemma-4-31b` 0,875). Ölçüm iş birimlerine açılmadan önce yapılır (Decision 18). Fark testleri
   yalnız kodun aynı davrandığını kanıtlar, modelin kalitesini değil.
 - **Düşünen model:** RunAI'deki Qwen modeli cevaptan önce gizli akıl yürütme yazan bir modeldir;
-  sunucu `reasoning_effort: "none"` alanını yok sayarsa düşünme 1. adımın 2500 token'lık (modelin
-  metin birimi) bütçesini tüketebilir ve analiz "model geçerli JSON üretmedi" ile biter. Gövdeye
-  sunucuya özgü bir düşünme kapatma alanı eklemek gövdeyi kaynaktan ayırır ve ayrı karar ister.
+  düşünme açık kalırsa 1. adımın 2500 token'lık (modelin metin birimi) ve bağlantı testinin 60
+  token'lık bütçesini tüketir ve sonuç "model geçerli JSON üretmedi" olur. Requirement 7 kural 3
+  düşünmeyi `chat_template_kwargs` ile kapatır (Decision 19); bağlantıda `low`, `medium` ya da
+  `high` seçilirse düşünme açık kalır ve aynı risk sürer. Başka bir sunucu bu alanı reddetmeden yok
+  sayarsa da risk sürer.
 - **Bağlam penceresi:** Analistin 1. adımı yaklaşık 70 bin token'lık tablo kataloğu gönderir;
   seçilen modelin bağlam penceresi yetmezse her soru `context_exceeded` ile biter. RunAI modelinin
   bağlam penceresi bekleyen bilgidir ([question-analysis](../004-question-analysis/PRD.md) Riskler).
