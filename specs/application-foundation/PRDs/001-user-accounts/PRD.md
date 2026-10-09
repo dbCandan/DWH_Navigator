@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.1
+Version: 1.0.2
 
 Acceptance date: 2026-10-08
 
@@ -309,7 +309,9 @@ dahil, şu başlıkları ekler: `X-Content-Type-Options: nosniff`, `X-Frame-Opti
 `Cross-Origin-Resource-Policy: same-origin`,
 `Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()`,
 `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'; base-uri 'none'`,
-`Cache-Control: no-store` ve `Strict-Transport-Security: max-age=31536000`. Ön yüz sunucusu
+`Cache-Control: no-store` ve `Strict-Transport-Security: max-age=31536000`. Tek ayrık durum canlı
+olay akışıdır: kendi `Cache-Control: no-cache` değerini korur, `no-store` ile değiştirilmez
+(question-analysis Requirement 10). Ön yüz sunucusu
 (`app/frontend/nginx.security-headers.conf`) sayfalara ve statik dosyalara aynı başlıkları ekler;
 yalnız içerik güvenlik politikası olarak şunu gönderir:
 `default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`.

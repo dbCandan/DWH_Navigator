@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.1
+Version: 1.0.2
 
 Acceptance date: 2026-10-08
 
@@ -668,8 +668,10 @@ Requirement 18: Analiz kaydına (tablosu analysis-records'ta) şunlar yazılır:
   [analysis-records](../008-analysis-records/PRD.md) Requirement 2'dedir), model adı, sözlük sürümü,
   sonuç etiketi, özet, önerilen tablolar (en çok 10), "Analiz
   yapılamadı" sebebi, kayıtlı cevap bilgisi (`at`, `query`, `match`), hata kodu ve Türkçe iletisi,
-  toplam süre, model çağrısı ve belirteç toplamları, adım zaman çizelgesi ve tam cevap (Requirement 7
-  biçimi; sonuç okuma ve rapor bunu kullanır).
+  toplam süre, model çağrısı ve belirteç toplamları, adım zaman çizelgesi ve tam cevap. Tam cevap
+  kayıtlı cevabın biçimidir (kaynaktaki `answer_cache.encode`), yalnız her kolonun sözlük satırı
+  içine gömülüdür; böylece sözlük sonradan değişse de kayıt kendi başına açılır. Sonuç ucu ve rapor
+  Requirement 7 biçimini bundan üretir.
 - Adım adları ve iç içe yapısı kaynaktakiyle aynıdır (Mevcut davranış). Ana adımlar ayrıca
   Requirement 10'daki canlı akış adım anahtarını taşır: `saved_answer_lookup` ("Önceki cevap
   araması"), `queue` ("Sırada bekleme"), `model_check` ("Model sunucusu kontrolü"), `rule_hints`
@@ -679,8 +681,9 @@ Requirement 18: Analiz kaydına (tablosu analysis-records'ta) şunlar yazılır:
   Adım ayrıntıları yalnız sayı ve model adı taşır (ör. "12 kavram, 31 arama terimi", "14 aday, 3
   benzer tablo", "2 tablo eklendi", "7 tablo, 412 kolon"); "Önceki cevap araması" ayrıntısı eşleşme
   türü ve önceki sorunun ilk 120 karakteridir. "Yanıt JSON değil — onarım isteniyor" ve "Model bir
-  özelliği reddetti — onsuz yeniden" olayları model yanıtı ve sunucu hata metni taşımaz; başarısız
-  model çağrısı adımı hata sınıfını taşır.
+  özelliği reddetti — onsuz yeniden" olayları model yanıtı ve sunucu hata metni taşımaz; model çağrısı
+  döndüğünde, o çağrının adımına yazılırlar, bu yüzden zaman çizelgesindeki yerleri yaklaşıktır.
+  Başarısız model çağrısı adımı hata sınıfını taşır.
 - Kayıt yazılamazsa cevap yine döner; olay ve ölçüm üretilir.
 
 Requirement 19: Soru çubuğu kaynaktaki gibidir: açılış başlığı, örnekli kutu (erişilebilir adı
@@ -830,7 +833,9 @@ ekranındaki kayıtlı cevap sayıları → `GET /saved-answers/summary`. `ask_i
 - **Yeni tablo `saved_answer`** (Alembic göçüyle, yani sürümlü veritabanı şema değişikliğiyle; bu
   PRD'nin): `saved_answer_id` (iç kimlik), `public_id`, kiracı kapsamı, `query_text` (en çok 2000
   karakter; kaynakta da öyle), `text_key`, `meaning_key` (boş olabilir), `fingerprint` (16 hane),
-  `result` (Requirement 7 biçiminde cevap; ortalama ~30 KB), `answered_at` (evrensel saat),
+  `result` (kaynaktaki `answer_cache.encode` biçiminde cevap: kolonlar yalnız anahtarlarıyla durur ve
+  cevap okunurken Requirement 14'e göre güncel sözlükle yeniden kurulur; ortalama ~30 KB),
+  `answered_at` (evrensel saat),
   `analysis_public_id` (cevabı üreten analiz kaydı; kayıt silinince boşalır), `props`, `created_at`,
   `updated_at`, `created_by` (cevabı üreten soruyu soran kullanıcı), `updated_by`. Kısıt: kiracı,
   `text_key`, `fingerprint` üçlüsü tekildir. Dizinler: (kiracı, `fingerprint`, `answered_at` azalan) ve

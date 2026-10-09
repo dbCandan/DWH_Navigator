@@ -2,7 +2,7 @@
 
 Status: Accepted
 
-Version: 1.0.0
+Version: 1.0.1
 
 Acceptance date: 2026-10-08
 
@@ -194,8 +194,8 @@ Requirement 2: Kaydın alanları şunlardır; sınırı aşan metin sınırda ke
 - sonuç: VAR, KISMEN VAR, BULUNAMADI ya da boş;
 - cevap özeti (ilk 500 karakter) ve önerilen tablolar (cevaptaki sırayla en çok 10 `DB.Şema.Obje`
   anahtarı);
-- tam cevap: question-analysis Requirement 7 biçiminde; yalnız question-analysis'in sonuç ve rapor
-  uçları okur, bu PRD'nin uçları döndürmez;
+- tam cevap: biçimi question-analysis Requirement 18'dedir; yalnız question-analysis'in sonuç ve
+  rapor uçları okur, bu PRD'nin uçları döndürmez;
 - cevaplanamama sebebi: `unavailable`'da kullanıcıya gösterilen sebep, en çok 500 karakter;
 - yeniden kullanılan cevap (`reused`'da): ilk yazıldığı zaman, sorusu ve eşleşme türü
   (`same_question` "aynı soru", `same_meaning` "aynı anlam");
