@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "policy": {
+    "minimum_release_age_days": 30
+  },
+  "authorities": [
+    {
+      "kind": "npm",
+      "path": "app/frontend/package.json"
+    },
+    {
+      "kind": "npm",
+      "path": "e2e/package.json"
+    },
+    {
+      "kind": "requirements",
+      "path": "app/backend/requirements.in"
+    },
+    {
+      "kind": "requirements",
+      "path": "app/backend/requirements-dev.in"
+    },
+    {
+      "kind": "requirements",
+      "path": "app/backend/requirements-llm.in"
+    },
+    {
+      "kind": "alpine-lock",
+      "path": "app/infra/locks/nginx-alpine-packages.lock"
+    },
+    {
+      "kind": "oci",
+      "patterns": [
+        "app/frontend/Dockerfile.dev",
+        "app/infra/.env.example",
+        "app/infra/Dockerfile*.release",
+        "app/infra/docker-compose*.yml",
+        "helm/dwhnavigator/values.yaml"
+      ]
+    },
+    {
+      "kind": "github-actions",
+      "patterns": [
+        ".github/workflows/*.yml"
+      ]
+    }
+  ],
+  "decision": {
+    "id": "KT-DEPENDENCY-BASELINE-2026-10-08",
+    "reviewed_on": "2026-10-08",
+    "inventory_sha256_by_variant": {
+      "observability-enabled": "da9f3092bdba77232b1521b860c184889b9ed2463c82b32b6c181d6362207bc5",
+      "observability-disabled": "da9f3092bdba77232b1521b860c184889b9ed2463c82b32b6c181d6362207bc5"
+    },
+    "compatibility_evidence": [
+      "2026-10-08: application-foundation/PRDs/001-user-accounts Requirement 19 (shared OpenTelemetry path) and Decision 19 (offline password list). Direct runtime pins in app/backend/requirements.in: opentelemetry-api 1.44.0, opentelemetry-sdk 1.44.0 and opentelemetry-exporter-otlp-proto-grpc 1.44.0 (PyPI 2026-07-16, Apache-2.0); their locked transitives opentelemetry-proto 1.44.0, opentelemetry-exporter-otlp-proto-common 1.44.0 and opentelemetry-semantic-conventions 0.65b0 (2026-07-16, Apache-2.0). The resolver's own grpcio 1.84.0 (2026-09-14), protobuf 7.36.2 (2026-09-17) and googleapis-common-protos 1.75.4 (2026-09-24) are inside the 30-day window, so requirements.in pins the newest mature releases directly: grpcio 1.83.1 (2026-08-28, Apache-2.0), protobuf 7.36.1 (2026-08-31, BSD-3-Clause) and googleapis-common-protos 1.75.3 (2026-09-03, Apache-2.0); opentelemetry 1.45.0 (2026-09-25) is also inside the window. The same OpenTelemetry set runs in DWH Code Review. OSV queries on 2026-10-08 returned no advisory for any of these nine versions. No instrumentation package is admitted: request spans are written in app/core/telemetry.py. The three Python locks were regenerated with scripts/compile-dependency-locks.sh and change only by these nine packages. Password list (data, not a package): SecLists release 2026.1 (GitHub release 2026-03-23, MIT, tag commit 190c6f7bd58c847ceadfe57d9853592737f059e8), file Passwords/Common-Credentials/xato-net-10-million-passwords-1000000.txt (SHA-256 424a3e03a17df0a2bc2b3ca749d81b04e79d59cb7aeec8876a5a3f308d0caf51); its entries of 15 or more characters after NFKC, with the skeleton's 11 baseline entries, folded and deduplicated, are app/backend/app/domain/common_passwords.txt (10904 lines, SHA-256 1b2fc21edc9fc0cef0c33bcf0ae4526e10964636bea13bda35016d105b290e8b); derivation in specs/application-foundation/PRDs/001-user-accounts/plan.md.",
+      "2026-10-08: backend runtime dependencies for the dictionary workbook reader and the single-question Excel report (data-dictionary/PRDs/001-dictionary-management Decision 1, data-dictionary/PRDs/004-question-analysis Dependency impact): direct runtime pins openpyxl 3.1.5 (PyPI upload 2024-06-28, MIT; openpyxl-3.1.5-py2.py3-none-any.whl sha256 5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2 and openpyxl-3.1.5.tar.gz sha256 cf0e3cf56142039133628b5acffe8ef0c12bc902d2aadd3e0fe5878dc08d1050) and defusedxml 0.7.1 (PyPI upload 2021-03-08, PSF-2.0; defusedxml-0.7.1-py2.py3-none-any.whl sha256 a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61 and defusedxml-0.7.1.tar.gz sha256 1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69; openpyxl parses workbook XML with it when it is installed) in app/backend/requirements.in; their locked transitive et-xmlfile 2.0.0 (PyPI upload 2024-10-25, MIT; et_xmlfile-2.0.0-py3-none-any.whl sha256 7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa and et_xmlfile-2.0.0.tar.gz sha256 dab3f4764309081ce75662649be815c4c9081e88f0837825f90fd28317d4da54). The three versions and digests are the source application's requirements.lock pins, so the byte-for-byte parity of the dictionary parser and the report holds. scripts/compile-dependency-locks.sh regenerated requirements.txt, requirements-dev.txt and requirements-llm.txt in the backend development image on top of the OpenTelemetry, httpx and cryptography pins above; only these three packages and their PyPI digests are added, no other pin changes. OSV queries for PyPI openpyxl 3.1.5, defusedxml 0.7.1 and et-xmlfile 2.0.0 on 2026-10-08 returned no advisory. Compatibility: backend unit tests, ruff, black, isort and strict mypy (openpyxl has no inline types; mypy treats its modules as untyped like PyYAML) passed with the regenerated locks.",
+      "2026-10-08: security update of two locked transitive dependencies of the optional LLM set. urllib3 2.8.0 (PyPI 2026-09-15, MIT, upstream tag 2.8.0 at b1d30ab61fe0db8f11092805e8c5ac43e091064a) replaces 2.7.0 and langgraph-sdk 0.4.4 (PyPI 2026-08-27, MIT, upstream tag sdk==0.4.4 at d5f4b2aa960940effc8430165ab3604038e817af) replaces 0.4.3 in app/backend/requirements-llm.txt. urllib3 2.8.0 fixes CVE-2026-97687 (GHSA-8988-9cw3-xx77, HIGH, CVSS 4.0 7.6: the TLS configuration of an HTTPS proxy is ignored or overridden by the target server's), CVE-2026-97689 (GHSA-vxq7-64xx-v4gw, HIGH, CVSS 4.0 8.9: HTTPResponse.stream() and read_chunked() buffer an unbounded chunk-size line in memory) and CVE-2026-97688 (GHSA-gh4c-6fx4-qh6g, MODERATE, CVSS 4.0 6.9: chunked Deflate streaming can loop forever); langgraph-sdk 0.4.4 fixes CVE-2026-104873 (GHSA-fvww-7h3r-vfhp, HIGH, CVSS 4.0 7.6: actions= on the resource-scoped custom auth decorators registers the handler for every action of the resource). Each is the first release without its advisories. requests 2.34.2 (urllib3<3,>=1.26) and langgraph 1.2.11 (langgraph-sdk<0.5.0,>=0.4.2) reach them only as locked transitive dependencies, so no parent pin, app/backend/requirements-llm.in entry or inventory coordinate changes, and langgraph-sdk stays undeclared as the governed LLM orchestration PRD requires. scripts/compile-dependency-locks.sh in a fresh project resolved both versions while requirements-llm.in named them for one run, then reproduced the same lock byte for byte from the unchanged requirements-llm.in; only the two pins and their PyPI digests change, requirements.txt and requirements-dev.txt are byte-identical, and OSV reports no advisory on any package of the new lock. urllib3 2.8.0 is younger than 30 days and stays a security exception until 2026-10-15; langgraph-sdk 0.4.4 is older than 30 days. Release, advisory, lock update and generated-project checks: docs/evidence/2026-10-08-llm-lock-security-update.md in factory source.",
+      "2026-10-08: Dependabot version updates that pass dependency admission. Backend alembic 1.19.2 and development ruff 0.16.6 in app/backend/requirements.in and requirements-dev.in, langchain 1.4.0 and langchain-core 1.6.2 in the optional app/backend/requirements-llm.in; frontend @types/node 26.4.1, @types/react-dom 19.2.7, eslint 10.10.0, eslint-plugin-react-refresh 0.5.6, globals 17.12.0, happy-dom 20.14.0 and typescript-eslint 8.69.0; e2e @playwright/test 1.63.0. Each release and each new or changed locked package is at least 30 days old with no OSV advisory. The three backend locks were recompiled with scripts/compile-dependency-locks.sh and only the alembic, ruff, langchain and langchain-core blocks changed. vitest 5 is not admitted while technology-profile.yml fixes frontend testing at vitest-4. Release, advisory, lock and generated-project checks: docs/evidence/2026-10-08-dependabot-admission.md in factory source.",
+      "2026-10-08: security update of a locked backend runtime dependency. Mako 1.4.2 (PyPI 2026-09-22, MIT, upstream tag rel_1_4_2 at 23e9a805e28203ec43722a3b64bb0606bca01c3a) replaces 1.4.1 in app/backend/requirements.txt, requirements-dev.txt and requirements-llm.txt; it fixes CVE-2026-102991 (GHSA-5639-2j2p-m4mx, MEDIUM, CVSS 3.1 6.5: on Windows a TemplateLookup URI that begins with a drive designator bypasses the directory traversal check and reads files outside the template directory), which affects every release up to 1.4.1. Alembic reaches Mako only as a locked transitive dependency, so app/backend/requirements.in and the reviewed inventory do not change; only the mako pin and its two PyPI digests change in the three locks. Release, advisory, lock update and generated-project checks: docs/evidence/2026-10-08-mako-security-update.md in factory source.",
+      "2026-10-08: security update of a locked frontend build dependency. brace-expansion 2.1.7 (upstream tag v2.1.7 at 714b6228a5878cfc6b07dc319db0eb6376ab2c4d) and 5.0.12 (upstream tag v5.0.12 at f3410159d768f56c9d9f4511d3e1b46425fc1099), both npm 2026-09-14 and MIT, replace 2.1.4 and 5.0.9 in app/frontend/package-lock.json; they fix CVE-2026-102276 (GHSA-6j4f-fj2g-mc7p) and CVE-2026-102278 (GHSA-qhr7-859c-m2p7), both HIGH: denial of service through stack-exhausting recursion on crafted brace patterns, and CVE-2026-102277 (GHSA-q2hr-2g5m-vwhr, MODERATE: quadratic-time expansion), all three of which affect 2.1.4 and 5.0.9. minimatch 5.1.9 (openapi-typescript through @redocly/openapi-core) and minimatch 10.2.6 (eslint and typescript-eslint) reach them only as development dependencies within their existing ^2.0.1 and ^5.0.8 ranges, so app/frontend/package.json and the reviewed inventory do not change; only the version, resolved URL and integrity of the two brace-expansion lock entries change. Release, advisory, lock update and generated-project checks: docs/evidence/2026-10-08-brace-expansion-security-update.md in factory source.",
+      "2026-10-07: security update of a locked frontend build dependency. source-map-js 1.2.2 (npm 2026-09-30, BSD-3-Clause, upstream tag v1.2.2 at 0a1d334fd1e55a47df97fcd60a7915d46df3b08a) replaces 1.2.1 in app/frontend/package-lock.json; it fixes CVE-2026-93749 (GHSA-68fv-2mgg-jv7q, HIGH: event-loop denial of service through indexed source-map section offsets), which affects every release from 1.0.0 to 1.2.1. postcss and magicast reach it only as a development dependency within their existing ^1.2.1 range, so app/frontend/package.json and the reviewed inventory do not change; only the version, resolved URL and integrity of the source-map-js lock entry change. Release, advisory, lock update and generated-project checks: docs/evidence/2026-10-07-source-map-js-security-update.md in factory source.",
+      "2026-10-07: the profile accepts Python 3.12 and every later release regardless of known CPython advisories, with no patch-level security floor and no upper bound; app/backend/pyproject.toml declares requires-python >=3.12 with Black target py312 and mypy target 3.12, and the backend container base stays python:3.14-alpine3.23@sha256:218761489de417a6eb0808e264cbdd7043ec6659fe5a61898815e9848536541d. No package coordinate changes. The hash-locked backend, development and LLM requirement files install with --require-hashes --only-binary=:all: on CPython 3.12, 3.13 and 3.14, and every pinned package publishes CPython 3.12 and 3.13 wheels at the same version for musllinux x86_64/aarch64, macOS arm64 and Windows amd64, except uvloop, which publishes no Windows wheel for any series. Evidence: docs/evidence/2026-10-07-python-3-12-plus-profile.md in factory source.",
+      "2026-10-05: security update. PyJWT[crypto] 2.15.0 (PyPI 2026-09-23, MIT) replaces 2.13.0 in app/backend/requirements.in and the three hash-locked backend requirement files; OSV lists 13 advisories for 2.13.0 (CVE-2026-102268 CRITICAL, five HIGH, seven MODERATE) and none for 2.15.0, and 2.14.0 still carries CVE-2026-101918. The open-source licence Agent names pyjwt==2.15.0. Release, advisories, lock regeneration and generated-project checks: docs/evidence/2026-10-05-pyjwt-security-update.md in factory source.",
+      "2026-10-02: security update of the nginx base. nginx:1.31.6-alpine-slim@sha256:f761b94f2cb9e8e05e2943d5f773609596113ef69b54e2433a996d109a8f78b7 (nginx 1.31.6, Alpine 3.24.2 OCI index, linux/amd64 and linux/arm64, published 2026-09-23) replaces nginx:alpine@sha256:4a73073bd557c65b759505da037898b61f1be6cbcc3c2c3aeac22d2a470c1752 in the frontend release image, the local Compose proxy and the image workflow. The previous base carried 18 HIGH findings in OpenSSL, libuuid, libexpat and pcre2; the slim variant ships neither libexpat nor libuuid. No published official nginx Alpine image carries pcre2 10.49-r0 (CVE-2026-103111, HIGH, Alpine package published 2026-10-01), so app/infra/locks/nginx-alpine-packages.lock pins it by exact version and SHA-256 for linux/amd64 and linux/arm64 and app/infra/Dockerfile.frontend.release installs it without consulting a repository. The generated frontend release image scans with 0 findings at every severity on both architectures. Evidence: docs/evidence/2026-10-02-nginx-pcre2-security-update.md in factory source.",
+      "Backend pydantic 2.13.5 (pydantic-core 2.46.5), frontend react-router 8.3.1, @testing-library/react 16.3.3 and @vitejs/plugin-react 6.1.1: release maturity, advisories and generated-project checks in docs/evidence/2026-09-28-dependabot-admission.md in factory source.",
+      "2026-09-28: CPython 3.14.7 (released 2026-08-05) replaces 3.13.15 as the profile Python with a 3.14.7 security floor; python:3.14-alpine3.23@sha256:218761489de417a6eb0808e264cbdd7043ec6659fe5a61898815e9848536541d (Python 3.14.7, Alpine 3.23 OCI index) replaces python:3.13-alpine3.23@sha256:7ea3f82de8ea6d4fb7e5d2bbe3fe3c9d931700b7a529f1fe5769e42abe514ca1. Security driver: 3.14.6 carries CVE-2026-15308, CVE-2026-11972 and CVE-2026-11940, each fixed in the v3.14.7 tag; 3.13.15 carries CVE-2026-82049 and CVE-2026-87910, which do not affect 3.14. OSV lists CVE-2026-15806, CVE-2026-17084, CVE-2026-15310 and CVE-2026-19672 for v3.14.7 with no fixed release; factory code reaches none of them. Every pinned generator, backend, LLM and desktop package publishes a CPython 3.14 wheel at the same version for musllinux x86_64/aarch64, macOS arm64 and Windows amd64; the generator hash locks admit the cp314 wheels. Evidence: docs/evidence/2026-09-28-python-3-14-7-profile.md in factory source.",
+      "Backend development tools isort 9.0.1 and setuptools 84.0.0, and the workflow actions actions/checkout v7.0.1, docker/setup-buildx-action v4.3.0, docker/login-action v4.6.0 and docker/build-push-action v7.3.0, each tag resolved to the pinned full commit SHA: release maturity, advisories, licences and generated-project checks in docs/evidence/2026-09-27-dependabot-admission.md in factory source.",
+      "Frontend vite 8.2.2: release maturity, advisories and generated-project checks in docs/evidence/2026-09-25-dependabot-admission.md in factory source. The js-yaml 4.3.2 security patch (CVE-2026-84375, released 2026-08-26) reached the 30-day threshold and left the exception list.",
+      "Backend uvicorn 0.52.4 and python-dotenv 1.2.3: release maturity, advisories and generated-project checks in docs/evidence/2026-09-24-dependabot-admission.md in factory source.",
+      "Optional LangChain set in app/backend/requirements-llm.in (inactive until an accepted PRD adds it to requirements.in): release maturity, advisories and activation compatibility in docs/evidence/2026-09-24-langchain-admission.md in factory source.",
+      "Release dates, verified artifact identities and compatibility checks for the package coordinates in this inventory: docs/evidence/2026-09-15-dependabot-admission.md, docs/evidence/2026-09-09-appsec-dependency-patches.md and docs/evidence/2026-09-08-dependabot-admission.md in factory source.",
+      "2026-10-08: data-dictionary/PRDs/003-llm-connection (Dağıtım etkisi, Decision 5). httpx 0.28.1 (PyPI 2024-12-06, BSD-3-Clause) moves from app/backend/requirements-dev.in to app/backend/requirements.in as the runtime model-server client, and cryptography 50.0.0 (PyPI 2026-07-31, Apache-2.0 OR BSD-3-Clause), until now reached only through PyJWT[crypto], is pinned directly in app/backend/requirements.in because the AES-256-GCM settings cipher imports it. The runtime lock app/backend/requirements.txt gains the same versions the development lock already held: httpcore 1.0.9 (2025-04-24, BSD-3-Clause) and certifi 2026.7.22 (2026-07-22, MPL-2.0); anyio, idna and h11 were already locked. OSV queries on 2026-10-08 returned no advisory for httpx 0.28.1, httpcore 1.0.9, certifi 2026.7.22 or cryptography 50.0.0. The three Python locks were regenerated with scripts/compile-dependency-locks.sh and change only by these packages and their 'via' notes. requirements-llm.in (LangChain) stays inactive. The local-egress Compose gate reuses the already admitted pinned nginx image, so no OCI coordinate changes."
+    ]
+  },
+  "exceptions": [
+    {
+      "artifact": "nginx-base-security-update",
+      "version": "nginx:1.31.6-alpine-slim@sha256:f761b94f2cb9e8e05e2943d5f773609596113ef69b54e2433a996d109a8f78b7",
+      "released_on": "2026-09-23",
+      "release_evidence": [
+        "https://hub.docker.com/v2/repositories/library/nginx/tags/1.31.6-alpine-slim",
+        "https://github.com/nginx/docker-nginx/tree/a16f1329e13e7273c4103f75d863ca625b75109e/mainline/alpine-slim",
+        "https://secdb.alpinelinux.org/v3.24/main.json"
+      ],
+      "reason": "security",
+      "advisory_ids": [
+        "CVE-2026-14456",
+        "CVE-2026-53612",
+        "CVE-2026-53613",
+        "CVE-2026-53614",
+        "CVE-2026-76642",
+        "CVE-2026-78408",
+        "CVE-2026-78409",
+        "CVE-2026-78410",
+        "CVE-2026-66046",
+        "CVE-2026-76641",
+        "CVE-2026-76956",
+        "CVE-2026-76957",
+        "CVE-2026-93990",
+        "CVE-2026-86145",
+        "CVE-2026-89157",
+        "CVE-2026-89161"
+      ]
+    },
+    {
+      "artifact": "nginx-pcre2-runtime-security-patch",
+      "version": "10.49-r0",
+      "released_on": "2026-10-01",
+      "release_evidence": [
+        "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/x86_64/pcre2-10.49-r0.apk",
+        "https://dl-cdn.alpinelinux.org/alpine/v3.24/main/aarch64/pcre2-10.49-r0.apk",
+        "https://secdb.alpinelinux.org/v3.24/main.json"
+      ],
+      "reason": "security",
+      "advisory_ids": [
+        "CVE-2026-103111"
+      ]
+    },
+    {
+      "artifact": "pyjwt-security-update",
+      "version": "2.15.0",
+      "released_on": "2026-09-23",
+      "release_evidence": [
+        "https://pypi.org/pypi/PyJWT/2.15.0/json",
+        "https://github.com/advisories/GHSA-ffc3-869f-jxw9",
+        "https://github.com/advisories/GHSA-9j54-fg26-wv3r",
+        "https://github.com/advisories/GHSA-9v7f-9g4p-ffgj",
+        "https://github.com/advisories/GHSA-p4g4-x82p-q773",
+        "https://github.com/advisories/GHSA-r6x4-923q-g947",
+        "https://github.com/advisories/GHSA-w2cx-738m-mc7w",
+        "https://github.com/advisories/GHSA-2gx3-rcp4-g85q",
+        "https://github.com/advisories/GHSA-42vr-xj54-vc7v",
+        "https://github.com/advisories/GHSA-8wjv-2p76-3863",
+        "https://github.com/advisories/GHSA-hxm8-2xgr-2p9m",
+        "https://github.com/advisories/GHSA-jwrc-g2q2-pq5p",
+        "https://github.com/advisories/GHSA-w6j9-cwv2-h6wq",
+        "https://github.com/advisories/GHSA-gvp8-978c-rx2q"
+      ],
+      "reason": "security",
+      "advisory_ids": [
+        "CVE-2026-102268",
+        "CVE-2026-102266",
+        "CVE-2026-102267",
+        "CVE-2026-102271",
+        "CVE-2026-102272",
+        "CVE-2026-102273",
+        "CVE-2026-101917",
+        "CVE-2026-101918",
+        "CVE-2026-102265",
+        "CVE-2026-102269",
+        "CVE-2026-102270",
+        "CVE-2026-102274",
+        "CVE-2026-103001"
+      ]
+    },
+    {
+      "artifact": "source-map-js-security-update",
+      "version": "1.2.2",
+      "released_on": "2026-09-30",
+      "release_evidence": [
+        "https://registry.npmjs.org/source-map-js",
+        "https://github.com/7rulnik/source-map-js/releases/tag/v1.2.2",
+        "https://github.com/7rulnik/source-map-js/commit/cf7658058ceeaa8619d5ae0ec90be6905209d016",
+        "https://github.com/advisories/GHSA-68fv-2mgg-jv7q"
+      ],
+      "reason": "security",
+      "advisory_ids": [
+        "CVE-2026-93749"
+      ]
+    },
+    {
+      "artifact": "brace-expansion-2-security-update",
+      "version": "2.1.7",
+      "released_on": "2026-09-14",
+      "release_evidence": [
+        "https://registry.npmjs.org/brace-expansion",
+        "https://github.com/juliangruber/brace-expansion/releases/tag/v2.1.7",
+        "https://github.com/juliangruber/brace-expansion/commit/5171e681c0922b7ae8bfaf9a331e309107be6edc",
+        "https://github.com/juliangruber/brace-expansion/commit/1ba3c71f89fb3448c8be6dcf2d17b543c2738f16",
+        "https://github.com/juliangruber/brace-expansion/commit/bdff773f98e5988616b7039cc9b508df5d640b22",
+        "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+        "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+        "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+      ],
+      "reason": "security",
+      "advisory_ids": [
+        "CVE-2026-102276",
+        "CVE-2026-102278",
+        "CVE-2026-102277"
+      ]
+    },
+    {
+      "artifact": "brace-expansion-5-security-update",
+      "version": "5.0.12",
+      "released_on": "2026-09-14",
+      "release_evidence": [
+        "https://registry.npmjs.org/brace-expansion",
+        "https://github.com/juliangruber/brace-expansion/releases/tag/v5.0.12",
+        "https://github.com/juliangruber/brace-expansion/commit/6735c94873ca570bcdd6a0690033bdd3126379d3",
+        "https://github.com/juliangruber/brace-expansion/commit/935d78f32f335b2ff76578e5c5e877d31ae9888c",
+        "https://github.com/juliangruber/brace-expansion/commit/33a5ef17b8d800bbfa8c52b14c39043b6aac1a96",
+        "https://github.com/advisories/GHSA-6j4f-fj2g-mc7p",
+        "https://github.com/advisories/GHSA-qhr7-859c-m2p7",
+        "https://github.com/advisories/GHSA-q2hr-2g5m-vwhr"
+      ],
+      "reason": "security",
+      "advisory_ids": [
+        "CVE-2026-102276",
+        "CVE-2026-102278",
+        "CVE-2026-102277"
+      ]
+    },
+    {
+      "artifact": "mako-security-update",
+      "version": "1.4.2",
+      "released_on": "2026-09-22",
+      "release_evidence": [
+        "https://pypi.org/pypi/Mako/1.4.2/json",
+        "https://github.com/sqlalchemy/mako/releases/tag/rel_1_4_2",
+        "https://github.com/sqlalchemy/mako/commit/000ed85e4e48771eff460bf4fc721fb43de80e08",
+        "https://github.com/advisories/GHSA-5639-2j2p-m4mx"
+      ],
+      "reason": "security",
+      "advisory_ids": [
+        "CVE-2026-102991"
+      ]
+    },
+    {
+      "artifact": "urllib3-security-update",
+      "version": "2.8.0",
+      "released_on": "2026-09-15",
+      "release_evidence": [
+        "https://pypi.org/pypi/urllib3/2.8.0/json",
+        "https://github.com/urllib3/urllib3/releases/tag/2.8.0",
+        "https://github.com/urllib3/urllib3/commit/07408cec79d1856d81bb42c74a904a24fdb9e465",
+        "https://github.com/urllib3/urllib3/commit/b6447295fff7b38fdffc67e0df9712d60cef3cc3",
+        "https://github.com/urllib3/urllib3/commit/cd770b059b543be29298ea5c52afb0b1b090f5ed",
+        "https://github.com/urllib3/urllib3/commit/ea2ad7b21a80da3632f80016526a18864586077f",
+        "https://github.com/advisories/GHSA-8988-9cw3-xx77",
+        "https://github.com/advisories/GHSA-vxq7-64xx-v4gw",
+        "https://github.com/advisories/GHSA-gh4c-6fx4-qh6g"
+      ],
+      "reason": "security",
+      "advisory_ids": [
+        "CVE-2026-97687",
+        "CVE-2026-97689",
+        "CVE-2026-97688"
+      ]
+    }
+  ]
+}

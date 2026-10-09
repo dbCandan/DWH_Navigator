@@ -1,0 +1,2 @@
+/* The Bakım page: "birkaç saniye" sits 10px after the rebuild button (admin.html PAGES.bakim). */
+[data-surface="admin"] #sec-index .note.after-btn { margin-left: 10px; }

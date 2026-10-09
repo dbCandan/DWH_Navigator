@@ -1,0 +1,6 @@
+/* The four spacings of the AI page that admin.html wrote as inline styles, with the same values,
+   as classes of the stylesheet (search-settings Decision 11). */
+[data-surface="admin"] .card-h.ai-list-head { margin: 18px 0 10px; }
+[data-surface="admin"] .ai-aside { margin-left: 10px; }
+[data-surface="admin"] .ai-gap { height: 10px; }
+[data-surface="admin"] .tag.ai-tag-gap { margin-left: 6px; }
