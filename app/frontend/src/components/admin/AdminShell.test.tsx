@@ -99,8 +99,8 @@ describe('admin shell (search-settings Requirement 20-22, 24)', () => {
     expect(screen.getByText(message('admin.palette.pages'))).toBeInTheDocument();
     expect(screen.getByText(message('admin.palette.actions'))).toBeInTheDocument();
     // The pages, then the dictionary's three, the index rebuild, "Yeni model entegrasyonu",
-    // "Model envanteri" and "Uygulamaya dön".
-    expect(screen.getAllByRole('option')).toHaveLength(NAV_PAGES.length + 7);
+    // "Model envanteri", "Performans ayrıntıları" and "Uygulamaya dön".
+    expect(screen.getAllByRole('option')).toHaveLength(NAV_PAGES.length + 8);
 
     fireEvent.change(box, {target: {value: 'kullanici'}});
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([

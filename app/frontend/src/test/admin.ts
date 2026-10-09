@@ -1,10 +1,13 @@
 import {vi} from 'vitest';
+import {ApiError} from '@/lib/apiClient';
+import {AnalysisRecordsService} from '@/services/analysisRecords';
 import {DictionaryService} from '@/services/dictionary';
 import {LlmIntegrationService} from '@/services/llmIntegrations';
 import {SavedAnswersService} from '@/services/savedAnswers';
 import {SearchSettingsService} from '@/services/searchSettings';
 import {VocabularyService} from '@/services/vocabulary';
 import type {DictionaryState, DictionaryTable} from '@/types/dictionary';
+import type {RecordPage, RecordSummary} from '@/types/records';
 import type {SearchIndexState, SearchSettingField, SearchSettings} from '@/types/search';
 import {llmState} from './llm';
 import type {StopwordItem, TermItem, VocabularyListState} from '@/types/vocabulary';
@@ -133,6 +136,36 @@ export const table = (key: string, overrides: Partial<DictionaryTable> = {}): Di
 export const termList = (items: TermItem[], revision = 1): VocabularyListState => ({list: 'terms', revision, items});
 export const stopList = (items: StopwordItem[], revision = 1): VocabularyListState => ({list: 'stopwords', revision, items});
 
+export const SNAPSHOT_AT = '2026-10-08T12:00:00Z';
+
+/** A list answer of the analysis records (analysis-records Requirement 6). */
+export function recordPage(overrides: Partial<RecordPage> = {}): RecordPage {
+  return {items: [], total: 0, page: 1, page_size: 150, snapshot_at: SNAPSHOT_AT, ...overrides};
+}
+
+/** A summary of no records (analysis-records Requirement 7). */
+export function recordSummary(overrides: Partial<RecordSummary> = {}): RecordSummary {
+  return {
+    count: 0,
+    newest_at: null,
+    with_result: 0,
+    with_tables: 0,
+    flows: {analyst: 0, reused: 0, unavailable: 0, cancelled: 0, failed: 0, interrupted: 0},
+    analyst_p50_ms: null,
+    analyst_p90_ms: null,
+    p50_ms: null,
+    p90_ms: null,
+    max_ms: null,
+    phases: [],
+    llm_calls: 0,
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    askers: [],
+    snapshot_at: SNAPSHOT_AT,
+    ...overrides,
+  };
+}
+
 /** The admin shell's reads answered with an empty, settled installation unless a test says otherwise. */
 export function serveAdminDefaults() {
   vi.spyOn(LlmIntegrationService, 'list').mockResolvedValue(llmState());
@@ -141,6 +174,11 @@ export function serveAdminDefaults() {
   vi.spyOn(DictionaryService, 'state').mockResolvedValue(EMPTY_DICTIONARY);
   vi.spyOn(DictionaryService, 'tables').mockResolvedValue([]);
   vi.spyOn(SavedAnswersService, 'summary').mockResolvedValue({total: 0, usable: 0, newest_at: null});
+  vi.spyOn(AnalysisRecordsService, 'list').mockResolvedValue(recordPage());
+  vi.spyOn(AnalysisRecordsService, 'summary').mockResolvedValue(recordSummary());
+  vi.spyOn(AnalysisRecordsService, 'dailyCounts').mockResolvedValue({days: []});
+  vi.spyOn(AnalysisRecordsService, 'askers').mockResolvedValue({items: []});
+  vi.spyOn(AnalysisRecordsService, 'detail').mockRejectedValue(new ApiError(404, 'Kayıt bulunamadı.', 'analysis_record_not_found'));
   vi.spyOn(VocabularyService, 'read').mockImplementation(async (list) => (list === 'terms' ? termList([]) : stopList([])));
 }
 

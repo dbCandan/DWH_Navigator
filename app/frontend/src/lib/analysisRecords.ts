@@ -1,4 +1,5 @@
-import type {Flow, Period, PhaseName, RecordStep} from '@/types/records';
+import {formatDuration, formatNumber, formatWhen} from '@/lib/format';
+import type {Flow, Period, PhaseName, RecordStep, RecordSummary} from '@/types/records';
 
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 
@@ -107,4 +108,54 @@ const OUTCOMES = new Set([
 export function callNumber(call: Record<string, unknown> | null | undefined, field: string): number {
   const value = call?.[field];
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+export interface Kpi {
+  k: string;
+  v: string;
+  s: string;
+}
+
+/**
+ * The four indicators of a set of records (analysis-records Requirement 15; admin.html
+ * Analyses.kpi) from the server's summary; a zero denominator reads "–".
+ */
+export function recordKpis(summary: RecordSummary, t: Translate): Kpi[] {
+  const flows = summary.flows;
+  const count = summary.count;
+  const reused = flows.reused ?? 0;
+  const answered = (flows.analyst ?? 0) + reused;
+  const failed = (flows.unavailable ?? 0) + (flows.failed ?? 0) + (flows.interrupted ?? 0);
+  const pct = (a: number, b: number) => (b ? t('records.kpi.percent', {value: Math.round((100 * a) / b)}) : t('records.kpi.blank'));
+  return [
+    {
+      k: t('records.kpi.questions'),
+      v: formatNumber(count),
+      s: count && summary.newest_at ? t('records.kpi.questionsLast', {when: formatWhen(summary.newest_at, t)}) : t('records.kpi.none'),
+    },
+    {
+      k: t('records.kpi.tables'),
+      v: pct(summary.with_tables, summary.with_result),
+      s: summary.with_result
+        ? t('records.kpi.tablesLine', {found: formatNumber(summary.with_tables), answered: formatNumber(summary.with_result)})
+        : t('records.kpi.none'),
+    },
+    {
+      k: t('records.kpi.analyst'),
+      v: pct(answered, count),
+      s: failed
+        ? t('records.kpi.analystFailed', {count: formatNumber(failed)})
+        : reused
+          ? t('records.kpi.analystReused', {count: formatNumber(reused)})
+          : t('records.kpi.analystAll'),
+    },
+    {
+      k: t('records.kpi.typical'),
+      v: summary.analyst_p50_ms === null ? t('records.kpi.blank') : formatDuration(summary.analyst_p50_ms, t),
+      s:
+        summary.analyst_p90_ms === null
+          ? t('records.kpi.typicalNone')
+          : t('records.kpi.typicalP90', {duration: formatDuration(summary.analyst_p90_ms, t)}),
+    },
+  ];
 }

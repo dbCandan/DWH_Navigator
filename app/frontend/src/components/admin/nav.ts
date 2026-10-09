@@ -50,3 +50,12 @@ export const dictionaryTablePath = (key: string) => `${adminPath('sozluk')}/${en
  * page (search-settings Requirement 25); it travels in the address's navigation state.
  */
 export type AiDrawerRequest = 'editor' | 'inventory';
+
+/** An analysis record's deep link: `/admin/analizler/<public_id>` (search-settings Requirement 20). */
+export const analysisPath = (publicId: string) => `${adminPath('analizler')}/${encodeURIComponent(publicId)}`;
+
+/**
+ * The drawer the command palette's "Performans ayrıntıları" opens on the Analizler page
+ * (analysis-records Requirement 21); it travels in the address's navigation state.
+ */
+export type RecordsDrawerRequest = 'performance';
