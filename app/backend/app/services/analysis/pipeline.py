@@ -6,6 +6,7 @@ reaches the model only through the model port.
 
 from __future__ import annotations
 
+import copy
 import logging
 import math
 import time
@@ -161,6 +162,16 @@ class Engine:
             use_synonyms=settings.expansion.synonyms,
         )
 
+    def with_llm(self, llm: LLMClient) -> Engine:
+        """This engine answering through ``llm``: an analysis job's own view of the model port
+        (Requirement 24). The copy shares every index and cache; the analyst's catalog is built
+        once on this engine first, so each job does not build it again."""
+        self._analyst_parts()
+        self._narrow()
+        other = copy.copy(self)
+        other.llm = llm
+        return other
+
     # ------------------------------------------------------------------ saved answers
 
     def cache_keys(self, query: str) -> tuple[str, str]:
@@ -271,7 +282,7 @@ class Engine:
             )  # fmt: skip
         if not self.analyst_enabled:
             return self._unavailable(query, _NO_MODEL)
-        with trace.span("Model sunucusu kontrolü", self.llm.model) as s:
+        with trace.span("Model sunucusu kontrolü", self.llm.model, key="model_check") as s:
             down = self.llm.health()
             if s is not None and down:
                 s.status, s.detail = "error", down.code.value
@@ -353,11 +364,13 @@ class Engine:
         evidence. None when the model fails (the caller reports why, ADR-038)."""
         a = self.settings.analyst
         catalog, checker = self._analyst_parts()
-        with trace.span("Kural motoru ipuçları"):
+        with trace.span("Kural motoru ipuçları", key="rule_hints"):
             ranked, q = self.rank_objects(query, limit=ANALYST_RULE_POOL)
             relevance = self._column_relevance(q)
         started = time.perf_counter()
-        with trace.span("1. adım — aday seçimi", f"{len(catalog.ids)} tablonun kataloğu") as sp:
+        with trace.span(
+            "1. adım — aday seçimi", f"{len(catalog.ids)} tablonun kataloğu", key="shortlist"
+        ) as sp:
             hints = self._hints(ranked, relevance, catalog)
             short = shortlist(query, catalog, hints, self.llm, a.shortlist)
             if sp is not None and short is None:
@@ -368,7 +381,7 @@ class Engine:
             return None
         seconds = time.perf_counter() - started
         columns_of = {k: [f.col for f in o.features] for k, o in self.objects.items()}
-        with trace.span("Aile araması") as sp:
+        with trace.span("Aile araması", key="family_search") as sp:
             added = self._family_tables(short) if short.candidates else {}
             by_search = (
                 self._searched_tables(q, {*short.candidates, *short.confusables, *added})
@@ -439,7 +452,8 @@ class Engine:
         if readable:
             n_columns = sum(len(columns_of[k]) for k in readable)
             with trace.span("2. adım — kolon okuma ve rapor",
-                            f"{len(readable)} tablo, {n_columns} kolon") as sp:  # fmt: skip
+                            f"{len(readable)} tablo, {n_columns} kolon",
+                            key="analyst_report") as sp:  # fmt: skip
                 reply = analyse(query, short.interpretation, reading.material,
                                 reading.confusables, self.llm, top_n, a.max_tokens)  # fmt: skip
                 if sp is not None and reply is None:

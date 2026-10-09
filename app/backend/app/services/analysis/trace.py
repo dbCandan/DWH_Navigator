@@ -11,7 +11,7 @@ from __future__ import annotations
 import contextvars
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
@@ -32,6 +32,8 @@ class Span:
     detail: str = ""
     status: str = "ok"  # ok | warn | error
     data: dict[str, Any] = field(default_factory=dict)
+    # The fixed step key of a main step (question-analysis Requirement 10 and 18); "" otherwise.
+    key: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         end = self.start if self.end is None else self.end
@@ -44,6 +46,8 @@ class Span:
             "ms": round((end - self.start) * 1000),
             "status": self.status,
         }
+        if self.key:
+            out["key"] = self.key
         if self.detail:
             out["detail"] = self.detail
         if self.data:
@@ -52,10 +56,17 @@ class Span:
 
 
 class Trace:
-    def __init__(self) -> None:
+    def __init__(self, listener: Callable[[Span, str], None] | None = None) -> None:
         self.t0 = time.perf_counter()
         self.spans: list[Span] = []
         self._lock = threading.Lock()
+        # Told when a keyed step "started", "finished" or ended in an "error", from whichever
+        # thread runs it (the live progress stream of the analysis job).
+        self.listener = listener
+
+    def notify(self, span: Span, what: str) -> None:
+        if self.listener is not None and span.key:
+            self.listener(span, what)
 
     def now(self) -> float:
         return time.perf_counter() - self.t0
@@ -94,9 +105,10 @@ _parent: contextvars.ContextVar[int | None] = contextvars.ContextVar("analysis_s
 
 
 @contextmanager
-def recording() -> Iterator[Trace]:
-    """Collect every span opened inside this block."""
-    trace = Trace()
+def recording(existing: Trace | None = None) -> Iterator[Trace]:
+    """Collect every span opened inside this block; into ``existing`` when given (an analysis
+    job's trace begins when the job is accepted and goes on when it runs)."""
+    trace = existing if existing is not None else Trace()
     t1, t2 = _trace.set(trace), _parent.set(None)
     try:
         yield trace
@@ -106,13 +118,16 @@ def recording() -> Iterator[Trace]:
 
 
 @contextmanager
-def span(name: str, detail: str = "", kind: str = STEP) -> Iterator[Span | None]:
-    """A timed step; nested spans become its children. An exception marks it as an error."""
+def span(name: str, detail: str = "", kind: str = STEP, key: str = "") -> Iterator[Span | None]:
+    """A timed step; nested spans become its children. An exception marks it as an error.
+    ``key`` is the fixed key of a main step of the analysis (question-analysis Requirement 10)."""
     trace = _trace.get()
     if trace is None:
         yield None
         return
     s = trace.open(name, _parent.get(), kind, detail)
+    s.key = key
+    trace.notify(s, "started")
     token = _parent.set(s.id)
     try:
         yield s
@@ -122,6 +137,7 @@ def span(name: str, detail: str = "", kind: str = STEP) -> Iterator[Span | None]
     finally:
         _parent.reset(token)
         trace.close(s)
+        trace.notify(s, "error" if s.status == "error" else "finished")
 
 
 def event(name: str, detail: str = "", status: str = "warn") -> None:
