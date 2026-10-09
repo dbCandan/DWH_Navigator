@@ -65,6 +65,14 @@ function untilStopped<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
+/**
+ * The job waits behind others: queued with analyses ahead of it. A job accepted into an idle
+ * queue is "queued" with nothing ahead only for the moment before it starts.
+ */
+function waits(state: string, ahead: number | null | undefined): boolean {
+  return state === 'queued' && (ahead ?? 0) > 0;
+}
+
 function terminalOf(job: AnalysisJob): Terminal | null {
   if (!TERMINAL.has(job.state)) return null;
   if (job.state === 'failed') return {type: 'failed', code: job.error?.code ?? ''};
@@ -121,7 +129,7 @@ export function useAsk({engine, status, onUnavailable}: Options) {
       // Assigned from the stream's callback, so held in an object rather than a narrowed local.
       const got: {terminal: Terminal | null} = {terminal: terminalOf(envelope)};
       if (got.terminal === null) {
-        if (envelope.state === 'queued') cosmos?.queued();
+        if (waits(envelope.state, envelope.ahead)) cosmos?.queued();
         await AnalysisService.follow(
           job.id,
           (event) => {
@@ -132,7 +140,7 @@ export function useAsk({engine, status, onUnavailable}: Options) {
               return false;
             }
             if (data.type === 'snapshot' || data.type === 'queued') {
-              if (data.type === 'queued' || data.state === 'queued') latest.current.engine()?.queued();
+              if (waits(data.type === 'queued' ? 'queued' : data.state, data.ahead)) latest.current.engine()?.queued();
               return false;
             }
             if (data.type === 'completed') got.terminal = {type: 'completed'};
