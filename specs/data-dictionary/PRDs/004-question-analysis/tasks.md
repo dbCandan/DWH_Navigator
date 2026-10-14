@@ -40,3 +40,34 @@
 - [x] Task 13 — Requirement 19'un tam tablo adı kısmı ve Requirement 21'deki tablo dosyası
   bağlantıları ("Kolonlar", önerilmemiş tablo adları): dictionary-explorer'ın tablo dosyasıyla birlikte.
   Kanıt: `app/frontend/src/pages/ExplorerPage.map.test.tsx`, `e2e/data-dictionary/01-explorer.mjs`.
+- [ ] Task 14 — Requirement 19 / Acceptance 6: soru çubuğunun üst çizgiye kayması hareket azaltma
+  tercihi açıkken de canlandırılır ([dictionary-explorer](../007-dictionary-explorer/PRD.md)
+  Decision 8, Task 7 ile birlikte). Kanıt: `app/frontend/src/pages/ExplorerPage.map.test.tsx`
+  ("glides the question bar up into the top line"), `scripts/quality-gate.sh all`. Durum
+  (2026-10-14): test ve kod yazıldı, Vitest geçti, tarayıcıda gözlendi; `scripts/quality-gate.sh all`
+  çalıştırılmadı.
+- [ ] Task 15 — Requirement 19, Decision 26 / Acceptance 6, Acceptance 7: her sekme kendi analizini
+  yürütür. Önce başarısız testler: yeni sekme (boş sekme belleği) başka sekmenin süren analizini
+  göstermez ve kendi sorusunu başlatır; aynı sekmede yenilemede sekme belleğindeki süren işe
+  bağlanılır; son durumdaki ya da `404` dönen iş için değer silinir ve sayfa boş açılır; "Durdur"
+  yalnız o sekmenin işini durdurur. Sonra `app/frontend/src/lib/tabAnalysis.ts`, `useAsk.ts` ve
+  `ExplorerPage.tsx` değişikliği. Kanıt: `app/frontend/src/pages/ExplorerPage.test.tsx`,
+  `app/frontend/src/hooks/useAsk.test.tsx`, iki sekmeli tarayıcı gözlemi, `scripts/quality-gate.sh all`.
+  Durum (2026-10-14): testler önce kırmızı, sonra yeşil; ön yüz kapsayıcısında Vitest 37 dosya / 303
+  test, ESLint ve tip denetimi geçti. Yerel yığında iki sekmeyle gözlendi: birinci sekmenin analizi
+  sürerken açılan ikinci sekme boş açıldı, kendi sorusunu yürüttü; her sekme yalnız kendi
+  `analysis_id` değerini tuttu ve iş bitince sildi. Açık: model bağlı olmadığından eşzamanlı süren
+  iki analiz ve yenilemede yeniden bağlanma tarayıcıda gözlenmedi (Vitest ile sınandı);
+  `scripts/quality-gate.sh all` çalıştırılmadı (`kt-iskelet` yok).
+- [ ] Task 16 — Requirement 8, 10, 11, 16, 17, 18, 23, Decision 17, 25 / Acceptance 5, Acceptance 7:
+  ana ekran girişsiz çalışır; uygulama anonymous-visitor ile birlikte
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+  Requirement 3, 5, 6, 7). Önce başarısız API testleri: oturumsuz istek `X-Device-Id` ile çalışır,
+  başlıksız ya da UUID 4 olmayan başlık `400 device_id_required` alır; başka cihaz kimliğinin işi,
+  akışı, durdurması ve raporu `404 analysis_not_found`; ziyaretçi başına 5 açık akış; soru başlatmada
+  ziyaretçi (60 saniyede 30) ve IP adresi (60 saniyede 120) sınırı; analiz kaydı ve kayıtlı cevapta
+  ziyaretçi bağı; kayıtlı cevap uçları `yonetici` kalır. Sonra uçlar, iş sahipliği, `OpenAPI` ve ön
+  yüz tipleri, akış ve raporun `X-Device-Id` ile alınması. Kanıt: API testleri, ön yüz testleri,
+  iki tarayıcı bağlamlı gözlem, `scripts/quality-gate.sh all`. Bu PRD yeniden kabul edilmeden
+  uygulanmaz.
+  Durum (2026-10-15): kod ve testler yazıldı (önce kırmızı, sonra yeşil). Arka uç: pytest 996 testten 992'si geçti; kalan 4'ten 3'ü bu değişiklikle güncellendi ve geçiyor, 1'i (`test_two_parallel_activations_let_one_win`) değişiklikten önceki kodda da ara sıra kırılan bir yarış durumu. Ruff, mypy, `alembic check` temiz; `OpenAPI` ve ön yüz tipleri yeniden üretildi. Ön yüz: Vitest 39 dosya / 320 test (iki işçiyle) geçti, ESLint ve tip denetimi temiz. Yerel yığında oturumsuz ana ekran, cihaz kimliği ve ziyaretçi adına yazılan analiz kaydı tarayıcıda gözlendi. Açık: `scripts/quality-gate.sh all` ve tarayıcı senaryoları çalıştırılmadı (`kt-iskelet` ve çevrimdışı E2E paketi yok); nonprod gözlemi yapılmadı.

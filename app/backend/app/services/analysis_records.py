@@ -89,7 +89,11 @@ def row_fields(row: RecordRow) -> dict[str, Any]:
     return {
         "public_id": r.public_id,
         "asked_at": r.asked_at,
-        "asked_by": {"public_id": row.asker_public_id, "display_name": row.asker_display_name},
+        "asked_by": {
+            "public_id": row.asker_public_id,
+            "display_name": row.asker_display_name,
+            "kind": row.asker_kind,
+        },
         "query": r.query,
         "origin": r.origin,
         "list_public_id": r.list_public_id,
@@ -168,6 +172,7 @@ def summarize(figures: Sequence[dict[str, Any]]) -> dict[str, Any]:
             {
                 "public_id": f["asker_public_id"],
                 "display_name": f["asker_display_name"],
+                "kind": f["asker_kind"],
                 "count": 0,
             },
         )
@@ -239,8 +244,8 @@ class AnalysisRecordsService:
     async def askers(self, tenant_id: int) -> dict[str, Any]:
         return {
             "items": [
-                {"public_id": public_id, "display_name": name}
-                for public_id, name in await self.records.askers(tenant_id)
+                {"public_id": public_id, "display_name": name, "kind": kind}
+                for public_id, name, kind in await self.records.askers(tenant_id)
             ]
         }
 

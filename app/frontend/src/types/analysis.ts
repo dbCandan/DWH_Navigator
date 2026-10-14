@@ -11,7 +11,6 @@ export type AnswerObject = Schemas['AnswerObject'];
 export type AnswerColumn = Schemas['AnswerColumn'];
 export type AnswerNote = Schemas['AnswerNote'];
 export type AnswerReuse = Schemas['AnswerReuse'];
-export type ActiveAnalysis = Schemas['ActiveAnalysis'];
 export type AnalysisStreamEvent = Schemas['AnalysisStreamEvent'];
 export type Verdict = AnalysisAnswer['verdict'];
 

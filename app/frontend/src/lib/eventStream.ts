@@ -1,4 +1,4 @@
-import {ApiError, apiFetch} from '@/lib/apiClient';
+import {ApiError, apiFetch, visitorFetch} from '@/lib/apiClient';
 
 /** One server-sent event: its `id:` (when it carried one), `event:` name and joined `data:`. */
 export interface StreamEvent {
@@ -73,6 +73,8 @@ export interface FollowOptions {
   maxDelayMs?: number;
   /** Waits between attempts; tests replace it. */
   wait?: (ms: number, signal?: AbortSignal) => Promise<void>;
+  /** A main-screen stream: opened as the visitor of the device id (003-anonymous-visitor). */
+  visitor?: boolean;
 }
 
 export type FollowOutcome = 'completed' | 'aborted';
@@ -121,7 +123,8 @@ export async function followEventStream(path: string, options: FollowOptions): P
     try {
       const headers: Record<string, string> = {Accept: 'text/event-stream'};
       if (lastEventId !== null) headers['Last-Event-ID'] = lastEventId;
-      const response = await apiFetch(path, {headers, signal, cache: 'no-store'});
+      const fetcher = options.visitor ? visitorFetch : apiFetch;
+      const response = await fetcher(path, {headers, signal, cache: 'no-store'});
       if (response.body === null) throw new TypeError('empty event stream');
       for await (const event of readEventStream(response.body)) {
         received = true;

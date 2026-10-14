@@ -1,6 +1,6 @@
 # Plan — dictionary-explorer
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.0). Uygulama iki parçadır: backend'de
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.2.0). Uygulama iki parçadır: backend'de
 hizmetteki arama indeksinden okuyan üç uç (Evren verisi, tablo arama, tablo ayrıntısı) ve fark
 testi; ön yüzde ana ekran kabuğu, harita, yolculuk ve tablo dosyası.
 
@@ -28,6 +28,18 @@ testi; ön yüzde ana ekran kabuğu, harita, yolculuk ve tablo dosyası.
   anahtar da çözülür; hizmetteki indekste olmayan tablo 404 `table_not_found` ("Kayıt bulunamadı",
   kaynaktaki ileti) alır.
 - Requirement 19: İndeks hizmette değilken üç uç da 503 `search_index_not_ready` döner.
+- Requirement 8 ve Decision 8: Harita motoru (`app/frontend/src/lib/cosmos/engine.ts`) ve
+  `CosmosMap.tsx` "hareketi azalt" tercihini okumaz; çizim döngüsü, radar beklemesi (`radarMs`),
+  yolculuk evreleri ve kamera kayması her zaman sürer. `explorer.css` ana ekran için hareket azaltma
+  kurallarını taşımaz; pusula, bulutsu ve panel geçişleri her zaman canlandırılır. Soru çubuğunun
+  kayması ([question-analysis](../004-question-analysis/PRD.md) Requirement 19) da tercihi okumaz.
+  Yönetim ekranının (`admin.css`) hareket azaltma kuralı bu kararın kapsamı dışındadır.
+- Requirement 1, Decision 2 ve API sözleşmesi:
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) ile
+  birlikte uygulanır. `api/explorer/router.py` oturum ve rol bağımlılığı yerine o PRD'nin cihaz
+  kimliği bağımlılığını kullanır (başlıksız `400 device_id_required`); `/` rotası oturum istemez ve
+  ana ekran üst çubuğu oturum alanını taşımaz; `test_roles` oturumsuz erişim ve `X-Device-Id`
+  testine dönüşür; OpenAPI ve ön yüz tipleri yeniden üretilir.
 - Gözlemlenebilirlik: Etiketler sabit kümelerdir; arama metni, tablo ve kolon adı hiçbir olaya,
   ölçüme ve aralığa girmez; `explorer.search` olayı kip, karakter sayısı, katman başına sonuç sayısı
   ve süreyi taşır.
@@ -48,3 +60,4 @@ testi; ön yüzde ana ekran kabuğu, harita, yolculuk ve tablo dosyası.
 | 19, Decision 2 | `tests/integration/test_explorer_api.py` (`test_before_the_first_index_every_endpoint_is_not_ready`, `test_roles`) |
 | Gözlemlenebilirlik | `tests/unit/test_explorer_telemetry.py` |
 | 1, 2, 4-9, 12-18 | Ön yüz testleri (açık görev) |
+| 8, Decision 8 | `app/frontend/src/lib/cosmos/engine.test.ts`, `app/frontend/src/pages/ExplorerPage.map.test.tsx`, `e2e/data-dictionary/01-explorer.mjs` ("hareketi azalt" öykünmesi) |

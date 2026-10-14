@@ -84,12 +84,18 @@ async def test_request_logging_is_correlated_and_excludes_request_data(
     assert "Bearer hidden" not in serialized
 
 
-async def test_me_requires_tenant_header_before_authentication(client: AsyncClient) -> None:
-    response = await client.get(f"{get_settings().api_prefix}/auth/me")
+async def test_a_bearer_request_requires_the_tenant_header(client: AsyncClient) -> None:
+    prefix = get_settings().api_prefix
+    response = await client.get(f"{prefix}/auth/me", headers={"Authorization": "Bearer x"})
     assert response.status_code == 400
     assert response.json() == {
         "detail": {"code": "tenant_header_required", "message": "Etkin kiracı başlığı gerekli."}
     }
+    # Without a session and a tenant the request is a visitor's; the session endpoint says 401
+    # (application-foundation 003-anonymous-visitor Decision 3, 4).
+    visitor = await client.get(f"{prefix}/auth/me")
+    assert visitor.status_code == 401
+    assert visitor.json()["detail"]["code"] == "not_authenticated"
 
 
 async def test_me_authentication_error_has_bearer_challenge(client: AsyncClient) -> None:

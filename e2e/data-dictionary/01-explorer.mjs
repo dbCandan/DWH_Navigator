@@ -7,7 +7,8 @@ import {api, preparePerson, retirePeople, signInPerson} from '../shared/people.m
 // opens its file from the keyboard without an analysis, the column search and the filters work,
 // the focus ring shows only for keyboard focus, Esc gives the focus back to the bar, a name in two
 // schemas is asked as a question, a question draws the voyage and the result constellation, the
-// map is still and a kept answer does not wait with "reduce motion", and neither role sees a link
+// map keeps moving, the compass turns and a kept answer still waits for the radar with "reduce
+// motion" (Requirement 8, Decision 8), and neither role sees a link
 // to the admin screen. The map rebuilt after another import is in 02-dictionary-versions.mjs.
 const QUESTION = 'Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?';
 
@@ -95,26 +96,29 @@ await withBrowser('main screen map, table file by keyboard, voyage and roles', a
     await page.locator('#hud-focus').filter({hasText: /·/}).waitFor({state: 'attached'});
     await page.screenshot({path: 'test-results/explorer-constellation.png'});
 
-    // "Reduce motion": the map is still and the kept answer does not wait for the radar.
-    const still = await open({viewport: {width: 1440, height: 900}, reducedMotion: 'reduce'});
-    await signInPerson(still, user);
-    await still.getByText(message('explorer.status.ready'), {exact: true}).waitFor();
-    const stillField = still.getByRole('textbox', {name: message('explorer.search.label')});
-    await stillField.fill(QUESTION);
+    // "Reduce motion" changes nothing on the main screen: the map moves, the compass turns and the
+    // kept answer waits for the radar's turn.
+    const moving = await open({viewport: {width: 1440, height: 900}, reducedMotion: 'reduce'});
+    await signInPerson(moving, user);
+    await moving.getByText(message('explorer.status.ready'), {exact: true}).waitFor();
+    const changes = () =>
+      moving.evaluate(
+        () =>
+          new Promise((resolve) => {
+            const canvas = document.getElementById('cosmos');
+            const first = canvas.toDataURL();
+            setTimeout(() => resolve(first !== canvas.toDataURL()), 1500);
+          }),
+      );
+    assert.equal(await changes(), true, 'the map moves with "reduce motion"');
+    const movingField = moving.getByRole('textbox', {name: message('explorer.search.label')});
+    await movingField.fill(QUESTION);
     const asked = Date.now();
-    await stillField.press('Enter');
-    await still.locator('.ans .src.reused').waitFor({timeout: 15000});
-    assert.ok(Date.now() - asked < 4000, 'a kept answer shows without the radar turn');
-    await still.waitForTimeout(1000); // the page settles (a scrollbar may resize the canvas once)
-    const frames = await still.evaluate(
-      () =>
-        new Promise((resolve) => {
-          const canvas = document.getElementById('cosmos');
-          const first = canvas.toDataURL();
-          setTimeout(() => resolve(first === canvas.toDataURL()), 1500);
-        }),
-    );
-    assert.equal(frames, true, 'the map does not move');
+    await movingField.press('Enter');
+    const needle = await moving.evaluate(() => getComputedStyle(document.querySelector('.compass .needle')).animationName);
+    assert.equal(needle, 'seek', 'the compass turns with "reduce motion"');
+    await moving.locator('.ans .src.reused').waitFor({timeout: 15000});
+    assert.ok(Date.now() - asked >= 4000, 'a kept answer waits for the radar turn');
 
     // Neither role has a link to the admin screen.
     for (const person of [user, manager]) {

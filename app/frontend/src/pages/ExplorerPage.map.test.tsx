@@ -6,6 +6,8 @@ import {ExplorerService} from '@/services/explorer';
 import {answer, answerObject, GALAXY, job, serveEvents, serviceStatus, tally} from '@/test/explorer';
 import {message, renderApp, signedIn} from '@/test/render';
 import {clearAuth} from '@/lib/authStorage';
+import {RADAR_MS} from '@/lib/cosmos/engine';
+import explorerCss from '@/components/explorer/explorer.css?raw';
 
 /** A 2D context that draws nothing, so the map runs in the test (drawing is not tested here). */
 function drawNothing() {
@@ -114,9 +116,7 @@ describe('map data and table file on the main screen (dictionary-explorer Requir
   });
 
   it('opens the file from "Kolonlar", from a table named in the prose and from an approved table; focus returns', async () => {
-    // Reduced motion: the answer does not wait for the radar's turn (Requirement 8).
-    const media = window.matchMedia;
-    vi.stubGlobal('matchMedia', (query: string) => ({...media(query), matches: query.includes('reduce')}));
+    vi.useFakeTimers({shouldAdvanceTime: true});
     vi.spyOn(AnalysisService, 'start').mockResolvedValue(job());
     serveEvents({type: 'completed', flow: 'analyst', verdict: 'VAR'});
     vi.spyOn(AnalysisService, 'get').mockResolvedValue({
@@ -131,6 +131,8 @@ describe('map data and table file on the main screen (dictionary-explorer Requir
     await waitFor(() => expect(hudCount()).toHaveTextContent(/7/));
     fireEvent.change(field(), {target: {value: 'kart limit doluluk oranı'}});
     await act(async () => fireEvent.keyDown(field(), {key: 'Enter'}));
+    // The answer waits for the radar's turn (Requirement 7, Decision 12).
+    await act(async () => vi.advanceTimersByTime(RADAR_MS + 100));
     await screen.findByText(message('answer.verdict.partial'));
     fireEvent.click(document.querySelector('.pick-row') as HTMLElement);
     const columns = screen.getByRole('button', {name: message('answer.columns')});
@@ -146,5 +148,89 @@ describe('map data and table file on the main screen (dictionary-explorer Requir
     fireEvent.click(document.querySelector('button.crowd-item') as HTMLElement);
     expect(ExplorerService.table).toHaveBeenLastCalledWith('DWH.Kart.vCardStatistic');
     expect(document.getElementById('dossier')).toHaveClass('on');
+  });
+});
+
+describe('the main screen moves whatever the system\'s "reduce motion" says (dictionary-explorer Requirement 8, Decision 8)', () => {
+  let frames: FrameRequestCallback[];
+  beforeEach(() => {
+    drawNothing();
+    frames = [];
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback));
+    const media = window.matchMedia;
+    vi.stubGlobal('matchMedia', (query: string) => ({...media(query), matches: query.includes('reduce')}));
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    clearAuth();
+    document.documentElement.className = '';
+  });
+
+  /** Run the map's frames for `ms` of page time, one frame every 40 ms. */
+  const fly = async (ms: number) => {
+    for (let spent = 0; spent < ms; spent += 40) {
+      await act(async () => vi.advanceTimersByTime(40));
+      const due = frames.splice(0);
+      for (const frame of due) frame(performance.now());
+    }
+  };
+  const voyageLog = () => document.getElementById('hud-focus')?.textContent ?? '';
+
+  it('keeps the frame loop, waits for the radar and routes through the candidates', async () => {
+    vi.useFakeTimers({
+      shouldAdvanceTime: true,
+      toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'performance'],
+    });
+    vi.mocked(ExplorerService.search).mockResolvedValue({
+      query: '',
+      items: GALAXY.slice(0, 2).map((t, i) => ({...t, score: 0.9 - i / 10})) as never,
+      counts: {},
+      concepts: [],
+      elapsed_ms: 1,
+    });
+    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job());
+    serveEvents({type: 'completed', flow: 'analyst', verdict: 'VAR'});
+    vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
+    await openExplorer();
+    await fly(200);
+    await waitFor(() => expect(hudCount()).toHaveTextContent(/7/));
+    await fly(200);
+    expect(frames.length).toBe(1); // the map keeps asking for its next frame
+
+    fireEvent.change(field(), {target: {value: 'kart limit doluluk oranı'}});
+    await act(async () => fireEvent.keyDown(field(), {key: 'Enter'}));
+    await fly(RADAR_MS / 2);
+    expect(screen.queryByText(message('answer.verdict.partial'))).toBeNull(); // still on the radar's turn
+    expect(document.documentElement).toHaveClass('busy');
+    await fly(RADAR_MS / 2 + 400);
+    expect(voyageLog()).toContain(message('explorer.voyage.candidates', {count: 2}));
+    await screen.findByText(message('answer.verdict.partial'));
+    expect(frames.length).toBe(1);
+  });
+
+  it('glides the question bar up into the top line', async () => {
+    const animate = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'animate', {value: animate, configurable: true, writable: true});
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(
+      {left: 10, top: 300, width: 600, height: 80, right: 610, bottom: 380, x: 10, y: 300, toJSON: () => ({})} as DOMRect,
+    );
+    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job());
+    serveEvents({type: 'completed', flow: 'analyst', verdict: 'VAR'});
+    vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
+    try {
+      await openExplorer();
+      fireEvent.change(field(), {target: {value: 'kart limit doluluk oranı'}});
+      await act(async () => fireEvent.keyDown(field(), {key: 'Enter'}));
+      await waitFor(() => expect(animate).toHaveBeenCalled());
+    } finally {
+      delete (HTMLElement.prototype as {animate?: unknown}).animate;
+    }
+  });
+
+  it('carries no "reduce motion" rule in the main screen\'s stylesheet', () => {
+    expect(explorerCss).not.toMatch(/prefers-reduced-motion/);
   });
 });

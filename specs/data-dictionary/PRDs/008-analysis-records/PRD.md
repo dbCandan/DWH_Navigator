@@ -2,14 +2,15 @@
 
 Status: Accepted
 
-Version: 1.0.2
+Version: 1.1.0
 
-Acceptance date: 2026-10-08
+Acceptance date: 2026-10-14
 
 Domain: [data-dictionary](../../DOMAIN.md)
 
-Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
-korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
+Kabul kaydı: Proje sahibi bu PRD'yi ilk kez 2026-10-08 tarihinde kabul etti;
+2026-10-14'te ana ekranın girişsiz kullanılmasını ve soranın IP adresi ile makine adıyla
+gösterilmesini istedi ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)).
 
 ## Amaç
 
@@ -26,12 +27,17 @@ kendiliğinden silinmez, yalnız yönetici siler.
 
 - **Yönetici (`yonetici`):** İki sayfayı kullanır; bütün kullanıcıların biten analizlerini görür ve
   siler. Ölçülebilir sonuç: bir analiz bittikten sonra kaydı, Analizler sayfası açık ve "Canlı"
-  açıkken en geç 15 saniye içinde listede soranın görünen adıyla görünür; kaydın ayrıntısı her adımın
-  süresini ve her model çağrısının token sayısını gösterir.
-- **Kullanıcı (`kullanici`):** Soru sorar ve toplu arama yapar; bu işlemler kaydı üretir. Kendi
-  analizinin sonucunu ve raporunu, kayıt durdukça [question-analysis](../004-question-analysis/PRD.md)
-  uçlarından alır. Yönetim sayfalarını göremez; bu PRD'nin API uçları (sunucunun istek kabul ettiği
-  adresler) ona 403 (yetki yok) döner.
+  açıkken en geç 15 saniye içinde listede soranın etiketiyle (hesapta görünen ad, ziyaretçide makine
+  adı ve IP adresi; Decision 2) görünür; kaydın ayrıntısı her adımın süresini ve her model çağrısının
+  token sayısını gösterir.
+- **Ziyaretçi:** Giriş yapmadan soru sorar ve toplu arama yapar
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)); bu
+  işlemler kaydı üretir. Kendi analizinin sonucunu ve raporunu, kayıt durdukça
+  [question-analysis](../004-question-analysis/PRD.md) uçlarından cihaz kimliğiyle alır. Yönetim
+  sayfalarını göremez; bu PRD'nin API uçları (sunucunun istek kabul ettiği adresler) oturumsuz isteğe
+  401 (kimlik yok) döner.
+- **Kullanıcı (`kullanici`) hesabı:** Ana ekran için gerekmez (anonymous-visitor Decision 6); bu
+  PRD'nin API uçları ona 403 (yetki yok) döner.
 - **[question-analysis](../004-question-analysis/PRD.md):** Analizi iş olarak yürütür; kaydı kabulde
   açar, iş başlarken ve bitince günceller. Kayda hangi alanların ve adımların hangi anda yazıldığı,
   durum geçişleri ve tam cevabın okunması (sonuç ve rapor) orada tanımlıdır (Requirement 8, 16 ve 18).
@@ -41,11 +47,15 @@ kendiliğinden silinmez, yalnız yönetici siler.
 ## Değişmezler ve sınırlar
 
 Decision 1: Analiz kaydı ürün verisidir ve yalnız PostgreSQL'de (uygulamanın veritabanı) durur.
-Dosyaya yazılmaz. İçeriği — soru, cevap, tablo adları, soranın adı, arama metni — uygulama günlüğüne
+Dosyaya yazılmaz. İçeriği — soru, cevap, tablo adları, soranın adı, IP adresi ve makine adı, arama
+metni — uygulama günlüğüne
 (log), ölçümlere (metrik) ve izlere (OpenTelemetry sinyalleri) kopyalanmaz.
 
-Decision 2: Soran, oturumdaki kullanıcıdır (`public_id` ve görünen ad). İstemci adresi (IP) ve makine
-adı tutulmaz; adresten makine adı bulmak için DNS sorgusu (ters DNS) yapılmaz.
+Decision 2: Soran ya bir hesaptır (`public_id` ve görünen ad) ya da bir ziyaretçidir; kayıt ikisinden
+tam birine bağlanır. Kayıt, sorunun kabul edildiği andaki istemci adresini (IP) ve makine adını taşır
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Decision 2
+ve Requirement 7). Soranın ekrandaki etiketi hesapta görünen addır, ziyaretçide
+"<makine adı> · <IP adresi>"dir; makine adı yoksa yalnız IP adresidir.
 
 Decision 3: Kaydın hiçbir alanı şunları taşımaz: modele giden istem (prompt), modelin ham yanıtı ya da
 yanıttan parça, model sunucusunun adresi ve hata gövdesi, API anahtarı, istek başlıkları, ham istisna
@@ -108,7 +118,8 @@ değişikliktir.
   `completion_tokens`, `dictionary_version`, `spans`. Dosyaya yazılamazsa günlüğe uyarı düşer, cevap
   yine döner. Süren analizin satırı yoktur; sunucu analiz sürerken yeniden başlarsa o analiz hiç
   kaydedilmez. **Hedefte:** kayıt veritabanındadır ve analiz işinin kendisidir: kabulde açılır, sonda
-  tamamlanır, tam cevabı taşır; soran oturumdaki kullanıcıdır; zaman sorunun kabul edildiği an ve UTC
+  tamamlanır, tam cevabı taşır; soran hesap ya da ziyaretçidir ve kayıt kabuldeki IP adresi ile makine
+  adını taşır; zaman sorunun kabul edildiği an ve UTC
   (evrensel saat); soru tam saklanır; yarıda kesilen iş de kaydedilir (Requirement 1–2, Decision 2, 5,
   6, 11).
 - **Akış** (`_log_analysis`): `durduruldu` (kullanıcı durdurdu), `hata` (sonuç yok), `önbellek`
@@ -143,7 +154,8 @@ değişikliktir.
   ve "bu ana kadar" sınırı gönderilir (Requirement 11, Decision 8).
 - **Saklama:** Kayıtlar süresiz tutulur, yalnız elle silinir. `docs/GUVENLIK.md` kalan risk 5:
   `data/logs/` soru metinleri ve istemci adresleri içerir. **Hedefte:** aynı; kayıtlar süresiz
-  saklanır ve yalnız yönetici siler (Requirement 11, 12); istemci adresi tutulmaz (Decision 2).
+  saklanır ve yalnız yönetici siler (Requirement 11, 12); istemci adresi ve makine adı kayıtla birlikte
+  saklanır ve silinir (Decision 2).
 - **Koruma** (`src/vsa/web/security.py` `AdminGuard`, ADR-047): `/admin` ve `/api/admin/*`,
   `VSA_ADMIN_PASSWORD` ile tarayıcının parola kutusunu (HTTP Basic) ister; parola yoksa yalnız
   sunucunun kendisinden açılır. **Hedefte:** oturum ve `yonetici` rolü (Decision 4).
@@ -160,8 +172,8 @@ değişikliktir.
   (`timeline`), ↑/↓ ile kayıtlar arasında gezinme ve Esc, "Performans" çekmecesi (`perf`),
   "Temizle…" (`clear`, tarayıcının iki onay kutusu). "Soran", makine adı ya da IP'dir (yoksa
   "bilinmiyor"); ayrıntının alt satırı IP'yi de gösterir. **Hedefte:** aynı işlev ve görünüm; soran
-  görünen addır, IP gösterilmez; onaylar kaynaktaki gibi tarayıcının onay penceresiyle alınır
-  (Requirement 16–22).
+  ziyaretçide "<makine adı> · <IP adresi>", hesapta görünen addır (Decision 2); onaylar kaynaktaki
+  gibi tarayıcının onay penceresiyle alınır (Requirement 16–22).
 - **Komut satırı ve ölçüm:** `vsa ask` ve `vsa eval` kayıt yazmaz. **Hedefte:** ölçüm betiği de kayıt
   yazmaz ([quality-evaluation](../010-quality-evaluation/PRD.md)).
 
@@ -177,7 +189,9 @@ açmaz.
 Requirement 2: Kaydın alanları şunlardır; sınırı aşan metin sınırda kesilir:
 
 - `public_id` (dışa açık kimlik; analiz işinin kimliği);
-- soran kullanıcı (kullanıcı kaydına bağ; ekranda güncel görünen adı);
+- soran: hesap (kullanıcı kaydına bağ; ekranda güncel görünen adı) ya da ziyaretçi (ziyaretçi kaydına
+  bağ); ikisinden tam biri doludur (Decision 2);
+- kabuldeki IP adresi ve makine adı (makine adı boş olabilir; anonymous-visitor Requirement 7);
 - durum: `queued`, `running`, `completed`, `failed`, `cancelled`, `interrupted` (geçişler
   question-analysis Requirement 8);
 - akış (son durumda; question-analysis Requirement 18'deki İngilizce kodlar ve Türkçe görünen
@@ -250,7 +264,7 @@ açılan önce) sayfalı döndürür: sayfa boyutu varsayılan 150, en çok 500.
 - dönem: `today` (İstanbul saatiyle bugün 00.00'dan beri), `7d` (son 7×24 saat, varsayılan), `30d`
   (son 30×24 saat), `all`;
 - akış: altı akıştan biri;
-- soran: kullanıcının `public_id`'si;
+- soran: hesabın ya da ziyaretçinin `public_id`'si;
 - metin: en çok 200 karakter; soru, model adı, cevap özeti, liste dosyası adı ve tablo anahtarlarında
   geçen alt dize olarak, uygulamanın Türkçe harf katlama yardımcısıyla (İ/ı farkını gideren
   normalleştirme) aranır — "İŞLEM", "işlem" ve "islem" aynı kayıtları bulur;
@@ -259,7 +273,8 @@ açılan önce) sayfalı döndürür: sayfa boyutu varsayılan 150, en çok 500.
 
 Yanıt satırları, toplam kayıt sayısını, sayfa bilgisini ve `snapshot_at` değerini (listenin hesaplandığı
 an, yani kullanılan `until`) taşır. Satır alanları: `public_id`, kabul zamanı, soran (`public_id`,
-görünen ad), soru, köken, akış, model, sonuç, önerilen tablolar, cevaplanamama sebebi, hata kodu ve
+türü `account` ya da `visitor` ve Decision 2'deki etiketi; ziyaretçide etiket kaydın kabuldeki makine
+adı ve IP adresinden kurulur), soru, köken, akış, model, sonuç, önerilen tablolar, cevaplanamama sebebi, hata kodu ve
 iletisi, toplam süre. Satır cevap özetini, tam cevabı ve adımları taşımaz.
 
 Requirement 7: Özet, Requirement 6'daki süzgeçlerle şunları döndürür: kayıt sayısı; en yeni kabul
@@ -267,7 +282,8 @@ zamanı; sonucu olan kayıt sayısı; tablo önerilen (sonucu VAR ya da KISMEN V
 akışa göre kayıt sayıları; `analyst` akışındaki kayıtların süre ortancası (%50) ve %90 değeri; bütün
 kayıtların süre ortancası, %90 değeri ve en uzunu; her aşama için ortalama süre ve o aşaması olan kayıt
 sayısı (yalnız aşama süresi sıfırdan büyük kayıtlar, Requirement 3'teki sırayla); model çağrısı, giriş
-ve çıkış token toplamları; soran başına kayıt sayısı (çoktan aza, eşitlikte ada göre). Yüzdelikler
+ve çıkış token toplamları; soran (hesap ya da ziyaretçi) başına kayıt sayısı (çoktan aza, eşitlikte
+Requirement 9'daki etikete göre). Yüzdelikler
 kaynaktaki `quantile` gibi sıralı değerler arasında doğrusal aradeğerlemeyle hesaplanır; kayıt yoksa
 süre değerleri boştur.
 
@@ -275,8 +291,10 @@ Requirement 8: Günlük sayılar, son N günün (varsayılan 14, en çok 31) her
 takvim gününe göre, en eskiden yeniye ve kaydı olmayan günler sıfırla, tablo önerilen kayıt sayısını ve
 geri kalan kayıtların (BULUNAMADI ve sonucu boş olanlar) sayısını döndürür.
 
-Requirement 9: Soran listesi, son durumdaki kaydı bulunan bütün kullanıcıları (`public_id`, görünen ad)
-görünen ada göre sıralı döndürür; Analizler sayfasının "Soran" seçimini doldurur.
+Requirement 9: Soran listesi, son durumdaki kaydı bulunan bütün hesapları ve ziyaretçileri
+(`public_id`, türü ve etiketi) etikete göre sıralı döndürür; Analizler sayfasının "Soran" seçimini
+doldurur. Etiket Decision 2'deki gibidir; ziyaretçide ziyaretçi kaydının son makine adı ve IP
+adresinden kurulur (anonymous-visitor Requirement 4 ve 7).
 
 Requirement 10: Ayrıntı, Requirement 6'daki satır alanlarına ek olarak cevap özetini, yeniden
 kullanılan cevap bilgisini, model çağrısı ve token toplamlarını, sözlük sürümünü, başlama ve bitiş
@@ -351,7 +369,7 @@ Requirement 15'teki dört gösterge süzgece uyan bütün kayıtlar üzerinden h
 "Sorular · <Bugün | Son 7 gün | Son 30 gün | Tüm zamanlar> · <sayı>"dır. Tablo sütunları: "Ne zaman";
 "Soru ve cevap" (soru; toplu arama terimiyse yanında "📄 <liste dosyası adı> #<sıra>"; alt satırda
 sonuç rozeti ve ilk tablonun adı ile "+N tablo", tablo yoksa sebep ya da hata iletisi); "Cevabı yazan"
-(akış etiketi ve soranın görünen adı); "Süre". Sonuç rozeti, sonuç yoksa durdurulan kayıtta "durdu",
+(akış etiketi ve soranın Decision 2'deki etiketi); "Süre". Sonuç rozeti, sonuç yoksa durdurulan kayıtta "durdu",
 diğerlerinde "—"dir. Liste 150'şer satır gösterir; kalan varsa "Daha fazla (N kaldı)" düğmesi aynı
 `until` ile sonraki sayfayı listenin sonuna ekler. Süzgeç değişince liste baştan ve yeni `until` ile
 yüklenir. Boş durumlar: hiç kayıt yoksa "Henüz kayıtlı analiz yok. Uygulamada bir soru sorulduğunda
@@ -446,7 +464,7 @@ açılması ve güncellenmesi API ucu değildir; question-analysis bu PRD'nin se
 | `GET /analysis-records` | `period` (`today`, `7d`, `30d`, `all`; varsayılan `7d`), `flow`, `asked_by`, `q` (en çok 200 karakter), `until`, `page` (1'den), `page_size` (1–500, varsayılan 150) | 200: `items[]` (Requirement 6), `total`, `page`, `page_size`, `snapshot_at` | 401, 403, 422 `invalid_filter` |
 | `GET /analysis-records/summary` | `period`, `flow`, `asked_by`, `q`, `until` | 200: Requirement 7 alanları | 401, 403, 422 `invalid_filter` |
 | `GET /analysis-records/daily-counts` | `days` (1–31, varsayılan 14) | 200: `days[]`: `date` (`YYYY-MM-DD`), `with_tables`, `without_tables` | 401, 403, 422 `invalid_filter` |
-| `GET /analysis-records/askers` | — | 200: `items[]`: `public_id`, `display_name` | 401, 403 |
+| `GET /analysis-records/askers` | — | 200: `items[]`: `public_id`, `kind` (`account`, `visitor`), `display_name` (Requirement 9'daki etiket) | 401, 403 |
 | `GET /analysis-records/{public_id}` | — | 200: Requirement 10 alanları | 401, 403, 404 `analysis_record_not_found` |
 | `DELETE /analysis-records` | `until` (zorunlu) ve süzgeçler (`period`, `flow`, `asked_by`, `q`) ya da `all=true` | 200: `deleted_count`, `remaining_count` | 401, 403, 422 `analysis_delete_scope_missing`, 422 `invalid_filter` |
 
@@ -461,11 +479,14 @@ güncellenir.
 ## Güvenlik ve yetkilendirme
 
 - Rol ve kiracı kapsamı (tek kiracı `platform`) her istekte sunucuda denetlenir; ön yüzdeki menü
-  gizlemesi yalnız kolaylıktır. `kullanici` rolündeki istek 403 alır.
-- Kayıt kişisel veri taşır: soranın kimliği, soru metni ve cevap. Yönetim ekranında yalnız
-  `yonetici` görür; günlüğe ve telemetriye girmez (Decision 1); süresiz saklanır ve yalnız yönetici
-  silince kalkar (Requirement 11, 12); silme kalıcıdır (Decision 13). Kaydın sahibi kendi analizini
-  yalnız question-analysis'in sahiplik denetimli uçlarından görür.
+  gizlemesi yalnız kolaylıktır. Oturumsuz istek 401, `kullanici` rolündeki istek 403 alır; ziyaretçinin
+  cihaz kimliği bu uçlarda yetki vermez (anonymous-visitor Decision 3).
+- Kayıt kişisel veri taşır: soranın kimliği, IP adresi ve makine adı, soru metni ve cevap. Yönetim
+  ekranında yalnız `yonetici` görür; günlüğe ve telemetriye girmez (Decision 1); süresiz saklanır ve
+  yalnız yönetici silince IP adresi ve makine adıyla birlikte kalkar (Requirement 11, 12); silme
+  kalıcıdır (Decision 13). Kaydın sahibi — hesap ya da ziyaretçi — kendi analizini yalnız
+  question-analysis'in sahiplik denetimli uçlarından görür; ziyaretçide sahiplik cihaz kimliğine
+  göredir (anonymous-visitor Requirement 5).
 - Soru, özet ve adım ayrıntıları kullanıcı ya da model kaynaklı metindir; ön yüzde yalnız düz metin
   olarak gösterilir, HTML (sayfa biçimleme kodu) olarak işlenmez. Böylece bir sorunun içine yazılan
   betik yöneticinin tarayıcısında çalışmaz.
@@ -473,7 +494,8 @@ güncellenir.
   Türkçe harf katlamadan geçer. Süzgeç değerleri (dönem, akış, UUID, zaman, sayfa) tip ve aralıkla
   doğrulanır; geçersiz değer 422 alır.
 - Derin bağlantı yalnız kaydın `public_id`'sini taşır; soru metni ve arama metni adrese (URL) konmaz.
-- Ters DNS ve istemci adresi kullanımı kalkar; sunucu kayıt için dışarıya istek yapmaz.
+- İstemci adresi ve makine adı anonymous-visitor Decision 2'deki gibi (güvenilen ağ geçidi kuralı ve
+  küme içi ters DNS) çözülür; bu PRD kayıt için başka bir dış istek yapmaz.
 - Toplu silme açık seçim, onay penceresi ve `until` sınırı ister; silen kişi ve silinen sayı günlüğe
   yazılır (Gözlemlenebilirlik).
 
@@ -483,13 +505,16 @@ güncellenir.
   şemanın sahibi SQLAlchemy modelleridir (kodda tanımlı tablo modelleri, rules/40). Tablo zorunlu
   sütun bloğunu (rules/41) taşır. Sapma: silme fizikseldir, `is_deleted` her zaman `false` kalır
   (Decision 13); sapma göç ettirilmiş şema testinde doğrulanır.
-- Sütunlar: `analysis_record_id` (iç kimlik), `public_id`, kiracı bağı, soranın kullanıcı bağı
-  (`app_user` tablosuna dış anahtar, yani veritabanı bağı; hesaplar silinmez, yalnız pasifleştirilir —
-  user-accounts), durum, akış, `asked_at`, başlama ve bitiş zamanı, sırada bekleme süresi, soru,
-  `fresh`, köken türü, liste `public_id`'si, liste dosyası adı ve terim sırası, model, sonuç, cevap
+- Sütunlar: `analysis_record_id` (iç kimlik), `public_id`, kiracı bağı, soranın hesap bağı
+  `asked_by` (`app_user` tablosuna dış anahtar, yani veritabanı bağı; boş olabilir; hesaplar silinmez,
+  yalnız pasifleştirilir — user-accounts), soranın ziyaretçi bağı (`visitor` tablosuna dış anahtar;
+  boş olabilir), kabuldeki IP adresi ve makine adı (anonymous-visitor Veri ve geçiş), durum, akış,
+  `asked_at`, başlama ve bitiş zamanı, sırada bekleme süresi, soru, `fresh`, köken türü, liste `public_id`'si, liste dosyası adı ve terim sırası, model, sonuç, cevap
   özeti, tablo anahtarları dizisi, tam cevap, cevaplanamama sebebi, yeniden kullanılan cevabın zamanı,
   sorusu ve eşleşmesi, hata kodu ve iletisi, toplam süre, model çağrısı ve token toplamları, sözlük
-  sürümü, altı aşama süresi sütunu, `steps_truncated`, adımlar ve arama anahtarı.
+  sürümü, altı aşama süresi sütunu, `steps_truncated`, adımlar ve arama anahtarı. Kısıt: hesap ve
+  ziyaretçi bağından tam biri doludur. Ziyaretçi sütunları anonymous-visitor'ın ekleyici göçüyle gelir;
+  mevcut satırlar hesaba bağlı kalır.
 - Tam cevap ve adımlar kaydın içinde ayrı JSONB alanlarında (veritabanının yapılandırılmış metin
   sütunu) durur (Decision 10). Adım öğesinin biçimi, çağrı özetinin alanları ve bütün sabit değerler
   (durum, akış, köken, sonuç, eşleşme, aşama, adım anahtarı, adım türü ve durumu) sütun açıklamalarında
@@ -498,8 +523,8 @@ güncellenir.
   dış anahtar kurulmaz (Decision 14).
 - Arama anahtarı; soru, model adı, cevap özeti, liste dosyası adı ve tablo anahtarlarının Türkçe harf
   katlamasından geçmiş birleşimidir; kayıt son duruma ulaşınca üretilir, API'de dönmez.
-- Dizinler: kiracı + durum + kabul zamanı (azalan) + iç kimlik (liste ve sıralama); kiracı + soran +
-  kabul zamanı ("Soran" süzgeci).
+- Dizinler: kiracı + durum + kabul zamanı (azalan) + iç kimlik (liste ve sıralama); kiracı + soran hesabı +
+  kabul zamanı ve kiracı + soran ziyaretçisi + kabul zamanı ("Soran" süzgeci).
 - question-analysis'in kayıtlı cevap tablosu cevabı üreten kaydı gösterir; kayıt silinince bu bağ
   boşalır (question-analysis Veri ve geçiş). Oylar ([answer-feedback](../006-answer-feedback/PRD.md))
   ve list-search tabloları bu tabloya bağ kurmaz.
@@ -509,8 +534,8 @@ güncellenir.
 ## Gözlemlenebilirlik
 
 - Yapılandırılmış günlük olayı: `analysis_record.deleted` (silinen sayı, kapsam `filter` ya da
-  `all`, silen kullanıcının `public_id`'si). Soru, cevap, tablo, model adı, görünen ad ve arama
-  metni bu olaylara girmez. Liste ucunun `q` parametresi de günlüğe girmez; taban istek günlüğü
+  `all`, silen kullanıcının `public_id`'si). Soru, cevap, tablo, model adı, görünen ad, IP adresi,
+  makine adı ve arama metni bu olaylara girmez. Liste ucunun `q` parametresi de günlüğe girmez; taban istek günlüğü
   yalnız rota şablonunu (adresin değişken kısımları çıkarılmış hali) yazar (rules/25). Kaydın
   yazılamaması question-analysis'in `analysis.record_write_failed` olayıdır.
 - Ölçüm: yöneticinin sildiği kayıt sayısı `dwhnavigator_analysis_records_deleted_total` (etiketsiz).
@@ -544,7 +569,11 @@ güncellenir.
   kaydın listede ve silmede dışarıda kalması; özetin ve günlük sayıların (sıfır günler dahil) sabit
   veri kümesinde beklenen değerler; `all=true`, süzgeçli silme, kapsamsız silmede 422 ve tekrarlanan
   silmede 0; silinen kaydın tam cevabının gitmesi ve kayıtlı cevap bağının boşalması; `kullanici`'ya
-  403, oturumsuza 401, olmayan kayda 404; kabul zamanı bir yıldan eski son durumdaki kaydın backend
+  403, oturumsuza (cihaz kimliği taşısa da) 401, olmayan kayda 404; ziyaretçinin kaydında kabuldeki IP
+  adresi ve makine adının saklanması, satırda, ayrıntıda ve soran listesinde etiketin
+  "<makine adı> · <IP adresi>" (makine adı yoksa yalnız IP adresi) olması, "Soran" süzgecinin
+  ziyaretçiyle çalışması, hesap ve ziyaretçi bağından tam birinin dolu olması ve silmede IP adresi ile
+  makine adının kayıtla birlikte gitmesi; kabul zamanı bir yıldan eski son durumdaki kaydın backend
   yeniden açıldıktan sonra yerinde kalması (Requirement 12).
 - **Veri sızıntısı:** sahte model sunucusu yanıtına, hata gövdesine ve adresine konan ayırt edici
   işaret dizesi kayıtlarda ve bu PRD'nin API yanıtlarında aranır; bulunmamalıdır (Requirement 4).
@@ -579,18 +608,21 @@ güncellenir.
 - [ ] Acceptance 3: L1 — Otomatik testlerden geçti: ön yüz testleri Requirement 13–23'ü doğrular;
   yerelleştirme anahtar eşliği testi geçer.
 - [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da (geliştirici makinesindeki
-  Docker ortamı) `kullanici` rolündeki bir hesap bir soru sorar ve küçük bir toplu arama başlatır; aynı
+  Docker ortamı) giriş yapmamış bir ziyaretçi bir soru sorar ve küçük bir toplu arama başlatır; aynı
   anda Analizler sayfası açık olan `yonetici` süren analizi listede görmez, biten kayıtları 15 saniye
-  içinde soranın görünen adıyla ve toplu arama terimlerinde "📄 <liste dosyası adı> #<sıra>" ile görür;
+  içinde soranın "<makine adı> · <IP adresi>" etiketiyle (makine adı yoksa yalnız IP adresiyle) ve
+  toplu arama terimlerinde "📄 <liste dosyası adı> #<sıra>" ile görür; "Soran" seçiminde ziyaretçi
+  listelenir ve süzgeç yalnız onun kayıtlarını getirir;
   ayrıntıda aşama özeti, zaman çizelgesi ve token sayıları görünür; ↑/↓ ile kayıtlar arasında gezinir;
   derin bağlantı yeni sekmede aynı kaydı açar; Genel bakış'ta son 7 gün göstergeleri, 14 günlük grafik
-  ve son sorular bu kayıtları içerir (Requirement 1–3, 5, 13–20).
-- [ ] Acceptance 5: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da `kullanici` rolündeki
-  hesap `GET /analysis-records`'ta 403 alır; yönetici "Cevabı yazan: Durduruldu" süzgeciyle yalnız
-  durdurulan kaydı siler, diğer kayıtlar kalır ve kullanıcı silinen analizin raporunu artık
-  indiremez; liste yüklendikten sonra biten kayıt "Tümü" silmesinde kalır; backend analiz sürerken
-  yeniden başlatılınca kayıt "Yarıda kesildi" olarak görünür; veritabanında IP ya da makine adı
-  sütunu ve değeri yoktur (Requirement 2, 11, 22, Decision 2).
+  ve son sorular bu kayıtları içerir (Requirement 1–3, 5, 9, 13–20, Decision 2).
+- [ ] Acceptance 5: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da oturumsuz istek
+  `GET /analysis-records`'ta 401, `kullanici` rolündeki hesap 403 alır; yönetici "Cevabı yazan:
+  Durduruldu" süzgeciyle yalnız durdurulan kaydı siler, diğer kayıtlar kalır ve soruyu soran ziyaretçi
+  silinen analizin raporunu indiremez; liste yüklendikten sonra biten kayıt "Tümü" silmesinde kalır;
+  backend analiz sürerken yeniden başlatılınca kayıt "Yarıda kesildi" olarak görünür; veritabanında
+  ziyaretçinin kaydı kabuldeki IP adresini ve makine adını taşır, silinen kaydın IP adresi ve makine
+  adı veritabanında kalmaz (Requirement 2, 11, 22, Decision 2).
 - [ ] Acceptance 6: L2 — Gerçek istemci/ortamda doğrulandı: görsel eşdeğerlik. Yerel Compose'da
   hedef ile kaynak `76e21a3` aynı sözlükle ve aynı soruların sorulmasıyla oluşan kayıtlarla
   çalıştırılır; Genel bakış, Analizler, ayrıntı çekmecesi ve Performans çekmecesinin ekran
@@ -649,10 +681,12 @@ Belirtim → Plan → Görevler → Uygulama ([Plan](plan.md), [Görevler](tasks
 
 ## Riskler
 
-- **Kişisel veri birikimi:** Sorular, cevaplar ve soranlar süresiz saklanır; yönetici silene kadar
+- **Kişisel veri birikimi:** Sorular, cevaplar, soranlar ve ziyaretçilerin IP adresi ile makine adı
+  süresiz saklanır; yönetici silene kadar
   tek tabloda durur ve bütün yöneticilere açıktır (Decision 16). Veritabanı yedeği alınmadığı için
   ([kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md))
-  silinen kayıt hiçbir yerde kalmaz ve geri getirilemez.
+  silinen kayıt hiçbir yerde kalmaz ve geri getirilemez. IP adresi ve makine adının KVKK aydınlatması
+  kurumun sorumluluğundadır (anonymous-visitor Riskler).
 - **Silme kullanıcıyı etkiler:** Yöneticinin "Temizle…" işlemi kullanıcıların o analizlerin sonucunu ve
   raporunu da kaldırır (Decision 15).
 - **Hacim:** Tam cevapla bir kayıt ~35 KB tutar; toplu arama binlerce kayıt üretir ve kayıtlar

@@ -26,3 +26,9 @@
 - [x] Task 7 — Acceptance 6 ve 7: yerel Compose'da bağlı bir sohbet modeliyle üç kullanıcılı
   tarayıcı senaryoları. Kanıt: `e2e/data-dictionary/03-votes.mjs` (bağlı model yerel sahte model
   sunucusuydu; senaryo art arda iki kez geçti).
+- [ ] Task 8 — Decision 2, Requirement 1, 8, 15, 19 / Acceptance 2, 6, 7: oy verenin `X-Device-Id`
+  başlığından çözülen ziyaretçi olması, `answer_vote`'un hesap ya da ziyaretçiye bağlanması ve oyla
+  IP adresi ile makine adının saklanıp dönmemesi, ziyaretçiye göre son oy ve `mine`, oy hız sınırı,
+  testler ve tarayıcı senaryosunun girişsiz ziyaretçilerle güncellenmesi; uygulama anonymous-visitor
+  ile birlikte. Kanıt: `tests/integration/test_votes_api.py`, `e2e/data-dictionary/03-votes.mjs`.
+  Durum (2026-10-15): kod ve testler yazıldı (önce kırmızı, sonra yeşil). Arka uç: pytest 996 testten 992'si geçti; kalan 4'ten 3'ü bu değişiklikle güncellendi ve geçiyor, 1'i (`test_two_parallel_activations_let_one_win`) değişiklikten önceki kodda da ara sıra kırılan bir yarış durumu. Ruff, mypy, `alembic check` temiz; `OpenAPI` ve ön yüz tipleri yeniden üretildi. Ön yüz: Vitest 39 dosya / 320 test (iki işçiyle) geçti, ESLint ve tip denetimi temiz. Yerel yığında oturumsuz ana ekran, cihaz kimliği ve ziyaretçi adına yazılan analiz kaydı tarayıcıda gözlendi. Açık: `scripts/quality-gate.sh all` ve tarayıcı senaryoları çalıştırılmadı (`kt-iskelet` ve çevrimdışı E2E paketi yok); nonprod gözlemi yapılmadı.

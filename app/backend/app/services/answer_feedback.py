@@ -25,16 +25,22 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core import telemetry
 from app.core.errors import ApplicationError
 from app.core.logging import log_event
+from app.core.rate_window import SlidingWindow
 from app.domain.models.answer_vote import AnswerVote
 from app.infrastructure.repositories.answer_vote_repository import (
     AnswerVoteRepository,
     VoteRow,
 )
 from app.services.analysis import feedback
-from app.services.analysis.jobs import OverlayContext
+from app.services.analysis.jobs import Asker, OverlayContext
 from app.services.analysis.pipeline import ISTANBUL, Engine
 from app.services.analysis.saved_answers import SavedAnswers
 from app.services.search_index import SearchIndex, search_index_not_ready
+from app.services.visitors import rate_limited
+
+VOTES_PER_VISITOR = 30
+VOTES_PER_ADDRESS = 120
+VOTE_WINDOW_SECONDS = 60
 
 logger = logging.getLogger("app.feedback")
 
@@ -124,6 +130,13 @@ class AnswerVotes:
         self._session_factory = session_factory
         self.saved_answers = saved_answers
         self._clock = clock
+        # 003-anonymous-visitor Requirement 6: votes per visitor and per address in 60 seconds.
+        self._visitor_votes = SlidingWindow(
+            limit=VOTES_PER_VISITOR, window_seconds=VOTE_WINDOW_SECONDS
+        )
+        self._address_votes = SlidingWindow(
+            limit=VOTES_PER_ADDRESS, window_seconds=VOTE_WINDOW_SECONDS
+        )
 
     def _engine(self) -> Engine:
         if not self.index.is_serving:
@@ -156,8 +169,7 @@ class AnswerVotes:
         self,
         *,
         tenant_id: int,
-        voter_id: int,
-        voter_public_id: str,
+        voter: Asker,
         query: str,
         scope: str,
         table_key: str | None,
@@ -168,6 +180,11 @@ class AnswerVotes:
         """Requirement 1, 2, 10: store the vote, tally it, delete the question's saved answers
         when the whole answer is now rejected."""
 
+        if (voter.address is not None and not self._address_votes.hit(voter.address)) or (
+            not self._visitor_votes.hit(voter.public_id)
+        ):
+            raise rate_limited()
+        voter_public_id = voter.public_id
         engine = self._engine()
         keys: tuple[str, str] = await asyncio.to_thread(engine.cache_keys, query)
         if scope == SCOPE_TABLE and table_key not in engine.objects:
@@ -176,7 +193,10 @@ class AnswerVotes:
             await AnswerVoteRepository(session).add(
                 AnswerVote(
                     tenant_id=tenant_id,
-                    voter_id=voter_id,
+                    voter_id=voter.user_id,
+                    voter_visitor_id=voter.visitor_id,
+                    client_address=voter.address,
+                    client_host=voter.host,
                     created_at=self._clock(),
                     query_text=query,
                     text_key=keys[0],
@@ -186,7 +206,7 @@ class AnswerVotes:
                     vote=vote,
                     note=note,
                     dictionary_version=engine.dictionary.version[:64],
-                    created_by=voter_id,
+                    created_by=voter.user_id,
                 )
             )
             await session.commit()

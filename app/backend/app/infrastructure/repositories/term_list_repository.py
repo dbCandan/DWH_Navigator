@@ -9,12 +9,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import and_, delete, func, or_, select, update
+from sqlalchemy import ColumnElement, and_, delete, func, literal, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.tenant import Tenant
 from app.domain.models.term_list import TermList, TermListItem
 from app.domain.models.user import User
+from app.domain.models.visitor import Visitor
 from app.domain.term_lists import KEPT_PER_OWNER, ListStatus
 
 
@@ -39,11 +40,27 @@ class ListSummaryRow:
 _DONE = or_(TermListItem.answer.is_not(None), TermListItem.error_code.is_not(None))
 
 
+# The owner is exactly one account or visitor; a visitor has no display name
+# (application-foundation 003-anonymous-visitor Decision 5).
+_OWNER_ID = func.coalesce(User.public_id, Visitor.public_id)
+_OWNER_NAME = func.coalesce(User.display_name, literal(""))
+
+
+def owned_by(user_id: int | None, visitor_id: int | None) -> ColumnElement[bool]:
+    if user_id is not None:
+        return TermList.owner_id == user_id
+    return TermList.owner_visitor_id == visitor_id
+
+
+def _owners(statement: Any) -> Any:
+    return statement.outerjoin(User, User.user_id == TermList.owner_id).outerjoin(
+        Visitor, Visitor.visitor_id == TermList.owner_visitor_id
+    )
+
+
 def _with_owner() -> Any:
-    return (
-        select(TermList, User.public_id, User.display_name, Tenant.public_id)
-        .join(User, User.user_id == TermList.owner_id)
-        .join(Tenant, Tenant.tenant_id == TermList.tenant_id)
+    return _owners(select(TermList, _OWNER_ID, _OWNER_NAME, Tenant.public_id)).join(
+        Tenant, Tenant.tenant_id == TermList.tenant_id
     )
 
 
@@ -105,7 +122,12 @@ class TermListRepository:
         return int((await self.session.execute(statement)).scalar_one())
 
     async def page(
-        self, tenant_id: int, owner_id: int, page: int, page_size: int
+        self,
+        tenant_id: int,
+        user_id: int | None,
+        visitor_id: int | None,
+        page: int,
+        page_size: int,
     ) -> tuple[list[ListSummaryRow], int]:
         """The owner's lists, newest first (same upload time: newest id first)."""
 
@@ -114,10 +136,9 @@ class TermListRepository:
             .where(TermListItem.term_list_id == TermList.term_list_id, _DONE)
             .scalar_subquery()
         )
-        where = and_(TermList.tenant_id == tenant_id, TermList.owner_id == owner_id)
+        where = and_(TermList.tenant_id == tenant_id, owned_by(user_id, visitor_id))
         statement = (
-            select(TermList, User.public_id, User.display_name, done)
-            .join(User, User.user_id == TermList.owner_id)
+            _owners(select(TermList, _OWNER_ID, _OWNER_NAME, done))
             .where(where)
             .order_by(TermList.created_at.desc(), TermList.term_list_id.desc())
             .offset((page - 1) * page_size)
@@ -149,15 +170,16 @@ class TermListRepository:
             for position, term in enumerate(terms, 1)
         )
         await self.session.flush()
+        owner = owned_by(record.owner_id, record.owner_visitor_id)
         keep = (
             select(TermList.term_list_id)
-            .where(TermList.tenant_id == record.tenant_id, TermList.owner_id == record.owner_id)
+            .where(TermList.tenant_id == record.tenant_id, owner)
             .order_by(TermList.created_at.desc(), TermList.term_list_id.desc())
             .limit(KEPT_PER_OWNER)
         )
         old = select(TermList.term_list_id).where(
             TermList.tenant_id == record.tenant_id,
-            TermList.owner_id == record.owner_id,
+            owner,
             TermList.term_list_id.not_in(keep),
         )
         stale = list((await self.session.execute(old)).scalars().all())

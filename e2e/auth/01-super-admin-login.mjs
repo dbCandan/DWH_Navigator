@@ -10,13 +10,14 @@ import {
 await withBrowser(
   "super-admin login, memory-only token, session restore and sign-out",
   async ({ page, assert }) => {
-    await page.goto(baseUrl + "/");
+    // anonymous-visitor Requirement 1: only the admin screen asks for the sign-in.
+    await page.goto(baseUrl + "/admin");
     await page.waitForURL(baseUrl + "/login");
 
     // user-accounts Requirement 1, 16: the real form; a one-time password asks for a new one first.
     const firstLogin = await signIn(page, accounts.superAdmin);
     console.log(firstLogin ? "first sign-in: new password set" : "signed in with the set password");
-    await page.waitForURL(baseUrl + "/");
+    await page.waitForURL(baseUrl + "/admin/genel");
 
     // Requirement 6-7: no token or session copy in browser storage; the refresh cookie is HttpOnly,
     // strict and scoped to the auth path.
@@ -62,8 +63,7 @@ await withBrowser(
 
     // A reload drops the in-memory token; the session comes back through the refresh cookie.
     await page.reload();
-    await page.getByRole("heading", { name: message("explorer.hero.title") }).waitFor();
-    assert.equal(new URL(page.url()).pathname, "/");
+    await page.waitForURL(baseUrl + "/admin/genel");
 
     // Requirement 8, 16: "Çıkış" in the session area closes the session on the server.
     const sessionMenu = new RegExp("^" + message("session.menu").replace("{name}", ""));
@@ -75,7 +75,7 @@ await withBrowser(
       return response.status;
     }, apiPrefix);
     assert.equal(afterLogout, 401);
-    await page.goto(baseUrl + "/");
+    await page.goto(baseUrl + "/admin");
     await page.waitForURL(baseUrl + "/login");
   },
 );

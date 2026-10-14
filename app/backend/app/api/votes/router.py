@@ -1,30 +1,26 @@
 """Vote endpoint (data-dictionary/PRDs/006-answer-feedback, API sözleşmesi).
 
-Open to ``kullanici`` and ``yonetici``; the voter is the signed-in user, re-read from the database
-(Decision 2). No question, table key or reason reaches a log, a metric or a trace.
+No session: the voter is the visitor of the ``X-Device-Id`` header (Decision 2,
+application-foundation 003-anonymous-visitor). No question, table key or reason reaches a log, a
+metric or a trace.
 """
 
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth.dependencies import CurrentContext, require_role
-from app.db.session import get_db
-from app.domain.accounts import ROLE_USER
-from app.infrastructure.repositories.user_repository import UserRepository
+from app.api.visitor.dependencies import CurrentVisitor, visitor_asker
 from app.schemas.errors import error_responses
 from app.schemas.votes.votes import VoteIn, VoteRecorded
 from app.services.answer_feedback import AnswerVotes
-from app.services.request_scope import acting_user_with_role, active_tenant
 
 router = APIRouter(
     tags=["votes"],
-    dependencies=[Depends(require_role(ROLE_USER))],
     responses=error_responses(
         {
-            401: "not_authenticated: oturum yok",
-            403: "forbidden: rol yok; cross_site_request: istek başka bir siteden geldi",
+            400: "device_id_required: X-Device-Id eksik ya da UUID 4 değil",
+            403: "tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi",
+            429: "rate_limited: ziyaretçi ya da adres sınırı",
         }
     ),
 )
@@ -49,21 +45,15 @@ def get_answer_votes(request: Request) -> AnswerVotes:
 )
 async def cast_vote(
     body: VoteIn,
-    context: CurrentContext,
-    session: Annotated[AsyncSession, Depends(get_db)],
+    visitor: CurrentVisitor,
     votes: Annotated[AnswerVotes, Depends(get_answer_votes)],
 ) -> VoteRecorded:
     """Record a 👍/👎; the last vote of each person counts. Enough 👎 on the whole answer delete
     the question's saved answers, so it is analysed anew."""
 
-    users = UserRepository(session)
-    actor = await acting_user_with_role(users, context, ROLE_USER)
-    tenant = await active_tenant(users, context)
-    await session.commit()
     outcome = await votes.record(
-        tenant_id=tenant.tenant_id,
-        voter_id=actor.user_id,
-        voter_public_id=actor.public_id,
+        tenant_id=visitor.tenant_id,
+        voter=visitor_asker(visitor),
         query=body.query,
         scope=body.scope,
         table_key=body.table_key,

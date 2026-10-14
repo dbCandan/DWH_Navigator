@@ -2,14 +2,16 @@
 
 Status: Accepted
 
-Version: 1.0.0
+Version: 1.2.0
 
-Acceptance date: 2026-10-08
+Acceptance date: 2026-10-14
 
 Domain: [data-dictionary](../../DOMAIN.md)
 
-Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
-korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
+Kabul kaydı: Proje sahibi bu PRD'yi ilk kez 2026-10-08'de kabul etti;
+2026-10-14'te ana ekrandaki hareketin "hareketi azalt" tercihinden bağımsız sürmesini (Requirement 8,
+Decision 8) ve ana ekranın girişsiz kullanılmasını
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)) istedi.
 
 ## Amaç
 
@@ -19,7 +21,7 @@ bir tablodur, yıldızlar veri seti gruplarına göre kümelenir ve her küme ke
 açar: bütün kolonlar, açıklamaları, eş anlamlıları, KVKK ve birleştirme anahtarı işaretleri,
 kolonlarda arama, süzgeçler ve aynı kümedeki öteki tablolar. Soru analiz edilirken harita aday
 tabloları dolaşan bir "yolculuk" gösterir; cevap gelince önerilen tabloları işaretler. Bu PRD ayrıca
-ana ekranın genel kabuğunu tanımlar: üst çubuk, durum göstergesi ve oturum alanı.
+ana ekranın genel kabuğunu tanımlar: üst çubuk ve durum göstergesi.
 
 Kaynak arayüz (`src/vsa/web/static/index.html`) React'te görsel olarak birebir aynı kurulur
 (Decision 3). Frontend kurallarının (rules/30-34) istekleri görünümü değiştirmeden karşılanır; nasıl
@@ -27,7 +29,8 @@ karşılandıkları Decision 4–8'de yazılıdır.
 
 ## Aktörler ve sonuçlar
 
-- **Kullanıcı (`kullanici`) ve yönetici (`yonetici`):** Ana ekranı aynı biçimde kullanır: haritada
+- **Ziyaretçi:** Ana ekranı giriş yapmadan kullanır
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)): haritada
   gezinir, tablo dosyası açar, tablo arar, durum göstergesinden sözlüğün ve sohbet modelinin hazır
   olup olmadığını görür. Ana ekranda yönetim ekranına bağlantı yoktur; yönetici yönetim ekranını
   adresini (`/admin`) yazarak açar (kaynakla aynı).
@@ -36,10 +39,9 @@ karşılandıkları Decision 4–8'de yazılıdır.
   açar; [list-search](../005-list-search/PRD.md) üst çubuğa toplu arama hapını koyar;
   [answer-feedback](../006-answer-feedback/PRD.md) kullanıcıların doğruladığı tabloların dosyasını açar.
 
-Ölçülebilir sonuç: Giriş yapmış her kullanıcı herhangi bir tablonun bütün kolonlarını en çok iki
+Ölçülebilir sonuç: Her ziyaretçi giriş yapmadan herhangi bir tablonun bütün kolonlarını en çok iki
 adımda (yıldız ya da tablo adı → tablo dosyası) ve fare kullanmadan da (soru çubuğuna tablo adını
-yazarak) açar; ana ekran aynı sözlük ve ekran boyutunda kaynaktakiyle aynı görünür, tek fark oturum
-alanıdır; tablo arama, Evren verisi ve tablo ayrıntısı uçları aynı sözlük, kelime listeleri ve
+yazarak) açar; ana ekran aynı sözlük ve ekran boyutunda kaynaktakiyle aynı görünür; tablo arama, Evren verisi ve tablo ayrıntısı uçları aynı sözlük, kelime listeleri ve
 ayarlarla kaynakla aynı sonucu (aynı tablolar, aynı sıra, aynı alanlar) döner; durum göstergesi
 sözlüğün ya da modelin hazır olmadığını en geç 60 saniyede gösterir; süren bir analiz bu uçların
 hiçbirini bekletmez.
@@ -56,8 +58,10 @@ hiçbirini bekletmez.
 - Soru çubuğu, cevap görünümü, analiz akışı ve durum ucu (`GET /status`)
   [question-analysis](../004-question-analysis/PRD.md); toplu
   arama hapı ve listesi [list-search](../005-list-search/PRD.md); oy arayüzü
-  [answer-feedback](../006-answer-feedback/PRD.md); giriş, oturum, roller ve görünen ad
-  [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md); model sunucusunun
+  [answer-feedback](../006-answer-feedback/PRD.md); yönetim ekranının girişi, oturum, roller ve görünen ad
+  [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md); ziyaretçinin
+  tanınması ve cihaz kimliği
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md); model sunucusunun
   sağlık denetimi ve hata sınıfları [llm-connection](../003-llm-connection/PRD.md); analistin okuduğu
   aday sayısı ayarı [search-settings](../009-search-settings/PRD.md) PRD'sindedir. Bu PRD onların kabukta
   duracağı yerleri, tablo dosyasını açma işlevini ve yolculuk işlevlerini sağlar.
@@ -70,15 +74,16 @@ sahipliğindedir). Aynı sözlük, kelime listeleri ve ayarlarla yanıtlar `elap
 aynıdır; bu, kaynak paketle yan yana çalışan fark testleriyle (aynı girdiyle kaynağı ve hedefi
 çalıştırıp çıktıları karşılaştıran testlerle) kanıtlanır.
 
-Decision 2: Bu PRD'nin bütün uçları `kullanici` ve `yonetici` rollerine açıktır (süper yönetici her
-rotayı görür); oturumsuz istek 401, iki rolden birine sahip olmayan kullanıcı 403 alır. Kaynakta ana
-ekran ve bu uçlar kimliksizdi.
+Decision 2: Bu PRD'nin bütün uçları oturum istemez; yalnız geçerli bir `X-Device-Id` başlığı ister,
+başlık yoksa ya da geçersizse yanıt `400 device_id_required` olur. Ziyaretçinin tanınması ve bu
+kuralın sahibi [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+PRD'sidir (Requirement 3, Decision 3). Kaynakta da ana ekran ve bu uçlar kimliksizdi.
 
 Decision 3: Ana ekranın görsel tasarımı kaynakla birebir aynıdır: koyu "Evren" gökyüzü, kümeler,
 yolculuk, tablo dosyası paneli, soru çubuğu, cevap görünümü, liste ve oylar kaynaktaki CSS
 değerleriyle (renkler, yazı tipleri, aralıklar, gölgeler, canlandırmalar, kırılma noktaları), mümkün
 olduğunca aynı DOM düzeni ve sınıf adlarıyla, aynı Türkçe metinler ve aynı etkileşimlerle kurulur.
-Görünür yeni öğe eklenmez; tek yeni öğe fabrikanın zorunlu kıldığı oturum alanıdır (Requirement 1).
+Görünür yeni öğe eklenmez; ana ekranda oturum alanı da yoktur (Requirement 1).
 İskeletin kendi varsayılan görünümü (ör. `HomePage`) kullanılmaz. Frontend kurallarının istekleri
 görünümü değiştirmeden karşılanır (Decision 4–8).
 
@@ -96,8 +101,8 @@ kaynak yok). Her maddenin sonunda hedefteki karşılığı yazılıdır.
   göstergesi gizlenir. Kullanıcı kimliği ve çıkış yoktur. Ana ekrandan yönetim ekranına bilerek
   bağlantı verilmez; yönetim ekranı adres elle yazılarak açılır (ADR-047, `tests/test_web.py`
   `test_admin_page_served_and_not_linked`). Alt satır boş bir boşluktur. **Hedefte:** Aynı görünüm;
-  giriş zorunludur ve üst çubuğa yalnız oturum alanı eklenir; ana ekrandan yönetim ekranına yine
-  bağlantı verilmez (Requirement 1).
+  ana ekran giriş istemez, üst çubukta kullanıcı kimliği ve çıkış yoktur; ana ekrandan yönetim
+  ekranına yine bağlantı verilmez (Requirement 1).
 - **Durum göstergesi** (`loadStatus`; `server.py` `App.status`, `App._llm_state`): Açılışta ve 60
   saniyede bir `GET /api/status` çağrılır; ayrıca analistin yazmadığı bir cevaptan sonra yenilenir.
   Yanıt `columns`, `objects`, `llm` (bağlı model adı ya da boş), `llm_state` (`ok`, `none`, `down`;
@@ -110,7 +115,9 @@ kaynak yok). Her maddenin sonunda hedefteki karşılığı yazılıdır.
   (`llm/client.py`: "Model sunucusuna ulaşılamadı (<adres>): …") ve herkese görünür. Sözlük boşken hap
   yine "Hazır" der. **Hedefte:** Aynı alanlar ve metinler; durum ucu
   [question-analysis](../004-question-analysis/PRD.md) PRD'sinindir (Requirement 17) ve
-  `dictionary_version` taşır; oturum gerekir; sebepte adres yoktur; boş sözlük gösterilir
+  `dictionary_version` taşır; oturum istemez
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)); sebepte
+  adres yoktur; boş sözlük gösterilir
   (Requirement 2, Decision 10, Decision 13).
 - **Evren verisi** (`server.py` `App.galaxy`, `App._object_index`): `GET /api/galaxy` her tablo için
   `key`, `name`, `schema` (`DB.Şema`), `group` (tablonun kolonlarındaki veri seti gruplarının sıralı
@@ -157,8 +164,8 @@ kaynak yok). Her maddenin sonunda hedefteki karşılığı yazılıdır.
   olarak kalır (skorla büyüyen ışıma, birinci tabloda yeşil nokta, ilk 6 tabloda "<sıra>. <ad>" ve
   "%<skor>" etiketleri, tabloları sırayla bağlayan kesikli çizgi). Cevap radar turundan önce gelirse (ör. kayıtlı cevap)
   ekran turun bitmesini bekler; "Durdur" bu beklemeyi de bitirir. Hareket azaltma tercihi açıkken de
-  yolculuk çizilir ve bekleme sürer. **Hedefte:** Aynı; hareket azaltmada durağan ve beklemesiz
-  (Requirement 7, 8).
+  yolculuk çizilir ve bekleme sürer. **Hedefte:** Aynı; hareket azaltma tercihi yolculuğu ve beklemeyi
+  değiştirmez (Requirement 7, 8).
 - **Tablo adıyla açma** (`ask`, `Cosmos.find`): Soru çubuğuna yazılan metin boşluk içermiyorsa ve
   Türkçe büyük/küçük harf duyarsız (ı ile i eşit) tam olarak bir tablonun adına, `Şema.ad`'ına ya da
   tam anahtarına eşitse soru sorulmaz, o tablonun dosyası açılır. İki şemadaki `vCampaign` gibi
@@ -188,29 +195,26 @@ kaynak yok). Her maddenin sonunda hedefteki karşılığı yazılıdır.
   yazılmıştır (yönetim ekranı `admin.html` aynı paleti kullanır); sistem yazı tipleri; dış kaynak
   yoktur. Hareket azaltma tercihi CSS canlandırmalarını kapatır ama çizim alanındaki hareketi
   durdurmaz. **Hedefte:** Kaynak CSS'in değerleri `globals.css`'te merkezi belirteçler (CSS
-  değişkenleri) olur ve görünüm değişmez; hareket azaltma tercihi çizim alanına da uygulanır
-  (Requirement 8, 17, Decision 5, 8).
+  değişkenleri) olur ve görünüm değişmez; ana ekranda hareket azaltma tercihi ne CSS
+  canlandırmalarını ne de çizim alanını durdurur (Requirement 8, 17, Decision 5, 8).
 
 ## İşlevsel gereksinimler
 
-Requirement 1: Ana ekran (`/`) yalnız oturumla açılır; oturum yoksa giriş ekranına yönlenir
-([user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md)). Üst çubuk soldan
-sağa şunları taşır:
+Requirement 1: Ana ekran (`/`) oturum olmadan açılır ve giriş ekranına yönlenmez
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Requirement 1).
+Üst çubuk soldan sağa şunları taşır:
 - Marka: pusula simgesi, "DWH Navigator", altında "Veri ambarı rehberi"; "Yeni başlangıç" bağlantısıdır
   ve ana ekranı ilk hâline döndürür (cevap temizlenir, soru çubuğu ortaya iner). Sürmekte olan toplu
   aramanın ne olacağı [list-search](../005-list-search/PRD.md) PRD'sindedir.
 - Orta yuva: ilk sorudan sonra soru çubuğu buraya yerleşir ([question-analysis](../004-question-analysis/PRD.md)).
-- Araçlar: toplu arama hapının yeri ([list-search](../005-list-search/PRD.md)), durum göstergesi
-  (Requirement 2) ve oturum alanı (görünen ad, "Parolamı değiştir" ve "Çıkış"; davranışı
-  user-accounts Requirement 16'dadır). Oturum alanı fabrikanın zorunlu kıldığı tek yeni öğedir;
-  kaynağın üst çubuk biçimine en az müdahaleyle, durum hapıyla aynı görünüm ve belirteçlerle
-  yerleşir. Ana ekranda yönetim ekranına bağlantı yoktur (kaynakla aynı); yönetici `/admin` adresini
-  yazarak açar.
+- Araçlar: toplu arama hapının yeri ([list-search](../005-list-search/PRD.md)) ve durum göstergesi
+  (Requirement 2). Üst çubukta oturum alanı (görünen ad, "Parolamı değiştir", "Çıkış") yoktur
+  (kaynakla aynı; anonymous-visitor Requirement 8). Ana ekranda yönetim ekranına bağlantı yoktur
+  (kaynakla aynı); yönetici `/admin` adresini yazarak açar ve orada giriş yapar.
 
-Pusula simgesi bir analiz sürerken arar gibi döner ve cevap gelince yerine oturur; hareket azaltmada
-dönmez. Sayfa kaydırılınca üst çubuğun arkasında içeriğin okunaklı geçmesini sağlayan yumuşak bir
-perde belirir. 760 pikselden dar ekranda durum göstergesi gizlenir (kaynakla aynı); oturum alanı
-yalnız simgeyle, erişilebilir adıyla görünür. Sekme başlığı "DWH Navigator", sekme simgesi
+Pusula simgesi bir analiz sürerken arar gibi döner ve cevap gelince yerine oturur; hareket azaltma
+tercihi açıkken de döner (Requirement 8). Sayfa kaydırılınca üst çubuğun arkasında içeriğin okunaklı geçmesini sağlayan yumuşak bir
+perde belirir. 760 pikselden dar ekranda durum göstergesi gizlenir (kaynakla aynı). Sekme başlığı "DWH Navigator", sekme simgesi
 pusuladır.
 
 Requirement 2: Durum göstergesi [question-analysis](../004-question-analysis/PRD.md) PRD'sinin
@@ -290,12 +294,13 @@ Bilgi satırındaki yolculuk günlüğü son dört adımı " → " ile gösterir
 konur. Analiz işi sıradayken (`queued`) günlüğe "sırada" adımı yazılır; sayı ve süre yazılmaz
 ([question-analysis](../004-question-analysis/PRD.md) Requirement 20). Cevap radar turundan önce
 gelirse (ör. kayıtlı cevap) cevap görünümü turun bitmesini bekler; "Durdur" bu beklemeyi de bitirir
-(Decision 12). Hareket azaltmada (Requirement 8) bekleme yoktur.
+(Decision 12). Hareket azaltma tercihi (Requirement 8) bu beklemeyi değiştirmez.
 
-Requirement 8: İşletim sisteminin "hareketi azalt" tercihi açıksa harita durağandır: dönüş,
-ışıldama, bulutsu kayması, fare kayması, radar, sonda, iniş halkaları ve panel geçiş canlandırmaları
-çizilmez; seçili yıldız ve sonuç takımyıldızı durağan işaretlerle gösterilir; kamera kayması anında
-olur; soru akışı radar turunu beklemez; pusula dönmez (Decision 8).
+Requirement 8: Ana ekrandaki hareket işletim sisteminin "hareketi azalt" tercihinden bağımsızdır:
+tercih açık da olsa kapalı da olsa dönüş, ışıldama, bulutsu kayması, fare kayması, radar, rota,
+sonda, iniş halkaları, kamera kayması, panel geçiş canlandırmaları ve pusulanın dönüşü aynı biçimde
+çizilir; soru akışı radar turunu bekler ve bilgi satırı yolculuğun bütün adımlarını yazar
+(Decision 8).
 
 Requirement 9: [question-analysis](../004-question-analysis/PRD.md) soruyu göndermeden önce metni bu
 yeteneğin ad eşleme işlevine verir. Metin boşluk içermiyorsa ve Türkçe büyük/küçük harf duyarsız (ı ile
@@ -413,8 +418,7 @@ Decision 13).
 
 Requirement 18: Kullanıcıya görünen bütün metinler `app/frontend/src/locales/tr.json` kataloğundadır
 ve kaynaktaki Türkçe metinlerle aynıdır (Mevcut davranışta ve Requirement 1–15'te tırnak içinde
-verilenler). Yeni metinler yalnız Requirement 2'deki sözlük uyarısı ve oturum alanının metinleridir
-([user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md)). "Diğer" küme adı
+verilenler). Yeni metin yalnız Requirement 2'deki sözlük uyarısıdır. "Diğer" küme adı
 backend'den veri olarak gelir ve katalogda değildir.
 
 Requirement 19: Hizmette indeks yokken (açılış sırasında) Evren, tablo arama ve tablo ayrıntısı
@@ -425,18 +429,20 @@ yoklamasında Evren verisini yeniden dener.
 
 ## API sözleşmesi
 
-Bütün uçlar `/api/dwhnavigator/v1` altındadır, geçerli oturum ve `kullanici` ya da `yonetici` rolü
-ister. Hata gövdesi tek hata zarfıdır: `{"detail":{"code":"...","message":"..."}}`; istek kimliği
+Bütün uçlar `/api/dwhnavigator/v1` altındadır; oturum istemez, geçerli bir `X-Device-Id` başlığı
+ister (Decision 2). Hata gövdesi tek hata zarfıdır: `{"detail":{"code":"...","message":"..."}}`; istek kimliği
 `x-request-id` başlığıyla döner. OpenAPI dosyası (API tanım dosyası) `specs/openapi/dwhnavigator-api.yaml`
 ve üretilmiş ön yüz tipleri aynı değişiklikte güncellenir.
 
-| Yöntem ve yol | Rol | İstek özü | Başarı | Hatalar |
+| Yöntem ve yol | Yetki | İstek özü | Başarı | Hatalar |
 |---|---|---|---|---|
-| `GET /explorer/galaxy` | `kullanici`, `yonetici` | — | 200: `items[]` (`key`, `name`, `schema`, `group`, `columns`), `total` | 401, 403, 503 `search_index_not_ready` |
-| `POST /explorer/table-searches` | `kullanici`, `yonetici` | `{"query": "…"}` (0–4.000 karakter) | 200: `query`, `items[]` (`key`, `name`, `schema`, `columns`, `groups`, `match`; katmana göre `score`, `level`, `matched`, `covered`, `missing`, `signal`), `counts`, `concepts[]`, `elapsed_ms`; hiçbir şey saklanmaz | 401, 403, 422 `query_too_long`, 503 `search_index_not_ready` |
-| `GET /explorer/tables/{table_key}` | `kullanici`, `yonetici` | anahtar yüzde kodlamalı (adreste güvenle taşınacak biçimde kodlanmış); `/` içeren anahtar da desteklenir | 200: `key`, `name`, `schema`, `groups[]`, `columns[]` (`key`, `column`, `object`, `description`, `synonyms[]`, `pii`, `group`), `join_keys[]` | 401, 403, 404 `table_not_found`, 503 `search_index_not_ready` |
+| `GET /explorer/galaxy` | `X-Device-Id` (oturum yok) | — | 200: `items[]` (`key`, `name`, `schema`, `group`, `columns`), `total` | 400 `device_id_required`, 503 `search_index_not_ready` |
+| `POST /explorer/table-searches` | `X-Device-Id` (oturum yok) | `{"query": "…"}` (0–4.000 karakter) | 200: `query`, `items[]` (`key`, `name`, `schema`, `columns`, `groups`, `match`; katmana göre `score`, `level`, `matched`, `covered`, `missing`, `signal`), `counts`, `concepts[]`, `elapsed_ms`; hiçbir şey saklanmaz | 400 `device_id_required`, 422 `query_too_long`, 503 `search_index_not_ready` |
+| `GET /explorer/tables/{table_key}` | `X-Device-Id` (oturum yok) | anahtar yüzde kodlamalı (adreste güvenle taşınacak biçimde kodlanmış); `/` içeren anahtar da desteklenir | 200: `key`, `name`, `schema`, `groups[]`, `columns[]` (`key`, `column`, `object`, `description`, `synonyms[]`, `pii`, `group`), `join_keys[]` | 400 `device_id_required`, 404 `table_not_found`, 503 `search_index_not_ready` |
 
-Ortak hatalar 401 `not_authenticated` ve 403 `forbidden`'dır. `match` değerleri (`""`, `ad`, `içerik`,
+Ortak hata 400 `device_id_required`'dır; metni ve OpenAPI'deki `X-Device-Id` başlık parametresi
+[anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) API
+sözleşmesindedir. `match` değerleri (`""`, `ad`, `içerik`,
 `kolon adı`) ve `level` değerleri (`Yüksek`, `Orta`, `Düşük`) kaynaktaki makine değerleridir ve
 değişmez. Kaynaktaki karşılıklar: `GET /api/galaxy`, `GET /api/objects?q=`, `GET /api/object/<anahtar>`.
 Durum göstergesinin okuduğu `GET /status` (kaynak `GET /api/status`) bu PRD'nin ucu değildir; alanları
@@ -444,10 +450,12 @@ Durum göstergesinin okuduğu `GET /status` (kaynak `GET /api/status`) bu PRD'ni
 
 ## Güvenlik ve yetkilendirme
 
-- Kimlik ve rol [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) ile
-  gelir; rol denetimi backend'de, her uçta yapılır. Ön yüzde bir öğeyi gizlemek yetki denetimi değildir.
+- Bu uçlar herkese açıktır; ziyaretçinin tanınması ve cihaz kimliği denetimi
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) ile gelir ve
+  backend'de, her uçta yapılır. Yetki sınırı yönetim ekranıdır; ön yüzde bir öğeyi gizlemek yetki
+  denetimi değildir.
 - Ana ekran sözlüğün ayrıştırılmış hâlini (tablo ve kolon adları, açıklamalar, eş anlamlılar, KVKK
-  işaretleri) giriş yapmış her kullanıcıya gösterir; bu, alanın amacıdır (kullanıcı sözlükte tablo ve
+  işaretleri) her ziyaretçiye gösterir; bu, alanın amacıdır (kullanıcı sözlükte tablo ve
   kolon gezer). KVKK işareti kolonun kişisel veri içerebileceğini söyler; kişisel verinin kendisi
   sözlükte yoktur.
 - Soru ve arama metni istek gövdesinde taşınır; adres satırına, uygulama loguna ve giriş katmanının
@@ -502,8 +510,8 @@ kolon adı hiçbir log olayına, ölçüme ve iz aralığına girmez.
   422; analiz kilidi tutulurken aramanın cevap vermesi; içerik katmanının ana döngüyü bekletmediği
   (arama sürerken başka bir isteğin gecikmeden cevaplanması). Evren verisi: grup kuralı ve "Diğer",
   sıra, boş sözlük. Tablo ayrıntısı: alanlar, grup listesi, birleştirme anahtarı sırası, 404. Durum
-  ucunun testleri question-analysis'tedir. Roller: oturumsuz 401, rolsüz 403, `kullanici` ve
-  `yonetici` 200. İndeks hazır değilken 503.
+  ucunun testleri question-analysis'tedir. Erişim: oturumsuz ve geçerli `X-Device-Id` ile 200,
+  başlıksız ya da geçersiz başlıkla 400 `device_id_required`. İndeks hazır değilken 503.
 - **Fark testleri:** kaynak `76e21a3` paketi test ortamında yan yana kurulur (düzenek
   [question-analysis](../004-question-analysis/PRD.md) PRD'sinindir); aynı sözlük, kelime listeleri
   ve ayarlarla altın setteki sorular, tablo adları ve kolon adı parçalarından oluşan bir sorgu
@@ -516,8 +524,8 @@ kolon adı hiçbir log olayına, ölçüme ve iz aralığına girmez.
   arama ve vurgulama, Enter ve Space ile satır açma, "Ek not yok" kuralı, en çok 14 komşu ve sırası,
   kopyalama bildirimi, geç gelen cevabın gösterilmemesi, odak tuzağı ve geri dönüşü, Esc ve "/";
   klavye erişimi: etkileşimli öğelerin odaklanması, Enter ve Boşluk, odak halkasının yalnız klavye
-  odağında görünmesi, cevaptaki tablo düğmesinden dosya açma ve odak geri dönüşü; hareket azaltmada
-  çizim döngüsünün durağan olması ve radar beklemesinin olmaması; sürüm değişince Evren verisinin
+  odağında görünmesi, cevaptaki tablo düğmesinden dosya açma ve odak geri dönüşü; hareket azaltma
+  tercihi açıkken de çizim döngüsünün, radar beklemesinin ve yolculuk günlüğünün sürmesi; sürüm değişince Evren verisinin
   yeniden yüklenmesi; bileşen dosyalarında sabit renk bulunmaması. Harita çizimi piksel piksel test
   edilmez; ekran görüntüsü yalnız görsel özellikler için kullanılır (kural 14).
 - **Görsel eşdeğerlik:** kaynak `76e21a3` ve hedef aynı sözlükle yan yana çalıştırılır; aynı ekran
@@ -542,22 +550,22 @@ Kaynak vektör aramasını ADR-039 ile kaldırdı; bu PRD vektör veya gömme (e
 ## Kabul kriterleri
 
 - [ ] Acceptance 1: L1 — Otomatik testlerden geçti: Requirement 3, 10, 11 ve 19'un backend testleri,
-  rol denetimi ve kaynak paketle fark testleri geçer; tablo arama, Evren verisi ve tablo ayrıntısı
-  yanıtları kaynakla `elapsed_ms` dışında aynıdır; analiz kilidi tutulurken arama cevap verir; telemetri
+  oturumsuz erişim ve `X-Device-Id` denetimi (Decision 2) ve kaynak paketle fark testleri geçer;
+  tablo arama, Evren verisi ve tablo ayrıntısı yanıtları kaynakla `elapsed_ms` dışında aynıdır; analiz kilidi tutulurken arama cevap verir; telemetri
   testinde soru metni ve tablo adı log, ölçüm ve izde bulunmaz; tam kalite kapısı geçer.
 - [ ] Acceptance 2: L1 — Otomatik testlerden geçti: Requirement 1, 2, 4–9 ve 12–18'in Vitest
   testleri geçer; OpenAPI dosyası ve üretilmiş ön yüz tipleri günceldir; katalogdaki anahtarlar
   kodla eşleşir.
 - [ ] Acceptance 3: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da (geliştirici
-  makinesinde konteynerleri birlikte çalıştıran düzen) örnek sözlükle `kullanici` olarak giriş
-  yapılır; sol alttaki bilgi satırındaki tablo ve küme sayısı Evren verisiyle tutar; yalnız
+  makinesinde konteynerleri birlikte çalıştıran düzen) örnek sözlükle ana ekran giriş yapmadan
+  açılır ve giriş ekranına yönlenmez; sol alttaki bilgi satırındaki tablo ve küme sayısı Evren verisiyle tutar; yalnız
   klavyeyle soru çubuğuna tek eşleşen bir tablo adı yazılınca dosya açılır ve analiz kaydı oluşmaz,
   kolon araması ve süzgeçler çalışır, odak halkası yalnız klavye odağında görünür, Esc sonrası odak
   soru çubuğuna döner; iki şemadaki ad yazılınca soru sorulur; bir soruda yolculuk ve sonuç
-  takımyıldızı görünür (ekran görüntüsüyle); "hareketi azalt" öykünmesinde harita durağandır ve
-  kayıtlı cevap beklemeden görünür; başka bir oturumda sözlük içe aktarılınca harita 60 saniye
-  içinde yeni tablolarla kurulur; `yonetici` ve `kullanici` olarak ana ekranda yönetim bağlantısı
-  görünmez (Requirement 1, 2, 7–9, 12–16).
+  takımyıldızı görünür (ekran görüntüsüyle); "hareketi azalt" öykünmesinde de harita hareket eder,
+  pusula döner ve radar turu çizilir; yönetim ekranında sözlük içe aktarılınca harita 60 saniye
+  içinde yeni tablolarla kurulur; oturumsuz ziyaretçinin ana ekranında yönetim bağlantısı ve oturum
+  alanı görünmez (Requirement 1, 2, 7–9, 12–16).
 - [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı (nonprod): gerçek sözlükle harita 390 yıldızı
   çizer; tablo arama yanıtı ölçülür ve 1 saniyenin altındadır; model kapatıldığında durum hapı
   "Modele ulaşılamıyor" der ve sebepte adres görünmez (Requirement 2, 5, 10). Küme dağıtımı bu kanıtın
@@ -565,8 +573,8 @@ Kaynak vektör aramasını ADR-039 ile kaldırdı; bu PRD vektör veya gömme (e
 - [ ] Acceptance 5: L2 — Gerçek istemci/ortamda doğrulandı: görsel eşdeğerlik. Yerel Compose'da
   hedef ile kaynak `76e21a3` aynı sözlükle çalıştırılır; masaüstü (1440×900) ve telefon genişliğinde
   (390×844 piksel) açılış görünümü, yolculuk, cevap görünümü, tablo dosyası, liste görünümü ve oy
-  alanının ekran görüntüleri yan yana karşılaştırılır. Fark yalnız fabrikanın zorunlu kıldığı oturum
-  alanında kabul edilir; renk, yazı, aralık, gölge, canlandırma ve yerleşimde başka fark bulunmaz
+  alanının ekran görüntüleri yan yana karşılaştırılır. Renk, yazı, aralık, gölge, canlandırma ve
+  yerleşimde fark bulunmaz
   (Requirement 1, 15, 17, Decision 3).
 
 ## Kararlar
@@ -592,9 +600,12 @@ panelden çıkabiliyordu; arkadaki sayfa soluklaştırıldığı için panel dav
 Decision 7: Kural 32 mümkünse yerel düğme ister; kolon satırlarındaki açma eylemi `div` yerine yerel
 düğmedir. Görünüm değişmez.
 
-Decision 8: Hareket azaltma tercihi tam uygulanır (Requirement 8); kaynakta yalnız CSS canlandırmaları
-duruyordu, çizim alanı hareket etmeye ve soru akışı radar turunu beklemeye devam ediyordu. Bu bir
-erişilebilirlik düzeltmesidir; tercihi açık olmayan kullanıcı için görünüm değişmez.
+Decision 8: Ana ekran hareket azaltma tercihini uygulamaz (Requirement 8). Kaynakta bu tercih
+yalnız CSS canlandırmalarını (pusula, bulutsu, panel geçişleri) ve galaksinin dönüşünü durduruyordu;
+çizim alanı hareket etmeye ve soru akışı radar turunu beklemeye devam ediyordu. Kurum cihazlarında
+(uzak masaüstü ya da kurum ayarı) tercih kullanıcının bilgisi dışında açık olabilir ve harita
+donmuş görünür. Proje sahibi 2026-10-14'te uygulamada rahatsız edici bir canlandırma olmadığını
+belirterek bütün hareketin her zaman sürmesini istedi.
 
 Decision 9: Tablo araması `POST /explorer/table-searches` gövdesiyle yapılır (kaynakta `GET
 /api/objects?q=`). Gerekçe: yolculuk bu aramayı kullanıcının soru metniyle çağırır; adres satırındaki
@@ -611,7 +622,7 @@ sözlüğün tablo sayısı sınırlar (bugün 390); yanıt `total` taşır.
 Decision 12: Yolculuk kaynaktaki gibi bir canlandırmadır; analistin gerçek adımlarını değil, model
 kullanmayan tablo aramasının adaylarını gösterir. Gerçek ilerleme
 [question-analysis](../004-question-analysis/PRD.md) PRD'sindeki canlı olay akışındadır. Hızlı gelen bir
-cevabın radar turunu beklemesi kaynak tasarımıdır ve korunur; hareket azaltmada bekleme yoktur.
+cevabın radar turunu beklemesi kaynak tasarımıdır ve hareket azaltma tercihinden bağımsız korunur.
 
 Decision 13: Ön yüz durum yanıtındaki `dictionary_version`'ı
 ([question-analysis](../004-question-analysis/PRD.md) Requirement 17) haritayı yenilemek için okur
@@ -623,14 +634,17 @@ Decision 14: Tablolar `DB.Şema.Obje` anahtarıyla adreslenir; anahtar sürümle
 tablo dosyası için derin bağlantı (doğrudan o tabloyu açan adres) yoktur; kaynakta da yoktu.
 
 Decision 15: Ana ekranda yönetim ekranına bağlantı yoktur (kaynakla aynı, ADR-047); yönetici yönetim
-ekranını adresini (`/admin`) yazarak açar. Yetki her istekte backend'de rolle denetlenir;
-bağlantının olmaması güvenlik önlemi değil, kaynak tasarımıdır.
+ekranını adresini (`/admin`) yazarak açar; `/admin` oturumsuz giriş ekranına yönlenir
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Requirement 1).
+Yönetim uçlarında yetki her istekte backend'de rolle denetlenir; bağlantının olmaması güvenlik
+önlemi değil, kaynak tasarımıdır.
 
-Decision 16: Haritanın sürekli hareketini durduran bir düğme yoktur (kaynakla aynı); işletim
-sisteminin "hareketi azalt" tercihine uyulur (Requirement 8). Gerekçe: görünür yeni öğe eklenmez.
+Decision 16: Haritanın sürekli hareketini durduran bir düğme yoktur (kaynakla aynı) ve işletim
+sisteminin "hareketi azalt" tercihi de hareketi durdurmaz (Requirement 8, Decision 8). Gerekçe:
+görünür yeni öğe eklenmez.
 
 Decision 17: Koyu "Evren" paleti uygulamanın tek temasıdır. Fabrikanın zorunlu kıldığı yeni ekranlar
-(giriş, parola değiştirme, süper yöneticinin Kullanıcılar sayfası) kaynağın aynı belirteçleri ve
+(yönetim ekranı için giriş, parola değiştirme, süper yöneticinin Kullanıcılar sayfası) kaynağın aynı belirteçleri ve
 bileşen görünümüyle yapılır; bu ekranların sahibi
 [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) PRD'sidir.
 
@@ -641,12 +655,12 @@ Belirtim → Plan → Görevler → Uygulama
 ## Riskler
 
 - **Düşük donanım:** Kurum bilgisayarlarında ya da sanal masaüstünde grafik hızlandırma zayıfsa
-  sürekli çizim işlemciyi yorar. Kare sınırı, sekme gizliyken durma ve hareket azaltma etkiyi
-  sınırlar; gerçek cihazda ölçülmemiştir.
-- **Hareketi durduracak denetim yok:** Gökyüzü sürekli ve kendiliğinden hareket eder; işletim
-  sisteminin "hareketi azalt" tercihini bilmeyen kullanıcının hareketi durduracak bir denetimi
-  yoktur (kaynakla aynı, Decision 16). Erişilebilirlik ölçütlerindeki "duraklat, durdur, gizle"
-  maddesi yalnız bu tercihle karşılanır.
+  sürekli çizim işlemciyi yorar. Kare sınırı ve sekme gizliyken durma etkiyi sınırlar; hareket
+  azaltma tercihi çizimi durdurmaz. Kurum cihazında 2 saniyede 122 kare ölçülmüştür.
+- **Hareketi durduracak denetim yok:** Gökyüzü sürekli ve kendiliğinden hareket eder; ne bir düğme
+  ne de işletim sisteminin "hareketi azalt" tercihi hareketi durdurur (Decision 8, 16).
+  Erişilebilirlik ölçütlerindeki "duraklat, durdur, gizle" maddesi karşılanmaz; proje sahibi bu
+  riski 2026-10-14'te kabul etti.
 - **Klavyeyle tablo bulma:** Haritadaki tablolara klavyeyle ulaşmak tablonun adını bilmeyi ya da
   soru sormayı gerektirir; görünür bir tablo listesi yoktur (Decision 4).
 - **Radar beklemesi:** Kayıtlı cevap anında dönse de ekran yaklaşık 5,2 saniye bekler; kullanıcılar bunu

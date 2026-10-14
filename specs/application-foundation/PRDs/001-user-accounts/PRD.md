@@ -2,23 +2,25 @@
 
 Status: Accepted
 
-Version: 1.0.2
+Version: 1.1.0
 
-Acceptance date: 2026-10-08
+Acceptance date: 2026-10-14
 
 Domain: [application-foundation](../../DOMAIN.md)
 
-Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
-korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
+Kabul kaydı: Proje sahibi bu PRD'yi ilk kez 2026-10-08'de kabul etti;
+2026-10-14'te ana ekranın girişsiz kullanılmasını ve parolanın yalnız yönetim ekranında sorulmasını
+istedi ([anonymous-visitor](../003-anonymous-visitor/PRD.md)).
 
 ## Amaç
 
-DWH Navigator'ı kullanan herkesin, uygulama yöneticisinin (süper yönetici) açtığı yerel hesapla giriş
-yapması ve `kullanici` ya da `yonetici` rolüyle yetkilendirilmesi. Kaynak uygulamada soru ekranı
+DWH Navigator'ın yönetim ekranını kullanan kişinin, uygulama yöneticisinin (süper yönetici) açtığı
+yerel hesapla giriş yapması ve `yonetici` rolüyle yetkilendirilmesi. Kaynak uygulamada soru ekranı
 kimlik sormuyordu; yönetim ekranı ise herkesin paylaştığı tek bir parolayla (`VSA_ADMIN_PASSWORD`;
-tarayıcının açtığı kullanıcı adı/parola penceresi, HTTP Basic) korunuyordu. Hedefte ikisinin yerini
-kişiye ait hesap, rol ve oturum alır; analiz kayıtlarında ve oylarda kişi, istemci adresi yerine
-oturumdaki kullanıcıdır. Kimlik doğrulama fabrikanın taban modelidir (`rules/21`: uygulamada saklanan
+tarayıcının açtığı kullanıcı adı/parola penceresi, HTTP Basic) korunuyordu. Hedefte yönetim ekranının
+paylaşılan parolasının yerini kişiye ait hesap, rol ve oturum alır. Ana ekran (soru, analiz, toplu
+arama, oy, sözlük gezgini, rapor) giriş istemez; oradaki kişi ziyaretçidir ve tarayıcının cihaz
+kimliğiyle tanınır ([anonymous-visitor](../003-anonymous-visitor/PRD.md)). Kimlik doğrulama fabrikanın taban modelidir (`rules/21`: uygulamada saklanan
 parola özeti ve uygulamanın imzaladığı erişim belirteci); dış kimlik sağlayıcı yoktur. Bu PRD,
 `rules/21`'in kabul edilmiş PRD şartına bağladığı yenileme belirtecini ve sunucu tarafı oturum
 kaydını da tanımlar. Kaynağın web katmanındaki korumaların (siteler arası istek denetimi, güvenlik
@@ -26,10 +28,14 @@ başlıkları, hata yanıtları) hedefte nerede karşılandığı da buradadır;
 
 ## Aktörler ve sonuçlar
 
-- **Kullanıcı (`kullanici`):** Süper yöneticinin açtığı hesapla girer. İlk girişte kendisine verilen
-  tek kullanımlık parolayı kendi seçtiği parolayla değiştirmek zorundadır; sonra parolasını istediği
-  zaman değiştirir. Soru sorar, toplu arama yapar, oy verir, sözlükte gezer, rapor indirir.
-- **Yönetici (`yonetici`):** Kullanıcının yapabildiği her şeye ek olarak yönetim ekranını kullanır.
+- **Ziyaretçi:** Hesabı yoktur; ana ekranı giriş yapmadan kullanır. Tanımı ve yetkisi
+  [anonymous-visitor](../003-anonymous-visitor/PRD.md) PRD'sindedir.
+- **Kullanıcı (`kullanici`):** Süper yöneticinin açtığı hesaptır. Rol yerinde kalır ama ana ekranda
+  hiçbir yetki vermez (ana ekran zaten girişsizdir) ve yönetim ekranına giremez
+  (anonymous-visitor Decision 6).
+- **Yönetici (`yonetici`):** Süper yöneticinin açtığı hesapla yönetim ekranına girer. İlk girişte
+  kendisine verilen tek kullanımlık parolayı kendi seçtiği parolayla değiştirmek zorundadır; sonra
+  parolasını istediği zaman değiştirir. Yönetim ekranını kullanır.
 - **Uygulama yöneticisi (süper yönetici):** Yerel hesaptır. Hesap açar (kullanıcı adı, görünen ad,
   rol), rol değiştirir, parolayı sıfırlar, hesabı pasifleştirir ya da yeniden etkinleştirir. Açtığı
   veya sıfırladığı her hesap için uygulamanın ürettiği tek kullanımlık parolayı bir kez görür ve
@@ -40,8 +46,8 @@ başlıkları, hata yanıtları) hedefte nerede karşılandığı da buradadır;
 - **Geliştirici:** Yerelde süper yönetici hesabını açar; iki rolü kendi açtığı test hesaplarıyla dener.
 
 Ölçülebilir sonuç: süper yöneticinin açtığı hesap tek kullanımlık parolayla girer, yeni parola
-belirlemeden hiçbir ekrana ulaşamaz, yeni parolayla oturum alır; yanlış parola 401, `kullanici`'nın
-yönetim işlemi 403, oturumsuz istek 401, başka siteden gelen durum değiştiren istek 403 alır; her
+belirlemeden yönetim ekranına ulaşamaz, yeni parolayla oturum alır; yanlış parola 401, `kullanici`'nın
+yönetim işlemi 403, oturumsuz yönetim veya hesap isteği 401, başka siteden gelen durum değiştiren istek 403 alır; her
 yanıt kaynaktaki güvenlik başlıklarını taşır; her giriş, çıkış, parola değişikliği, hesap açma, rol,
 durum ve parola sıfırlama bir denetim olayı üretir.
 
@@ -52,20 +58,25 @@ durum ve parola sıfırlama bir denetim olayı üretir.
   özeti hiçbir loga, erişim belirtecine, değişiklik kaydına, telemetriye ve API yanıtına girmez;
   tek istisna, tek kullanımlık parolanın üretildiği hesap açma veya sıfırlama yanıtıdır.
 - Decision 2: Roller yalnız `kullanici` ve `yonetici`dir; süper yönetici dışındaki her hesabın tam
-  bir rolü vardır. `yonetici`, `kullanici`'nın yapabildiği her şeyi yapar. İskeletin `super_admin`
+  bir rolü vardır. `yonetici` yönetim ekranına girer; `kullanici` yönetim ekranına girmez ve ana
+ekranda ek yetki vermez ([anonymous-visitor](../003-anonymous-visitor/PRD.md) Decision 6). İskeletin `super_admin`
   rolü uygulama yöneticisine aittir; API ile verilemez, alınamaz ve her rol denetiminden merkezi
   olarak geçer (Decision 9).
-- Decision 3: Yetki backend sınırında denetlenir; menü veya düğme gizlemek yetki değildir. Sağlık
-  uçları (`/liveness`, `/readiness`), giriş, parola değiştirme, yenileme ve çıkış dışındaki her API
-  ve canlı olay akışı (SSE: sunucudan tarayıcıya canlı olay akışı) isteği geçerli oturum ve uygun rol
-  ister.
+- Decision 3: Yetki backend sınırında denetlenir; menü veya düğme gizlemek yetki değildir. Yönetim
+  ekranının uçları, hesap uçları (`GET /auth/me`, `/admin/users…`) ve onların canlı olay akışları
+  (SSE: sunucudan tarayıcıya canlı olay akışı) geçerli oturum ve uygun rol ister. Sağlık uçları
+  (`/liveness`, `/readiness`), giriş, parola değiştirme, yenileme ve çıkış oturum istemez. Ana ekran
+  uçları oturum istemez; kimlik ve sahiplik orada cihaz kimliğiyle işler
+  ([anonymous-visitor](../003-anonymous-visitor/PRD.md) Decision 3, Requirement 3).
 - Decision 4: Hesabı yalnız süper yönetici açar; kendi kendine kayıt yoktur. Parola belirleme kanıtı
   (tek kullanımlık parola) yalnız uygulamanın tahmin edilemez rastgele üreteciyle (CSPRNG) üretilir,
   tek kullanımlık ve süreli olur (rules/58).
 - Decision 5: Bütün hesaplar iskeletin tek `platform` kiracısındadır. Hangi data-dictionary ucunun
   hangi rolü istediği o uçların PRD'lerindedir; bu PRD rolleri, eşleme kuralını (Requirement 10) ve
   denetimi tanımlar.
-- Decision 6: Hesap silinmez, yalnız pasifleştirilir; analiz kayıtları ve oylar kişiye bağlı kalır.
+- Decision 6: Hesap silinmez, yalnız pasifleştirilir; hesaba bağlı analiz kayıtları, listeler ve
+  oylar hesaba bağlı kalır. Bir kayıt ya bir hesaba ya bir ziyaretçiye bağlıdır
+  ([anonymous-visitor](../003-anonymous-visitor/PRD.md) Decision 5).
 
 ## Mevcut davranış
 
@@ -91,14 +102,16 @@ Kaynak (bu deponun geçmişindeki `76e21a3`) ve hedef iskeletin ilk hali (`43635
 - **Kimliksiz soru ekranı** (`src/vsa/web/server.py` `make_handler`): `/`, `/api/ask`,
   `/api/ask/cancel`, `/api/list…`, `/api/feedback`, `/api/objects`, `/api/object/…`, `/api/galaxy`,
   `/api/report/…` ve `/api/status` herkese açıktır (`docs/GUVENLIK.md` "Kalan riskler" 2: kapalı ağ,
-  ekip aracı). **Hedefte:** hepsinin karşılığı oturum ve `kullanici` rolü ister; kaynağı bugün
-  kullanan herkes ilk açılışta giriş ekranıyla karşılaşır ve süper yöneticiden hesap ister
-  (Requirement 10).
+  ekip aracı). **Hedefte:** hepsinin karşılığı oturum istemez ve ziyaretçiye açıktır; sahiplik ve hız
+  sınırı cihaz kimliğine göre işler ([anonymous-visitor](../003-anonymous-visitor/PRD.md)
+  Requirement 3; bu PRD Requirement 10).
 - **Kayıtlarda kimlik** (`App._log_analysis`, `App._host`, `App.feedback`; `static/index.html`
   `VOTER`): analiz kaydına istemci adresi ve ters DNS sorgusuyla bulunan makine adı, oy kaydına
   tarayıcının `localStorage`'da tuttuğu rastgele `vsa-voter` kimliği (yoksa istemci adresi) yazılır;
-  "kişi başına son oy" bu kimliğe göre sayılır. **Hedefte:** oturumdaki kullanıcının `public_id`'si
-  ve görünen adı; adres, makine adı ve istemcinin gönderdiği kimlik metni yazılmaz (Requirement 11).
+  "kişi başına son oy" bu kimliğe göre sayılır. **Hedefte:** kayıt ya oturumdaki hesaba ya ana
+  ekrandaki ziyaretçiye bağlanır; ziyaretçi kaydı IP adresini ve makine adını da taşır
+  ([anonymous-visitor](../003-anonymous-visitor/PRD.md) Requirement 7); istek gövdesinde gelen kimlik
+  metni yazılmaz (Requirement 11).
 - **Siteler arası istek denetimi** (`security.cross_site`): her POST'ta `Sec-Fetch-Site` varsa yalnız
   `same-origin` ve `none` kabul edilir; yoksa ve `Origin` varsa `X-Forwarded-Host`/`Host` ile
   eşleşmelidir; `Origin: null` reddedilir; ret 403 "Başka bir siteden gelen istek reddedildi".
@@ -253,14 +266,17 @@ gelen `X-Forwarded-For` ile belirlenir; başka kaynaktan gelen başlık yok say�
 içindedir; backend tek kopya çalışır ([kubernetes-delivery](../002-kubernetes-delivery/PRD.md)
 Decision 5).
 
-Requirement 10: Yetki eşlemesi. Sağlık, giriş, parola değiştirme, yenileme ve çıkış dışındaki her uç
-oturum ister. Kaynakta `AdminGuard` arkasında olan her işlemin hedefteki karşılığı (yönetim
-ekranının yedi sayfası: Genel bakış, Analizler, Sözlük, Kelimeler, Yapay zekâ, Arama ve cevap, Bakım
-ve onların uçları) `yonetici` ister. Kaynakta kimliksiz olan her işlemin karşılığı ve ondan türeyen
-yeni uçlar (soru, analiz işi ve canlı akışı, iptal, toplu arama, oy, sözlük gezgini, durum, rapor)
-`kullanici` ister. Hesap yönetimi uçları yalnız süper yöneticiye açıktır; süper yönetici her rol
+Requirement 10: Yetki eşlemesi. Kaynakta `AdminGuard` arkasında olan her işlemin hedefteki karşılığı
+(yönetim ekranının yedi sayfası: Genel bakış, Analizler, Sözlük, Kelimeler, Yapay zekâ, Arama ve
+cevap, Bakım ve onların uçları) oturum ve `yonetici` ister. Kaynakta kimliksiz olan her işlemin
+karşılığı ve ondan türeyen yeni uçlar (soru, analiz işi ve canlı akışı, iptal, toplu arama, oy,
+sözlük gezgini, durum, rapor) oturum istemez ve ziyaretçiye açıktır
+([anonymous-visitor](../003-anonymous-visitor/PRD.md) Requirement 3); `kullanici` rolü bu uçlarda ek
+yetki vermez. Sağlık, giriş, parola değiştirme, yenileme ve çıkış oturum istemez; `GET /auth/me`
+oturum ister. Hesap yönetimi uçları yalnız süper yöneticiye açıktır; süper yönetici her rol
 denetiminden merkezi olarak geçer (`rules/21`). Kişiye ait nesnelere (analiz işi, toplu arama işi ve
-onların raporları) erişim backend'de sahiplik denetimiyle yapılır; ayrıntısı ve yöneticinin
+onların raporları) erişim backend'de sahiplik denetimiyle yapılır; ana ekranda sahip ziyaretçidir
+(anonymous-visitor Requirement 5); ayrıntısı ve yöneticinin
 başkasının kaydını gördüğü uçlar data-dictionary alanının
 [question-analysis](../../../data-dictionary/PRDs/004-question-analysis/PRD.md),
 [list-search](../../../data-dictionary/PRDs/005-list-search/PRD.md) ve
@@ -271,21 +287,26 @@ onlara en geç 15 dakikada yansır. `Authorization: Basic` başlığı hiçbir u
 onunla gelen istek 401 alır ve hiçbir yanıt `WWW-Authenticate: Basic` taşımaz (tarayıcı parola
 penceresi açılmaz). `VSA_ADMIN_PASSWORD` ve `VSA_ADMIN_PASSWORD_FILE` hiçbir yerde okunmaz.
 
-Requirement 11: Kayıtlarda kimlik: oturum, kayıt tutan servislere kullanıcının `public_id`'sini ve
-görünen adını verir; analiz kaydı, oy ve toplu arama işi kişiyi bunlarla tutar (kayıt biçimi
-analysis-records, [answer-feedback](../../../data-dictionary/PRDs/006-answer-feedback/PRD.md) ve
-list-search PRD'lerinde). İstemci adresi, ters DNS ile bulunan makine adı ve istemcinin gönderdiği
-kimlik alanları (kaynaktaki `voter`) kayda kimlik olarak alınmaz; böyle bir alan gelirse yok sayılır.
-"Kişi başına son oy" oturumdaki kullanıcıya göre sayılır. Pasifleştirilen hesabın kayıtları ve oyları
-yerinde kalır.
+Requirement 11: Kayıtlarda kimlik: analiz kaydı, oy ve toplu arama işi ya bir hesaba ya bir
+ziyaretçiye bağlanır ([anonymous-visitor](../003-anonymous-visitor/PRD.md) Decision 5,
+Requirement 7). Oturumla gelen istekte oturum, kayıt tutan servislere kullanıcının `public_id`'sini
+ve görünen adını verir; ana ekran isteğinde kimlik cihaz kimliğinden çözülen ziyaretçidir ve kayıt
+anındaki IP adresi ile makine adı ziyaretçi kaydına eklenir (kayıt biçimi analysis-records,
+[answer-feedback](../../../data-dictionary/PRDs/006-answer-feedback/PRD.md) ve list-search
+PRD'lerinde). İstek gövdesinde gelen kimlik alanları (kaynaktaki `voter`) kayda kimlik olarak
+alınmaz; böyle bir alan gelirse yok sayılır. "Kişi başına son oy" hesaba ya da ziyaretçiye göre
+sayılır. Pasifleştirilen hesabın kayıtları ve oyları yerinde kalır.
 
-Requirement 12: Canlı akışlar ve dosya indirmeleri de oturum ister. Erişim belirteci yalnız bellekte
-olduğundan ön yüz SSE akışını `EventSource` yerine `fetch` ile `Authorization` başlığı göndererek
-açar (`EventSource` başlık gönderemez). Excel indirmeleri dahil her API isteği de belirteci
-`Authorization` başlığında taşır: ön yüz dosyayı ortak API istemcisiyle (istek + blob: tarayıcıda
-dosya içeriğini tutan nesne) alıp tarayıcıda kaydeder; belirteç taşımayan düz bağlantı indirmede
-kullanılmaz. Rapor ve dışa aktarma uçlarını tanımlayan PRD'ler bu kurala bağlantı verir.
-Belirteç adres satırında, sorgu parametresinde veya bağlantıda taşınmaz (rules/58). Sunucu açık bir
+Requirement 12: Yönetim ekranındaki canlı akışlar ve dosya indirmeleri de oturum ister. Erişim
+belirteci yalnız bellekte olduğundan ön yüz SSE akışını `EventSource` yerine `fetch` ile
+`Authorization` başlığı göndererek açar (`EventSource` başlık gönderemez). Yönetim ekranının Excel
+indirmeleri dahil her isteği belirteci `Authorization` başlığında taşır: ön yüz dosyayı ortak API
+istemcisiyle (istek + blob: tarayıcıda dosya içeriğini tutan nesne) alıp tarayıcıda kaydeder;
+belirteç taşımayan düz bağlantı indirmede kullanılmaz. Ana ekranın canlı akışları ve rapor
+indirmeleri oturum istemez; aynı `fetch` ve blob yoluyla oturum belirteci yerine `X-Device-Id`
+başlığını taşır ([anonymous-visitor](../003-anonymous-visitor/PRD.md) Requirement 2, 3). Rapor ve
+dışa aktarma uçlarını tanımlayan PRD'ler bu kurala bağlantı verir. Belirteç ve cihaz kimliği adres
+satırında, sorgu parametresinde veya bağlantıda taşınmaz (rules/58). Sunucu açık bir
 SSE akışını, akışı açan belirtecin bitiş zamanında kapatır; ön yüz belirteci sessizce yeniler ve
 akışı yeniden açar. Akışın kapanması sunucuda süren işi durdurmaz (iş modeli ve yeniden bağlanma
 question-analysis PRD'sindedir). Böylece pasifleştirilen ya da rolü alınan kişinin açık akışı en geç
@@ -349,10 +370,14 @@ Requirement 16: Ön yüz:
   ([dictionary-explorer](../../../data-dictionary/PRDs/007-dictionary-explorer/PRD.md) Decision 17).
 - `password_change_required` gelince aynı ekranda "Yeni parola belirleyin" adımı açılır: yeni
   parola, tekrarı ve politikanın sade açıklaması; gönderim `POST /auth/password` iledir ve başarıda
-  kişi doğrudan uygulamaya girer.
-- Ana ekranın ve yönetim ekranının kabuğunda oturumdaki kişinin görünen adı, "Parolamı değiştir"
-  (şimdiki, yeni ve yeni tekrar) ve "Çıkış" bulunur; bu oturum alanı kaynağın üst çubuk ve kenar
-  çubuğu biçimine en az müdahaleyle yerleşir; kabukların düzeni data-dictionary alanının
+  kişi doğrudan geldiği yönetim sayfasına girer.
+- Giriş ekranı yalnız yönetim ekranı için açılır: `/admin` ve altındaki sayfalar oturumsuz giriş
+  ekranına yönlenir ve girişten sonra kişi geldiği yönetim sayfasına döner; `/` ana ekranı giriş
+  istemez ([anonymous-visitor](../003-anonymous-visitor/PRD.md) Requirement 1).
+- Yalnız yönetim ekranının kabuğunda oturumdaki kişinin görünen adı, "Parolamı değiştir" (şimdiki,
+  yeni ve yeni tekrar) ve "Çıkış" bulunur; bu oturum alanı kaynağın kenar çubuğu biçimine en az
+  müdahaleyle yerleşir. Ana ekranda oturum alanı yoktur (anonymous-visitor Decision 6,
+  Requirement 8). Kabukların düzeni data-dictionary alanının
   [dictionary-explorer](../../../data-dictionary/PRDs/007-dictionary-explorer/PRD.md) ve
   [search-settings](../../../data-dictionary/PRDs/009-search-settings/PRD.md) PRD'lerindedir.
 - Yönetim ekranı yolları yalnız `yonetici` ve süper yöneticiye görünür; `kullanici` adresi yazarsa
@@ -364,7 +389,7 @@ Requirement 16: Ön yüz:
   kez gösterilir; pencere kapanınca bir daha gösterilmez ve ekran bunu önceden söyler.
   Pasifleştirme, rol değiştirme ve sıfırlama, yönetim ekranının öteki onayları gibi tarayıcının onay
   penceresiyle onay ister.
-- Oturum bittiğinde (yenileme 401) giriş ekranına dönülür. Bütün metinler
+- Yönetim ekranında oturum bittiğinde (yenileme 401) giriş ekranına dönülür. Bütün metinler
   `app/frontend/src/locales/tr.json`'dadır.
 
 Requirement 17: Süper yönetici açılışı (DWH Code Review ile aynı model; Decision 18): Backend her
@@ -455,8 +480,8 @@ güncellenir.
   `DWHNAVIGATOR_ADMIN_PASSWORD` ile verir; değer Git'e, değer dosyalarına, komut argümanına, loga,
   telemetriye ve test verisine girmez, kümeye yalnız runtime Secret (kümedeki sır deposu) üzerinden
   ulaşır (kubernetes-delivery Requirement 7). Dağıtım var olan hesabın parolasını değiştirmez.
-- Pasifleştirme açık yenileme oturumlarını hemen kapatır; erişim belirteci kullanıcı uçlarında en çok
-  15 dakika daha geçerli kalır; yönetim ekranının durum değiştiren uçları durumu her istekte denetler
+- Pasifleştirme açık yenileme oturumlarını hemen kapatır; erişim belirteci yönetim ekranının okuma
+  uçlarında en çok 15 dakika daha geçerli kalır; yönetim ekranının durum değiştiren uçları durumu her istekte denetler
   (Requirement 10).
 
 Kaynağın güvenlik ölçüleri (`docs/GUVENLIK.md`) ve hedefteki karşılıkları:
@@ -477,10 +502,10 @@ Kaynağın güvenlik ölçüleri (`docs/GUVENLIK.md`) ve hedefteki karşılıkla
 | Bulgu 12: `git` alt süreci | Yok | [quality-evaluation](../../../data-dictionary/PRDs/010-quality-evaluation/PRD.md) |
 | Bulgu 13: sayfa kaynağındaki yorumlar | Üretim derlemesi yorumları atar | Ek iş yok |
 | Kalan risk 1: TLS ve HSTS ters vekilde | Giriş denetleyicisinde TLS (`ailab-tls`); HSTS backend ve ön yüz sunucusunda da | kubernetes-delivery Requirement 11; bu PRD Requirement 14 |
-| Kalan risk 2: son kullanıcı kimliği yok | Herkes yerel hesapla girer | Bu PRD |
+| Kalan risk 2: son kullanıcı kimliği yok | Yönetim ekranına kişiye ait yerel hesapla girilir; ana ekran girişsizdir, ziyaretçi cihaz kimliği, IP adresi ve makine adıyla tanınır | Bu PRD; [anonymous-visitor](../003-anonymous-visitor/PRD.md) |
 | Kalan risk 3: ağ çıkışı uygulamada sınırlı değil | Varsayılanı kapalı çıkış kuralı | kubernetes-delivery Requirement 10 |
 | Kalan risk 4: model ucu HTTP ise API anahtarı açık gider | Model bağlantısının TLS kuralları | llm-connection |
-| Kalan risk 5: veri biriminde API anahtarı, soru metni, istemci adresi | PostgreSQL; anahtar şifreli; adres yazılmaz | llm-connection, analysis-records; bu PRD Requirement 11 |
+| Kalan risk 5: veri biriminde API anahtarı, soru metni, istemci adresi | PostgreSQL; anahtar şifreli; ziyaretçinin IP adresi ve makine adı yalnız ziyaretçi kaydında, kayıtla aynı süre saklanır | llm-connection, analysis-records; bu PRD Requirement 11; anonymous-visitor |
 | Kalan risk 6: kişisel veri | Uygulama yalnız sözlük metniyle çalışır | data-dictionary alanı |
 | Kalan risk 7: taban imaj takibi | İmaj taraması | kubernetes-delivery Requirement 14 |
 | Konteyner sertleştirmesi | Chart ve release imajları | kubernetes-delivery Requirement 2 |
@@ -565,9 +590,10 @@ olaylarının geçmişi ayrıca değişiklik kaydı tablosunda kalıcı saklanı
   aynılık), erişim belirteci algoritma listesi ve `none` reddi, yenileme dönüşümü ve tekrar kullanım
   tespiti, giriş ve parola değiştirmenin ortak sayaçları, `X-Forwarded-For` güven kuralı.
 - API, gerçek PostgreSQL'de: hesap açma, sıfırlama, rol ve durum akışları; tek kullanımlık parolanın
-  yalnız açılış yanıtında görünmesi; süresi dolmuş parola; zorunlu değişiklikten önce hiçbir korumalı
-  uca erişilememesi; rol, durum, sıfırlama ve parola değişikliğinde oturumların kapanması ve
-  değişiklik kaydı satırları (parola değeri olmadan); süper yönetici koruması ve kendini
+  yalnız açılış yanıtında görünmesi; süresi dolmuş parola; zorunlu değişiklikten önce hiçbir yönetim
+  veya hesap ucuna erişilememesi; ana ekran uçlarının oturum istememesi ve yönetim uçlarının oturumsuz
+  401, `kullanici` ile 403 vermesi (ana ekran uçlarının ayrıntılı testleri anonymous-visitor'dadır);
+  rol, durum, sıfırlama ve parola değişikliğinde oturumların kapanması ve değişiklik kaydı satırları (parola değeri olmadan); süper yönetici koruması ve kendini
   pasifleştirme reddi; pasif hesap 403; `Authorization: Basic` ile 401; gönderilen `voter` alanının yok
   sayılması; tekrar ve eşzamanlılık (aynı hesaba paralel rol yazmaları; aynı adla paralel iki hesap
   açmadan biri 201, diğeri 409); siteler arası istek matrisi (`Sec-Fetch-Site` değerleri; `Origin`
@@ -587,10 +613,11 @@ olaylarının geçmişi ayrıca değişiklik kaydı tablosunda kalıcı saklanı
   başlangıç reddini ve boş adreste dışa aktarım olmamasını sınar.
 - Ön yüz (Vitest): belirtecin kalıcı depoya yazılmaması, sessiz yenileme, sekmeler arası sıra (Web
   Locks taklidiyle), zorunlu yeni parola adımı, Kullanıcılar sayfasında tek kullanımlık parolanın bir
-  kez gösterilmesi, role göre yollar. Yapılandırma testi: ön yüz sunucusunun CSP metni birebir ve
+  kez gösterilmesi, role göre yollar, `/admin`'in oturumsuz giriş ekranına yönlenmesi ve ana ekranda
+  oturum alanı olmaması. Yapılandırma testi: ön yüz sunucusunun CSP metni birebir ve
   `server_tokens off`.
-- Tarayıcı senaryosu: hesap aç → tek kullanımlık parolayla gir → yeni parola belirle → uygulamayı kullan
-  → çık; sürüm imajındaki ön yüzle ana akışlarda konsolda CSP ihlali olmaması.
+- Tarayıcı senaryosu: hesap aç → `/admin`'de tek kullanımlık parolayla gir → yeni parola belirle →
+  yönetim ekranını kullan → çık; sürüm imajındaki ön yüzle ana akışlarda konsolda CSP ihlali olmaması.
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
 
@@ -610,19 +637,20 @@ olaylarının geçmişi ayrıca değişiklik kaydı tablosunda kalıcı saklanı
   Requirement 19 telemetri testi geçer; işaret parola ve tek kullanımlık parola log, veritabanı (özet
   dışında), API yanıtı (açılış ve sıfırlama yanıtı dışında) ve telemetride bulunmaz.
 - [ ] Acceptance 2: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da tarayıcıyla süper
-  yönetici bir `kullanici` ve bir `yonetici` hesabı açar; iki hesap tek kullanımlık parolayla girer,
-  yeni parola belirlemeden ilerleyemez, yeni parolayla girer; 15 dakikalık belirteç sessizce yenilenir
-  ve iki sekme açıkken oturum düşmez; çıkış çalışır; `kullanici` yönetim ekranına giremez (sayfa ve API
-  403); süper yönetici rolü değiştirir, parolayı sıfırlar ve hesabı pasifleştirir, değişiklik hemen
-  yansır; sayfa ve API yanıtlarında Requirement 14 başlıkları görülür, sürüm imajındaki ön yüzle
+  yönetici bir `kullanici` ve bir `yonetici` hesabı açar; oturumsuz tarayıcıda `/admin` giriş ekranına
+  yönlenir, `/` ana ekranı giriş istemeden açılır ve oturum alanı göstermez; iki hesap `/admin`'de tek
+  kullanımlık parolayla girer, yeni parola belirlemeden ilerleyemez, yeni parolayla girer; 15
+  dakikalık belirteç yönetim ekranında sessizce yenilenir ve iki sekme açıkken oturum düşmez; çıkış
+  çalışır; `kullanici` yönetim ekranına giremez (sayfa ve API 403); süper yönetici rolü değiştirir,
+  parolayı sıfırlar ve hesabı pasifleştirir, değişiklik hemen yansır; sayfa ve API yanıtlarında Requirement 14 başlıkları görülür, sürüm imajındaki ön yüzle
   konsolda CSP ihlali yoktur;
   başka kökenden gönderilen POST 403 alır (Requirement 2–5, 7, 8, 10, 13, 14, 16).
 - [ ] Acceptance 4: L2 — Gerçek istemci/ortamda doğrulandı: görünüm. Yerel Compose'da giriş ekranı,
   ilk girişteki "Yeni parola belirleyin" adımı, "Parolamı değiştir" ve Kullanıcılar sayfasının ekran
   görüntüleri masaüstü (1440×900) ve telefon genişliğinde (390×844 piksel) alınır; ekranlar kaynağın
   koyu paletini ve yönetim ekranının kart, form, düğme ve tablo görünümünü taşır, iskeletin
-  varsayılan açık görünümü görülmez; ana ekranın üst çubuğundaki ve yönetim ekranının kenar
-  çubuğundaki oturum alanı kaynağın öteki öğeleriyle aynı görünümdedir (Requirement 16).
+  varsayılan açık görünümü görülmez; yönetim ekranının kenar çubuğundaki oturum alanı kaynağın öteki
+  öğeleriyle aynı görünümdedir; ana ekranda oturum alanı görünmez (Requirement 16).
 - [ ] Acceptance 3: L2 — Nonprod kümede doğrulandı (yerel kanıttan ayrı raporlanır):
   `DWHNAVIGATOR_ADMIN_PASSWORD` tanımlıyken ilk dağıtımdan sonra `admin` girer ve logda
   `auth.super_admin.bootstrap` olayı `created`, sonraki dağıtımda `exists` görünür ve parola değişmez;
@@ -648,8 +676,9 @@ olaylarının geçmişi ayrıca değişiklik kaydı tablosunda kalıcı saklanı
   değişiklik kaydı tablosunda tutulur (Requirement 5); `nonprod`'da log saklama süresi güvenceli
   değildir.
 - Decision 11: Oturum süreleri: erişim belirteci 15 dakika, yenileme oturumunda boşta kalma 60 dakika,
-  mutlak üst sınır 8 saat. Bir analiz veya toplu arama işi oturumdan uzun sürebilir; iş sunucuda
-  sürer ve kişi yeniden girince sonucunu görür (question-analysis, list-search).
+  mutlak üst sınır 8 saat. Bu süreler yalnız yönetim ekranı oturumuna uygulanır; ana ekranın analiz
+  ve toplu arama işleri oturuma bağlı değildir ve ziyaretçinin cihaz kimliğine bağlı kalır
+  ([anonymous-visitor](../003-anonymous-visitor/PRD.md); question-analysis, list-search).
 - Decision 12: Erişim belirteci yalnız bellekte ve `Authorization` başlığında taşınır; çerez yalnız
   `/auth` yolundaki yenileme içindir. Böylece siteler arası istek riski çerezi okuyan veya yazan dört
   uçla (giriş, parola değiştirme, yenileme, çıkış) sınırlıdır; kaynaktaki `Sec-Fetch-Site`/`Origin`
@@ -709,5 +738,6 @@ Belirtim → Plan → Görevler → Uygulama
   görünür ve Acceptance 2'de yakalanır.
 - Sunucu katmanının bozuk HTTP isteğine verdiği kısa 400 yanıtı uygulamaya ulaşmadığı için güvenlik
   başlıklarını taşımaz; kümede böyle istekler giriş denetleyicisinde durur.
-- Kaynağı bugün kimliksiz kullanan herkes için hesap açılması gerekir; geçişte süper yöneticinin iş
-  yükü artar ve hesabı olmayan kişi uygulamayı kullanamaz.
+- Hesap yalnız yönetim ekranı için gerekir; `kullanici` rolündeki hesaplar hiçbir yetki vermeden
+  yerinde durur (anonymous-visitor Open Question 1). Ana ekranın açık erişim riskleri
+  [anonymous-visitor](../003-anonymous-visitor/PRD.md) PRD'sindedir.

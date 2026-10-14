@@ -27,7 +27,7 @@ from app.services.llm_connections import ConnectionKeys, LlmGateway
 from app.services.term_lists import TermLists
 from tests.fakes.analyst_server import AnalystServer
 from tests.fakes.llm_server import FakeLlmServer
-from tests.integration.conftest import SignedIn
+from tests.integration.conftest import SignedIn, visitor_headers, visitor_public_id
 from tests.integration.data_dictionary import SYNTHETIC_WORKBOOK, DataDictionary, sql
 
 FAST = LlmTimeouts(connect=2.0, health=1.0, model_list=1.0, model_list_budget=1.5)
@@ -119,13 +119,37 @@ class Qa:
         return self.dd.auth.prefix
 
     def headers(self, who: SignedIn | None = None) -> dict[str, str]:
-        return {**self.dd.auth.headers(who or self.user), **self.dd.auth.origin()}
+        """The main screen's headers of a test person: its own device id, no session
+        (application-foundation 003-anonymous-visitor Requirement 3)."""
+
+        return {**visitor_headers(who or self.user), **self.dd.auth.origin()}
+
+    async def visitor_id(self, who: SignedIn | None = None) -> str:
+        """The public id of the visitor a test person's device id opened."""
+
+        return await visitor_public_id(who or self.user)
 
     async def request(
         self, method: str, path: str, who: SignedIn | None = None, **kwargs: Any
     ) -> httpx.Response:
         headers = {**self.headers(who), **kwargs.pop("headers", {})}
         return await self.http.request(method, f"{self.prefix}{path}", headers=headers, **kwargs)
+
+    async def admin_request(
+        self, method: str, path: str, who: SignedIn, **kwargs: Any
+    ) -> httpx.Response:
+        """An administration request with the person's session (003-anonymous-visitor
+        Decision 3: administration keeps its session and role)."""
+
+        headers = {**self.dd.auth.headers(who), **self.dd.auth.origin()}
+        return await self.http.request(method, f"{self.prefix}{path}", headers=headers, **kwargs)
+
+    async def without_device(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
+        """A main-screen request that carries no device id."""
+
+        return await self.http.request(
+            method, f"{self.prefix}{path}", headers=self.dd.auth.origin(), **kwargs
+        )
 
     async def start(self, query: str, who: SignedIn | None = None, **body: Any) -> httpx.Response:
         self.model.ask(query)

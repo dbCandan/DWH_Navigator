@@ -1,6 +1,7 @@
 """Dictionary explorer endpoints (data-dictionary/PRDs/007-dictionary-explorer, API sözleşmesi).
 
-Open to ``kullanici`` and ``yonetici`` (Decision 2). Every endpoint reads the serving engine only:
+No session: a valid ``X-Device-Id`` is enough (Decision 2, application-foundation
+003-anonymous-visitor Requirement 3). Every endpoint reads the serving engine only:
 none takes a lock, waits for an analysis or writes anything; the table search runs in a worker
 thread so the event loop and the live streams never wait for it. Before the first index build they
 answer ``503 search_index_not_ready`` (Requirement 19). No search text, table or column name reaches
@@ -13,12 +14,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request, status
 
-from app.api.auth.dependencies import require_role
 from app.api.search_index_dependency import get_search_index
+from app.api.visitor.dependencies import get_current_visitor
 from app.core import telemetry
 from app.core.errors import ApplicationError
 from app.core.logging import log_event
-from app.domain.accounts import ROLE_USER
 from app.domain.analysis_records import QUERY_MAX_CHARS
 from app.schemas.errors import error_responses
 from app.schemas.explorer.tables import (
@@ -35,8 +35,9 @@ logger = logging.getLogger("app.explorer")
 
 _ERRORS = error_responses(
     {
-        401: "not_authenticated: oturum yok",
-        403: "forbidden: rol yok; cross_site_request: istek başka bir siteden geldi",
+        400: "device_id_required: X-Device-Id eksik ya da UUID 4 değil",
+        403: "tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi",
+        429: "rate_limited: yeni ziyaretçi sınırı",
         503: "search_index_not_ready: ilk arama indeksi kuruluyor",
     }
 )
@@ -44,7 +45,7 @@ _ERRORS = error_responses(
 router = APIRouter(
     prefix="/explorer",
     tags=["explorer"],
-    dependencies=[Depends(require_role(ROLE_USER))],
+    dependencies=[Depends(get_current_visitor)],
     responses=_ERRORS,
 )
 

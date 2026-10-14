@@ -2,14 +2,18 @@
 
 Status: Accepted
 
-Version: 1.0.2
+Version: 1.3.0
 
-Acceptance date: 2026-10-08
+Acceptance date: 2026-10-14
 
 Domain: [data-dictionary](../../DOMAIN.md)
 
-Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
-korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
+Kabul kaydı: Proje sahibi bu PRD'yi ilk kez 2026-10-08'de kabul etti;
+2026-10-14'te soru çubuğunun kayma hareketinin "hareketi azalt" tercihinden bağımsız olmasını
+(Requirement 19, [dictionary-explorer](../007-dictionary-explorer/PRD.md) Decision 8), her tarayıcı
+sekmesinin kendi analizini yürütmesini (Requirement 19, Decision 26) ve ana ekranın girişsiz
+kullanılmasını ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md))
+istedi.
 
 ## Amaç
 
@@ -30,16 +34,17 @@ verir. Bu, kaynak paketle yan yana çalışan fark testiyle kanıtlanır.
 
 ## Aktörler ve sonuçlar
 
-- **Kullanıcı (`kullanici`):** Talebini yazar, analizi izler (sıradayken "sırada" bilgisini görür),
-  durdurabilir, cevabı görür, Excel raporunu indirir, kayıtlı cevap yerine yeni analiz isteyebilir.
+- **Soran (ziyaretçi):** Ana ekranda giriş yapmadan
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)) talebini
+  yazar, analizi izler (sıradayken "sırada" bilgisini görür), durdurabilir, cevabı görür, Excel raporunu indirir, kayıtlı cevap yerine yeni analiz isteyebilir.
   Ölçülebilir sonuç: kabul edilen her talep dört son durumdan birine ulaşır (tamamlandı, hatayla
   bitti, durduruldu, yarıda kesildi; "tamamlandı" cevabı analistin cevabı, kayıtlı cevap ya da
   "Analiz yapılamadı" ve sebebidir); önerilen tablo ve kolonların sözlükte olmayanı 0'dır; başlatma
   yanıtı 2 saniye içinde döner; kayıtlı cevap 2 saniye içinde ekrandadır; "Durdur" analizi 5 saniye
   içinde bitirir.
-- **Yönetici (`yonetici`):** Kullanıcının yapabildiklerini yapar; ayrıca kayıtlı cevap özetini görür ve
-  bütün kayıtlı cevapları siler (düğme [search-settings](../009-search-settings/PRD.md) PRD'sinin
-  **Bakım** sayfasındadır). Bu PRD ona başkasının analizine erişim vermez.
+- **Yönetici (`yonetici`):** Ana ekranda öteki soranlar gibi ziyaretçidir; ayrıca yönetim ekranında
+  kayıtlı cevap özetini görür ve bütün kayıtlı cevapları siler (düğme
+  [search-settings](../009-search-settings/PRD.md) PRD'sinin **Bakım** sayfasındadır). Bu PRD ona başkasının analizine erişim vermez.
 - **Geliştirici:** Fark testini (kaynak paketle hedefi aynı girdilerle yan yana çalıştırıp çıktıları
   karşılaştıran test) çalıştırır. Ölçülebilir sonuç: sentetik sözlükte ve varsa gerçek sözlükte fark
   sayısı 0.
@@ -68,14 +73,18 @@ verir. Bu, kaynak paketle yan yana çalışan fark testiyle kanıtlanır.
   bu PRD kayda neyin ve hangi adımların yazıldığını tanımlar (Requirement 18).
 - Toplu arama list-search; Evren, tablo dosyası ve ana ekranın kabuğu (üst çubuk, durum göstergesi)
   dictionary-explorer; giriş ve roller
-  [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md); dağıtım
+  [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md); ziyaretçi kimliği,
+  sahipliği ve hız sınırları
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md); dağıtım
   [kubernetes-delivery](../../../application-foundation/PRDs/002-kubernetes-delivery/PRD.md); kalite
   ölçümü quality-evaluation PRD'sindedir.
-- Soru metni, sözlük içeriği, tablo ve kolon adı, istem, model yanıtı, adres ve kullanıcı adı uygulama
-  loguna ve telemetriye (ölçüm ve iz) girmez. Analiz kaydı ve kayıtlı cevap, soru ve cevap metni dahil,
-  ürün verisidir ve yalnız PostgreSQL'dedir.
-- Kayıtlarda kimlik oturumdaki kullanıcıdır (`public_id`, görünen ad); kaynaktaki istemci adresi,
-  makine adı ve serbest "voter" metni kullanılmaz.
+- Soru metni, sözlük içeriği, tablo ve kolon adı, istem, model yanıtı, adres, makine adı, cihaz
+  kimliği ve kullanıcı adı uygulama loguna ve telemetriye (ölçüm ve iz) girmez. Analiz kaydı ve
+  kayıtlı cevap, soru ve cevap metni dahil, ürün verisidir ve yalnız PostgreSQL'dedir.
+- Kayıtlarda soran ana ekranda ziyaretçidir (cihaz kimliği, IP adresi ve makine adı;
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Decision 1,
+  2, 5); kayıt ya bir hesaba ya bir ziyaretçiye bağlanır. Kaynaktaki serbest "voter" metni ve
+  istemcinin ürettiği `ask_id` kullanılmaz.
 - Arayüz yalnız Türkçedir; metinler `app/frontend/src/locales/tr.json` dosyasındadır ve kaynaktaki gibi
   kalır.
 
@@ -119,8 +128,10 @@ değiştiğini ya da aynen kaldığını söyler.
   kırpılır (varsayılan 5). `ask_id` istemciden gelir (en çok 64 karakter), yoksa üretilir. İstek analiz
   bitene kadar (45 saniye ile birkaç dakika) açık kalır. Soru ekranı kimliksizdir; kayda istemci adresi
   yazılır. **Hedefte:** `POST /analyses` işi kabul edip hemen döner; doğrulama hataları kararlı kodlu
-  422'dir; aralık dışı `top` reddedilir; kimlik oturumdaki kullanıcıdır; iş kimliğini sunucu üretir
-  (Requirement 4, 8).
+  422'dir; aralık dışı `top` reddedilir; soru ekranı kaynaktaki gibi girişsizdir, soran cihaz kimliği ve IP
+  adresiyle tanınan ziyaretçidir ve kayda IP adresi ile makine adı yazılır
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)); iş
+  kimliğini sunucu üretir (Requirement 4, 8).
 - **Kayıtlı cevap araması** (`App._answer`, `App._reuse`, `src/vsa/answer_cache.py`,
   `src/vsa/web/answer_store.py`): `fresh` değilse ve `cache.enabled` açıksa "Önceki cevap araması"
   adımı çalışır: aynı parmak izli ve `cache.max_age_days` (30) günden yeni kayıtlar içinde önce aynı
@@ -141,7 +152,7 @@ değiştiğini ya da aynen kaldığını söyler.
   değildir; aynı soru iki kez beklerken iki kez analiz edilir. Ayar kaydı motoru kilitsiz yeniler
   (`App.reload`): süren analiz eski motorla biter, yeni motor sonrakilere geçer. **Hedefte:** açık,
   ilk gelen ilk çıkar sıralı kuyruk; aynı anda yürüyen analiz sayısı varsayılan 1; bekleyen
-  kullanıcı yalnız sırada olduğunu görür, önündeki analiz sayısı gösterilmez; aynı soru tek kez
+  soran yalnız sırada olduğunu görür, önündeki analiz sayısı gösterilmez; aynı soru tek kez
   analiz edilir (Requirement 9, 14, 20).
 - **Motor girişi** (`src/vsa/pipeline.py` `Engine.analyze`, `Engine._unavailable`,
   `fallback_reason`; `src/vsa/llm/client.py` `health`): Sırasıyla: sözlük boşsa "Sözlük henüz içe
@@ -310,7 +321,10 @@ değiştiğini ya da aynen kaldığını söyler.
   seçimi" (→ "LLM çağrısı"), "Aile araması", "2. adım — kolon okuma ve rapor" (→ "LLM çağrısı"); anlık
   olaylar "Analiz yapılamadı", "Durduruldu", "Yanıt JSON değil — onarım isteniyor" (model yanıtının ilk
   200 karakteriyle) ve "Model bir özelliği reddetti — onsuz yeniden" (sunucunun hata metniyle).
-  **Hedefte:** kayıt PostgreSQL'de, sahibi analysis-records; adres ve makine adı yerine kullanıcı;
+  **Hedefte:** kayıt PostgreSQL'de, sahibi analysis-records; soran ziyaretçiyse kayıt anındaki IP
+  adresi ve makine adı, hesaplı kişiyse hesap
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+  Requirement 7);
   akışlar İngilizce sabit kodlarla saklanır; adım adları aynen, ana adımlar ayrıca canlı akışın adım
   anahtarını taşır; olaylar model yanıtı ve sunucu hata metni taşımaz; tam cevap kayda yazılır
   (Requirement 18).
@@ -332,13 +346,15 @@ değiştiğini ya da aynen kaldığını söyler.
   veriye ihtiyacınız var?" başlığı ve "Örn. Kredi kartı limit doluluk oranı verisine ihtiyacımız
   var, nerede?" örnekli çok satırlı kutu vardır; Enter gönderir, Shift+Enter alt satıra geçer, kutu
   180 piksele kadar büyür. İlk sorudan sonra çubuk üst çizgiye kayar ve orada kalır ("/" odaklar,
-  Esc bırakır; hareket azaltma tercihine uyulur). Metin bir tablonun tam adıysa soru sorulmaz, tablo
+  Esc bırakır; kaynakta hareket azaltma tercihi açıkken kayma canlandırılmaz). **Hedefte:** kayma bu
+  tercihten bağımsız canlandırılır (Requirement 19). Metin bir tablonun tam adıysa soru sorulmaz, tablo
   dosyası açılır. Analiz sürerken "Ara ↵" düğmesi "Durdur" olur (Esc de durdurur); durdurulunca
   "Analiz durduruldu. Soruyu düzenleyip yeniden arayabilirsiniz.", hata olunca "Analiz başarısız:
   <ileti>" yazılır. Sayfa aynı anda tek soru yürütür. İlerleme yalnız Evren'in tarama hareketiyle
   gösterilir; sıra ve adım gösterilmez. **Hedefte:** React'te aynı görünüm ve etkileşim; ilerleme
   yine tarama hareketiyle gösterilir, adım gösterilmez; iş sıradayken Evren'in bilgi satırı "sırada"
-  der; sayfa yenilenince süren analize yeniden bağlanılır (Requirement 19, 20).
+  der; her sekme kendi analizini yürütür ve aynı sekmede sayfa yenilenince o sekmenin süren
+  analizine yeniden bağlanılır (Requirement 19, 20, Decision 26).
 - **Cevap görünümü** (`answerView`, `foundBlock`, `overview`, `resultCard`, `sideCard`, `richOf`,
   `splitSummary`, `ruleNote`, `ruleShort`): Üst satırda sonuç rozeti, cevabı kimin yazdığı ("Analist
   · <model>" ya da "Analiz yapılamadı"), kayıtlı cevapsa "Önceki cevap · gg.aa.yyyy" ve "↻ Yeniden
@@ -508,7 +524,7 @@ Requirement 7: Tamamlanan işin cevabı (`result`) kaynaktaki alanlarla döner: 
 `concepts`, `expansion`, `method`, `elapsed_ms`, `dictionary_version`, `llm_model`, `analyst`,
 `fallback`, `interpretation`, `design`, `attention`, `reused` (`at`, `query`, `match` ya da `null`),
 `missing`. Kaynaktaki `report_id` kalkar; rapor iş kimliğiyle alınır. Cevap, answer-feedback
-PRD'sindeki oy uygulamasından o anki kullanıcı için geçirilerek döner; oy uygulaması hata verirse cevap
+PRD'sindeki oy uygulamasından isteği yapan ziyaretçi için geçirilerek döner; oy uygulaması hata verirse cevap
 oysuz döner ve olay yazılır. "Analiz yapılamadı" cevabı da tamamlanmış cevaptır. `dictionary_source`
 kaynaktaki gibi `dictionary.jsonl`'dır (Decision 11).
 
@@ -518,14 +534,16 @@ Requirement 8: Her analiz bir iştir. Durumlar: `queued` (sırada), `running` (y
 yöneticinize bildirin."), `cancelled` (durduruldu), `interrupted` (yarıda kesildi). Geçişler: kabulde
 kayıtlı cevap bulunursa doğrudan `completed`, yoksa `queued`; `queued` → `running` → `completed` ya da
 `failed`; `queued` ya da `running` → `cancelled` ya da `interrupted`. Son durumdan çıkış yoktur.
-İşin sahibi onu başlatan kullanıcıdır; iş kimliği analiz kaydının `public_id` değeridir.
+İşin sahibi onu başlatan ziyaretçidir (cihaz kimliği;
+[anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+Requirement 5); iş kimliği analiz kaydının `public_id` değeridir.
 
 Requirement 9: Kuyruk ve eşzamanlılık: (a) tek süreç içi kuyruk ilk gelen ilk çıkar sırasıyla yürür;
 (b) aynı anda yürüyen iş sayısı `DWHNAVIGATOR_ANALYSIS_CONCURRENCY` değerini (varsayılan 1; 1–4;
 Decision 2) hiçbir anda aşmaz; (c) sırada bekleyen iş sayısı `DWHNAVIGATOR_ANALYSIS_QUEUE_LIMIT`
 değerine (varsayılan 20; 1–200) ulaştıysa yeni tek soru `503 analysis_queue_full` alır ("Şu anda çok
 sayıda analiz sırada; biraz sonra yeniden deneyin."), kabulde kayıtlı cevapla biten iş kuyruğa
-girmediği için bu sınıra takılmaz; (d) kullanıcı başına iş sınırı yoktur: aynı kullanıcının yeni tek
+girmediği için bu sınıra takılmaz; (d) ziyaretçi başına iş sınırı yoktur: aynı ziyaretçinin yeni tek
 soru isteği de sıraya girer (kaynakla aynı, Decision 23); (e) list-search bir listenin terimlerini
 kuyruğa birer birer koyar: sonraki terim, önceki terim son duruma ulaşınca kuyruğun sonuna girer,
 böylece eşzamanlılık 1 iken tek soru en çok bir liste teriminin bitmesini bekler; (f) bekleyen işin
@@ -533,7 +551,9 @@ böylece eşzamanlılık 1 iken tek soru en çok bir liste teriminin bitmesini b
 arayüz bu sayıyı göstermez (Requirement 20).
 
 Requirement 10: Canlı ilerleme akışı `GET /analyses/{analysis_id}/events` yalnız işin sahibine
-açılır; oturum, rol ve sahiplik akış açılmadan denetlenir, başarısızsa normal hata zarfı döner. Her
+açılır; cihaz kimliği (`X-Device-Id`) ve sahiplik akış açılmadan denetlenir, başarısızsa normal hata
+zarfı döner ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+Requirement 3, 5). Her
 bağlantı `snapshot` olayıyla başlar (durum, `ahead`, yürüyen adım, geçen süre); iş son durumdaysa
 hemen ardından son olay gelir. Sonra değişiklikler sırasıyla gelir: `queued` (`ahead` değişince),
 `started`, `step` (adım anahtarı; `started`, `finished` ya da `error`; adım süresi) ve tek bir son
@@ -541,13 +561,15 @@ olay (`completed` akış ve sonuç etiketiyle, `failed` kod ve iletiyle, `cancel
 son olaydan sonra sunucu akışı kapatır. Adım anahtarları sabit kümedir: `saved_answer_lookup`,
 `queue`, `model_check`, `rule_hints`, `shortlist`, `family_search`, `analyst_report`. Olaylar soru
 metni, tablo ve kolon adı, istem ve model yanıtı taşımaz. Olay yokken 15 saniyede bir canlılık
-satırı (`: canlı`) gider. Bağlantı koparsa ya da erişim belirtecinin süresi bitince sunucu akışı
-kapatırsa ([user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md)
-Requirement 12) akış ucu çalışmayı bırakır, iş sürer (Decision 6). Yeniden bağlanan istemci son
+satırı (`: canlı`) gider. Akış bir oturum belirtecine bağlı değildir; son olaydan sonra sunucu
+kapatınca ya da istemci bağlantıyı kopardığında biter. Bağlantı koparsa akış ucu çalışmayı bırakır,
+iş sürer (Decision 6). Yeniden bağlanan istemci son
 aldığı olayın kimliğini `Last-Event-ID` başlığıyla gönderir; sunucu önce işin güncel durumunu
 taşıyan `snapshot`'ı, ardından o kimlikten sonraki adım olaylarını sırasıyla yeniden gönderir
 (olaylar iş süresince süreç belleğinde tutulur); başlık yoksa yalnız `snapshot` ve sonraki olaylar
-gelir. Kullanıcı başına aynı anda en çok 5 açık akış olur; fazlası `429 too_many_streams`. Yanıt
+gelir. Ziyaretçi başına aynı anda en çok 5 açık akış olur
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+Requirement 6); fazlası `429 too_many_streams`. Yanıt
 `Content-Type: text/event-stream`, `Cache-Control: no-cache` ve `X-Accel-Buffering: no` başlıklarını
 taşır.
 
@@ -645,7 +667,9 @@ dışındakiler `_` olur, boşsa `talep`; zaman İstanbul saati). İçerik kayna
 - Kullanıcıdan ya da modelden gelen her metin hücreye metin olarak yazılır; "=" ile başlayan metin
   formül olmaz.
 
-Requirement 17: `GET /status` (`kullanici`, `yonetici`) şunları döndürür: `columns` ve `objects`
+Requirement 17: `GET /status` (oturum istemez, geçerli `X-Device-Id` ister;
+[anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+Requirement 3) şunları döndürür: `columns` ve `objects`
 (hizmetteki sözlüğün kolon ve tablo sayısı), `dictionary_version` (hizmetteki indeksin kurulduğu sözlük
 sürümü; sözlük yoksa `""`), `llm` (bağlı sohbet modelinin adı; model bağlı değilse boş), `llm_state`
 ([llm-connection](../003-llm-connection/PRD.md) Requirement 12'deki model durumu nesnesi: `state` —
@@ -658,7 +682,9 @@ döner. Ucun tek sahibi bu PRD'dir; [dictionary-explorer](../007-dictionary-expl
 çubuktaki durum göstergesinde kullanır ve `dictionary_version` değişince haritayı yeniler.
 
 Requirement 18: Analiz kaydına (tablosu analysis-records'ta) şunlar yazılır:
-- Kabulde: iş kimliği (`public_id`), kullanıcı (`public_id` ve görünen ad), köken (`question` ya da
+- Kabulde: iş kimliği (`public_id`), soran (ziyaretçi ya da hesap; ziyaretçide kayıt anındaki IP
+  adresi ve makine adı, [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+  Decision 5, Requirement 7), köken (`question` ya da
   `list`; listede liste kimliği, liste dosyasının adı ve terim sırası), soru (en çok 4000 karakter),
   `fresh`, durum `queued`, kabul zamanı.
 - Başlarken: durum `running`, başlama zamanı, sırada bekleme süresi.
@@ -688,12 +714,18 @@ Requirement 18: Analiz kaydına (tablosu analysis-records'ta) şunlar yazılır:
 
 Requirement 19: Soru çubuğu kaynaktaki gibidir: açılış başlığı, örnekli kutu (erişilebilir adı
 "Talep"), Enter ile gönderme, Shift+Enter ile alt satır, 180 piksele kadar büyüme, ilk sorudan sonra
-üst çubuğa yerleşme ("/" odaklar, Esc bırakır; hareket azaltma tercihine uyulur), tam tablo adında
-tablo dosyasını açma (dictionary-explorer). Sayfa aynı anda tek soru yürütür; analiz sürerken düğme
+üst çubuğa yerleşme ("/" odaklar, Esc bırakır; kayma hareketi işletim sisteminin "hareketi azalt"
+tercihinden bağımsız canlandırılır, [dictionary-explorer](../007-dictionary-explorer/PRD.md)
+Decision 8), tam tablo adında
+tablo dosyasını açma (dictionary-explorer). Her tarayıcı sekmesi aynı anda tek soru yürütür; ayrı
+sekmeler ayrı soruları birbirinden bağımsız yürütür (Decision 26); analiz sürerken düğme
 "Durdur" olur (erişilebilir adı "Analizi durdur", ipucu "Analizi durdur (Esc)") ve Esc de durdurur.
-Kullanıcı başlatma yanıtı gelmeden durdurursa arayüz yanıtı bekler ve işi hemen durdurur. Sayfa
-açılınca `GET /analyses/active` sorulur; sıradaki ya da yürüyen tek soru varsa sorusu çubukta
-görünür ve ilerleme sürer. Hata kodları Türkçe iletilere eşlenir; sunucunun ham iletisi gösterilmez.
+Kullanıcı başlatma yanıtı gelmeden durdurursa arayüz yanıtı bekler ve işi hemen durdurur; "Durdur"
+yalnız o sekmenin analizini durdurur. Sekme başlattığı analizin `analysis_id` değerini yalnız o
+sekmeye ait tarayıcı oturum belleğinde (`sessionStorage`) tutar. Sayfa açılınca bu değer varsa
+`GET /analyses/{id}` sorulur; iş hâlâ sıradaysa ya da yürüyorsa sorusu çubukta görünür ve ilerleme
+sürer; iş bitmişse, bulunamazsa ya da değer yoksa sayfa boş açılır ve değer silinir. Yeni açılan
+sekme başka bir sekmenin analizini göstermez. Hata kodları Türkçe iletilere eşlenir; sunucunun ham iletisi gösterilmez.
 Soru çubuğunun görünümü kaynakla birebir aynıdır
 ([dictionary-explorer](../007-dictionary-explorer/PRD.md) Decision 3).
 
@@ -701,8 +733,8 @@ Requirement 20: İlerleme ve durdurma gösterimi kaynaktaki gibidir: ilerleme ya
 hareketi ve bilgi satırıyla gösterilir ([dictionary-explorer](../007-dictionary-explorer/PRD.md)
 Requirement 7); adım metni, geçen süre ve önündeki analiz sayısı gösterilmez. İş `queued` iken bilgi
 satırının yolculuk günlüğünde "sırada" yazar; iş yürümeye başlayınca yolculuk kaynaktaki evrelerle
-sürer (Decision 22). Kayıtlı cevapta cevap gelir. Akış paylaşılan istemciyle, oturum belirteci
-başlıkta okunur; koparsa iş son duruma ulaşana kadar 1, 2, 4… en çok 30 saniye arayla, son alınan
+sürer (Decision 22). Kayıtlı cevapta cevap gelir. Akış paylaşılan istemciyle, cihaz kimliği
+`X-Device-Id` başlığında gönderilerek okunur; koparsa iş son duruma ulaşana kadar 1, 2, 4… en çok 30 saniye arayla, son alınan
 olayın kimliği `Last-Event-ID` ile gönderilerek yeniden bağlanılır (Requirement 10). Durdurulunca
 "Analiz durduruldu. Soruyu düzenleyip yeniden arayabilirsiniz." (durum bildirimi olarak), hatayla
 bitince "Analiz başarısız: <kodun iletisi>", yarıda kesilince Requirement 12'deki ileti yazılır.
@@ -723,9 +755,9 @@ gösteren yan kartlar ("Önerilen kurgu", "Dikkat edilmesi gerekenler", analist 
 öneriler"), öneri yoksa "Sözlükte bu talebin doğrudan karşılığı bulunamadı. Talebi farklı ifadelerle
 deneyin." ve "Arama ayrıntıları". Metindeki tablo adları öneriye ya da tablo dosyasına götüren
 düğme, kolon adları sabit genişlikli yazıdır; model metni hiçbir zaman HTML (sayfa biçimlendirme
-kodu) olarak yorumlanmaz. Excel raporu paylaşılan istemciyle, oturum belirteci başlıkta gönderilerek
-indirilir ([user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md)
-Requirement 12) ve dosya adı yanıt başlığından alınır. Güven halkası gibi dinamik görsel değerler
+kodu) olarak yorumlanmaz. Excel raporu paylaşılan istemciyle, cihaz kimliği `X-Device-Id` başlığında
+gönderilerek indirilir ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+Requirement 2) ve dosya adı yanıt başlığından alınır. Güven halkası gibi dinamik görsel değerler
 stil nesnesi (CSSOM) ya da SVG öznitelikleriyle verilir; çalışırken `<style>` öğesi ekleyen bileşen
 kullanılmaz (katı içerik güvenlik politikası, user-accounts Requirement 14). Oy düğmeleri,
 kullanıcıların reddettiği ve doğruladığı tablolar answer-feedback PRD'sinindir ve bu görünümde yer
@@ -738,9 +770,11 @@ ulaşılamıyor) durum göstergesinin parçasıdır; metinleri, önceliği ve 60
 [dictionary-explorer](../007-dictionary-explorer/PRD.md) Requirement 2'dedir. Bu PRD, akışı
 `unavailable` olan her cevaptan sonra durumun yeniden okunmasını tetikler.
 
-Requirement 23: `POST /analyses` oturumdaki kullanıcı başına 60 saniyede en çok 30 istek kabul eder;
-aşılırsa `429 rate_limited` ("Çok sık soru gönderildi; bir dakika sonra yeniden deneyin."). Sayaç
-kullanıcıya göredir, adrese göre değil.
+Requirement 23: `POST /analyses` ziyaretçi başına 60 saniyede en çok 30, IP adresi başına 60 saniyede
+en çok 120 istek kabul eder
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+Requirement 6); aşılırsa `429 rate_limited` ("Çok sık soru gönderildi; bir dakika sonra yeniden
+deneyin.") ve `Retry-After` döner.
 
 Requirement 24: Katmanlar: veri sınıfları (`DictColumn`, `ObjectProfile`, `Dictionary`, `TermGroup`,
 `Level`, `Verdict`, `ColumnHit`, `ObjectMatch`, `Note`, `AnalysisResult`) ve kayıtlı cevap tablosu
@@ -758,7 +792,11 @@ paylaşılan `last_error` yarışı olmaz.
 
 ## API sözleşmesi
 
-Uçlar `/api/dwhnavigator/v1` altındadır ve hepsi geçerli oturum belirteci (JWT) ister. Hata gövdesi
+Uçlar `/api/dwhnavigator/v1` altındadır. Ana ekran uçları (iş uçları ve `GET /status`) oturum
+istemez, geçerli bir cihaz kimliği (`X-Device-Id` başlığı, UUID 4) ister; başlık yoksa ya da UUID 4
+değilse yanıt `400 device_id_required` olur
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+Requirement 3). Kayıtlı cevap uçları geçerli oturum belirteci (JWT) ve `yonetici` rolü ister. Hata gövdesi
 tek zarftır: `{"detail":{"code":"...","message":"..."}}`; istek kimliği `x-request-id` başlığıyla
 döner. Uygulama arayüzü sözleşme dosyası (`OpenAPI`) ve ondan üretilen ön yüz tipleri aynı değişiklikte
 güncellenir; canlı akış olaylarının içerikleri de sözleşmede bileşen şeması olarak yer alır.
@@ -771,17 +809,17 @@ ISO 8601 uluslararası tarih yazımıyla).
 
 | Uç | Yetki | Başarı | Hatalar |
 |---|---|---|---|
-| `POST /analyses` | `kullanici`, `yonetici` | `202` iş zarfı ve `Location`; kayıtlı cevap bulunduysa zarf `completed` | `401`, `403`, `413 request_too_large`, `422 query_empty`, `query_too_long`, `query_invalid_characters`, `invalid_request`, `429 rate_limited`, `503 analysis_queue_full`, `analysis_unavailable`, `search_index_not_ready` |
-| `GET /analyses/active` | `kullanici`, `yonetici` | `200` `{"analysis": <iş zarfı ya da null>}`: kullanıcının en son başlattığı, sıradaki ya da yürüyen tek soru işi | `401`, `403` |
-| `GET /analyses/{analysis_id}` | işin sahibi | `200` iş zarfı; `completed` ise `result` (Requirement 7) | `401`, `403`, `404 analysis_not_found` |
-| `GET /analyses/{analysis_id}/events` | işin sahibi | `200` `text/event-stream` (Requirement 10) | akış açılmadan hata zarfı: `401`, `403`, `404 analysis_not_found`, `429 too_many_streams` |
-| `POST /analyses/{analysis_id}/cancel` | işin sahibi | `200` iş zarfı (son durum) | `401`, `403`, `404 analysis_not_found` |
-| `GET /analyses/{analysis_id}/report` | işin sahibi | `200` Excel dosyası (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `Content-Disposition: attachment`) | `401`, `403`, `404 analysis_not_found`, `409 analysis_has_no_result` |
-| `GET /status` | `kullanici`, `yonetici` | `200` `columns`, `objects`, `dictionary_version`, `llm`, `llm_state` (`state`, `model`, `code`, `reason`), `shortlist` | `401`, `403` |
+| `POST /analyses` | `X-Device-Id` (oturum yok) | `202` iş zarfı ve `Location`; kayıtlı cevap bulunduysa zarf `completed` | `400 device_id_required`, `413 request_too_large`, `422 query_empty`, `query_too_long`, `query_invalid_characters`, `invalid_request`, `429 rate_limited`, `503 analysis_queue_full`, `analysis_unavailable`, `search_index_not_ready` |
+| `GET /analyses/active` | `X-Device-Id` (oturum yok) | `200` `{"analysis": <iş zarfı ya da null>}`: ziyaretçinin en son başlattığı, sıradaki ya da yürüyen tek soru işi | `400 device_id_required` |
+| `GET /analyses/{analysis_id}` | işin sahibi ziyaretçi (`X-Device-Id`) | `200` iş zarfı; `completed` ise `result` (Requirement 7) | `400 device_id_required`, `404 analysis_not_found` |
+| `GET /analyses/{analysis_id}/events` | işin sahibi ziyaretçi (`X-Device-Id`) | `200` `text/event-stream` (Requirement 10) | akış açılmadan hata zarfı: `400 device_id_required`, `404 analysis_not_found`, `429 too_many_streams` |
+| `POST /analyses/{analysis_id}/cancel` | işin sahibi ziyaretçi (`X-Device-Id`) | `200` iş zarfı (son durum) | `400 device_id_required`, `404 analysis_not_found` |
+| `GET /analyses/{analysis_id}/report` | işin sahibi ziyaretçi (`X-Device-Id`) | `200` Excel dosyası (`application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `Content-Disposition: attachment`) | `400 device_id_required`, `404 analysis_not_found`, `409 analysis_has_no_result` |
+| `GET /status` | `X-Device-Id` (oturum yok) | `200` `columns`, `objects`, `dictionary_version`, `llm`, `llm_state` (`state`, `model`, `code`, `reason`), `shortlist` | `400 device_id_required` |
 | `GET /saved-answers/summary` | `yonetici` | `200` `total`, `usable`, `newest_at` | `401`, `403` |
 | `DELETE /saved-answers` | `yonetici` | `200` `removed` | `401`, `403` |
 
-Başka kullanıcının işi her uçta `404 analysis_not_found` döner; işin var olduğu da söylenmez.
+Başka cihaz kimliğinin işi her uçta `404 analysis_not_found` döner; işin var olduğu da söylenmez.
 `analysis_not_found` iletisi "Analiz bulunamadı.", `too_many_streams` iletisi "Çok sayıda açık izleme
 bağlantısı var; diğer sekmeleri kapatın." şeklindedir.
 
@@ -806,13 +844,16 @@ ekranındaki kayıtlı cevap sayıları → `GET /saved-answers/summary`. `ask_i
 
 ## Güvenlik ve yetkilendirme
 
-- Kimlik ve roller [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md)
-  PRD'sinden gelir; kaynakta soru ekranı kimliksizdi. Soru, durum ve iş uçları `kullanici` ve
-  `yonetici` rollerine; kayıtlı cevap özeti ve silme yalnız `yonetici` rolüne açıktır.
-- Bir işi yalnız başlatan kullanıcı okur, izler, durdurur ve raporunu alır; `yonetici` de başkasının
-  işine bu uçlardan erişemez (analiz kayıtlarını analysis-records PRD'sinin ekranından görür).
-- Canlı akış ilk baytı göndermeden önce oturumu, rolü ve sahipliği denetler. Oturum belirteci yalnız
-  `Authorization` başlığındadır; bağlantı adresinde belirteç, soru metni ya da tablo adı yoktur. Bu
+- Soru, durum ve iş uçları kaynaktaki gibi girişsizdir; ziyaretçinin kimliği, sahipliği ve hız
+  sınırları [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+  PRD'sindedir. Kayıtlı cevap özeti ve silme yalnız `yonetici` rolüne açıktır; giriş ve roller
+  [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) PRD'sinden gelir.
+- Bir işi yalnız başlatan ziyaretçi (aynı cihaz kimliği) okur, izler, durdurur ve raporunu alır;
+  `yonetici` de başkasının işine bu uçlardan erişemez (analiz kayıtlarını analysis-records PRD'sinin
+  ekranından görür). Cihaz kimliği bir kimlik bilgisi değildir; bilen biri o ziyaretçinin işini
+  görebilir (anonymous-visitor Güvenlik ve yetkilendirme).
+- Canlı akış ilk baytı göndermeden önce cihaz kimliğini ve sahipliği denetler. Cihaz kimliği yalnız
+  `X-Device-Id` başlığındadır; bağlantı adresinde cihaz kimliği, soru metni ya da tablo adı yoktur. Bu
   yüzden ön yüz akışı ve rapor indirmeyi paylaşılan istemciyle yapar (Decision 17).
 - Girdiler sunucuda doğrulanır (Requirement 4); istek gövdesi, akış sayısı, istek sıklığı ve kuyruk
   sınırlıdır (Requirement 9, 10, 23).
@@ -822,8 +863,8 @@ ekranındaki kayıtlı cevap sayıları → `GET /saved-answers/summary`. `ask_i
   yorumlanmaz; Excel'de formül olmaz. Rapor dosya adı yalnız harf, rakam ve `_` içerir.
 - Soru metni ve sözlük içeriği istemle yalnız kurum içindeki modele gider; ağ politikası
   llm-connection PRD'sindedir.
-- Kayıtlı cevap kullanıcıya özgü veri taşımaz; oylar cevaba okunurken o kullanıcı için uygulanır. Bu
-  yüzden kayıtlı cevap kiracı içinde kullanıcılar arasında paylaşılır; "aynı anlam" eşleşmesinde
+- Kayıtlı cevap soranlara özgü veri taşımaz; oylar cevaba okunurken isteği yapan ziyaretçi için
+  uygulanır. Bu yüzden kayıtlı cevap kiracı içinde soranlar arasında paylaşılır; "aynı anlam" eşleşmesinde
   önceki sorunun metni gösterilir (kaynakla aynı, Decision 24).
 - Soru metni, tablo ve kolon adı, istem ve model yanıtı log, ölçüm ve izlere girmez; işaret dizesiyle
   sızıntı testi bunu denetler (Test stratejisi).
@@ -837,8 +878,9 @@ ekranındaki kayıtlı cevap sayıları → `GET /saved-answers/summary`. `ask_i
   cevap okunurken Requirement 14'e göre güncel sözlükle yeniden kurulur; ortalama ~30 KB),
   `answered_at` (evrensel saat),
   `analysis_public_id` (cevabı üreten analiz kaydı; kayıt silinince boşalır), `props`, `created_at`,
-  `updated_at`, `created_by` (cevabı üreten soruyu soran kullanıcı), `updated_by`. Kısıt: kiracı,
-  `text_key`, `fingerprint` üçlüsü tekildir. Dizinler: (kiracı, `fingerprint`, `answered_at` azalan) ve
+  `updated_at`, `created_by` (cevabı üreten soruyu soran hesap; soran ziyaretçiyse boş; kayıtlı cevap
+  kiracıda paylaşılan önbellek olduğundan sahibi yoktur ve ziyaretçi sütunu taşımaz), `updated_by`.
+  Kısıt: kiracı, `text_key`, `fingerprint` üçlüsü tekildir. Dizinler: (kiracı, `fingerprint`, `answered_at` azalan) ve
   (kiracı, `meaning_key`, `fingerprint`, `answered_at` azalan). Yazılımsal silme sütunları yoktur;
   rules/41 sapması göç ettirilmiş şema kapısında belgeli istisnadır (Decision 9).
 - **Analiz kaydı:** Tablo analysis-records PRD'sinindir; bu PRD Requirement 18'deki alanların ve
@@ -878,8 +920,8 @@ ekranındaki kayıtlı cevap sayıları → `GET /saved-answers/summary`. `ask_i
   `unavailable`, `failed`, `cancelled`, `interrupted`; `verdict` `var`, `kismen_var`, `bulunamadi`;
   `step` Requirement 10'daki yedi anahtar; arama `result` değeri `same_question`, `same_meaning`,
   `miss`, `disabled`, `error`; yazma `result` değeri `stored`, `skipped`, `error`; rapor `result`
-  değeri `ok`, `error`. Kümede olmayan değer `other` yazılır. Kullanıcı, iş, soru, tablo ve model adı
-  ölçüme girmez.
+  değeri `ok`, `error`. Kümede olmayan değer `other` yazılır. Kullanıcı, ziyaretçi, iş, soru, tablo ve
+  model adı ölçüme girmez.
 - **İz:** iş başına `analysis.run` aralığı (öznitelikler: köken, sonuç, sonuç etiketi, öneri sayısı,
   düşen sayı, model çağrısı sayısı) ve altında adım anahtarı adlı aralıklar; model çağrısı aralıkları
   llm-connection'dan gelir ve adım aralığına bağlanır. İçerik hiçbir aralığa girmez. Ortak kurallar ve
@@ -980,14 +1022,16 @@ ekranındaki kayıtlı cevap sayıları → `GET /saved-answers/summary`. `ask_i
     bu düzeneği kullanır ve buraya bağlantı verir.
 - **Hizmet testleri** (sahte motor ve sahte modelle, gerçek PostgreSQL): kuyruk sırası, eşzamanlılık
   üst sınırı (sahte modelin gördüğü en yüksek eşzamanlı istek ayarı aşmaz), kuyruk sınırı, aynı
-  kullanıcının ikinci tek soru isteğinin sıraya girmesi, liste terimlerinin araya girmesi (tek soru
+  ziyaretçinin ikinci tek soru isteğinin sıraya girmesi, liste terimlerinin araya girmesi (tek soru
   en çok bir terim bekler), motorun ve modelin iş başına sabitlenmesi (iş sürerken ayar ve model
   değişir), aynı soru için tek analiz, `fresh`, yalnız analist cevabının ve geçerli motorun
   cevabının yazılması, depo hatasında analizin sürmesi, 2000 kayıt sınırı, aynı metinde yenisinin
   eskisinin yerini alması, unutma ve temizleme, `max_age_days` ve `meaning` anahtarları, kolonu
   silinmiş kayıtlı cevabın kullanılmaması, durum geçişleri, yeniden başlamada `interrupted` ve
   analiz kaydı alanları.
-- **API testleri** (gerçek uygulama ve PostgreSQL): `401`, `403`, `404` (başka kullanıcının işi),
+- **API testleri** (gerçek uygulama ve PostgreSQL): oturumsuz istekte `X-Device-Id` ile çalışma,
+  başlıksız ya da UUID 4 olmayan başlıkla `400 device_id_required`, `404` (başka cihaz kimliğinin işi;
+  iş, akış, durdurma ve rapor), kayıtlı cevap uçlarında oturumsuz `401` ve `kullanici` ile `403`,
   Requirement 4'teki `422` ve `413` durumları; başarılı akışın olay sırası (`snapshot`, `queued`,
   `started`, adımlar, `completed`); canlılık satırı (testte kısaltılmış aralıkla); kopan bağlantıda
   işin sürmesi ve `Last-Event-ID` ile yeniden bağlanınca `snapshot` ve kaçırılan adım olayları; açık
@@ -995,17 +1039,19 @@ ekranındaki kayıtlı cevap sayıları → `GET /saved-answers/summary`. `ask_i
   saniye içinde kapandığını görür; iş 5 saniye içinde `cancelled`); tekrarlanan durdurma;
   `GET /analyses/active`; rapor (sayfa adları, hücreler, "=1+1" talebin metin kalması, `409`
   bitmemiş işte); sonuç zarfı ve oy uygulaması hata verince oysuz cevap; durum ucunda adres
-  olmaması; hız sınırı; başlatma yanıtının ve kayıtlı cevabın 2 saniye sınırı.
+  olmaması; ziyaretçi ve IP adresi hız sınırları; başlatma yanıtının ve kayıtlı cevabın 2 saniye sınırı.
 - **Sızıntı testi:** Soruya, sözlüğe (tablo ve kolon adı) ve sahte model yanıtına konan ayırt edici
   işaret dizeleri log çıktısında, ölçüm etiketlerinde ve iz özniteliklerinde aranır, bulunmamalıdır;
   analiz kaydında ve kayıtlı cevapta bulunur (ürün verisi).
 - **Ön yüz testleri** (Vitest test aracıyla): soru çubuğu (Enter, Shift+Enter, boş talep, Esc ile
   durdurma, "/" ile odak, tam tablo adı), başlatma yanıtından önce durdurma, sıradaki işte bilgi
   satırında "sırada" yazması ve adım metni ya da sayı gösterilmemesi, durdurma, hata ve yarıda
-  kesilme iletileri, yeniden bağlanma, sayfa açılışında süren analize bağlanma, cevap görünümünün
+  kesilme iletileri, yeniden bağlanma, sayfa yenilenince aynı sekmenin süren analizine bağlanma,
+  yeni sekmenin başka sekmenin analizini devralmaması, cevap görünümünün
   sabit cevaplardan çizilmesi ("Bir bakışta", matris simgeleri ve erişilebilir adları, yan kartlar,
   "Analiz yapılamadı" kutusu, kayıtlı cevap rozeti ve "Yeniden analiz et"in `fresh` göndermesi),
-  raporun paylaşılan istemciyle indirilmesi (adreste belirteç yok), akışı `unavailable` olan
+  akışın ve raporun paylaşılan istemciyle `X-Device-Id` başlığı gönderilerek alınması (adreste
+  cihaz kimliği yok), akışı `unavailable` olan
   cevaptan sonra durumun yeniden okunması; yerelleştirme anahtar denetimi.
 - **Tarayıcı testi** (yerel Compose): Acceptance 7'deki akışlar.
 - **Görsel eşdeğerlik:** kaynak `76e21a3` ve hedef aynı sözlükle ve aynı sahte ya da gerçek model
@@ -1040,18 +1086,22 @@ Kaynak vektör aramasını kaynak kararı ADR-039 ile kaldırdı; bu PRD gömme 
 - [ ] Acceptance 4: L1 — Otomatik testlerden geçti: iş modeli, kuyruk, durdurma, yeniden başlama,
   kayıtlı cevap hizmeti ve analiz kaydı hizmet testleri gerçek PostgreSQL ile geçer (Requirement 3,
   8, 9, 11–15, 18).
-- [ ] Acceptance 5: L1 — Otomatik testlerden geçti: API testleri ve sızıntı testi geçer; işaret
-  dizeleri log, ölçüm etiketi ve iz özniteliklerinde bulunmaz (Requirement 4, 7, 10, 16, 17, 23).
+- [ ] Acceptance 5: L1 — Otomatik testlerden geçti: API testleri ve sızıntı testi geçer; oturumsuz
+  ana ekran uçları `X-Device-Id` ile çalışır, başlıksız istek `400 device_id_required`, başka cihaz
+  kimliğinin işi `404 analysis_not_found` alır; işaret dizeleri log, ölçüm etiketi ve iz
+  özniteliklerinde bulunmaz (Requirement 4, 7, 8, 10, 11, 16, 17, 23).
 - [ ] Acceptance 6: L1 — Otomatik testlerden geçti: ön yüz testleri, `OpenAPI` ve üretilmiş tip
   sapması kapısı, yerelleştirme anahtar denetimi ve katman yapısı denetimi geçer (Requirement 19–22,
   24).
 - [ ] Acceptance 7: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose'da (yerel PostgreSQL,
-  onaylı gerçek model ucu) tarayıcıda bir soru sorulur, ilerleme Evren'in tarama hareketiyle
+  onaylı gerçek model ucu) oturumsuz tarayıcıda bir soru sorulur, ilerleme Evren'in tarama hareketiyle
   görünür, cevap "Bir bakışta" ile görünür, Excel raporu indirilip açılır; aynı soru yeniden
   sorulunca "Önceki cevap" 2 saniye içinde görünür ve "Yeniden analiz et" yeni analiz yapar;
-  "Durdur" analizi 5 saniye içinde bitirir; iki kullanıcıyla ikincisinin sorusu sıraya girer ve
-  bilgi satırında "sırada" görünür, sayı görünmez; sekme kapatılıp açılınca süren analize yeniden
-  bağlanılır ve cevap gelir; log çıktısında soru metni ve tablo adı yoktur (Requirement 8–11, 14,
+  "Durdur" analizi 5 saniye içinde bitirir; iki ayrı tarayıcı bağlamıyla (iki ziyaretçi) ikincisinin
+  sorusu sıraya girer ve bilgi satırında "sırada" görünür, sayı görünmez, ikinci ziyaretçi
+  birincinin işini göremez; sayfa yenilenince aynı sekmenin süren analizine yeniden bağlanılır ve
+  cevap gelir; aynı ziyaretçinin ikinci sekmesi boş açılır, kendi sorusunu
+  birinci sekmenin analizi sürerken yürütür ve "Durdur" yalnız kendi analizini durdurur; log çıktısında soru metni ve tablo adı yoktur (Requirement 8–11, 14,
   16, 19–21).
 - [ ] Acceptance 8: L2 — Gerçek istemci/ortamda doğrulandı: geliştirici makinesinde gerçek sözlük
   Excel'i ve varsa depo dışındaki referans sorularıyla fark düzeneği iki tarafı yan yana çalıştırır ve
@@ -1066,9 +1116,10 @@ Kaynak vektör aramasını kaynak kararı ADR-039 ile kaldırdı; bu PRD gömme 
   hedef ile kaynak `76e21a3` aynı sözlükle çalıştırılır; açılış görünümündeki soru çubuğu, üst
   çubuğa yerleşmiş soru çubuğu, süren analiz (Durdur düğmesi) ve cevap görünümünün (analist cevabı,
   kayıtlı cevap, "Analiz yapılamadı", öneri satırı ve yan kartlar açık) ekran görüntüleri masaüstü
-  (1440×900) ve telefon genişliğinde (390×844 piksel) yan yana karşılaştırılır. Fark yalnız
-  fabrikanın zorunlu kıldığı oturum alanında ve kaynakta olmayan durumların iletilerinde ("sırada",
-  "yarıda kesildi") kabul edilir (Requirement 19–21).
+  (1440×900) ve telefon genişliğinde (390×844 piksel) yan yana karşılaştırılır. Ana ekranda
+  oturum alanı yoktur ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+  Decision 6); fark yalnız kaynakta olmayan durumların iletilerinde ("sırada", "yarıda kesildi")
+  kabul edilir (Requirement 19–21).
 
 ## Kararlar
 
@@ -1111,9 +1162,11 @@ Kaynak vektör aramasını kaynak kararı ADR-039 ile kaldırdı; bu PRD gömme 
   `dictionary_version` ile haritayı yeniler. Gerekçe: durum
   soru akışının hazır olup olmadığını (sözlük, sohbet modeli) söyler; çubuğun altındaki model uyarısı da
   onu kullanır.
-- Decision 17: Canlı akış ve rapor indirme paylaşılan istemciyle, oturum belirteci başlıkta gönderilerek
-  yapılır; tarayıcının hazır olay okuyucusu (`EventSource`) ve adreste belirteç kullanılmaz. Gerekçe:
-  rules/20 ve rules/58 belirteci adreste taşımayı yasaklar; hazır okuyucu başlık gönderemez.
+- Decision 17: Canlı akış ve rapor indirme paylaşılan istemciyle, cihaz kimliği `X-Device-Id`
+  başlığında gönderilerek yapılır; tarayıcının hazır olay okuyucusu (`EventSource`) ve adreste cihaz
+  kimliği kullanılmaz. Gerekçe: cihaz kimliği adreste, loglarda ve telemetride taşınmaz
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Güvenlik
+  ve yetkilendirme; rules/20); hazır okuyucu başlık gönderemez.
 - Decision 18: Sentetik sözlükte kaynağın çıktıları depoya anlık görüntü olarak alınır; gerçek sözlük
   ve çıktıları depoya girmez. Gerekçe: olağan kalite kapısı kaynak kopyası olmadan da aynılığı korur;
   sözlük kurum içi veridir (alan değişmezi).
@@ -1129,14 +1182,22 @@ Kaynak vektör aramasını kaynak kararı ADR-039 ile kaldırdı; bu PRD gömme 
   önündeki analiz sayısı gösterilmez. Kaynakta olmayan sıra durumu, Evren'in bilgi satırına yazılan
   "sırada" sözüyle bildirilir. Gerekçe: görünür yeni öğe eklenmez; seri kuyrukta bekleme dakikalarca
   sürebildiği için kullanıcı analizinin sırada olduğunu bilmelidir.
-- Decision 23: Kullanıcı başına iş sınırı yoktur; aynı kullanıcının yeni tek soru isteği de sıraya
-  girer (kaynakla aynı). Sayfa aynı anda tek soru yürütür; birden çok sekmeden gelen istekleri
+- Decision 23: Ziyaretçi başına iş sınırı yoktur; aynı ziyaretçinin yeni tek soru isteği de sıraya
+  girer (kaynakla aynı). Her sekme aynı anda tek soru yürütür; birden çok sekmeden gelen istekleri
   kuyruk sınırı ve hız sınırı (Requirement 9, 23) sınırlar.
-- Decision 24: Kayıtlı cevap kiracı içinde kullanıcılar arasında paylaşılır ve "aynı anlam"
-  eşleşmesinde önceki sorunun metni gösterilir (kaynakla aynı). Gerekçe: cevap kullanıcıya özgü veri
-  taşımaz; oylar cevaba okunurken o kullanıcı için uygulanır.
+- Decision 24: Kayıtlı cevap kiracı içinde soranlar arasında paylaşılır ve "aynı anlam"
+  eşleşmesinde önceki sorunun metni gösterilir (kaynakla aynı). Gerekçe: cevap soranlara özgü veri
+  taşımaz; oylar cevaba okunurken isteği yapan ziyaretçi için uygulanır.
 - Decision 25: Yönetici başkasının süren ya da sıradaki analizini durduramaz; durdurma yalnız işin
-  sahibine açıktır (kaynakla aynı).
+  sahibi olan ziyaretçiye açıktır. Kaynakta `ask_id`'yi bilen herkes durdurabiliyordu
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Decision 8).
+- Decision 26: Ana ekran süren analizi ziyaretçiye göre değil sekmeye göre izler (Requirement 19).
+  Kaynakta her sekme kendi sorusunu bellekte tutuyordu ve sayfa yenilenince analiz kayboluyordu;
+  ziyaretçiye göre izleme ise yeni açılan sekmeye başka sekmenin analizini taşıyor, ikinci sekmenin
+  kendi sorusunu engelliyor ve "Durdur"u diğer sekmenin işine yöneltiyordu. Proje sahibi 2026-10-14'te
+  her sekmenin kendi analizini yürütmesini istedi. Sekme belleğinde yalnız işin genel kimliği
+  (`analysis_id`) durur; soru metni, belirteç ya da kişisel veri tutulmaz ve iş yine yalnız sahibine
+  açıktır (`404 analysis_not_found`). `GET /analyses/active` API'de kalır; ana ekran onu kullanmaz.
 
 ## Teslim akışı
 
@@ -1153,8 +1214,12 @@ Belirtim → Plan → Görevler → Uygulama
 - **Seri kuyruk:** Eşzamanlılık 1 iken yoğun saatte bekleme uzar; askıda kalan bir model çağrısı,
   llm-connection'daki zaman aşımı (kaynakta 900 saniye) dolana kadar bütün kuyruğu bekletir; durdurma
   yalnız işin sahibine açıktır (Decision 25).
-- **Kullanıcı başına sınır yok:** Bir kullanıcı birden çok sekmeden soru göndererek kuyruğu
-  uzatabilir; kuyruk sınırı (20) ve hız sınırı (60 saniyede 30 istek) etkiyi sınırlar (Decision 23).
+- **Ziyaretçi başına sınır yok:** Bir kişi birden çok sekmeden ya da yeni cihaz kimlikleriyle soru
+  göndererek kuyruğu uzatabilir; kuyruk sınırı (20) ve hız sınırları (Requirement 23) etkiyi sınırlar
+  (Decision 23).
+- **Sekme belleği:** Sekme kapatılıp yeni sekme açılınca süren analiz ekrana gelmez (iş sürer ve
+  cevabı analiz kaydına yazılır). Tarayıcının "sekmeyi çoğalt" komutu sekme belleğini kopyaladığı
+  için çoğaltılan sekme aynı analizi izler (Decision 26).
 - **Dağıtım analizleri keser:** Her dağıtım backend'i yeniden başlatır; süren ve sıradaki analizler
   "yarıda kesildi" olur ve emek kaybolur.
 - **Tek kopya şartı:** Backend birden çok kopya çalışırsa kuyruklar ayrılır, eşzamanlılık katlanır ve
@@ -1165,7 +1230,7 @@ Belirtim → Plan → Görevler → Uygulama
 - **Talep içinden yönlendirme:** Kullanıcı talebe modele talimat yazabilir; model çıktısı sözlüğe karşı
   denetlenir ama serbest metin (özet, gerekçe) kayıtlı cevapla başkalarına gidebilir. Metin her yerde
   düz metin olarak gösterilir.
-- **Önceki sorunun görünmesi:** "Aynı anlam" eşleşmesinde başka bir kullanıcının soru metni görünür;
+- **Önceki sorunun görünmesi:** "Aynı anlam" eşleşmesinde başka bir soranın soru metni görünür;
   soruya kişisel veri yazılmışsa başkası görür (Decision 24).
 - **Kayıt boyutu:** Tam cevap (ortalama ~30 KB) her analiz kaydında ve kayıtlı cevapta durur; analiz
   kayıtları süresiz saklandığı için veritabanı yönetici silmedikçe büyür

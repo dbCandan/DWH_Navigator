@@ -1,6 +1,6 @@
 # Plan — answer-feedback
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.0). Uygulama üç parçadır: kaynaktan
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.1.0). Uygulama üç parçadır: kaynaktan
 taşınan saf ağırlıklandırma (`assess`, `apply`) ve fark testi, oy tablosu, oy ucu ve cevaplara oy
 uygulaması (question-analysis'in uygulama noktası ve list-search terim ayrıntısı), ön yüzdeki oy
 öğeleri.
@@ -22,8 +22,14 @@ uygulaması (question-analysis'in uygulama noktası ve list-search terim ayrınt
 
 ## Kararların uygulaması
 
-- Decision 2 ve 11: Oy veren oturumdaki kullanıcıdır (rolü her istekte veritabanından okunur);
-  sorunun metin ve anlam anahtarı tam metinden, hizmetteki motorun `cache_keys`'i ile hesaplanır.
+- Decision 2 ve 11: Oy veren, `X-Device-Id` başlığından çözülen ziyaretçidir; sorunun metin ve anlam
+  anahtarı tam metinden, hizmetteki motorun `cache_keys`'i ile hesaplanır.
+- Ziyaretçi ile oy (Decision 2, Requirement 1, 8, 15, 19; Acceptance 2, 7):
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) ile birlikte
+  uygulanır. `POST /votes` ve cevap uçlarındaki oy uygulaması oturum yerine ziyaretçi bağımlılığını
+  kullanır; `answer_vote` hesap ya da ziyaretçiye bağlanır ve oy anındaki IP adresi ile makine adını
+  taşır (003 Veri ve geçiş göçü); oy ucu 003 Requirement 6'daki hız sınırını kullanır; ön yüz oy
+  isteğini paylaşılan istemciyle `X-Device-Id` başlığıyla gönderir.
 - Decision 3: Satırlar yalnız eklenir; okurken bir sorunun satırları oy zamanı (eşitlikte kayıt
   sırası) sırasıyla alınır ve kişinin son oyunu kaynaktaki `assess` seçer. Oy zamanı UTC'dir;
   ağırlıklandırmaya kaynaktaki gibi saniyeye kesilmiş ISO metni olarak verilir.

@@ -12,8 +12,12 @@ PhaseName = Literal[
 
 
 class Asker(BaseModel):
+    """Who asked: an account (its display name) or a visitor ('<host> · <address>' of the
+    moment, 003-anonymous-visitor Requirement 7)."""
+
     public_id: str
     display_name: str
+    kind: Literal["account", "visitor"]
 
 
 class RecordError(BaseModel):

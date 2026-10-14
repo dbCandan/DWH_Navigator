@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 from openpyxl import load_workbook
 
+from app.core.errors import ApplicationError
 from app.db.session import async_session_factory
 from app.services.analysis import answer_cache
 from app.services.analysis.answer_record import from_record_form
@@ -20,6 +21,7 @@ from app.services.analysis.pipeline import Engine
 from app.services.search_index import IndexTrigger, build_engine
 from app.services.search_inputs import read_inputs
 from tests.integration.analysis import Qa, qa_harness, record, saved_answer_count
+from tests.integration.conftest import VISITOR_HOST, visitor_row_id
 from tests.integration.data_dictionary import DataDictionary
 from tests.integration.data_dictionary import sql as sql_rows
 from tests.parity import dump, harness
@@ -30,7 +32,6 @@ from tests.parity.run_target import TargetClient
 pytestmark = pytest.mark.integration
 
 QUESTION = "kredi kartı limit doluluk oranı"
-ANONYMOUS = {"Authorization": ""}
 
 
 @pytest.fixture
@@ -213,11 +214,12 @@ async def test_the_request_is_checked_with_stable_codes(qa: Qa) -> None:
         assert str(body.get("query", ""))[:20] not in response.text or code == "invalid_request"
     tabs = await qa.start("kart\tlimit\r\nayı ")
     assert tabs.status_code == 202 and tabs.json()["query"] == "kart\tlimit\r\nayı"
-    anonymous = await qa.request("POST", "/analyses", json={"query": "kart"}, headers=ANONYMOUS)
-    assert anonymous.status_code == 401
+    missing = await qa.without_device("POST", "/analyses", json={"query": "kart"})
+    assert missing.status_code == 400
+    assert missing.json()["detail"]["code"] == "device_id_required"
 
 
-async def test_starts_are_limited_per_user(qa: Qa) -> None:
+async def test_starts_are_limited_per_visitor(qa: Qa) -> None:
     qa.model.hold = asyncio.Event()
     qa.jobs.queue_limit = 200
     codes = [(await qa.start(f"kart {n}")).status_code for n in range(31)]
@@ -226,6 +228,26 @@ async def test_starts_are_limited_per_user(qa: Qa) -> None:
     limited = await qa.start("kart son")
     assert limited.json()["detail"]["code"] == "rate_limited"
     assert (await qa.start("kart başka", qa.other)).status_code == 202
+
+
+def test_starts_are_limited_per_address(qa: Qa) -> None:
+    # 003-anonymous-visitor Requirement 6: 120 starts per address in 60 seconds, whoever asks.
+    for n in range(120):
+        qa.jobs.check_rate(f"ziyaretci-{n}", "10.1.2.3")
+    with pytest.raises(ApplicationError) as refused:
+        qa.jobs.check_rate("ziyaretci-yeni", "10.1.2.3")
+    assert refused.value.code == "rate_limited"
+    qa.jobs.check_rate("ziyaretci-yeni", "10.1.2.4")
+
+
+async def test_the_record_keeps_the_visitor_its_address_and_host(qa: Qa) -> None:
+    analysis_id = await qa.started("kart limiti")
+    await qa.finished(analysis_id)
+    row = await record(analysis_id)
+    assert row["asked_by"] is None
+    assert row["asked_by_visitor_id"] == await visitor_row_id(qa.user)
+    assert row["client_address"] == "127.0.0.1"
+    assert row["client_host"] == VISITOR_HOST
 
 
 # --- Requirement 8, 9, 11: the queue and stopping ---------------------------------------------
@@ -380,7 +402,7 @@ async def test_at_most_five_streams_per_user(qa: Qa) -> None:
 async def test_a_stream_ends_when_its_token_expires(qa: Qa) -> None:
     qa.model.hold = asyncio.Event()
     analysis_id = await qa.started("kart limiti")
-    view = await qa.jobs.find(await qa.dd.index.tenant_id(), qa.user.public_id, analysis_id)
+    view = await qa.jobs.find(await qa.dd.index.tenant_id(), await qa.visitor_id(), analysis_id)
     chunks = [
         chunk
         async for chunk in qa.jobs.events(view, last_event_id=None, expires_at=time.time() + 0.3)
@@ -483,24 +505,26 @@ async def test_the_status_reports_the_serving_dictionary_and_the_model(qa: Qa) -
     assert body["dictionary_version"] == engine.dictionary.version
     assert body["llm"] == "fake-analyst" and body["shortlist"] == 14
     assert body["llm_state"] == {"state": "ok", "model": "fake-analyst", "code": None, "reason": ""}
-    assert (await qa.request("GET", "/status", headers=ANONYMOUS)).status_code == 401
+    assert (await qa.without_device("GET", "/status")).status_code == 400
 
 
 async def test_saved_answers_are_summarized_and_cleared_by_a_manager(qa: Qa) -> None:
     analysis_id = await qa.started("kart limiti")
     await qa.finished(analysis_id)
-    forbidden = await qa.request("GET", "/saved-answers/summary")
-    assert forbidden.status_code == 403
-    assert (await qa.request("DELETE", "/saved-answers")).status_code == 403
-    summary = (await qa.request("GET", "/saved-answers/summary", qa.dd.manager)).json()
+    # A visitor has no session: the manager's endpoints answer 401; an ordinary account 403.
+    assert (await qa.request("GET", "/saved-answers/summary")).status_code == 401
+    assert (await qa.request("DELETE", "/saved-answers")).status_code == 401
+    assert (await qa.admin_request("GET", "/saved-answers/summary", qa.user)).status_code == 403
+    assert (await qa.admin_request("DELETE", "/saved-answers", qa.user)).status_code == 403
+    summary = (await qa.admin_request("GET", "/saved-answers/summary", qa.dd.manager)).json()
     assert (summary["total"], summary["usable"]) == (1, 1) and summary["newest_at"]
     top3 = await qa.started("kart limiti", top=3, fresh=True)
     await qa.finished(top3)
-    summary = (await qa.request("GET", "/saved-answers/summary", qa.dd.manager)).json()
+    summary = (await qa.admin_request("GET", "/saved-answers/summary", qa.dd.manager)).json()
     assert (summary["total"], summary["usable"]) == (2, 1)
-    cleared = await qa.request("DELETE", "/saved-answers", qa.dd.manager)
+    cleared = await qa.admin_request("DELETE", "/saved-answers", qa.dd.manager)
     assert cleared.json() == {"removed": 2}
-    again = await qa.request("DELETE", "/saved-answers", qa.dd.manager)
+    again = await qa.admin_request("DELETE", "/saved-answers", qa.dd.manager)
     assert again.json() == {"removed": 0}
     fresh = await qa.start("kart limiti")
     assert fresh.json()["state"] == "queued"

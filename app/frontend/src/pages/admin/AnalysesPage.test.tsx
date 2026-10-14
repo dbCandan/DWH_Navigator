@@ -9,8 +9,8 @@ import {answerConfirm, recordDetail, recordPage, recordRow, recordSummary, SNAPS
 import {message, renderApp, signedIn} from '@/test/render';
 import type {RecordDetail, RecordRow, RecordStep} from '@/types/records';
 
-const ALI = {public_id: '00000000-0000-4000-8000-0000000000b1', display_name: 'Ali Veli'};
-const AYSE = {public_id: '00000000-0000-4000-8000-0000000000b2', display_name: 'Ayşe Kaya'};
+const ALI = {public_id: '00000000-0000-4000-8000-0000000000b1', display_name: 'Ali Veli', kind: 'account' as const};
+const AYSE = {public_id: '00000000-0000-4000-8000-0000000000b2', display_name: 'Ayşe Kaya', kind: 'account' as const};
 const NO_FILTER = {period: '7d', flow: '', asked_by: '', q: ''};
 
 const list = () => vi.mocked(AnalysisRecordsService.list);

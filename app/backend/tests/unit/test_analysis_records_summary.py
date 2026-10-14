@@ -38,7 +38,7 @@ def _figure(flow: str, verdict: str | None, ms: int, who: str, **phases: int) ->
     figure: dict[str, Any] = {
         "flow": flow, "verdict": verdict, "duration_ms": ms, "asked_at": datetime.now(UTC),
         "llm_calls": 2, "prompt_tokens": 10, "completion_tokens": 3,
-        "asker_public_id": who, "asker_display_name": who.upper(),
+        "asker_public_id": who, "asker_display_name": who.upper(), "asker_kind": "account",
     }  # fmt: skip
     for name in ("queue", "saved_answer_lookup", "model_check", "rule_hints", "analyst_pick",
                  "analyst_write"):  # fmt: skip

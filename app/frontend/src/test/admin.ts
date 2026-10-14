@@ -150,7 +150,7 @@ export function recordRow(query: string, overrides: Partial<RecordRow> = {}): Re
   return {
     public_id: `0b6f6f3e-3e0a-4c58-9a3a-${String(++recordCount).padStart(12, '0')}`,
     asked_at: '2026-10-08T09:00:00Z',
-    asked_by: {public_id: '00000000-0000-4000-8000-0000000000b1', display_name: 'Ali Veli'},
+    asked_by: {public_id: '00000000-0000-4000-8000-0000000000b1', display_name: 'Ali Veli', kind: 'account'},
     query,
     origin: 'question',
     list_public_id: null,

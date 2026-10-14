@@ -19,7 +19,15 @@ from app.db.session import async_session_factory
 from app.domain.turkish_text import fold
 from app.services.analysis.pipeline import ISTANBUL
 from tests.fakes.telemetry import TelemetryCapture
-from tests.integration.conftest import RecordingHandler, SignedIn
+from tests.integration.conftest import (
+    CLIENT_ADDRESS,
+    VISITOR_HOST,
+    RecordingHandler,
+    SignedIn,
+    visitor_headers,
+    visitor_public_id,
+    visitor_row_id,
+)
 from tests.integration.data_dictionary import DataDictionary, sql
 
 pytestmark = pytest.mark.integration
@@ -233,6 +241,42 @@ async def test_the_summary_is_the_sources_computation(ar: DataDictionary) -> Non
     assert empty["count"] == 0 and empty["p50_ms"] is None and empty["analyst_p50_ms"] is None
     askers = (await ar.get("/analysis-records/askers")).json()["items"]
     assert [a["display_name"] for a in askers] == ["Ahmet", "Zeynep"]
+
+
+async def test_a_visitor_is_shown_by_its_host_and_address(ar: DataDictionary) -> None:
+    # 008 Decision 2, Requirement 9; application-foundation 003-anonymous-visitor Requirement 7.
+    person = await ar.auth.account(ar.admin, "kullanici")
+    seen = await ar.auth.client.get(f"{ar.auth.prefix}/status", headers=visitor_headers(person))
+    assert seen.status_code == 200, seen.text
+    visitor = await visitor_row_id(person)
+    with_host = await add(ar.manager, query="ziyaretçi sorusu")
+    without_host = await add(ar.manager, query="adressiz soru")
+    for record_id, host in ((with_host, "pc-17.kurum"), (without_host, None)):
+        await sql(
+            "UPDATE analysis_record SET asked_by = NULL, asked_by_visitor_id = :v, "
+            "client_address = '10.0.0.17', client_host = :h WHERE public_id = :p",
+            v=visitor,
+            h=host,
+            p=record_id,
+        )
+    items = {
+        i["public_id"]: i["asked_by"] for i in (await ar.get("/analysis-records")).json()["items"]
+    }
+    public_id = await visitor_public_id(person)
+    assert items[with_host] == {
+        "public_id": public_id, "display_name": "pc-17.kurum · 10.0.0.17", "kind": "visitor"
+    }  # fmt: skip
+    assert items[without_host]["display_name"] == "10.0.0.17"
+    only = (await ar.get(f"/analysis-records?asked_by={public_id}")).json()["items"]
+    assert {i["public_id"] for i in only} == {with_host, without_host}
+    askers = (await ar.get("/analysis-records/askers")).json()["items"]
+    assert {
+        "public_id": public_id, "display_name": f"{VISITOR_HOST} · {CLIENT_ADDRESS}", "kind": "visitor"
+    } in askers  # fmt: skip
+    summary = (await ar.get("/analysis-records/summary")).json()
+    assert {a["kind"] for a in summary["askers"]} == {"visitor"}
+    detail = (await ar.get(f"/analysis-records/{with_host}")).json()
+    assert detail["asked_by"]["kind"] == "visitor"
 
 
 async def test_daily_counts_are_istanbul_days_with_zeros(ar: DataDictionary) -> None:

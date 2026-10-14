@@ -33,6 +33,7 @@ from app.domain.analysis_records import (
     LIST_FILE_NAME_MAX_CHARS,
 )
 from app.domain.models.mixins import AuditSoftDeleteMixin, new_public_id
+from app.domain.models.visitor import ADDRESS_MAX_CHARS, HOST_MAX_CHARS
 
 TERM_MAX_CHARS = 500
 _STATUSES = "'running', 'completed', 'cancelled', 'interrupted'"
@@ -49,6 +50,8 @@ class TermList(AuditSoftDeleteMixin, Base):
             postgresql_where=text("status = 'running'"),
         ),
         Index("ix_term_list_owner_created", "owner_id", text("created_at DESC")),
+        Index("ix_term_list_visitor_created", "owner_visitor_id", text("created_at DESC")),
+        CheckConstraint("(owner_id IS NULL) <> (owner_visitor_id IS NULL)", name="one_owner"),
         CheckConstraint(f"status IN ({_STATUSES})", name="status_allowed"),
         CheckConstraint("term_count BETWEEN 1 AND 200", name="term_count_range"),
         CheckConstraint(
@@ -60,7 +63,7 @@ class TermList(AuditSoftDeleteMixin, Base):
             "comment": (
                 "A term list of the data-dictionary context (list-search capability): an "
                 "uploaded one-column Excel list whose terms go one by one through the question "
-                "analysis. Owned by the uploader, the newest five per person are kept, an older "
+                "analysis. Owned by the uploading account or visitor, the newest five per owner are kept, an older "
                 "one is deleted physically with its terms (is_deleted stays false). At most one "
                 "running list per tenant. The uploaded file itself is never stored."
             )
@@ -81,11 +84,39 @@ class TermList(AuditSoftDeleteMixin, Base):
         nullable=False,
         comment="Owning tenant; references tenant.tenant_id.",
     )
-    owner_id: Mapped[int] = mapped_column(
+    owner_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("app_user.user_id", ondelete="RESTRICT"),
-        nullable=False,
-        comment="The user who uploaded the list and alone sees, stops and resumes it.",
+        nullable=True,
+        comment=(
+            "The account that uploaded the list and alone sees, stops and resumes it. Empty when "
+            "a visitor uploaded it; exactly one of owner_id and owner_visitor_id is set."
+        ),
+    )
+    owner_visitor_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("visitor.visitor_id", ondelete="RESTRICT"),
+        nullable=True,
+        comment=(
+            "The visitor that uploaded the list and alone sees, stops and resumes it; references "
+            "visitor.visitor_id. Empty for an account."
+        ),
+    )
+    client_address: Mapped[str | None] = mapped_column(
+        String(ADDRESS_MAX_CHARS),
+        nullable=True,
+        comment=(
+            "The visitor's client IP address when it uploaded the list; empty for an account "
+            "(personal data, kept and deleted with the row)."
+        ),
+    )
+    client_host: Mapped[str | None] = mapped_column(
+        String(HOST_MAX_CHARS),
+        nullable=True,
+        comment=(
+            "The host name the reverse DNS lookup of client_address returned when "
+            "it uploaded the list; empty when none or for an account (personal data)."
+        ),
     )
     file_name: Mapped[str] = mapped_column(
         String(LIST_FILE_NAME_MAX_CHARS),

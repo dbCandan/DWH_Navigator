@@ -39,3 +39,12 @@
   `tests/helm/values-project.test.sh`). `Recreate` fabrika chart seçeneğini bekliyor.
 - [ ] Task 10 — Acceptance 9: nonprod'da ingress üzerinden liste ve dağıtım sırasında yarıda
   kesilme (ayrı kullanıcı talimatı).
+- [ ] Task 11 — Requirement 4, 5, 7, 11, 12, 14, 15, 16, 17 / Acceptance 4, 5, 8: liste uçlarının
+  oturum yerine `X-Device-Id` ile ziyaretçiyi tanıması (`400 device_id_required`), ziyaretçi
+  sahipliği ve başkasına 404, 409 iletisinin ziyaretçi karşılaştırması, ziyaretçi başına 5 liste,
+  analizlerin sahip ziyaretçi adına yürümesi, oyların isteği yapan ziyaretçiye göre uygulanması, ön
+  yüzde başlıkla istek ve indirme; iki tarayıcı bağlamıyla tarayıcı senaryosu. Uygulama
+  anonymous-visitor ile birlikte
+  ([PRD](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)); bu PRD yeniden kabul
+  edilmeden başlamaz.
+  Durum (2026-10-15): kod ve testler yazıldı (önce kırmızı, sonra yeşil). Arka uç: pytest 996 testten 992'si geçti; kalan 4'ten 3'ü bu değişiklikle güncellendi ve geçiyor, 1'i (`test_two_parallel_activations_let_one_win`) değişiklikten önceki kodda da ara sıra kırılan bir yarış durumu. Ruff, mypy, `alembic check` temiz; `OpenAPI` ve ön yüz tipleri yeniden üretildi. Ön yüz: Vitest 39 dosya / 320 test (iki işçiyle) geçti, ESLint ve tip denetimi temiz. Yerel yığında oturumsuz ana ekran, cihaz kimliği ve ziyaretçi adına yazılan analiz kaydı tarayıcıda gözlendi. Açık: `scripts/quality-gate.sh all` ve tarayıcı senaryoları çalıştırılmadı (`kt-iskelet` ve çevrimdışı E2E paketi yok); nonprod gözlemi yapılmadı.

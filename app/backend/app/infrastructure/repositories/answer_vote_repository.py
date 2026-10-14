@@ -8,16 +8,18 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, and_, or_, select
+from sqlalchemy import Select, and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.answer_vote import AnswerVote
 from app.domain.models.user import User
+from app.domain.models.visitor import Visitor
 
 
 @dataclass(frozen=True, slots=True)
 class VoteRow:
-    """One stored vote as the weighting reads it; ``voter`` is the voter's public_id."""
+    """One stored vote as the weighting reads it; ``voter`` is the public_id of the voting
+    account or visitor (003-anonymous-visitor Decision 5)."""
 
     voter: str
     created_at: datetime
@@ -60,7 +62,7 @@ def question_votes(tenant_id: int, text_key: str, meaning_key: str) -> Select[An
         return None
     return (
         select(
-            User.public_id,
+            func.coalesce(User.public_id, Visitor.public_id),
             AnswerVote.created_at,
             AnswerVote.text_key,
             AnswerVote.meaning_key,
@@ -70,7 +72,8 @@ def question_votes(tenant_id: int, text_key: str, meaning_key: str) -> Select[An
             AnswerVote.note,
             AnswerVote.dictionary_version,
         )
-        .join(User, User.user_id == AnswerVote.voter_id)
+        .outerjoin(User, User.user_id == AnswerVote.voter_id)
+        .outerjoin(Visitor, Visitor.visitor_id == AnswerVote.voter_visitor_id)
         .where(AnswerVote.tenant_id == tenant_id, or_(*matches))
         .order_by(AnswerVote.created_at, AnswerVote.answer_vote_id)
     )

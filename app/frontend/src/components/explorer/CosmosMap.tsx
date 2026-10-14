@@ -44,7 +44,6 @@ export default function CosmosMap({galaxy, onEngine, onStarClick, onSkyClick}: P
   useEffect(() => {
     const element = canvas.current;
     if (element === null) return;
-    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
     const hooks: CosmosHooks = {
       onCount: (tables, clusters) => setCount(latest.current.t('explorer.hud.count', {tables, clusters})),
       onLog: setLog,
@@ -64,7 +63,7 @@ export default function CosmosMap({galaxy, onEngine, onStarClick, onSkyClick}: P
     };
     let created: CosmosEngine;
     try {
-      created = new CosmosEngine(element, readCosmosPalette(), hooks, reduce);
+      created = new CosmosEngine(element, readCosmosPalette(), hooks);
     } catch {
       return; // no 2D canvas: the page works without the map (Requirement 5)
     }

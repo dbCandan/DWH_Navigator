@@ -1,6 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {ApiError, apiFetch, apiRequest, isUnreachable, refreshSession} from './apiClient';
+import {ApiError, apiFetch, apiRequest, isUnreachable, refreshSession, visitorFetch, visitorRequest} from './apiClient';
 import {clearAuth, readAccessToken, writeSession} from './authStorage';
+import {deviceId} from './deviceId';
 import type {AuthenticatedUser} from '@/types/auth';
 
 const user = {username: 'ad.soyad', tenant_id: 'tenant-1'} as AuthenticatedUser;
@@ -20,6 +21,23 @@ describe('shared API client', () => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
     clearAuth();
+  });
+
+  it('sends a main-screen request with the device id only: no token, no tenant (003 Requirement 2)', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(json(200, {ok: true}));
+    await visitorRequest('/status');
+    const {url, headers} = requestOf(fetchMock.mock.calls[0]);
+    expect(url).toBe('/api/dwhnavigator/v1/status');
+    expect(headers.get('X-Device-Id')).toBe(deviceId());
+    expect(headers.has('Authorization')).toBe(false);
+    expect(headers.has('x-tenant-id')).toBe(false);
+    expect(url).not.toContain(deviceId());
+  });
+
+  it('keeps the session when a main-screen request is refused', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(expired());
+    await expect(visitorFetch('/status')).rejects.toMatchObject({status: 401, sessionExpired: false});
+    expect(readAccessToken()).toBe('old');
   });
 
   it('sends the bearer token and the tenant in headers, never in the address', async () => {

@@ -3,7 +3,6 @@ import {CompassMark} from '@/components/brand/CompassMark';
 import {AnswerView} from '@/components/explorer/AnswerView';
 import {Dossier, type OpenTable} from '@/components/explorer/Dossier';
 import {SearchBox} from '@/components/explorer/SearchBox';
-import {SessionArea} from '@/components/explorer/SessionArea';
 import {ListFormatHelp, TermListView} from '@/components/explorer/TermListView';
 import {useIntl} from '@/contexts/IntlContext';
 import {useAsk} from '@/hooks/useAsk';
@@ -12,11 +11,13 @@ import {useGalaxy} from '@/hooks/useGalaxy';
 import {useServiceStatus} from '@/hooks/useServiceStatus';
 import {useRootClass, useSurface} from '@/hooks/useSurface';
 import {useTermList} from '@/hooks/useTermList';
+import {ApiError} from '@/lib/apiClient';
 import {config} from '@/lib/config';
 import type {CosmosEngine} from '@/lib/cosmos/engine';
 import {XLSX_MEDIA_TYPE} from '@/lib/excelUpload';
 import {explorerErrorText} from '@/lib/explorerErrors';
 import {statusView} from '@/lib/serviceStatus';
+import {forgetTabAnalysis, recallTabAnalysis} from '@/lib/tabAnalysis';
 import {AnalysisService} from '@/services/analyses';
 import '@/components/explorer/explorer.css';
 
@@ -38,8 +39,6 @@ function useScrollClasses(): void {
   useRootClass('lifted', scroll > 6);
   useRootClass('scrolled', scroll > 120);
 }
-
-const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** What the space under the bar shows: the question's outcome or the term list (index.html #ask-out). */
 type Pane =
@@ -207,7 +206,7 @@ export default function ExplorerPage() {
   useLayoutEffect(() => {
     const first = flipFrom.current;
     flipFrom.current = null;
-    if (!docked || first === null || reduceMotion()) return;
+    if (!docked || first === null) return;
     const box = document.querySelector<HTMLElement>('#bar-slot .searchbox');
     if (!box || typeof box.animate !== 'function') return;
     const last = box.getBoundingClientRect();
@@ -301,18 +300,26 @@ export default function ExplorerPage() {
     [start],
   );
 
-  // Reopening the page follows the person's running question (Requirement 19).
+  // A reload follows the question this tab started, never another tab's (Requirement 19, Decision 26).
   useEffect(() => {
+    const id = recallTabAnalysis();
+    if (id === null) return;
     let live = true;
-    AnalysisService.active().then(
+    AnalysisService.get(id).then(
       (job) => {
-        if (!live || job === null) return;
+        if (!live) return;
+        if (job.state !== 'queued' && job.state !== 'running') {
+          forgetTabAnalysis(id);
+          return;
+        }
         setQuestion(job.query);
         setAsked(job.query);
         setDocked(true);
         void ask(job.query, false, job);
       },
-      () => undefined,
+      (error) => {
+        if (error instanceof ApiError && error.status === 404) forgetTabAnalysis(id);
+      },
     );
     return () => {
       live = false;
@@ -417,7 +424,6 @@ export default function ExplorerPage() {
                 <span className="pill">{t('explorer.status.unreachable')}</span>
               ) : null}
             </div>
-            <SessionArea />
           </div>
         </div>
       </header>

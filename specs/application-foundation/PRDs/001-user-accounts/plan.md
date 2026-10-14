@@ -1,6 +1,6 @@
 # Plan — user-accounts
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.0). Uygulama iki parçadır: backend
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.1.0). Uygulama iki parçadır: backend
 (hesaplar, oturum, ortak web tabanı, telemetri) ve ön yüz (ekranlar, bellek içi belirteç, sessiz
 yenileme). Ön yüz parçası kaynak tasarımla birlikte ayrı teslim edilir.
 
@@ -35,6 +35,11 @@ yenileme). Ön yüz parçası kaynak tasarımla birlikte ayrı teslim edilir.
   yoktur (`AppendOnlyAuditMixin`); parola satırı değer taşımaz (veritabanı denetimi).
 - Yenileme oturumu satırı bittikten 7 gün sonra giriş akışında kalıcı silinir.
 - Telemetri yalnız PRD'nin iki ölçümünü ve istek başına sunucu iz aralığını üretir; veritabanı izi yoktur.
+- Decision 2, 3, 6, 11 ve Requirement 10, 11, 12, 16 (girişsiz ana ekran): ana ekran uçları oturum ve
+  `kullanici` rolü yerine `X-Device-Id` ister, kayıtlar hesaba ya da ziyaretçiye bağlanır, oturum
+  alanı ve giriş yönlendirmesi yalnız `/admin` kabuğundadır; dosyalar ve testler
+  [anonymous-visitor](../003-anonymous-visitor/PRD.md) planıyla birlikte değişir (`services/request_scope.py`,
+  `api/` bağımlılıkları, ön yüz yönlendiricisi ve kabukları).
 
 ## Doğrulama
 

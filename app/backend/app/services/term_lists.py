@@ -244,14 +244,12 @@ class TermLists:
     async def snapshot(self, tenant_id: int, owner_public_id: str, list_id: str) -> dict[str, Any]:
         return await self.snapshot_of(await self._owned(tenant_id, owner_public_id, list_id))
 
-    async def page(
-        self, tenant_id: int, owner_id: int, page: int, page_size: int
-    ) -> dict[str, Any]:
+    async def page(self, tenant_id: int, owner: Asker, page: int, page_size: int) -> dict[str, Any]:
         """Requirement 15: the caller's kept lists, newest first."""
 
         async with self._session_factory() as session:
             rows, total = await TermListRepository(session).page(
-                tenant_id, owner_id, page, page_size
+                tenant_id, owner.user_id, owner.visitor_id, page, page_size
             )
         return {
             "items": [
@@ -373,6 +371,9 @@ class TermLists:
         record = TermList(
             tenant_id=tenant.tenant_id,
             owner_id=owner.user_id,
+            owner_visitor_id=owner.visitor_id,
+            client_address=owner.address,
+            client_host=owner.host,
             file_name=file_name,
             header=terms.header,
             notes=list(terms.notes),

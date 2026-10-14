@@ -1,37 +1,34 @@
 """Term list endpoints (data-dictionary/PRDs/005-list-search, API sözleşmesi).
 
-Open to ``kullanici`` and ``yonetici``. A list is its owner's alone: anyone else, a manager
-included, gets ``404 term_list_not_found`` (Requirement 14, Decision 8). The upload is the raw
-workbook with its name in ``X-Filename`` (dictionary-management Decision 10); the file is read in
-memory and never kept. Reports are made per request and downloaded with the session header.
+No session: the visitor of the ``X-Device-Id`` header owns what it uploads (application-foundation
+003-anonymous-visitor Requirement 3, 5). A list is its owner's alone: anyone else gets
+``404 term_list_not_found`` (Requirement 14, Decision 8). The upload is the raw workbook with its
+name in ``X-Filename`` (dictionary-management Decision 10); the file is read in memory and never
+kept. Reports are made per request and downloaded with the device id header.
 """
 
 import logging
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Query, Request, Response, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.auth.dependencies import CurrentContext, require_role
 from app.api.excel_transfer import (
     EXCEL_REQUEST_BODY,
     EXCEL_RESPONSE,
     excel_download,
     read_excel_upload,
 )
+from app.api.visitor.dependencies import CurrentVisitor, visitor_asker
 from app.core import telemetry
 from app.core.errors import ApplicationError
 from app.core.logging import log_event
-from app.db.session import get_db
-from app.domain.accounts import ROLE_USER
 from app.domain.term_lists import Rejection
-from app.infrastructure.repositories.user_repository import UserRepository
 from app.schemas.analysis.jobs import AnalysisAnswer
 from app.schemas.errors import error_responses
 from app.schemas.term_lists.lists import TermListPage, TermListSnapshot
 from app.services.analysis.jobs import Asker, Tenant
-from app.services.request_scope import acting_user_with_role, active_tenant
 from app.services.term_lists import TermLists
+from app.services.visitors import VisitorIdentity
 
 logger = logging.getLogger("app.lists")
 
@@ -47,16 +44,14 @@ _NOT_ANSWERED = {
 router = APIRouter(
     prefix="/term-lists",
     tags=["term-lists"],
-    dependencies=[Depends(require_role(ROLE_USER))],
     responses=error_responses(
         {
-            401: "not_authenticated: oturum yok",
-            403: "forbidden: rol yok; cross_site_request: istek başka bir siteden geldi",
+            400: "device_id_required: X-Device-Id eksik ya da UUID 4 değil",
+            403: "tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi",
+            429: "rate_limited: yeni ziyaretçi sınırı",
         }
     ),
 )
-
-Session = Annotated[AsyncSession, Depends(get_db)]
 
 
 def get_term_lists(request: Request) -> TermLists:
@@ -67,14 +62,8 @@ def get_term_lists(request: Request) -> TermLists:
 Lists = Annotated[TermLists, Depends(get_term_lists)]
 
 
-async def _caller(session: AsyncSession, context: CurrentContext) -> tuple[Tenant, Asker]:
-    users = UserRepository(session)
-    actor = await acting_user_with_role(users, context, ROLE_USER)
-    tenant = await active_tenant(users, context)
-    await session.commit()  # the request's session holds no transaction while a list is read
-    return Tenant(tenant.tenant_id, tenant.public_id), Asker(
-        actor.user_id, actor.public_id, actor.display_name
-    )
+async def _caller(visitor: VisitorIdentity) -> tuple[Tenant, Asker]:
+    return Tenant(visitor.tenant_id, visitor.tenant_public_id), visitor_asker(visitor)
 
 
 @router.post(
@@ -92,12 +81,10 @@ async def _caller(session: AsyncSession, context: CurrentContext) -> tuple[Tenan
         }
     ),
 )
-async def upload_list(
-    request: Request, context: CurrentContext, session: Session, lists: Lists
-) -> dict[str, Any]:
+async def upload_list(request: Request, visitor: CurrentVisitor, lists: Lists) -> dict[str, Any]:
     """Read a one-column list, keep it with its terms and start answering them one by one."""
 
-    tenant, owner = await _caller(session, context)
+    tenant, owner = await _caller(visitor)
     try:
         # An empty body reaches the reader like the source's empty file: after the running
         # list check, as "Dosya Excel (.xlsx) olarak okunamadı." (Requirement 2-4).
@@ -113,25 +100,22 @@ async def upload_list(
 
 @router.get("", response_model=TermListPage)
 async def list_lists(
-    context: CurrentContext,
-    session: Session,
+    visitor: CurrentVisitor,
     lists: Lists,
     page: Annotated[int, Query(ge=1, le=10_000_000)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = DEFAULT_PAGE_SIZE,
 ) -> dict[str, Any]:
     """The caller's kept lists, newest first."""
 
-    tenant, owner = await _caller(session, context)
-    return await lists.page(tenant.tenant_id, owner.user_id, page, page_size)
+    tenant, owner = await _caller(visitor)
+    return await lists.page(tenant.tenant_id, owner, page, page_size)
 
 
 @router.get("/{list_id}", response_model=TermListSnapshot, responses=error_responses(_NOT_FOUND))
-async def read_list(
-    list_id: str, context: CurrentContext, session: Session, lists: Lists
-) -> dict[str, Any]:
+async def read_list(list_id: str, visitor: CurrentVisitor, lists: Lists) -> dict[str, Any]:
     """The list's progress, a row per term."""
 
-    tenant, owner = await _caller(session, context)
+    tenant, owner = await _caller(visitor)
     return await lists.snapshot(tenant.tenant_id, owner.public_id, list_id)
 
 
@@ -142,11 +126,11 @@ async def read_list(
     responses=error_responses(_NOT_ANSWERED),
 )
 async def read_term(
-    list_id: str, position: int, context: CurrentContext, session: Session, lists: Lists
+    list_id: str, position: int, visitor: CurrentVisitor, lists: Lists
 ) -> dict[str, Any]:
     """An answered term's full answer, the votes applied for the caller."""
 
-    tenant, owner = await _caller(session, context)
+    tenant, owner = await _caller(visitor)
     return await lists.item(tenant.tenant_id, owner.public_id, list_id, position)
 
 
@@ -156,11 +140,11 @@ async def read_term(
     responses={200: EXCEL_RESPONSE, **error_responses(_NOT_ANSWERED)},
 )
 async def term_report(
-    list_id: str, position: int, context: CurrentContext, session: Session, lists: Lists
+    list_id: str, position: int, visitor: CurrentVisitor, lists: Lists
 ) -> Response:
     """The term's single-question Excel report, made from its kept answer."""
 
-    tenant, owner = await _caller(session, context)
+    tenant, owner = await _caller(visitor)
     name, data = await lists.item_report(tenant.tenant_id, owner.public_id, list_id, position)
     return excel_download(name, data)
 
@@ -170,12 +154,10 @@ async def term_report(
     response_class=Response,
     responses={200: EXCEL_RESPONSE, **error_responses(_NOT_FOUND)},
 )
-async def list_report(
-    list_id: str, context: CurrentContext, session: Session, lists: Lists
-) -> Response:
+async def list_report(list_id: str, visitor: CurrentVisitor, lists: Lists) -> Response:
     """The whole list in one workbook (also while it runs)."""
 
-    tenant, owner = await _caller(session, context)
+    tenant, owner = await _caller(visitor)
     name, data = await lists.report(tenant.tenant_id, owner.public_id, list_id)
     return excel_download(name, data)
 
@@ -183,12 +165,10 @@ async def list_report(
 @router.post(
     "/{list_id}/cancel", response_model=TermListSnapshot, responses=error_responses(_NOT_FOUND)
 )
-async def cancel_list(
-    list_id: str, context: CurrentContext, session: Session, lists: Lists
-) -> dict[str, Any]:
+async def cancel_list(list_id: str, visitor: CurrentVisitor, lists: Lists) -> dict[str, Any]:
     """Stop the list; a list that does not run is returned as it is."""
 
-    tenant, owner = await _caller(session, context)
+    tenant, owner = await _caller(visitor)
     return await lists.cancel(tenant.tenant_id, owner.public_id, list_id)
 
 
@@ -204,10 +184,8 @@ async def cancel_list(
         }
     ),
 )
-async def resume_list(
-    list_id: str, context: CurrentContext, session: Session, lists: Lists
-) -> dict[str, Any]:
+async def resume_list(list_id: str, visitor: CurrentVisitor, lists: Lists) -> dict[str, Any]:
     """Go on from where the list stopped; a running list is returned as it is."""
 
-    tenant, owner = await _caller(session, context)
+    tenant, owner = await _caller(visitor)
     return await lists.resume(tenant=tenant, owner=owner, list_id=list_id)
