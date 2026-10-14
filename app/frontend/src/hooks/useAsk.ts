@@ -2,6 +2,7 @@ import {useCallback, useEffect, useRef, useState} from 'react';
 import {useIntl} from '@/contexts/IntlContext';
 import {askCodeText, askErrorText} from '@/lib/analysisErrors';
 import type {CosmosEngine} from '@/lib/cosmos/engine';
+import {forgetTabAnalysis, rememberTabAnalysis} from '@/lib/tabAnalysis';
 import {AnalysisService} from '@/services/analyses';
 import {ExplorerService} from '@/services/explorer';
 import type {AnalysisAnswer, AnalysisJob, AnalysisStreamEvent, ServiceStatus} from '@/types/analysis';
@@ -22,7 +23,7 @@ type Terminal =
 interface Job {
   ctrl: AbortController;
   stopped: boolean;
-  /** Known once the start request answered (or from the active job). */
+  /** Known once the start request answered (or from the tab's remembered job). */
   id: string | null;
   /** The start request while it is on its way. */
   start: Promise<AnalysisJob> | null;
@@ -106,7 +107,11 @@ export function useAsk({engine, status, onUnavailable}: Options) {
     };
   }, []);
 
-  /** Start a question, or follow `resume` (the person's running job when the page opens). */
+  /**
+   * Start a question, or follow `resume` (this tab's running job after a reload). The tab
+   * remembers the job while it runs and forgets it once it ends or is stopped; leaving the page
+   * keeps it, so a reload follows the same job (Decision 26).
+   */
   const ask = useCallback(async (text: string, fresh: boolean, resume: AnalysisJob | null = null) => {
     if (current.current) return;
     const {engine: map, status: readStatus} = latest.current;
@@ -138,6 +143,7 @@ export function useAsk({engine, status, onUnavailable}: Options) {
         envelope = await untilStopped(job.start, job.ctrl.signal);
       }
       job.id = envelope.analysis_id;
+      rememberTabAnalysis(job.id);
       // Assigned from the stream's callback, so held in an object rather than a narrowed local.
       const got: {terminal: Terminal | null} = {terminal: terminalOf(envelope)};
       if (got.terminal === null) {
@@ -185,6 +191,7 @@ export function useAsk({engine, status, onUnavailable}: Options) {
           ? {kind: 'stopped'}
           : {kind: 'failed', message: askErrorText(error, latest.current.t)};
     }
+    if (job.id && (mounted.current || job.stopped)) forgetTabAnalysis(job.id);
     if (current.current === job) current.current = null;
     if (!mounted.current) return;
     if (ended.kind === 'answer') {

@@ -20,6 +20,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base_class import Base
 from app.domain.models.mixins import AppendOnlyAuditMixin
+from app.domain.models.visitor import ADDRESS_MAX_CHARS, HOST_MAX_CHARS
 
 VOTE_QUERY_MAX_CHARS = 4000
 VOTE_TABLE_KEY_MAX_CHARS = 300
@@ -36,6 +37,8 @@ class AnswerVote(AppendOnlyAuditMixin, Base):
             "meaning_key",
             postgresql_where=text("meaning_key <> ''"),
         ),
+        Index("ix_answer_vote_voter_visitor", "voter_visitor_id"),
+        CheckConstraint("(voter_id IS NULL) <> (voter_visitor_id IS NULL)", name="one_voter"),
         CheckConstraint("scope IN ('table', 'answer')", name="scope_allowed"),
         CheckConstraint("vote IN ('up', 'down')", name="vote_allowed"),
         CheckConstraint(
@@ -61,11 +64,36 @@ class AnswerVote(AppendOnlyAuditMixin, Base):
         nullable=False,
         comment="Owning tenant; references tenant.tenant_id.",
     )
-    voter_id: Mapped[int] = mapped_column(
+    voter_id: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("app_user.user_id", ondelete="RESTRICT"),
-        nullable=False,
-        comment="The signed-in user who voted; references app_user.user_id (never deleted).",
+        nullable=True,
+        comment=(
+            "The account that voted; references app_user.user_id (never deleted). Empty when a "
+            "visitor voted; exactly one of voter_id and voter_visitor_id is set."
+        ),
+    )
+    voter_visitor_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("visitor.visitor_id", ondelete="RESTRICT"),
+        nullable=True,
+        comment="The visitor that voted; references visitor.visitor_id. Empty for an account.",
+    )
+    client_address: Mapped[str | None] = mapped_column(
+        String(ADDRESS_MAX_CHARS),
+        nullable=True,
+        comment=(
+            "The visitor's client IP address when it voted; empty for an account "
+            "(personal data, kept and deleted with the row)."
+        ),
+    )
+    client_host: Mapped[str | None] = mapped_column(
+        String(HOST_MAX_CHARS),
+        nullable=True,
+        comment=(
+            "The host name the reverse DNS lookup of client_address returned when "
+            "it voted; empty when none or for an account (personal data)."
+        ),
     )
     query_text: Mapped[str] = mapped_column(
         String(VOTE_QUERY_MAX_CHARS),

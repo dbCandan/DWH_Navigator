@@ -1,6 +1,6 @@
 # Plan — analysis-records
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.0). Uygulama üç parçadır: kayıt
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.1.0). Uygulama üç parçadır: kayıt
 tablosu ve question-analysis'in iş hizmetinin kaydı açıp güncellemesi, yönetim ekranının uçları
 (liste, özet, günlük sayılar, soranlar, ayrıntı, silme) ve ön yüzdeki Genel bakış ile Analizler
 sayfaları.
@@ -31,6 +31,12 @@ sayfaları.
 - Requirement 3: Adım öğesi `seq`, `parent`, `name`, `kind`, `key`, `start_ms`, `ms`, `status`,
   `detail` alanlarını, model çağrısı adımı ayrıca `call` (llm-connection çağrı özeti), sunucu
   kontrolü `check` alanını taşır.
+- Decision 2, Requirement 2, 6, 7, 9 ve 16: soran hesap ya da ziyaretçidir; ziyaretçi bağı, kabuldeki
+  IP adresi ve makine adı sütunları, "tam biri dolu" kısıtı ve ziyaretçi sahiplik dizini
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) göçüyle
+  gelir; depo hesap ve ziyaretçi için dış birleştirmeyle `kind` ve "<makine adı> · <IP adresi>"
+  etiketini kurar; `GET /analysis-records/askers` ziyaretçileri de döndürür; Analizler sayfası etiketi
+  gösterir (Acceptance 1, 3, 4, 5).
 
 ## Doğrulama
 

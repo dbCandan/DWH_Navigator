@@ -12,16 +12,14 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 from urllib.parse import quote
-from uuid import UUID
 
 import pytest
 
-from app.core.security import create_access_token
 from app.db.session import async_session_factory
 from app.services import explorer
 from app.services.search_index import SearchIndex
 from tests.integration.analysis import Qa, qa_harness
-from tests.integration.conftest import SignedIn
+from tests.integration.conftest import SignedIn, visitor_headers
 from tests.integration.data_dictionary import SYNTHETIC_WORKBOOK, DataDictionary, error
 
 pytestmark = pytest.mark.integration
@@ -34,18 +32,6 @@ async def user(dd: DataDictionary) -> SignedIn:
     imported = await dd.import_dictionary(SYNTHETIC_WORKBOOK.read_bytes())
     assert imported.status_code in (200, 201), imported.text
     return await dd.auth.account(dd.admin, "kullanici")
-
-
-def roleless(who: SignedIn) -> dict[str, str]:
-    token = create_access_token(
-        subject=UUID(who.public_id),
-        username=who.username,
-        tenant_id=UUID(who.tenant_id),
-        roles=[],
-        permissions=[],
-        is_super_admin=False,
-    )
-    return {"Authorization": f"Bearer {token}"}
 
 
 async def search(dd: DataDictionary, who: SignedIn, query: Any) -> Any:
@@ -125,24 +111,25 @@ async def test_a_table_detail_and_its_join_keys(dd: DataDictionary, user: Signed
     )
 
 
-async def test_roles(dd: DataDictionary, user: SignedIn) -> None:
-    paths = [("GET", "/explorer/galaxy"), ("GET", "/explorer/tables/x.y.z")]
-    for method, path in paths:
-        anonymous = await dd.request(method, path, user, headers={"Authorization": ""})
-        assert anonymous.status_code == 401
-        no_role = await dd.request(method, path, user, headers=roleless(user))
-        assert no_role.status_code == 403
+async def test_a_visitor_needs_no_session_only_a_device_id(
+    dd: DataDictionary, user: SignedIn
+) -> None:
+    # Decision 2, application-foundation 003-anonymous-visitor Requirement 3.
+    origin = dd.auth.origin()
+    for method, path, body in (
+        ("GET", "/explorer/galaxy", None),
+        ("POST", "/explorer/table-searches", {"query": "kart"}),
+    ):
+        visitor = await dd.auth.client.request(
+            method, dd.url(path), json=body, headers={**visitor_headers(user), **origin}
+        )
+        assert visitor.status_code == 200, (path, visitor.text)
+        missing = await dd.auth.client.request(method, dd.url(path), json=body, headers=origin)
+        assert missing.status_code == 400, path
+        assert missing.json()["detail"]["code"] == "device_id_required"
     for who in (user, dd.manager, dd.admin):
         assert (await dd.get("/explorer/galaxy", who)).status_code == 200
         assert (await search(dd, who, "kart")).status_code == 200
-    anonymous = await dd.request(
-        "POST", "/explorer/table-searches", user, json={"query": "a"}, headers={"Authorization": ""}
-    )
-    assert anonymous.status_code == 401
-    no_role = await dd.request(
-        "POST", "/explorer/table-searches", user, json={"query": "a"}, headers=roleless(user)
-    )
-    assert no_role.status_code == 403
 
 
 async def test_before_the_first_index_every_endpoint_is_not_ready(

@@ -1,6 +1,6 @@
 # Plan — question-analysis
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.2). Uygulama dört parçadır: kaynaktan
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.3.0). Uygulama dört parçadır: kaynaktan
 taşınan çekirdek ve fark testi, analiz işi (kabul, kuyruk, canlı ilerleme, durdurma, yeniden
 başlama) ile motorun model portuna bağlanması, kayıtlı cevaplar, rapor ve durum ucu ve ön yüzdeki
 soru çubuğu ile cevap görünümü.
@@ -36,7 +36,8 @@ soru çubuğu ile cevap görünümü.
   soruya uygulanır, list-search'ün tek tek verdiği terim sınıra takılmaz.
 - Requirement 10: Her işin olayları sırayla numaralanır ve iş süresince bellekte durur. Akış
   `snapshot` ile başlar, `Last-Event-ID`'den sonraki adım olaylarını yeniden gönderir, sonra canlı
-  olayları ve 15 saniyede bir `: canlı` satırını yollar; erişim belirtecinin bitişinde kapanır.
+  olayları ve 15 saniyede bir `: canlı` satırını yollar; son olaydan sonra ya da istemci
+  ayrılınca kapanır.
   Adım olayları ve OpenTelemetry adım aralıkları, izdeki anahtarlı adımların dinleyicisinden gelir.
 - Requirement 12: Kapanışta sıradakiler ve yürüyenler `interrupted` olur (yürüyenlerin model
   bağlantısı kapatılır); açılışta bu süreçten önce kabul edilmiş `queued` ya da `running` kayıtlar
@@ -48,6 +49,19 @@ soru çubuğu ile cevap görünümü.
   anahtarla) taşır ve güncel sözlükle kurulur. Analiz kaydının tam cevabı aynı biçimdir ama her
   kolonun sözlük satırını içinde taşır; böylece sonraki içe aktarmalardan sonra da sonuç zarfı
   (Requirement 7) ve rapor ondan üretilir.
+- Requirement 19 ve Decision 26: Ana ekran başlattığı işin `analysis_id` değerini sekmeye ait
+  `sessionStorage` anahtarında tutar (`app/frontend/src/lib/tabAnalysis.ts`); `ExplorerPage.tsx`
+  açılışta `GET /analyses/active` yerine bu değerle `GET /analyses/{id}` sorar ve yalnız `queued`
+  ya da `running` iş için `useAsk` ile akışa bağlanır; iş son durumdaysa, `404` dönerse ya da değer
+  yoksa değeri siler. Değer işin son durumunda ve "Durdur"dan sonra silinir. Backend ve API
+  sözleşmesi değişmez.
+- Requirement 8, 10, 11, 16, 17, 18, 23 ve Decision 17, 25: Ana ekran uçları oturum yerine
+  `X-Device-Id` ister; iş, akış, durdurma ve rapor sahipliği, açık akış ve soru başlatma hız
+  sınırları ziyaretçiye (ve IP adresine) göredir; analiz kaydı ve kayıtlı cevap hesaba ya da
+  ziyaretçiye bağlanır; `GET /saved-answers/summary` ve `DELETE /saved-answers` `yonetici` kalır.
+  Ziyaretçi kaydı, cihaz kimliği çözümü ve hız sayaçları
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+  planındadır; bu PRD'deki değişiklik onunla birlikte uygulanır.
 - "Yanıt JSON değil — onarım isteniyor" ve "Model bir özelliği reddetti — onsuz yeniden" olayları,
   bağdaştırıcı çağrının içinde yazmadığı için çağrı bitince çağrı özetinden (deneme sırası, bırakılan
   özelliğin adı) model çağrısı adımının altına yazılır.

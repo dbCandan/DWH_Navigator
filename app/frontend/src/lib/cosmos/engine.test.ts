@@ -68,7 +68,7 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
   };
 
   it('keeps drawing while motion is allowed', () => {
-    const engine = new CosmosEngine(fakeCanvas(), palette, hooks([]), false);
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks([]));
     engine.start();
     engine.load(ITEMS);
     runFrames(5);
@@ -77,28 +77,24 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
     engine.destroy();
   });
 
-  it('draws once per change and never loops with reduced motion; the radar is not waited for', () => {
+  it('lands the answer only after the radar\'s turn; the loop goes on (Requirement 7, 8)', () => {
     const log: string[] = [];
-    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log), true);
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
     engine.start();
     engine.load(ITEMS);
-    runFrames(10);
-    expect(frames.length).toBe(0);
-    expect(engine.radarMs).toBe(0);
-
     engine.begin({columns: 1200});
     expect(log.at(-1)).toContain('explorer.voyage.scanningColumns');
     engine.focus([{key: 'DWH.Ornek.vA', name: 'vA', score: 0.9}], 'soru');
+    expect(log.at(-1)).not.toContain('explorer.voyage.arrived'); // the radar is still turning
+    runFrames(Math.ceil(RADAR_MS / 40) + 5);
     expect(log.at(-1)).toContain('explorer.voyage.arrived');
-    expect(frames.length).toBe(1); // one still frame for the constellation
-    runFrames(1);
-    expect(frames.length).toBe(0);
+    expect(frames.length).toBe(1);
     engine.destroy();
   });
 
   it('writes "sırada" once in the voyage log while the analysis waits, without a count', () => {
     const log: string[] = [];
-    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log), true);
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
     engine.start();
     engine.load(ITEMS);
     engine.begin({columns: 1200});
@@ -109,7 +105,7 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
   });
 
   it('finds a table by its typed name only once the map has data', () => {
-    const engine = new CosmosEngine(fakeCanvas(), palette, hooks([]), true);
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks([]));
     expect(engine.find('vA')).toBeNull();
     engine.load(ITEMS);
     expect(engine.find('va')?.key).toBe('DWH.Ornek.vA');

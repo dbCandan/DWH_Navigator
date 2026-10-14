@@ -857,8 +857,16 @@
         "type": "object"
       },
       "Asker": {
+        "description": "Who asked: an account (its display name) or a visitor ('<host> \u00b7 <address>' of the\nmoment, 003-anonymous-visitor Requirement 7).",
         "properties": {
           "display_name": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "account",
+              "visitor"
+            ],
             "type": "string"
           },
           "public_id": {
@@ -867,7 +875,8 @@
         },
         "required": [
           "public_id",
-          "display_name"
+          "display_name",
+          "kind"
         ],
         "type": "object"
       },
@@ -879,6 +888,13 @@
           "display_name": {
             "type": "string"
           },
+          "kind": {
+            "enum": [
+              "account",
+              "visitor"
+            ],
+            "type": "string"
+          },
           "public_id": {
             "type": "string"
           }
@@ -886,6 +902,7 @@
         "required": [
           "public_id",
           "display_name",
+          "kind",
           "count"
         ],
         "type": "object"
@@ -5334,6 +5351,25 @@
     "/api/dwhnavigator/v1/analyses": {
       "post": {
         "description": "Accept a question; a saved answer completes the job at once, otherwise it is queued.",
+        "parameters": [
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -5350,8 +5386,8 @@
                   },
                   "top": {
                     "default": 5,
-                    "maximum": 10.0,
-                    "minimum": 1.0,
+                    "maximum": 10,
+                    "minimum": 1,
                     "type": "integer"
                   }
                 },
@@ -5375,7 +5411,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5383,7 +5419,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -5393,7 +5429,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "413": {
             "content": {
@@ -5423,7 +5459,7 @@
                 }
               }
             },
-            "description": "rate_limited: 60 saniyede 30'dan \u00e7ok istek"
+            "description": "rate_limited: ziyaret\u00e7i ba\u015f\u0131na 60 saniyede 30, adres ba\u015f\u0131na 120'den \u00e7ok istek"
           },
           "503": {
             "content": {
@@ -5436,12 +5472,6 @@
             "description": "analysis_queue_full, analysis_unavailable, search_index_not_ready"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Start Analysis",
         "tags": [
           "analyses"
@@ -5450,7 +5480,26 @@
     },
     "/api/dwhnavigator/v1/analyses/active": {
       "get": {
-        "description": "The caller's most recently started single question that is queued or running.",
+        "description": "The visitor's most recently started single question that is queued or running.",
+        "parameters": [
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -5462,7 +5511,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5470,7 +5519,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -5480,15 +5529,29 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Active Analysis",
         "tags": [
           "analyses"
@@ -5497,7 +5560,7 @@
     },
     "/api/dwhnavigator/v1/analyses/{analysis_id}": {
       "get": {
-        "description": "The job; a completed job carries its answer with the reading user's votes applied.",
+        "description": "The job; a completed job carries its answer with the visitor's votes applied.",
         "parameters": [
           {
             "in": "path",
@@ -5505,6 +5568,23 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
             }
           }
         ],
@@ -5519,7 +5599,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5527,7 +5607,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -5537,177 +5617,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "analysis_not_found: analiz yok ya da ba\u015fkas\u0131n\u0131n"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
-        "summary": "Read Analysis",
-        "tags": [
-          "analyses"
-        ]
-      }
-    },
-    "/api/dwhnavigator/v1/analyses/{analysis_id}/cancel": {
-      "post": {
-        "description": "Stop the job; a finished job is returned as it is.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "analysis_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnalysisJob"
-                }
-              }
-            },
-            "description": "Successful Response"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "not_authenticated: oturum yok"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "analysis_not_found: analiz yok ya da ba\u015fkas\u0131n\u0131n"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            },
-            "description": "Validation Error"
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
-        "summary": "Cancel Analysis",
-        "tags": [
-          "analyses"
-        ]
-      }
-    },
-    "/api/dwhnavigator/v1/analyses/{analysis_id}/events": {
-      "get": {
-        "description": "Live progress: a snapshot, the missed step events after ``Last-Event-ID``, then live.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "analysis_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "header",
-            "name": "last-event-id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "text/event-stream": {
-                "schema": {
-                  "$ref": "#/components/schemas/AnalysisStreamEvent",
-                  "type": "string"
-                }
-              }
-            },
-            "description": "text/event-stream: every event is an id: line and one data: line with this JSON; ': canl\u0131' comment lines keep the connection alive every 15 seconds."
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "not_authenticated: oturum yok"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -5737,15 +5647,221 @@
                 }
               }
             },
-            "description": "too_many_streams: kullan\u0131c\u0131 ba\u015f\u0131na 5 ak\u0131\u015f"
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
+        "summary": "Read Analysis",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analyses/{analysis_id}/cancel": {
+      "post": {
+        "description": "Stop the job; a finished job is returned as it is.",
+        "parameters": [
           {
-            "HTTPBearer": [],
-            "tenant": []
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_not_found: analiz yok ya da ba\u015fkas\u0131n\u0131n"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
+          }
+        },
+        "summary": "Cancel Analysis",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/analyses/{analysis_id}/events": {
+      "get": {
+        "description": "Live progress: a snapshot, the missed step events after ``Last-Event-ID``, then live;\nthe stream ends at the terminal event or when the client leaves.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisStreamEvent",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "text/event-stream: every event is an id: line and one data: line with this JSON; ': canl\u0131' comment lines keep the connection alive every 15 seconds."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "analysis_not_found: analiz yok ya da ba\u015fkas\u0131n\u0131n"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "too_many_streams: ziyaret\u00e7i ba\u015f\u0131na 5 ak\u0131\u015f; rate_limited"
+          }
+        },
         "summary": "Follow Analysis",
         "tags": [
           "analyses"
@@ -5763,6 +5879,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -5777,7 +5910,7 @@
             },
             "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -5785,7 +5918,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -5795,7 +5928,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -5826,14 +5959,18 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Analysis Report",
         "tags": [
           "analyses"
@@ -7289,6 +7426,25 @@
     "/api/dwhnavigator/v1/explorer/galaxy": {
       "get": {
         "description": "Every served table with its main dataset group, by name.",
+        "parameters": [
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -7300,7 +7456,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -7308,7 +7464,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -7318,7 +7474,27 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           },
           "503": {
             "content": {
@@ -7331,12 +7507,6 @@
             "description": "search_index_not_ready: ilk arama indeksi kuruluyor"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Read Galaxy",
         "tags": [
           "explorer"
@@ -7346,6 +7516,25 @@
     "/api/dwhnavigator/v1/explorer/table-searches": {
       "post": {
         "description": "The name, content and column-name layers of the source's table search; nothing is kept.",
+        "parameters": [
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -7367,7 +7556,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -7375,7 +7564,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -7385,7 +7574,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "422": {
             "content": {
@@ -7396,6 +7585,16 @@
               }
             },
             "description": "query_too_long: 4000 karakterden uzun; invalid_request"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           },
           "503": {
             "content": {
@@ -7408,12 +7607,6 @@
             "description": "search_index_not_ready: ilk arama indeksi kuruluyor"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Search Tables",
         "tags": [
           "explorer"
@@ -7431,6 +7624,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -7444,7 +7654,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -7452,7 +7662,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -7462,7 +7672,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -7484,6 +7694,16 @@
             },
             "description": "Validation Error"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -7495,12 +7715,6 @@
             "description": "search_index_not_ready: ilk arama indeksi kuruluyor"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Read Table",
         "tags": [
           "explorer"
@@ -8197,7 +8411,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
           }
         },
         "security": [
@@ -8244,7 +8458,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
           }
         },
         "security": [
@@ -8508,6 +8722,25 @@
     "/api/dwhnavigator/v1/status": {
       "get": {
         "description": "Requirement 17: the serving dictionary, the chat model and its state, the shortlist.",
+        "parameters": [
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -8519,7 +8752,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -8527,7 +8760,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -8537,15 +8770,29 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Analysis Status",
         "tags": [
           "analyses"
@@ -8577,6 +8824,23 @@
               "minimum": 1,
               "type": "integer"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -8590,7 +8854,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -8598,7 +8862,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -8608,7 +8872,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "422": {
             "content": {
@@ -8619,14 +8883,18 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "List Lists",
         "tags": [
           "term-lists"
@@ -8634,6 +8902,25 @@
       },
       "post": {
         "description": "Read a one-column list, keep it with its terms and start answering them one by one.",
+        "parameters": [
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/octet-stream": {
@@ -8662,7 +8949,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -8670,7 +8957,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -8680,7 +8967,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "409": {
             "content": {
@@ -8722,6 +9009,16 @@
             },
             "description": "term_list_not_xlsx, term_list_too_large_unpacked, term_list_too_many_rows, term_list_layout_invalid, term_list_term_too_long, term_list_too_many_terms"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -8733,12 +9030,6 @@
             "description": "search_index_not_ready, analysis_unavailable"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Upload List",
         "tags": [
           "term-lists"
@@ -8756,6 +9047,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -8769,7 +9077,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -8777,7 +9085,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -8787,7 +9095,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -8808,14 +9116,18 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Read List",
         "tags": [
           "term-lists"
@@ -8833,6 +9145,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -8846,7 +9175,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -8854,7 +9183,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -8864,7 +9193,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -8885,14 +9214,18 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Cancel List",
         "tags": [
           "term-lists"
@@ -8918,6 +9251,23 @@
             "schema": {
               "type": "integer"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -8931,7 +9281,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -8939,7 +9289,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -8949,7 +9299,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -8970,14 +9320,18 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Read Term",
         "tags": [
           "term-lists"
@@ -9003,6 +9357,23 @@
             "schema": {
               "type": "integer"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -9017,7 +9388,7 @@
             },
             "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -9025,7 +9396,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -9035,7 +9406,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -9056,14 +9427,18 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Term Report",
         "tags": [
           "term-lists"
@@ -9081,6 +9456,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -9095,7 +9487,7 @@
             },
             "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -9103,7 +9495,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -9113,7 +9505,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -9134,14 +9526,18 @@
               }
             },
             "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "List Report",
         "tags": [
           "term-lists"
@@ -9159,6 +9555,23 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
           }
         ],
         "responses": {
@@ -9172,7 +9585,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -9180,7 +9593,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -9190,7 +9603,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "404": {
             "content": {
@@ -9222,6 +9635,16 @@
             },
             "description": "Validation Error"
           },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: yeni ziyaret\u00e7i s\u0131n\u0131r\u0131"
+          },
           "503": {
             "content": {
               "application/json": {
@@ -9233,12 +9656,6 @@
             "description": "search_index_not_ready, analysis_unavailable"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Resume List",
         "tags": [
           "term-lists"
@@ -9657,6 +10074,25 @@
     "/api/dwhnavigator/v1/votes": {
       "post": {
         "description": "Record a \ud83d\udc4d/\ud83d\udc4e; the last vote of each person counts. Enough \ud83d\udc4e on the whole answer delete\nthe question's saved answers, so it is analysed anew.",
+        "parameters": [
+          {
+            "description": "The browser's random device id (UUID 4) that identifies the visitor.",
+            "in": "header",
+            "name": "X-Device-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The browser's random device id (UUID 4) that identifies the visitor."
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
@@ -9678,7 +10114,7 @@
             },
             "description": "Successful Response"
           },
-          "401": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
@@ -9686,7 +10122,7 @@
                 }
               }
             },
-            "description": "not_authenticated: oturum yok"
+            "description": "device_id_required: X-Device-Id eksik ya da UUID 4 de\u011fil"
           },
           "403": {
             "content": {
@@ -9696,7 +10132,7 @@
                 }
               }
             },
-            "description": "forbidden: rol yok; cross_site_request: istek ba\u015fka bir siteden geldi"
+            "description": "tenant_forbidden: ba\u015fka kirac\u0131; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
           "422": {
             "content": {
@@ -9707,6 +10143,16 @@
               }
             },
             "description": "invalid_request: bi\u00e7im ya da bilinmeyen alan; vote_table_unknown: tablo s\u00f6zl\u00fckte yok"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "rate_limited: ziyaret\u00e7i ya da adres s\u0131n\u0131r\u0131"
           },
           "503": {
             "content": {
@@ -9719,12 +10165,6 @@
             "description": "search_index_not_ready: ilk arama indeksi kuruluyor"
           }
         },
-        "security": [
-          {
-            "HTTPBearer": [],
-            "tenant": []
-          }
-        ],
         "summary": "Cast Vote",
         "tags": [
           "votes"

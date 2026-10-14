@@ -17,3 +17,8 @@
   kısmı).
 - [ ] Task 4 — Acceptance 2 ve 4: yerel Compose'da tarayıcıyla uçtan uca akış ve ekran görüntüleri.
 - [ ] Task 5 — Acceptance 3: nonprod kümede süper yönetici açılışı, giriş, hız sınırı ve başlıklar.
+- [ ] Task 6 — Requirement 10, 11, 12, 16 / Acceptance 1, 2, 4: ana ekran uçlarından oturum ve
+  `kullanici` rolü şartının kaldırılması, kayıtların hesaba ya da ziyaretçiye bağlanması, ana ekran
+  akış ve indirmelerinde `X-Device-Id`, oturum alanının ve giriş yönlendirmesinin yalnız `/admin`
+  kabuğunda kalması, uygulama [anonymous-visitor](../003-anonymous-visitor/PRD.md) ile birlikte.
+  Durum (2026-10-15): kod ve testler yazıldı (önce kırmızı, sonra yeşil). Arka uç: pytest 996 testten 992'si geçti; kalan 4'ten 3'ü bu değişiklikle güncellendi ve geçiyor, 1'i (`test_two_parallel_activations_let_one_win`) değişiklikten önceki kodda da ara sıra kırılan bir yarış durumu. Ruff, mypy, `alembic check` temiz; `OpenAPI` ve ön yüz tipleri yeniden üretildi. Ön yüz: Vitest 39 dosya / 320 test (iki işçiyle) geçti, ESLint ve tip denetimi temiz. Yerel yığında oturumsuz ana ekran, cihaz kimliği ve ziyaretçi adına yazılan analiz kaydı tarayıcıda gözlendi. Açık: `scripts/quality-gate.sh all` ve tarayıcı senaryoları çalıştırılmadı (`kt-iskelet` ve çevrimdışı E2E paketi yok); nonprod gözlemi yapılmadı.

@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core import telemetry
 from app.core.errors import ApplicationError
 from app.core.logging import log_event
+from app.core.rate_window import SlidingWindow
 from app.domain.analysis import AnalysisResult
 from app.domain.analysis_records import (
     CANCELLED_CODE,
@@ -78,6 +79,7 @@ DEFAULT_QUEUE_LIMIT = 20
 KEEPALIVE_SECONDS = 15.0
 MAX_STREAMS_PER_USER = 5
 RATE_LIMIT = 30
+RATE_LIMIT_PER_ADDRESS = 120
 RATE_WINDOW_SECONDS = 60.0
 CANCEL_WAIT_SECONDS = 5.0
 SHUTDOWN_WAIT_SECONDS = 20.0
@@ -102,9 +104,16 @@ class SnapshotSource(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class Asker:
-    user_id: int
+    """Who owns a job: an account (``user_id``) or a visitor (``visitor_id``), never both
+    (application-foundation 003-anonymous-visitor Decision 5). ``public_id`` is the owner's own
+    public id; a visitor also brings its address and host name of the moment (Requirement 7)."""
+
+    user_id: int | None
     public_id: str
     display_name: str
+    visitor_id: int | None = None
+    address: str | None = None
+    host: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -308,6 +317,9 @@ class AnalysisJobs:
         self._running: set[AnalysisJob] = set()
         self._tasks: dict[AnalysisJob, asyncio.Task[None]] = {}
         self._requests: dict[str, deque[float]] = {}
+        self._address_starts = SlidingWindow(
+            limit=RATE_LIMIT_PER_ADDRESS, window_seconds=RATE_WINDOW_SECONDS
+        )
         self._streams: dict[str, int] = {}
         self._loop: asyncio.AbstractEventLoop | None = None
         self._loop_thread: int | None = None
@@ -367,9 +379,11 @@ class AnalysisJobs:
 
     # ------------------------------------------------------------------ acceptance
 
-    def check_rate(self, user_public_id: str) -> None:
-        """Requirement 23: at most 30 starts per user in 60 seconds."""
+    def check_rate(self, user_public_id: str, address: str | None = None) -> None:
+        """Requirement 23: at most 30 starts per visitor and 120 per address in 60 seconds."""
 
+        if address is not None and not self._address_starts.hit(address):
+            raise _rate_limited()
         now = time.monotonic()
         seen = self._requests.setdefault(user_public_id, deque())
         while seen and now - seen[0] >= RATE_WINDOW_SECONDS:
@@ -735,6 +749,9 @@ class AnalysisJobs:
             public_id=job.public_id,
             tenant_id=job.tenant.tenant_id,
             asked_by=job.asker.user_id,
+            asked_by_visitor_id=job.asker.visitor_id,
+            client_address=job.asker.address,
+            client_host=job.asker.host,
             state=JobState.QUEUED.value,
             asked_at=job.accepted_at,
             query=job.query,

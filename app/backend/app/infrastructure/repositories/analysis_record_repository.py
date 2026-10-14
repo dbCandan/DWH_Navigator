@@ -11,12 +11,25 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import ColumnElement, and_, delete, func, select, update
+from sqlalchemy import (
+    ColumnElement,
+    Select,
+    and_,
+    case,
+    delete,
+    func,
+    literal,
+    or_,
+    select,
+    text,
+    update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.analysis_records import TERMINAL_STATES, JobState
 from app.domain.models.analysis_record import AnalysisRecord
 from app.domain.models.user import User
+from app.domain.models.visitor import Visitor
 
 _RUNNING = (JobState.QUEUED.value, JobState.RUNNING.value)
 _TERMINAL = tuple(sorted(state.value for state in TERMINAL_STATES))
@@ -38,10 +51,36 @@ class RecordRow:
     record: AnalysisRecord
     asker_public_id: str
     asker_display_name: str
+    asker_kind: str
 
 
 def escape_like(text: str) -> str:
     return text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def visitor_label(host: Any, address: Any) -> Any:
+    """'<host> · <address>' for a visitor, the address alone without a host name
+    (003-anonymous-visitor Requirement 7)."""
+
+    return func.concat_ws(" · ", host, address)
+
+
+# The asker of a record is exactly one account or visitor (003-anonymous-visitor Decision 5).
+_ASKER_ID = func.coalesce(User.public_id, Visitor.public_id)
+_ASKER_LABEL = func.coalesce(
+    User.display_name, visitor_label(AnalysisRecord.client_host, AnalysisRecord.client_address)
+)
+_ASKER_KIND = case((AnalysisRecord.asked_by.is_not(None), "account"), else_="visitor")
+
+
+def _with_askers(statement: Select[Any]) -> Select[Any]:
+    return statement.outerjoin(User, User.user_id == AnalysisRecord.asked_by).outerjoin(
+        Visitor, Visitor.visitor_id == AnalysisRecord.asked_by_visitor_id
+    )
+
+
+def _row(row: Any) -> RecordRow:
+    return RecordRow(row[0], str(row[1]), str(row[2]), str(row[3]))
 
 
 class AnalysisRecordRepository:
@@ -91,12 +130,12 @@ class AnalysisRecordRepository:
 
         row = (
             await self.session.execute(
-                select(AnalysisRecord, User.public_id, User.display_name)
-                .join(User, User.user_id == AnalysisRecord.asked_by)
-                .where(AnalysisRecord.tenant_id == tenant_id, AnalysisRecord.public_id == public_id)
+                self._rows().where(
+                    AnalysisRecord.tenant_id == tenant_id, AnalysisRecord.public_id == public_id
+                )
             )
         ).first()
-        return None if row is None else RecordRow(row[0], str(row[1]), str(row[2]))
+        return None if row is None else _row(row)
 
     # --- administration: terminal records only ---------------------------------------------------
 
@@ -112,8 +151,13 @@ class AnalysisRecordRepository:
             conditions.append(AnalysisRecord.flow == f.flow)
         if f.asker_public_id is not None:
             conditions.append(
-                AnalysisRecord.asked_by.in_(
-                    select(User.user_id).where(User.public_id == f.asker_public_id)
+                or_(
+                    AnalysisRecord.asked_by.in_(
+                        select(User.user_id).where(User.public_id == f.asker_public_id)
+                    ),
+                    AnalysisRecord.asked_by_visitor_id.in_(
+                        select(Visitor.visitor_id).where(Visitor.public_id == f.asker_public_id)
+                    ),
                 )
             )
         if f.folded_text:
@@ -121,10 +165,8 @@ class AnalysisRecordRepository:
             conditions.append(AnalysisRecord.search_key.like(pattern, escape="\\"))
         return conditions
 
-    def _rows(self) -> Any:
-        return select(AnalysisRecord, User.public_id, User.display_name).join(
-            User, User.user_id == AnalysisRecord.asked_by
-        )
+    def _rows(self) -> Select[Any]:
+        return _with_askers(select(AnalysisRecord, _ASKER_ID, _ASKER_LABEL, _ASKER_KIND))
 
     async def page(
         self, tenant_id: int, f: RecordFilter, *, offset: int, limit: int
@@ -144,7 +186,7 @@ class AnalysisRecordRepository:
             .offset(offset)
             .limit(limit)
         )
-        return [RecordRow(r[0], str(r[1]), str(r[2])) for r in rows.all()], total
+        return [_row(r) for r in rows.all()], total
 
     async def figures(self, tenant_id: int, f: RecordFilter) -> list[dict[str, Any]]:
         """The numbers of every matching record the summary is computed from; no texts."""
@@ -163,12 +205,12 @@ class AnalysisRecordRepository:
             AnalysisRecord.phase_rule_hints_ms,
             AnalysisRecord.phase_analyst_pick_ms,
             AnalysisRecord.phase_analyst_write_ms,
-            User.public_id.label("asker_public_id"),
-            User.display_name.label("asker_display_name"),
+            _ASKER_ID.label("asker_public_id"),
+            _ASKER_LABEL.label("asker_display_name"),
+            _ASKER_KIND.label("asker_kind"),
         )
         rows = await self.session.execute(
-            select(*columns)
-            .join(User, User.user_id == AnalysisRecord.asked_by)
+            _with_askers(select(*columns))
             .where(*self._conditions(tenant_id, f))
             .order_by(AnalysisRecord.asked_at.desc(), AnalysisRecord.analysis_record_id.desc())
         )
@@ -186,20 +228,25 @@ class AnalysisRecordRepository:
         )
         return [(r[0], r[1]) for r in rows.all()]
 
-    async def askers(self, tenant_id: int) -> list[tuple[str, str]]:
-        rows = await self.session.execute(
-            select(User.public_id, User.display_name)
-            .where(
-                User.user_id.in_(
-                    select(AnalysisRecord.asked_by).where(
-                        AnalysisRecord.tenant_id == tenant_id,
-                        AnalysisRecord.state.in_(_TERMINAL),
-                    )
-                )
-            )
-            .order_by(User.display_name, User.public_id)
+    async def askers(self, tenant_id: int) -> list[tuple[str, str, str]]:
+        """Every account and visitor with a terminal record: public id, label and kind; a
+        visitor's label is its latest host name and address (008 Requirement 9)."""
+
+        asked = select(AnalysisRecord).where(
+            AnalysisRecord.tenant_id == tenant_id, AnalysisRecord.state.in_(_TERMINAL)
         )
-        return [(str(r[0]), str(r[1])) for r in rows.all()]
+        accounts = select(User.public_id, User.display_name, literal("account")).where(
+            User.user_id.in_(asked.with_only_columns(AnalysisRecord.asked_by))
+        )
+        visitors = select(
+            Visitor.public_id,
+            visitor_label(Visitor.last_host, Visitor.last_address),
+            literal("visitor"),
+        ).where(Visitor.visitor_id.in_(asked.with_only_columns(AnalysisRecord.asked_by_visitor_id)))
+        rows = await self.session.execute(
+            accounts.union_all(visitors).order_by(text("2"), text("1"))
+        )
+        return [(str(r[0]), str(r[1]), str(r[2])) for r in rows.all()]
 
     async def terminal(self, tenant_id: int, public_id: str) -> RecordRow | None:
         row = (
@@ -211,7 +258,7 @@ class AnalysisRecordRepository:
                 )
             )
         ).first()
-        return None if row is None else RecordRow(row[0], str(row[1]), str(row[2]))
+        return None if row is None else _row(row)
 
     async def delete_matching(self, tenant_id: int, f: RecordFilter) -> int:
         result = await self.session.execute(

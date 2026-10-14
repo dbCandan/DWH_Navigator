@@ -21,7 +21,7 @@ from app.db.session import async_session_factory, engine
 from app.infrastructure.excel.writer import XLSX_MEDIA_TYPE
 from app.main import app
 from app.services.search_index import SearchIndex, build_engine
-from tests.integration.conftest import AuthHarness, SignedIn
+from tests.integration.conftest import AuthHarness, SignedIn, visitor_headers
 
 ROOT = Path(__file__).resolve().parents[4]
 BACKEND = ROOT / "app" / "backend"
@@ -106,7 +106,10 @@ class DataDictionary:
         return f"{self.auth.prefix}{path}"
 
     def headers(self, who: SignedIn | None = None) -> dict[str, str]:
-        return {**self.auth.headers(who or self.manager), **self.auth.origin()}
+        person = who or self.manager
+        # The session opens the administration; the device id makes the same person a visitor
+        # on the main screen (application-foundation 003-anonymous-visitor Decision 3).
+        return {**self.auth.headers(person), **visitor_headers(person), **self.auth.origin()}
 
     async def request(
         self, method: str, path: str, who: SignedIn | None = None, **kwargs: Any

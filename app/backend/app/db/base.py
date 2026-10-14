@@ -20,6 +20,7 @@ from app.domain.models.tenant import Tenant  # noqa: F401
 from app.domain.models.term_list import TermList, TermListItem  # noqa: F401
 from app.domain.models.user import User  # noqa: F401
 from app.domain.models.user_change import UserChange  # noqa: F401
+from app.domain.models.visitor import Visitor  # noqa: F401
 from app.domain.models.vocabulary import (  # noqa: F401
     VocabularyListHeader,
     VocabularyStopword,

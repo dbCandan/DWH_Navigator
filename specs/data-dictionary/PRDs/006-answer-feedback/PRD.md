@@ -2,18 +2,19 @@
 
 Status: Accepted
 
-Version: 1.0.1
+Version: 1.1.0
 
-Acceptance date: 2026-10-08
+Acceptance date: 2026-10-14
 
 Domain: [data-dictionary](../../DOMAIN.md)
 
-Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
-korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
+Kabul kaydı: Proje sahibi bu PRD'yi ilk kez 2026-10-08 tarihinde kabul etti;
+2026-10-14'te ana ekranın girişsiz kullanılmasını istedi
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)).
 
 ## Amaç
 
-Kullanıcı her tablo önerisine ve cevabın bütününe 👍/👎 verir, 👎'ye isteğe bağlı bir gerekçe ekler.
+Ziyaretçi her tablo önerisine ve cevabın bütününe 👍/👎 verir, 👎'ye isteğe bağlı bir gerekçe ekler.
 Oylar saklanır ve aynı ya da aynı anlamdaki soru yeniden gösterildiğinde ekrandaki cevabı
 şekillendirir: yeterince kişinin uygun bulmadığı tablo öneriler arasından çıkar ama gerekçesiyle
 görünür kalır; kişilerin doğruladığı tablo işaretlenir ve öne geçebilir; gösterilen güven oylarla en
@@ -23,9 +24,11 @@ yeniden analiz edilir. Oylar yalnız ekranı şekillendirir; Excel raporları de
 
 ## Aktörler ve sonuçlar
 
-- **Kullanıcı (`kullanici`) ve yönetici (`yonetici`):** Aynı yetkiyle oy verir, gerekçe ekler, fikrini
-  değiştirir; cevapta kendi oylarını basılı düğme olarak, başkalarının oylarını yalnız kişi sayısı,
-  durum ve adsız gerekçe olarak görür. Ölçülebilir sonuç: aynı soruya iki kişinin 👎 verdiği tablo
+- **Ziyaretçi:** Giriş yapmadan oy verir, gerekçe ekler, fikrini değiştirir; cevapta kendi oylarını
+  basılı düğme olarak, başkalarının oylarını yalnız kişi sayısı, durum ve adsız gerekçe olarak görür.
+  Ziyaretçi ve tanınması
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) PRD'sindedir;
+  bu PRD'de "kişi" bir ziyaretçidir. Ölçülebilir sonuç: aynı soruya iki kişinin 👎 verdiği tablo
   bir sonraki gösterimde önerilerden çıkıp "Kullanıcıların uygun bulmadığı tablolar" bölümünde
   gerekçesiyle görünür; iki kişinin cevaba 👎 vermesi o sorunun kayıtlı cevabını siler ve soru bir
   sonraki soruluşunda yeniden analiz edilir; bir kişinin aynı tabloya verdiği oy kaç kez gönderilirse
@@ -35,8 +38,10 @@ yeniden analiz edilir. Oylar yalnız ekranı şekillendirir; Excel raporları de
 
 - Ağırlıklandırma kaynaktaki ADR-036 sayılarıyla aynıdır (Requirement 4–7); sabitler kodda durur,
   yönetim ekranından değişmez (Decision 1).
-- Oy veren oturumdaki kullanıcıdır; istemcinin gönderdiği kimlik kabul edilmez. Kişi başına, her
-  tablo ve cevap için yalnız son oy sayılır (Decision 2).
+- Oy veren, `X-Device-Id` başlığıyla tanınan ziyaretçidir
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Decision 1,
+  Requirement 3); istek gövdesinde gönderilen kimlik (`voter` alanı) kabul edilmez, 422 alır. Kişi
+  (ziyaretçi) başına, her tablo ve cevap için yalnız son oy sayılır (Decision 2).
 - Oylar yalnız ekrandaki görünümü şekillendirir: analizin kendisi, kayıtlı cevabın içeriği, analiz
   kaydı, Excel raporları ve liste satırları değişmez (Decision 8). Tek yan etki, cevap 👎
   çoğunluğunun kayıtlı cevabı silmesidir (Requirement 10).
@@ -56,7 +61,9 @@ yeniden analiz edilir. Oylar yalnız ekranı şekillendirir; Excel raporları de
   olmayan tablo gösterilmez.
 - Soru metni, tablo anahtarı ve gerekçe uygulama günlüğüne (log) ve telemetriye (ölçüm ve iz)
   girmez.
-- Giriş ve roller [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md)
+- Giriş ve roller [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md),
+  ziyaretçi kimliği, IP adresi, makine adı ve hız sınırları
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
   PRD'sindedir.
 
 ## Mevcut davranış
@@ -72,15 +79,18 @@ davranışı söyler.
   gerekçe 2.000, `voter` 64 karakterde sessizce kesilir; `voter` yoksa istemcinin ağ adresi yazılır.
   Satır, oy anındaki sözlük sürümüyle `data/feedback.jsonl` dosyasına eklenir. Yanıt `ok`, oy
   verilen tablonun ya da cevabın toplamı, `answer_rejected` ve `forgotten`'dır. **Hedefte:**
-  `POST /votes`; oy veren oturumdaki kullanıcıdır; soru 4.000 karaktere kadar kabul edilir ve
+  `POST /votes`; oy veren `X-Device-Id` başlığıyla tanınan ziyaretçidir; soru 4.000 karaktere kadar kabul edilir ve
   anahtarlar tam metinden hesaplanır; uzunluk aşımı kesilmez, 422 alır; tablo sözlükte olmalıdır;
   `rank`, `score`, `analyst`, `reused`, `report_id` yazılmaz; satırlar PostgreSQL veritabanındadır
   (Requirement 1, 2; Decision 4–7, 11).
 - **Oy veren kimliği** (`src/vsa/web/static/index.html` `VOTER`): Her tarayıcı, tarayıcı deposunda
   (`localStorage` anahtarı `vsa-voter`) rastgele bir kimlik üretir; aynı kişi iki tarayıcıda iki kişi
   sayılır, başka bilgisayarda kendi oylarını görmez. Liste terimi ayrıntısı bu kimliği `?voter=` ile
-  gönderir. **Hedefte:** kimlik oturumdaki kullanıcıdır; tarayıcı deposu, `voter` alanı ve parametresi
-  kalkar (Decision 2).
+  gönderir. **Hedefte:** kimlik, tarayıcının ürettiği cihaz kimliğidir ve her istekte `X-Device-Id`
+  başlığıyla gider
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Decision 1,
+  Requirement 2); aynı kişi iki tarayıcıda yine iki kişi sayılır. `voter` alanı ve `?voter=`
+  parametresi kalkar; oyla birlikte sunucunun çözdüğü IP adresi ve makine adı saklanır (Decision 2).
 - **Ağırlıklandırma** (`src/vsa/feedback.py` `assess`, `Tally`, `FeedbackView`, `_age_weight`;
   sabitler `SAME_WORDS = 1.0`, `SAME_MEANING = 0.6`, `OTHER_DICTIONARY = 0.5`,
   `HALF_LIFE_DAYS = 180.0`, `PRIOR = 2.0`, `REJECT_WEIGHT = 1.5`, `REJECT_SUPPORT = -0.3`,
@@ -131,7 +141,9 @@ Requirement 1: Oy `POST /votes` ile kaydedilir. İstek alanları:
 
 Biçime uymayan istek ve bilinmeyen alan (örneğin `voter`) 422 alır; tablo o anki sözlükte yoksa 422
 `vote_table_unknown` ("Bu tablo artık sözlükte yok; cevabı yenileyip yeniden deneyin.") döner.
-Saklanan satır: oy veren kullanıcı (oturumdan), oy zamanı (sunucu saati, UTC: evrensel saat), soru
+Saklanan satır: oy veren ziyaretçi (`X-Device-Id` başlığından) ile sunucunun çözdüğü IP adresi ve
+makine adı ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+Requirement 7), oy zamanı (sunucu saati, UTC: evrensel saat), soru
 metni, metin anahtarı, anlam anahtarı, kapsam, tablo anahtarı, oy, gerekçe ve oy anındaki sözlük
 sürümü. Yanıt 201'dir ve oy verilen tablonun ya da cevabın Requirement 5'teki toplamını (`votes`;
 tablo oyunda sorunun metin ve anlam anahtarı ikisi de boşsa, örneğin soru yalnız noktalama
@@ -197,11 +209,11 @@ Requirement 7: Gösterilen her cevaba oylar şöyle uygulanır (kaynaktaki `feed
 - Öneriler yeni güvene göre azalan sıralanır (eşitlikte önceki sıra korunur) ve sıra numaraları
   1'den yeniden verilir.
 - Cevaba `feedback` eklenir: cevap toplamı (`answer`), `answer_rejected`, kullanıcının kendi oyları
-  (`mine`: yalnız aynı soru metniyle verdiği son oylar; tablo anahtarı → `up`/`down`, cevap için boş
+  (`mine`: isteği yapan ziyaretçinin yalnız aynı soru metniyle verdiği son oylar; tablo anahtarı → `up`/`down`, cevap için boş
   anahtar) ve cevabın yazıldığı an (`answer_at`; arayüz cevap oyunda geri gönderir).
 
-Requirement 8: Oylar, cevabın istemciye verildiği her yerde, vermeden hemen önce oturumdaki
-kullanıcıyla uygulanır: tek sorunun yeni ya da kayıtlı cevabı
+Requirement 8: Oylar, cevabın istemciye verildiği her yerde, vermeden hemen önce isteği yapan
+ziyaretçiyle (`X-Device-Id` başlığından) uygulanır: tek sorunun yeni ya da kayıtlı cevabı
 ([question-analysis](../004-question-analysis/PRD.md)) ve liste teriminin ayrıntısı
 ([list-search](../005-list-search/PRD.md)). Uygulama hata verirse cevap oylar uygulanmadan döner;
 hata günlüğe yalnız hata sınıfıyla yazılır ve ölçülür; kullanıcıya hata gösterilmez.
@@ -265,7 +277,8 @@ verilmiş oy gibidir; liste terimleri ve tek sorular birbirinin oylarından ayn�
 
 Requirement 15: Ham oy kayıtları (kim, hangi soruda, hangi tabloya, ne oy verdi) hiçbir uçtan dönmez
 ve yönetim ekranında gösterilmez (kaynaktaki ekranla aynı, Decision 10). Cevaplarda yalnız kişi
-sayıları, destek, durum, adsız en çok 3 gerekçe ve oturumdaki kullanıcının kendi oyları bulunur.
+sayıları, destek, durum, adsız en çok 3 gerekçe ve isteği yapan ziyaretçinin kendi oyları bulunur.
+Oyla saklanan IP adresi ve makine adı da hiçbir uçtan dönmez.
 Gerekçeler arayüzde düz metin olarak gösterilir, biçimlendirme ya da bağlantı olarak yorumlanmaz.
 
 Requirement 16: Oylar süresiz saklanır; hiçbir oy yaşı yüzünden kendiliğinden silinmez (kaynakla
@@ -273,8 +286,8 @@ aynı). Saklama süresi ayarı ve zamanlanmış silme işi yoktur; eski oyların
 yaş çarpanıyla azalır (Decision 13).
 
 Requirement 17: Ağırlıklandırma ve uygulama (`assess`, `apply` ve sabitleri) ağ, veritabanı ve dosya
-erişimi yapmayan saf işlevler olarak taşınır. Aynı oy satırları (tarayıcı kimliği yerine kullanıcı
-kimliğiyle) ve aynı cevapla kaynaktaki `vsa.feedback` ile aynı sonucu verir; bu, kaynak paketle yan
+erişimi yapmayan saf işlevler olarak taşınır. Aynı oy satırları (kaynaktaki tarayıcı kimliği yerine
+oy veren ziyaretçinin ya da hesabın kimliğiyle) ve aynı cevapla kaynaktaki `vsa.feedback` ile aynı sonucu verir; bu, kaynak paketle yan
 yana çalışan fark testiyle (aynı girdiyi kaynak ve hedef kodla çalıştırıp çıktıları karşılaştıran
 test) kanıtlanır.
 
@@ -282,15 +295,22 @@ Requirement 18: Bir sorunun oyları okunurken yalnız metin anahtarı ya da anla
 dizin üzerinden okunur; oy tablosunun bütünü okunmaz. Okuma süresi oy tablosunun büyüklüğüyle değil,
 o soruya uyan satır sayısıyla büyür; sorgu planının dizin kullandığı testle doğrulanır.
 
+Requirement 19: Oy ucu
+[anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Requirement
+6'daki oy hız sınırlarını uygular (ziyaretçi başına ve IP adresi başına); aşımda oy kaydedilmez,
+`429 rate_limited` ve `Retry-After` döner.
+
 ## API sözleşmesi
 
-Ön ek `/api/dwhnavigator/v1`. Uç geçerli oturum belirteci ister. Hata zarfı
+Ön ek `/api/dwhnavigator/v1`. Uç oturum istemez; geçerli bir `X-Device-Id` başlığı ister
+([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Requirement
+3). Hata zarfı
 `{"detail":{"code":"...","message":"..."}}` biçimindedir; şema doğrulama hataları ortak zarfla 422
 döner.
 
 | Uç | Yetki | Başarı | Hatalar |
 |---|---|---|---|
-| `POST /votes` | `kullanici`, `yonetici` | 201 → `votes` (`up`, `down`, `support`, `status`, `reasons[]`) ya da `null`, `answer_rejected`, `forgotten` | 401; 403 rol; 422 biçim ve bilinmeyen alan; 422 `vote_table_unknown`; 503 `search_index_not_ready` (açılışta ilk arama indeksi kurulana kadar; "Arama indeksi hazırlanıyor; biraz sonra yeniden deneyin.") |
+| `POST /votes` | `X-Device-Id` (oturum yok) | 201 → `votes` (`up`, `down`, `support`, `status`, `reasons[]`) ya da `null`, `answer_rejected`, `forgotten` | 400 `device_id_required`; 429 `rate_limited` (Requirement 19); 422 biçim ve bilinmeyen alan; 422 `vote_table_unknown`; 503 `search_index_not_ready` (açılışta ilk arama indeksi kurulana kadar; "Arama indeksi hazırlanıyor; biraz sonra yeniden deneyin.") |
 
 Cevaba eklenen alanlar (cevap döndüren uçlarda: [question-analysis](../004-question-analysis/PRD.md)
 cevapları ve [list-search](../005-list-search/PRD.md) terim ayrıntısı; bu PRD'nin Requirement 7'si):
@@ -305,28 +325,35 @@ Kaldırılan: kaynaktaki `POST /api/feedback`, `voter` alanı ve `?voter=` param
 
 ## Güvenlik ve yetkilendirme
 
-- Uç oturum ve `kullanici` ya da `yonetici` rolü ister; oy verenin kimliği yalnız oturumdan alınır.
-  Sorgular etkin kiracı (kurum) kapsamındadır.
+- Uç oturum ve rol istemez; oy veren yalnız `X-Device-Id` başlığından sunucuda doğrulanan
+  ziyaretçidir, gövdedeki kimlik kabul edilmez. Cihaz kimliğinin bir kimlik bilgisi olmadığı, nasıl
+  doğrulandığı, loglara yazılmadığı ve siteler arası istek denetimi
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Güvenlik ve
+  yetkilendirme bölümündedir. Sorgular `platform` kiracısı kapsamındadır (aynı PRD, Decision 4).
 - Bütün alanlar sunucuda tip, uzunluk ve biçimle doğrulanır; uzun değer kesilmez, reddedilir; tablo
   anahtarı sözlüğe karşı denetlenir (Decision 6, 7).
 - Ham oy kayıtları hiçbir yanıtta yer almaz; gerekçeler başka kullanıcılara adsız ve düz metin olarak
   gösterilir (Requirement 15).
-- Hız sınırı yoktur: her oy kimliklidir ve kişi başına son oy sayıldığı için bir kişinin çok
-  sayıda oyu ağırlığını artırmaz.
-- Soru metni, tablo anahtarı ve gerekçe günlüğe yazılmaz; günlükte kullanıcının yalnız dışa açık
-  kimliği (`public_id`) bulunur.
+- Oy ucunda ziyaretçi ve IP adresi başına hız sınırı vardır (Requirement 19). Aynı ziyaretçinin çok
+  sayıda oyu ağırlığını artırmaz, çünkü kişi başına son oy sayılır; ancak yeni cihaz kimliği üretmek
+  kolay olduğundan sınır kötüye kullanımı yalnız yavaşlatır (Riskler).
+- Soru metni, tablo anahtarı, gerekçe, cihaz kimliği, IP adresi ve makine adı günlüğe yazılmaz;
+  günlükte oy verenin yalnız dışa açık kimliği (`public_id`) bulunur.
 
 ## Veri ve geçiş
 
-- Yeni tablo `answer_vote` (bu PRD'nin): kiracı, oy veren kullanıcı (kullanıcı tablosuna bağ;
-  kullanıcı pasifleştirilse de oy kalır), oy zamanı (`created_at`), soru metni (en çok 4.000
+- Yeni tablo `answer_vote` (bu PRD'nin): kiracı, oy veren (hesaba ya da ziyaretçiye bağ; tam biri
+  dolu; oy anındaki IP adresi ve makine adıyla —
+  [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Veri ve
+  geçiş; hesap pasifleştirilse de oy kalır), oy zamanı (`created_at`), soru metni (en çok 4.000
   karakter), metin anahtarı, anlam anahtarı (boş olabilir), kapsam (`table`, `answer`), tablo
   anahtarı (cevap oyunda boş), oy (`up`, `down`), gerekçe (boş olabilir), sözlük sürümü ve ortak
   zorunlu sütunlar. Tablo yalnız eklenen bir akıştır: satır güncellenmez ve dışa açık kimlik
   (`public_id`) taşımaz (rules/41'deki yalnız eklenen akış istisnası; Decision 3). Dizinler: kiracı ve
   metin anahtarı; kiracı ve anlam anahtarı (yalnız boş olmayanlar).
   Tablo ve sütun açıklamaları göçle veritabanına yazılır (rules/43).
-- Oylar süresiz saklanır; silme işi yoktur (Requirement 16).
+- Oylar süresiz saklanır; silme işi yoktur (Requirement 16). Oyla saklanan IP adresi ve makine adı
+  oyla aynı süre kalır.
 - Kayıtlı cevaplar bu PRD'nin tablosu değildir; silme question-analysis'in hizmetiyle yapılır.
 - Kaynaktaki `data/feedback.jsonl` taşınmaz (kurulu bir kaynak sürüm yoktur); oylar boş başlar.
 - Şemanın sahibi SQLAlchemy modelleridir; değişiklik Alembic göçüyle (veritabanı yapısını sürüm
@@ -334,7 +361,7 @@ Kaldırılan: kaynaktaki `POST /api/feedback`, `voter` alanı ve `?voter=` param
 
 ## Gözlemlenebilirlik
 
-- Yapılandırılmış günlük olayları: `feedback.vote_recorded` (kapsam, oy, gerekçe var mı, kullanıcının
+- Yapılandırılmış günlük olayları: `feedback.vote_recorded` (kapsam, oy, gerekçe var mı, oy verenin
   dışa açık kimliği), `feedback.saved_answers_forgotten` (silinen kayıtlı cevap sayısı),
   `feedback.apply_failed` (yalnız hata sınıfının adı). Soru metni, tablo anahtarı ve gerekçe yazılmaz.
 - Ölçümler: verilen oylar `dwhnavigator_feedback_votes_total{scope,vote}` (`scope`: `table`,
@@ -367,8 +394,12 @@ Kaldırılan: kaynaktaki `POST /api/feedback`, `voter` alanı ve `?voter=` param
   `apply` ile hedefin işlevleri aynı çıktıyı verir.
 - **Sunucu ucu (API) testleri (gerçek PostgreSQL):** kaynaktaki `test_feedback`,
   `test_answer_votes_drop_the_kept_answer` ve `test_ask_carries_earlier_votes` senaryoları
-  kullanıcı kimliğiyle; doğrulama (`vote`, `scope`, eksik ya da bilinmeyen `table_key`, 301
-  karakterlik gerekçe, 4.001 karakterlik soru, `voter` alanı); oy verenin oturumdan alınması;
+  ziyaretçi kimliğiyle; doğrulama (`vote`, `scope`, eksik ya da bilinmeyen `table_key`, 301
+  karakterlik gerekçe, 4.001 karakterlik soru, `voter` alanı); oturumsuz istekte oy verenin
+  `X-Device-Id` başlığından alınması, başlıksız ya da geçersiz başlıkla `400 device_id_required`;
+  "kişi başına son oy" ve `mine`'ın ziyaretçiye göre olması (başka cihaz kimliği öbürünün oyunu
+  `mine`'da görmez ama sayıda görür); oyla IP adresi ve makine adının saklanıp hiçbir yanıtta
+  dönmemesi; ziyaretçi ve IP hız sınırında `429 rate_limited` ve `Retry-After` (Requirement 19);
   2.000 karakterden uzun soruda anahtarın tam metinden hesaplanıp cevaba eşleşmesi; cevap reddinde
   kayıtlı cevabın silinmesi ve ikinci oyda `forgotten` 0; sorgu planında dizin kullanımı; günlükte
   soru, tablo ve gerekçe bulunmaması.
@@ -382,7 +413,7 @@ Kaldırılan: kaynaktaki `POST /api/feedback`, `voter` alanı ve `?voter=` param
   gerekçeler, Enter ve "Gönder", hata iletisi, rozet metinleri ve açıklamaları, satır işaretleri,
   `endorsed` ve `rejected` bölümleri, cevap oyu bölümünün görünme koşulları (tablo önermeyen
   "Bulunamadı" ve "Analiz yapılamadı" cevabında görünmemesi) ve oy sonrası iletileri, kayıtlı cevap
-  uyarısı, tarayıcı deposuna yazılmaması.
+  uyarısı, oy isteğinin oturum belirteci olmadan ve `X-Device-Id` başlığıyla gitmesi.
 
 ## Vektör ve gömme sözleşmesi (uygulanabilirse)
 
@@ -403,9 +434,10 @@ aramasını ADR-039 ile kaldırdı.
   `assess`/`apply` fark testi geçer (Requirement 3–7, 17).
 - [ ] Acceptance 2: L1 — Otomatik testlerden geçti: gerçek PostgreSQL ile sunucu ucu (API) testleri
   kaydı,
-  doğrulamayı, oturumdan alınan kimliği, tam metinden anahtarı, kayıtlı cevabın silinmesini,
-  ham oy kaydının dönmemesini ve dizinle okumayı doğrular; API tanım dosyası (OpenAPI) kayıtlı
-  yapıtla aynıdır (Requirement 1, 2, 10, 15, 18).
+  doğrulamayı, `X-Device-Id` başlığından alınan ziyaretçi kimliğini, tam metinden anahtarı, kayıtlı
+  cevabın silinmesini, ham oy kaydının ve oyla saklanan IP adresi ile makine adının dönmemesini,
+  dizinle okumayı ve hız sınırını doğrular; API tanım dosyası (OpenAPI) kayıtlı yapıtla aynıdır
+  (Requirement 1, 2, 10, 15, 18, 19).
 - [ ] Acceptance 3: L1 — Otomatik testlerden geçti: cevap uçlarında oyların uygulanması, hata
   dayanıklılığı, raporların ve liste satırının oylardan etkilenmemesi ve liste terimi oylarının tek
   soruyu etkilemesi doğrulanır (Requirement 8, 9, 14).
@@ -414,24 +446,28 @@ aramasını ADR-039 ile kaldırdı.
 - [ ] Acceptance 5: L1 — Otomatik testlerden geçti: ön yüz testleri ve tip sapması kapısı geçer
   (Requirement 11–13).
 - [ ] Acceptance 6: L2 — Gerçek istemci/ortamda doğrulandı: yerel Compose ortamında (uygulamanın
-  geliştirici makinesinde kapsayıcılarla çalışan kurulumu) bağlı bir sohbet modeliyle üç kullanıcı
-  aynı soruyu sorar; iki kullanıcı en iyi tabloya gerekçeli 👎 verir; üçüncü
-  kullanıcının ekranında tablo "Kullanıcıların uygun bulmadığı tablolar"da gerekçesiyle görünür;
+  geliştirici makinesinde kapsayıcılarla çalışan kurulumu) bağlı bir sohbet modeliyle üç ziyaretçi
+  (giriş yapmamış üç ayrı tarayıcı bağlamı) aynı soruyu sorar; iki ziyaretçi en iyi tabloya
+  gerekçeli 👎 verir; üçüncü ziyaretçinin ekranında tablo "Kullanıcıların uygun bulmadığı tablolar"da gerekçesiyle görünür;
   bir 👍 verilen tablo "✓ 1 kişi doğruladı" rozetini ve "oylardan önce" güvenini gösterir; aynı
   cevabın Excel raporu oy öncesiyle aynıdır (Requirement 5, 7, 9, 11–13).
-- [ ] Acceptance 7: L2 — Gerçek istemci/ortamda doğrulandı: iki kullanıcı kayıtlı bir cevaba 👎
-  verir; "kayıtlı cevap silindi" iletisi görünür ve aynı soru yeniden sorulunca analiz kaydında yeni
-  analiz görünür; kullanıcı başka bir tarayıcıdan girince kendi oyları basılı görünür (Requirement 6,
-  7, 10, 13).
+- [ ] Acceptance 7: L2 — Gerçek istemci/ortamda doğrulandı: giriş yapmamış iki ziyaretçi kayıtlı bir
+  cevaba 👎 verir; "kayıtlı cevap silindi" iletisi görünür ve aynı soru yeniden sorulunca analiz
+  kaydında yeni analiz görünür; ziyaretçinin oyları sayfa yenilendikten sonra aynı tarayıcıda basılı
+  görünür, başka bir tarayıcı bağlamında basılı görünmez ama kişi sayısına katılır (Requirement 6, 7,
+  8, 10, 13).
 
 ## Kararlar
 
 - Decision 1: Ağırlık sabitleri ve kuralları kaynakla aynıdır ve kodda durur; yönetim ekranından
   değişmez. Gerekçe: ADR-036'nın ölçülerek seçilmiş davranışı korunur. Altın set oyları kullanmadığı
   için bu sabitler onunla ölçülemez; değiştirmek bu PRD'nin değişmesini gerektirir.
-- Decision 2: Oy veren oturumdaki kullanıcıdır (bağlayıcı mimari karar 8). Gerekçe: tarayıcı kimliği
-  bir kişiyi birden çok kişi sayabiliyordu; "kişi başına son oy" kuralı ancak gerçek kimlikle
-  anlamlıdır; kullanıcı her bilgisayarda kendi oylarını görür.
+- Decision 2: Oy veren, `X-Device-Id` başlığıyla tanınan ziyaretçidir; "kişi başına son oy" ve
+  "benim oyum" ziyaretçiye göredir; oyla sunucunun çözdüğü IP adresi ve makine adı saklanır
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Decision
+  1, 2, 5; Requirement 5, 7). Gerekçe: proje sahibi 2026-10-14'te oy vermenin giriş istememesini
+  kararlaştırdı; kimlik gövdede değil başlıkta gider ve sunucuda doğrulanır. Bir kişinin birden çok
+  tarayıcıyla birden çok kişi sayılabilmesi kabul edilen bir risktir (Riskler).
 - Decision 3: Oy satırları yalnız eklenir; "son oy" okunurken seçilir. Gerekçe: kaynak da tarihçeyi
   tutup okurken seçiyordu; satırı kişi ve soru başına güncellemek, aynı soru metninin anlam anahtarı
   terim sözlüğüyle değiştiğinde eski "aynı anlam" eşleşmesini silerek sonucu kaynaktan ayırırdı.
@@ -471,7 +507,13 @@ Belirtim → Plan → Görevler → Uygulama
 
 - **Az kişiyle büyük etki.** Tek kişinin 👍'ü bir tabloyu "doğrulandı" yapar ve güvenini yaklaşık %5
   artırır; iki kişinin 👎'si tabloyu öneriler arasından çıkarır. Yanlış ya da kötü niyetli oylar
-  ekrandaki cevabı değiştirir; oylar kimlikli olduğu için izlenebilir ama arayüzde görünmez.
+  ekrandaki cevabı değiştirir; oylar yalnız cihaz kimliği, IP adresi ve makine adıyla izlenebilir
+  ve arayüzde görünmez.
+- **Yeni cihaz kimliğiyle oy çoğaltma.** Giriş istenmediği için bir kişi tarayıcı verisini silerek
+  ya da başka tarayıcı açarak yeni ziyaretçi gibi görünüp birden çok 👎 verebilir; böylece bir
+  tabloyu önerilerden çıkarabilir ya da kayıtlı cevabı sildirebilir. Hız sınırı (Requirement 19) bunu
+  yavaşlatır, önlemez
+  ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md) Riskler).
 - **Anlam anahtarı terim sözlüğüne bağlıdır.** Terim sözlüğü değişince aynı sorunun anlam anahtarı da
   değişebilir; eski "aynı anlam" oyları eşleşmez, aynı soru metniyle verilen oylar sürer.
 - **Gerekçeler serbest metindir** ve başka kullanıcılara adsız gösterilir; kullanıcı gerekçeye kişisel

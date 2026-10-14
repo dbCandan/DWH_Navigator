@@ -1,6 +1,9 @@
 import {clearAuth, readAccessToken, readUser, writeSession} from '@/lib/authStorage';
 import {config} from '@/lib/config';
+import {deviceId} from '@/lib/deviceId';
 import type {LoginResponse} from '@/types/auth';
+
+const DEVICE_HEADER = 'X-Device-Id';
 
 export class ApiError extends Error {
   constructor(
@@ -140,6 +143,27 @@ export async function apiFetch(path: string, init: RequestInit = {}, authenticat
 /** JSON request through the shared client; a 204 answer resolves to `undefined`. */
 export async function apiRequest<T>(path: string, init: RequestInit = {}, authenticated = true): Promise<T> {
   const response = await apiFetch(path, init, authenticated);
+  if (response.status === 204) return undefined as T;
+  return (await response.json()) as T;
+}
+
+/**
+ * A main-screen request: the visitor of the browser's device id asks, with no token and no tenant
+ * header even while an administration session is open (application-foundation
+ * 003-anonymous-visitor Requirement 2, 3, Decision 3). A refusal never ends that session.
+ */
+export async function visitorFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  if (typeof init.body === 'string' && !headers.has('Content-Type'))
+    headers.set('Content-Type', 'application/json');
+  headers.set(DEVICE_HEADER, deviceId());
+  const response = await fetch(config.apiPrefix + path, {...init, headers});
+  if (response.ok) return response;
+  throw await toApiError(response, false);
+}
+
+export async function visitorRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await visitorFetch(path, init);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }

@@ -2,7 +2,7 @@
 Acceptance 2, 3, 4).
 
 The source's ``test_feedback``, ``test_answer_votes_drop_the_kept_answer`` and
-``test_ask_carries_earlier_votes`` with signed-in users instead of browser ids, the request checks,
+``test_ask_carries_earlier_votes`` with visitors of a device id, the request checks,
 the keys from a question longer than 2000 characters, the saved answers deleted by a 👎 majority,
 the overlay on answers and its failure, reports untouched by votes, the index read of one
 question's votes, votes kept for years and no question, table or reason in the logs.
@@ -24,7 +24,7 @@ from app.services.analysis import feedback
 from app.services.answer_feedback import AnswerVotes
 from tests.fakes.telemetry import TelemetryCapture
 from tests.integration.analysis import Qa, qa_harness, saved_answer_count
-from tests.integration.conftest import RecordingHandler, SignedIn
+from tests.integration.conftest import VISITOR_HOST, RecordingHandler, SignedIn
 from tests.integration.data_dictionary import DataDictionary, error, sql
 from tests.parity import excel_dump
 
@@ -52,7 +52,7 @@ async def answered(qa: Qa, query: str = QUESTION, who: SignedIn | None = None) -
     return done
 
 
-async def test_a_vote_is_stored_for_the_signed_in_user(qa: Qa) -> None:
+async def test_a_vote_is_stored_for_the_visitor(qa: Qa) -> None:
     done = await answered(qa)
     best = done["result"]["objects"][0]["key"]
     response = await vote(qa, query=QUESTION, scope="table", table_key=best, vote="up")
@@ -64,8 +64,9 @@ async def test_a_vote_is_stored_for_the_signed_in_user(qa: Qa) -> None:
         "forgotten": 0,
     }
     rows = await sql(
-        "SELECT v.scope, v.table_key, v.vote, v.text_key, v.query_text, u.public_id, "
-        "v.dictionary_version, v.note FROM answer_vote v JOIN app_user u ON u.user_id = v.voter_id"
+        "SELECT v.scope, v.table_key, v.vote, v.text_key, v.query_text, w.public_id, "
+        "v.dictionary_version, v.note, v.voter_id, v.client_address, v.client_host "
+        "FROM answer_vote v JOIN visitor w ON w.visitor_id = v.voter_visitor_id"
     )
     assert [tuple(r) for r in rows] == [
         (
@@ -74,9 +75,12 @@ async def test_a_vote_is_stored_for_the_signed_in_user(qa: Qa) -> None:
             "up",
             "kart limit doluluk",
             QUESTION,
-            qa.user.public_id,
+            await qa.visitor_id(),
             qa.dd.index.engine().dictionary.version,
             None,
+            None,
+            "127.0.0.1",
+            VISITOR_HOST,
         )
     ]
     again = (await qa.job(done["analysis_id"]))["result"]
@@ -297,7 +301,7 @@ async def test_logs_and_metrics_carry_no_question_table_or_reason(
         ("answer", "down", True),
         ("answer", "down", False),
     ]
-    assert recorded[0]["user_public_id"] == qa.user.public_id
+    assert recorded[0]["user_public_id"] == await qa.visitor_id()
     assert recorded_logs.events("feedback.saved_answers_forgotten") == [
         {"event": "feedback.saved_answers_forgotten", "count": 1}
     ]
@@ -310,5 +314,5 @@ async def test_logs_and_metrics_carry_no_question_table_or_reason(
     everything = recorded_logs.rendered() + json.dumps(
         [dict(s.attributes or {}) for s in telemetry_capture.spans()], ensure_ascii=False
     )
-    for secret in (MARKER, QUESTION, best, "doluluk"):
+    for secret in (MARKER, QUESTION, best, "doluluk", VISITOR_HOST):
         assert secret not in everything, secret

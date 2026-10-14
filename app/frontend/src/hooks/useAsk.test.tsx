@@ -4,6 +4,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import {IntlProvider} from '@/contexts/IntlContext';
 import {useAsk} from '@/hooks/useAsk';
 import {ApiError} from '@/lib/apiClient';
+import {recallTabAnalysis} from '@/lib/tabAnalysis';
 import type {CosmosEngine} from '@/lib/cosmos/engine';
 import {AnalysisService} from '@/services/analyses';
 import {ExplorerService} from '@/services/explorer';
@@ -213,5 +214,61 @@ describe('the question flow (question-analysis Requirement 19, 20)', () => {
     await act(() => hook.result.current.ask('soru', false, job({state: 'running', ahead: null})));
     expect(start).not.toHaveBeenCalled();
     expect(hook.result.current.outcome?.kind).toBe('answer');
+  });
+});
+
+describe('the tab remembers its own question (question-analysis Requirement 19, Decision 26)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    sessionStorage.clear();
+  });
+
+  it('remembers the running job for this tab and forgets it once the job ends', async () => {
+    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job());
+    let remembered: string | null = null;
+    vi.spyOn(AnalysisService, 'follow').mockImplementation(async (_id, onEvent) => {
+      remembered = recallTabAnalysis();
+      onEvent({id: '1', event: 'message', data: JSON.stringify({type: 'completed', flow: 'analyst', verdict: 'VAR'})});
+      return 'completed';
+    });
+    vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
+    const {hook} = setup();
+    await act(() => hook.result.current.ask('soru', false));
+    expect(remembered).toBe(ANALYSIS_ID);
+    expect(recallTabAnalysis()).toBeNull();
+  });
+
+  it('forgets the job when the person stops it', async () => {
+    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job({state: 'running', ahead: null}));
+    vi.spyOn(AnalysisService, 'cancel').mockResolvedValue(job({state: 'cancelled'}));
+    vi.spyOn(AnalysisService, 'follow').mockImplementation(
+      (_id, _onEvent, signal) =>
+        new Promise((resolve) => signal.addEventListener('abort', () => resolve('aborted'), {once: true})),
+    );
+    const {hook} = setup();
+    let run!: Promise<void>;
+    act(() => {
+      run = hook.result.current.ask('soru', false);
+    });
+    await waitFor(() => expect(recallTabAnalysis()).toBe(ANALYSIS_ID));
+    act(() => hook.result.current.stop());
+    await act(() => run);
+    expect(recallTabAnalysis()).toBeNull();
+  });
+
+  it('keeps the job when the page goes away while it runs: a reload follows it again', async () => {
+    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job({state: 'running', ahead: null}));
+    vi.spyOn(AnalysisService, 'follow').mockImplementation(
+      (_id, _onEvent, signal) =>
+        new Promise((resolve) => signal.addEventListener('abort', () => resolve('aborted'), {once: true})),
+    );
+    const {hook} = setup();
+    act(() => {
+      void hook.result.current.ask('soru', false);
+    });
+    await waitFor(() => expect(recallTabAnalysis()).toBe(ANALYSIS_ID));
+    hook.unmount();
+    await act(async () => undefined);
+    expect(recallTabAnalysis()).toBe(ANALYSIS_ID);
   });
 });

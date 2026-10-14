@@ -61,6 +61,12 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
             return await self._with_context(RequestContext(), request, call_next)
 
         raw_tenant_id = request.headers.get(self.tenant_header)
+        token = _bearer_token(request)
+        if raw_tenant_id is None and token is None:
+            # A main-screen visitor sends no session and no tenant: the visitor dependency selects
+            # the platform tenant, and every session endpoint answers 401 (003-anonymous-visitor
+            # Decision 3, 4).
+            return await self._with_context(RequestContext(), request, call_next)
         if raw_tenant_id is None:
             return JSONResponse(
                 status_code=400,
@@ -74,7 +80,6 @@ class TenantContextMiddleware(BaseHTTPMiddleware):
                 content=error_body("tenant_invalid", "Etkin kiracı başlığı geçersiz."),
             )
 
-        token = _bearer_token(request)
         if token is None:
             return await self._with_context(
                 RequestContext(tenant_id=active_tenant_id), request, call_next

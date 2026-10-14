@@ -1,9 +1,10 @@
 """Question analysis endpoints (data-dictionary/PRDs/004-question-analysis, API sözleşmesi).
 
-Starting, reading, following, stopping and reporting an analysis job are open to ``kullanici`` and
-``yonetici``; only the job's owner reaches a job, anyone else gets ``404 analysis_not_found``. The
-saved-answer summary and deletion are for ``yonetici``. The live stream checks the session, the
-role and the owner before its first byte; the token is never in the address.
+Starting, reading, following, stopping and reporting an analysis job and the status take no
+session: the visitor of the ``X-Device-Id`` header asks (application-foundation
+003-anonymous-visitor Requirement 3). Only the job's owner reaches a job, anyone else gets
+``404 analysis_not_found``. The saved-answer summary and deletion are for ``yonetici``. The live
+stream checks the device id and the owner before its first byte; nothing is in the address.
 """
 
 import asyncio
@@ -20,12 +21,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.auth.dependencies import CurrentContext, require_role
 from app.api.excel_transfer import EXCEL_RESPONSE, excel_download
 from app.api.search_index_dependency import get_search_index
+from app.api.visitor.dependencies import CurrentVisitor, visitor_asker
 from app.core import telemetry
 from app.core.config import Settings, get_settings
 from app.core.errors import ApplicationError
 from app.core.logging import log_event
 from app.db.session import get_db
-from app.domain.accounts import ROLE_MANAGER, ROLE_USER
+from app.domain.accounts import ROLE_MANAGER
 from app.domain.analysis_records import QUERY_MAX_CHARS, JobState
 from app.infrastructure.repositories.user_repository import UserRepository
 from app.schemas.analysis.jobs import (
@@ -40,13 +42,14 @@ from app.schemas.analysis.jobs import (
     StatusOut,
 )
 from app.schemas.errors import error_responses
-from app.services.analysis.jobs import AnalysisJobs, Asker, JobView, Tenant
+from app.services.analysis.jobs import AnalysisJobs, JobView, Tenant
 from app.services.analysis.model_view import sampling_of
 from app.services.analysis.pipeline import ISTANBUL
 from app.services.analysis.report.excel import report_filename, write_ask_report
 from app.services.request_scope import acting_user_with_role, active_tenant
 from app.services.search_index import SearchIndex
 from app.services.search_settings_schema import defaults
+from app.services.visitors import VisitorIdentity
 
 logger = logging.getLogger("app.analysis")
 
@@ -55,9 +58,16 @@ DEFAULT_TOP = 5
 _ALLOWED_CONTROLS = frozenset("\t\n\r")
 
 _ERROR_TEXTS = {
-    401: "not_authenticated: oturum yok",
-    403: "forbidden: rol yok; cross_site_request: istek başka bir siteden geldi",
+    400: "device_id_required: X-Device-Id eksik ya da UUID 4 değil",
+    403: "tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi",
+    429: "rate_limited: yeni ziyaretçi sınırı",
 }
+_MANAGER_ERRORS = error_responses(
+    {
+        401: "not_authenticated: oturum yok",
+        403: "forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi",
+    }
+)
 _ERRORS = error_responses(_ERROR_TEXTS)
 _NOT_FOUND = {404: "analysis_not_found: analiz yok ya da başkasının"}
 
@@ -76,8 +86,7 @@ class EventStreamResponse(StreamingResponse):
     media_type = "text/event-stream"
 
 
-router = APIRouter(tags=["analyses"], responses=_ERRORS)
-_user = [Depends(require_role(ROLE_USER))]
+router = APIRouter(tags=["analyses"])
 _manager = [Depends(require_role(ROLE_MANAGER))]
 
 
@@ -96,16 +105,12 @@ async def _tenant(session: AsyncSession, context: CurrentContext) -> Tenant:
     return Tenant(tenant.tenant_id, tenant.public_id)
 
 
-def _subject(context: CurrentContext) -> str:
-    return str(context.subject)
+def _visitor_tenant(visitor: VisitorIdentity) -> Tenant:
+    return Tenant(visitor.tenant_id, visitor.tenant_public_id)
 
 
-async def _own(
-    jobs: AnalysisJobs, session: AsyncSession, context: CurrentContext, analysis_id: str
-) -> tuple[Tenant, JobView]:
-    tenant = await _tenant(session, context)
-    await session.commit()  # the request's session holds no transaction while a job is read
-    return tenant, await jobs.find(tenant.tenant_id, _subject(context), analysis_id)
+async def _own(jobs: AnalysisJobs, visitor: VisitorIdentity, analysis_id: str) -> JobView:
+    return await jobs.find(visitor.tenant_id, visitor.public_id, analysis_id)
 
 
 def _invalid(code: str, message: str) -> ApplicationError:
@@ -154,7 +159,6 @@ def _envelope(view: JobView) -> AnalysisJob:
     "/analyses",
     status_code=status.HTTP_202_ACCEPTED,
     response_model=AnalysisJob,
-    dependencies=_user,
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -171,7 +175,9 @@ def _envelope(view: JobView) -> AnalysisJob:
         {
             413: "request_too_large: gövde 32 KB'tan büyük",
             422: "query_empty, query_too_long, query_invalid_characters, invalid_request",
-            429: "rate_limited: 60 saniyede 30'dan çok istek",
+            400: _ERROR_TEXTS[400],
+            403: _ERROR_TEXTS[403],
+            429: "rate_limited: ziyaretçi başına 60 saniyede 30, adres başına 120'den çok istek",
             503: "analysis_queue_full, analysis_unavailable, search_index_not_ready",
         }
     ),
@@ -179,23 +185,18 @@ def _envelope(view: JobView) -> AnalysisJob:
 async def start_analysis(
     request: Request,
     response: Response,
-    context: CurrentContext,
-    session: Session,
+    visitor: CurrentVisitor,
     jobs: Jobs,
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> AnalysisJob:
     """Accept a question; a saved answer completes the job at once, otherwise it is queued."""
 
-    users = UserRepository(session)
-    actor = await acting_user_with_role(users, context, ROLE_USER)
-    tenant = await _tenant(session, context)
-    await session.commit()
-    jobs.check_rate(actor.public_id)
+    jobs.check_rate(visitor.public_id, visitor.address)
     body = await _start_body(request)
     query = checked_query(body.query)
     job = await jobs.start(
-        tenant=tenant,
-        asker=Asker(actor.user_id, actor.public_id, actor.display_name),
+        tenant=_visitor_tenant(visitor),
+        asker=visitor_asker(visitor),
         query=query,
         top=body.top,
         fresh=body.fresh,
@@ -204,11 +205,11 @@ async def start_analysis(
     return _envelope(jobs.view_of(job))
 
 
-@router.get("/analyses/active", response_model=ActiveAnalysis, dependencies=_user)
-async def active_analysis(context: CurrentContext, jobs: Jobs) -> ActiveAnalysis:
-    """The caller's most recently started single question that is queued or running."""
+@router.get("/analyses/active", response_model=ActiveAnalysis, responses=_ERRORS)
+async def active_analysis(visitor: CurrentVisitor, jobs: Jobs) -> ActiveAnalysis:
+    """The visitor's most recently started single question that is queued or running."""
 
-    job = jobs.active(_subject(context))
+    job = jobs.active(visitor.public_id)
     return ActiveAnalysis(analysis=_envelope(jobs.view_of(job)) if job is not None else None)
 
 
@@ -216,25 +217,21 @@ async def active_analysis(context: CurrentContext, jobs: Jobs) -> ActiveAnalysis
     "/analyses/{analysis_id}",
     response_model=AnalysisJobWithResult,
     response_model_by_alias=True,
-    dependencies=_user,
-    responses=error_responses(_NOT_FOUND),
+    responses=error_responses({**_ERROR_TEXTS, **_NOT_FOUND}),
 )
-async def read_analysis(
-    analysis_id: str, context: CurrentContext, session: Session, jobs: Jobs
-) -> dict[str, Any]:
-    """The job; a completed job carries its answer with the reading user's votes applied."""
+async def read_analysis(analysis_id: str, visitor: CurrentVisitor, jobs: Jobs) -> dict[str, Any]:
+    """The job; a completed job carries its answer with the visitor's votes applied."""
 
-    tenant, view = await _own(jobs, session, context, analysis_id)
+    view = await _own(jobs, visitor, analysis_id)
     out: dict[str, Any] = view.envelope()
     if view.state is JobState.COMPLETED and view.result is not None:
-        out["result"] = await jobs.answer(tenant.tenant_id, _subject(context), view)
+        out["result"] = await jobs.answer(visitor.tenant_id, visitor.public_id, view)
     return out
 
 
 @router.get(
     "/analyses/{analysis_id}/events",
     response_class=EventStreamResponse,
-    dependencies=_user,
     responses={
         200: {
             "model": AnalysisStreamEvent,
@@ -247,29 +244,28 @@ async def read_analysis(
             {
                 **_ERROR_TEXTS,
                 **_NOT_FOUND,
-                429: "too_many_streams: kullanıcı başına 5 akış",
+                429: "too_many_streams: ziyaretçi başına 5 akış; rate_limited",
             }
         ),
     },
 )
 async def follow_analysis(
     analysis_id: str,
-    context: CurrentContext,
-    session: Session,
+    visitor: CurrentVisitor,
     jobs: Jobs,
     last_event_id: Annotated[str | None, Header()] = None,
 ) -> EventStreamResponse:
-    """Live progress: a snapshot, the missed step events after ``Last-Event-ID``, then live."""
+    """Live progress: a snapshot, the missed step events after ``Last-Event-ID``, then live;
+    the stream ends at the terminal event or when the client leaves."""
 
-    _tenant_ref, view = await _own(jobs, session, context, analysis_id)
-    user = _subject(context)
+    view = await _own(jobs, visitor, analysis_id)
+    user = visitor.public_id
     jobs.open_stream(user)
     last = int(last_event_id) if last_event_id is not None and last_event_id.isdigit() else None
-    expires = float(context.token_expires_at) if context.token_expires_at else None
 
     async def stream() -> Any:
         try:
-            async for chunk in jobs.events(view, last_event_id=last, expires_at=expires):
+            async for chunk in jobs.events(view, last_event_id=last, expires_at=None):
                 yield chunk
         finally:
             jobs.close_stream(user)
@@ -283,33 +279,33 @@ async def follow_analysis(
 @router.post(
     "/analyses/{analysis_id}/cancel",
     response_model=AnalysisJob,
-    dependencies=_user,
-    responses=error_responses(_NOT_FOUND),
+    responses=error_responses({**_ERROR_TEXTS, **_NOT_FOUND}),
 )
-async def cancel_analysis(
-    analysis_id: str, context: CurrentContext, session: Session, jobs: Jobs
-) -> AnalysisJob:
+async def cancel_analysis(analysis_id: str, visitor: CurrentVisitor, jobs: Jobs) -> AnalysisJob:
     """Stop the job; a finished job is returned as it is."""
 
-    _tenant_ref, view = await _own(jobs, session, context, analysis_id)
+    view = await _own(jobs, visitor, analysis_id)
     return _envelope(await jobs.cancel(view))
 
 
 @router.get(
     "/analyses/{analysis_id}/report",
     response_class=Response,
-    dependencies=_user,
     responses={
         200: EXCEL_RESPONSE,
-        **error_responses({**_NOT_FOUND, 409: "analysis_has_no_result: tamamlanmamış analiz"}),
+        **error_responses(
+            {
+                **_ERROR_TEXTS,
+                **_NOT_FOUND,
+                409: "analysis_has_no_result: tamamlanmamış analiz",
+            }
+        ),
     },
 )
-async def analysis_report(
-    analysis_id: str, context: CurrentContext, session: Session, jobs: Jobs
-) -> Response:
+async def analysis_report(analysis_id: str, visitor: CurrentVisitor, jobs: Jobs) -> Response:
     """The single-question Excel report, made in memory from the record's answer."""
 
-    _tenant_ref, view = await _own(jobs, session, context, analysis_id)
+    view = await _own(jobs, visitor, analysis_id)
     if view.state is not JobState.COMPLETED or view.result is None:
         raise ApplicationError(
             status.HTTP_409_CONFLICT, "analysis_has_no_result", "Bu analizin raporu yok."
@@ -332,14 +328,11 @@ async def analysis_report(
     return excel_download(name, data)
 
 
-@router.get("/status", response_model=StatusOut, dependencies=_user)
-async def analysis_status(
-    context: CurrentContext, session: Session, jobs: Jobs, index: Index
-) -> StatusOut:
+@router.get("/status", response_model=StatusOut, responses=_ERRORS)
+async def analysis_status(visitor: CurrentVisitor, jobs: Jobs, index: Index) -> StatusOut:
     """Requirement 17: the serving dictionary, the chat model and its state, the shortlist."""
 
-    tenant = await _tenant(session, context)
-    await session.commit()
+    tenant = _visitor_tenant(visitor)
     serving = index.serving
     engine = serving.engine if serving is not None else None
     state = await jobs.models.model_state(
@@ -361,7 +354,12 @@ async def analysis_status(
     )
 
 
-@router.get("/saved-answers/summary", response_model=SavedAnswerSummaryOut, dependencies=_manager)
+@router.get(
+    "/saved-answers/summary",
+    response_model=SavedAnswerSummaryOut,
+    dependencies=_manager,
+    responses=_MANAGER_ERRORS,
+)
 async def saved_answers_summary(
     context: CurrentContext, session: Session, jobs: Jobs, index: Index
 ) -> SavedAnswerSummaryOut:
@@ -382,7 +380,12 @@ async def saved_answers_summary(
     )
 
 
-@router.delete("/saved-answers", response_model=SavedAnswersRemoved, dependencies=_manager)
+@router.delete(
+    "/saved-answers",
+    response_model=SavedAnswersRemoved,
+    dependencies=_manager,
+    responses=_MANAGER_ERRORS,
+)
 async def clear_saved_answers(
     context: CurrentContext, session: Session, jobs: Jobs
 ) -> SavedAnswersRemoved:

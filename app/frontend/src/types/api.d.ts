@@ -419,7 +419,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -444,8 +447,8 @@ export interface paths {
                         "application/json": components["schemas"]["AnalysisJob"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -453,7 +456,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -480,7 +483,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description rate_limited: 60 saniyede 30'dan çok istek */
+                /** @description rate_limited: ziyaretçi başına 60 saniyede 30, adres başına 120'den çok istek */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -515,12 +518,15 @@ export interface paths {
         };
         /**
          * Active Analysis
-         * @description The caller's most recently started single question that is queued or running.
+         * @description The visitor's most recently started single question that is queued or running.
          */
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -535,8 +541,8 @@ export interface paths {
                         "application/json": components["schemas"]["ActiveAnalysis"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -544,8 +550,26 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -572,12 +596,15 @@ export interface paths {
         };
         /**
          * Read Analysis
-         * @description The job; a completed job carries its answer with the reading user's votes applied.
+         * @description The job; a completed job carries its answer with the visitor's votes applied.
          */
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     analysis_id: string;
                 };
@@ -594,8 +621,8 @@ export interface paths {
                         "application/json": components["schemas"]["AnalysisJobWithResult"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -603,7 +630,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -628,6 +655,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -656,7 +692,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     analysis_id: string;
                 };
@@ -673,8 +712,8 @@ export interface paths {
                         "application/json": components["schemas"]["AnalysisJob"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -682,7 +721,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -707,6 +746,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -726,13 +774,16 @@ export interface paths {
         };
         /**
          * Follow Analysis
-         * @description Live progress: a snapshot, the missed step events after ``Last-Event-ID``, then live.
+         * @description Live progress: a snapshot, the missed step events after ``Last-Event-ID``, then live;
+         *     the stream ends at the terminal event or when the client leaves.
          */
         get: {
             parameters: {
                 query?: never;
                 header?: {
                     "last-event-id"?: string | null;
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
                 };
                 path: {
                     analysis_id: string;
@@ -750,8 +801,8 @@ export interface paths {
                         "text/event-stream": components["schemas"]["AnalysisStreamEvent"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -759,7 +810,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -786,7 +837,7 @@ export interface paths {
                         "application/json": components["schemas"]["HTTPValidationError"];
                     };
                 };
-                /** @description too_many_streams: kullanıcı başına 5 akış */
+                /** @description too_many_streams: ziyaretçi başına 5 akış; rate_limited */
                 429: {
                     headers: {
                         [name: string]: unknown;
@@ -819,7 +870,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     analysis_id: string;
                 };
@@ -836,8 +890,8 @@ export interface paths {
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -845,7 +899,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -879,6 +933,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -2121,7 +2184,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -2136,8 +2202,8 @@ export interface paths {
                         "application/json": components["schemas"]["Galaxy"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2145,8 +2211,26 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2189,7 +2273,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -2208,8 +2295,8 @@ export interface paths {
                         "application/json": components["schemas"]["TableSearchResult"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2217,7 +2304,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2228,6 +2315,15 @@ export interface paths {
                 };
                 /** @description query_too_long: 4000 karakterden uzun; invalid_request */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2266,7 +2362,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     table_key: string;
                 };
@@ -2283,8 +2382,8 @@ export interface paths {
                         "application/json": components["schemas"]["TableDetail"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2292,7 +2391,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2317,6 +2416,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description search_index_not_ready: ilk arama indeksi kuruluyor */
@@ -3053,7 +3161,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3108,7 +3216,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3402,7 +3510,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3417,8 +3528,8 @@ export interface paths {
                         "application/json": components["schemas"]["StatusOut"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3426,8 +3537,26 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3462,7 +3591,10 @@ export interface paths {
                     page?: number;
                     page_size?: number;
                 };
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3477,8 +3609,8 @@ export interface paths {
                         "application/json": components["schemas"]["TermListPage"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3486,7 +3618,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3504,6 +3636,15 @@ export interface paths {
                         "application/json": components["schemas"]["HTTPValidationError"];
                     };
                 };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -3514,7 +3655,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -3534,8 +3678,8 @@ export interface paths {
                         "application/json": components["schemas"]["TermListSnapshot"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3543,7 +3687,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3588,6 +3732,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description search_index_not_ready, analysis_unavailable */
                 503: {
                     headers: {
@@ -3619,7 +3772,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     list_id: string;
                 };
@@ -3636,8 +3792,8 @@ export interface paths {
                         "application/json": components["schemas"]["TermListSnapshot"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3645,7 +3801,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3670,6 +3826,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3698,7 +3863,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     list_id: string;
                 };
@@ -3715,8 +3883,8 @@ export interface paths {
                         "application/json": components["schemas"]["TermListSnapshot"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3724,7 +3892,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3751,6 +3919,15 @@ export interface paths {
                         "application/json": components["schemas"]["HTTPValidationError"];
                     };
                 };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -3773,7 +3950,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     list_id: string;
                     position: number;
@@ -3791,8 +3971,8 @@ export interface paths {
                         "application/json": components["schemas"]["AnalysisAnswer"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3800,7 +3980,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3825,6 +4005,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3851,7 +4040,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     list_id: string;
                     position: number;
@@ -3869,8 +4061,8 @@ export interface paths {
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3878,7 +4070,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3905,6 +4097,15 @@ export interface paths {
                         "application/json": components["schemas"]["HTTPValidationError"];
                     };
                 };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -3929,7 +4130,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     list_id: string;
                 };
@@ -3946,8 +4150,8 @@ export interface paths {
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3955,7 +4159,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -3980,6 +4184,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -4008,7 +4221,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path: {
                     list_id: string;
                 };
@@ -4025,8 +4241,8 @@ export interface paths {
                         "application/json": components["schemas"]["TermListSnapshot"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4034,7 +4250,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4068,6 +4284,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+                /** @description rate_limited: yeni ziyaretçi sınırı */
+                429: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description search_index_not_ready, analysis_unavailable */
@@ -4461,7 +4686,10 @@ export interface paths {
         post: {
             parameters: {
                 query?: never;
-                header?: never;
+                header?: {
+                    /** @description The browser's random device id (UUID 4) that identifies the visitor. */
+                    "X-Device-Id"?: string | null;
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -4480,8 +4708,8 @@ export interface paths {
                         "application/json": components["schemas"]["VoteRecorded"];
                     };
                 };
-                /** @description not_authenticated: oturum yok */
-                401: {
+                /** @description device_id_required: X-Device-Id eksik ya da UUID 4 değil */
+                400: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4489,7 +4717,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description forbidden: rol yok; cross_site_request: istek başka bir siteden geldi */
+                /** @description tenant_forbidden: başka kiracı; cross_site_request: istek başka bir siteden geldi */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -4500,6 +4728,15 @@ export interface paths {
                 };
                 /** @description invalid_request: biçim ya da bilinmeyen alan; vote_table_unknown: tablo sözlükte yok */
                 422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description rate_limited: ziyaretçi ya da adres sınırı */
+                429: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4684,13 +4921,21 @@ export interface components {
             match: string;
             query: string;
         };
+        /**
+         * @description Who asked: an account (its display name) or a visitor ('<host> · <address>' of the
+         *     moment, 003-anonymous-visitor Requirement 7).
+         */
         Asker: {
             display_name: string;
+            /** @enum {string} */
+            kind: "account" | "visitor";
             public_id: string;
         };
         AskerCount: {
             count: number;
             display_name: string;
+            /** @enum {string} */
+            kind: "account" | "visitor";
             public_id: string;
         };
         Askers: {

@@ -148,7 +148,9 @@ async def test_success_and_framework_errors_carry_headers_and_the_envelope(
     assert wrong_method.headers["allow"] == "POST"
     _assert_security_headers(wrong_method)
 
-    no_tenant = await client.get(f"{PREFIX}/auth/me")
+    # A bearer request names its tenant; a request without session and tenant is a visitor's
+    # (application-foundation 003-anonymous-visitor Decision 4) and the session endpoint says 401.
+    no_tenant = await client.get(f"{PREFIX}/auth/me", headers={"Authorization": "Bearer x"})
     assert no_tenant.status_code == 400
     _assert_envelope(no_tenant, "tenant_header_required")
     _assert_security_headers(no_tenant)

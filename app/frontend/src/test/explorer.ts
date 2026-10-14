@@ -217,7 +217,6 @@ export const termList = (overrides: Partial<TermList> = {}): TermList => ({
 /** The main screen's reads answered with a ready installation and no running question. */
 export function serveExplorerDefaults() {
   vi.spyOn(AnalysisService, 'status').mockResolvedValue(serviceStatus());
-  vi.spyOn(AnalysisService, 'active').mockResolvedValue(null);
   vi.spyOn(ExplorerService, 'galaxy').mockResolvedValue({items: GALAXY, total: GALAXY.length});
   vi.spyOn(ExplorerService, 'search').mockResolvedValue({query: '', items: [], counts: {}, concepts: [], elapsed_ms: 1});
   vi.spyOn(ExplorerService, 'table').mockResolvedValue(tableDetail());

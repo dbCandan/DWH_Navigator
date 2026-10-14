@@ -1,25 +1,30 @@
 """Shared PostgreSQL integration fixtures: one Alembic upgrade per run, real HTTP application."""
 
+import hashlib
 import logging
 import secrets
 from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
 from alembic.config import Config
 from httpx import ASGITransport, AsyncClient, Response
+from sqlalchemy import select
 
 from app.api.auth.endpoints import REFRESH_COOKIE_NAME, get_login_rate_limiter
 from app.core.config import Settings, get_settings
 from app.core.logging import JsonFormatter
 from app.core.login_throttle import LoginRateLimiter
 from app.db.session import async_session_factory, engine
+from app.domain.models.visitor import Visitor
 from app.main import app
+from app.services import visitors
 from app.services.super_admin_service import ensure_super_admin
+from app.services.visitors import DEVICE_HEADER, device_key
 
 if TYPE_CHECKING:
     from tests.integration.data_dictionary import DataDictionary
@@ -203,6 +208,52 @@ class AuthHarness:
     async def account(self, admin: SignedIn, role: str = "kullanici") -> SignedIn:
         opened = await self.open_account(admin, role)
         return await self.activate(opened.username, opened.one_time_password)
+
+
+def device_of(who: SignedIn) -> str:
+    """A test person's own device id (a UUID 4 derived from its user name): on the main screen
+    the person is the visitor of this id (application-foundation 003-anonymous-visitor)."""
+
+    return str(UUID(bytes=hashlib.sha256(who.username.encode()).digest()[:16], version=4))
+
+
+def visitor_headers(who: SignedIn) -> dict[str, str]:
+    return {DEVICE_HEADER: device_of(who)}
+
+
+async def visitor_public_id(who: SignedIn) -> str:
+    async with async_session_factory() as session:
+        found = await session.scalar(
+            select(Visitor.public_id).where(Visitor.device_key == device_key(device_of(who)))
+        )
+    assert found is not None, who.username
+    return str(found)
+
+
+async def visitor_row_id(who: SignedIn) -> int:
+    async with async_session_factory() as session:
+        found = await session.scalar(
+            select(Visitor.visitor_id).where(Visitor.device_key == device_key(device_of(who)))
+        )
+    assert found is not None, who.username
+    return int(found)
+
+
+VISITOR_HOST = "pc-deneme.yerel"
+
+
+async def _test_host(address: str) -> str | None:
+    del address
+    return VISITOR_HOST
+
+
+@pytest.fixture(autouse=True)
+def _visitor_limits_and_hosts() -> Iterator[None]:
+    # Every test starts with fresh visitor counters and a fixed host name instead of real DNS.
+    visitors.reset_limits()
+    visitors.use_host_lookup(_test_host)
+    yield
+    visitors.use_host_lookup(None)
 
 
 @pytest.fixture

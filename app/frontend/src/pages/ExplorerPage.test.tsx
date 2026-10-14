@@ -2,6 +2,7 @@ import {act, fireEvent, screen, waitFor} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {clearAuth, readAccessToken} from '@/lib/authStorage';
 import {ApiError} from '@/lib/apiClient';
+import {recallTabAnalysis, rememberTabAnalysis} from '@/lib/tabAnalysis';
 import {AnalysisService} from '@/services/analyses';
 import {AuthService} from '@/services/auth';
 import {ANALYSIS_ID, answer, job, serveEvents, serviceStatus} from '@/test/explorer';
@@ -17,6 +18,7 @@ describe('main screen shell (dictionary-explorer Requirement 1, 15, 17)', () => 
   afterEach(() => {
     vi.restoreAllMocks();
     clearAuth();
+    sessionStorage.clear();
     document.documentElement.className = '';
   });
 
@@ -34,7 +36,8 @@ describe('main screen shell (dictionary-explorer Requirement 1, 15, 17)', () => 
     expect(question.closest('#hero > .searchbox')).not.toBeNull();
     expect(document.querySelector('header.top .wrap > #bar-slot.slot')).not.toBeNull();
     expect(document.querySelector('header.top .tools > #status.status')).not.toBeNull();
-    expect(document.querySelector('#cosmos')).toHaveAttribute('aria-hidden', 'true');
+    // The map loads lazily (rules/30): it arrives after the page shell.
+    await waitFor(() => expect(document.querySelector('#cosmos')).toHaveAttribute('aria-hidden', 'true'));
   });
 
   it.each(['user', 'manager', 'super'] as const)('offers no link to the admin screen (%s)', async (kind) => {
@@ -42,22 +45,24 @@ describe('main screen shell (dictionary-explorer Requirement 1, 15, 17)', () => 
     for (const link of screen.getAllByRole('link')) expect(link.getAttribute('href')).not.toMatch(/admin/);
   });
 
-  it('shows the session area with the name, "Parolamı değiştir" and "Çıkış"', async () => {
-    const logout = vi.spyOn(AuthService, 'logout').mockResolvedValue(undefined);
-    await openExplorer();
-    const toggle = screen.getByRole('button', {name: message('session.menu', {name: 'Ayşe Yılmaz'})});
-    expect(toggle).toHaveClass('pill');
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('link', {name: message('session.changePassword')})).toHaveAttribute('href', '/parola');
-    fireEvent.keyDown(document, {key: 'Escape'});
-    expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    expect(document.activeElement).toBe(toggle);
-    fireEvent.click(toggle);
-    await act(async () => fireEvent.click(screen.getByRole('button', {name: message('session.signOut')})));
-    expect(logout).toHaveBeenCalled();
+  it('opens without signing in and shows no session area (003-anonymous-visitor Requirement 1, 8)', async () => {
+    vi.spyOn(AuthService, 'refresh').mockRejectedValue(new ApiError(401, 'x', 'session_expired', true));
+    renderApp('/');
+    expect(await screen.findByRole('heading', {level: 1, name: message('explorer.hero.title')})).toBeInTheDocument();
+    expect(screen.getByTestId('where').textContent).toBe('/');
+    expect(screen.queryByRole('button', {name: /Ayşe|session/i})).toBeNull();
+    expect(screen.queryByRole('link', {name: message('session.changePassword')})).toBeNull();
     expect(readAccessToken()).toBeNull();
+  });
+
+  it('shows no session area even with an administration session open', async () => {
+    await openExplorer('manager');
+    expect(screen.queryByRole('button', {name: message('session.menu', {name: 'Ayşe Yılmaz'})})).toBeNull();
+  });
+
+  it('sends a signed-out visitor of /admin to the sign-in screen', async () => {
+    vi.spyOn(AuthService, 'refresh').mockRejectedValue(new ApiError(401, 'x', 'session_expired', true));
+    renderApp('/admin');
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/login'));
   });
 
@@ -94,6 +99,7 @@ describe('status pill and warning line (dictionary-explorer Requirement 2)', () 
   afterEach(() => {
     vi.restoreAllMocks();
     clearAuth();
+    sessionStorage.clear();
     document.documentElement.className = '';
   });
 
@@ -141,6 +147,7 @@ describe('question bar and answer (question-analysis Requirement 19-21)', () => 
   afterEach(() => {
     vi.restoreAllMocks();
     clearAuth();
+    sessionStorage.clear();
     document.documentElement.className = '';
   });
 
@@ -223,16 +230,45 @@ describe('question bar and answer (question-analysis Requirement 19-21)', () => 
     expect(document.activeElement).not.toBe(field());
   });
 
-  it('follows the running question when the page opens', async () => {
-    vi.mocked(AnalysisService.active).mockResolvedValue(job({state: 'running', ahead: null, query: 'süren soru'}));
+  it('after a reload follows the question this tab started (Requirement 19, Decision 26)', async () => {
+    rememberTabAnalysis(ANALYSIS_ID);
     const start = vi.spyOn(AnalysisService, 'start');
     serveEvents({type: 'completed', flow: 'analyst', verdict: 'VAR'});
-    vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
+    vi.spyOn(AnalysisService, 'get')
+      .mockResolvedValueOnce({...job({state: 'running', ahead: null, query: 'süren soru'}), result: null})
+      .mockResolvedValue({...job({state: 'completed'}), result: answer()});
     await openExplorer();
     await screen.findByText(message('answer.verdict.partial'));
+    expect(AnalysisService.get).toHaveBeenNthCalledWith(1, ANALYSIS_ID);
     expect(field()).toHaveValue('süren soru');
     expect(field().closest('#bar-slot')).not.toBeNull();
     expect(start).not.toHaveBeenCalled();
+  });
+
+  it('opens a new tab empty while another tab\'s question runs, and asks its own (Decision 26)', async () => {
+    const start = vi.spyOn(AnalysisService, 'start').mockResolvedValue(job());
+    serveEvents({type: 'completed', flow: 'analyst', verdict: 'VAR'});
+    vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
+    await openExplorer();
+    await act(async () => undefined);
+    expect(field()).toHaveValue('');
+    expect(field().closest('#hero')).not.toBeNull();
+    expect(AnalysisService.get).not.toHaveBeenCalled();
+    fireEvent.change(field(), {target: {value: 'yeni sekmenin sorusu'}});
+    await act(async () => fireEvent.keyDown(field(), {key: 'Enter'}));
+    expect(start).toHaveBeenCalledWith('yeni sekmenin sorusu', false);
+  });
+
+  it.each([
+    ['finished', () => Promise.resolve({...job({state: 'completed', query: 'biten soru'}), result: answer()})],
+    ['gone', () => Promise.reject(new ApiError(404, 'Analiz bulunamadı.', 'analysis_not_found'))],
+  ])('forgets the tab\'s question when it is %s and opens empty', async (_kind, read) => {
+    rememberTabAnalysis(ANALYSIS_ID);
+    vi.spyOn(AnalysisService, 'get').mockImplementation(read as never);
+    await openExplorer();
+    await waitFor(() => expect(recallTabAnalysis()).toBeNull());
+    expect(field()).toHaveValue('');
+    expect(field().closest('#hero')).not.toBeNull();
   });
 
   it('asks again with "fresh" from a kept answer and downloads the report through the shared client', async () => {

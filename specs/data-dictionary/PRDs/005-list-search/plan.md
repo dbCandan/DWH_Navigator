@@ -1,6 +1,6 @@
 # Plan — list-search
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.0). Uygulama üç parçadır: kaynaktan
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.1.0). Uygulama üç parçadır: kaynaktan
 taşınan saf okuma kuralları ve liste raporu (fark testiyle), listelerin kalıcı tabloları ile süreçteki
 liste işi (yükleme, terimlerin analiz sırasına tek tek verilmesi, durdurma, sürdürme, yarıda kesilme)
 ve uçları, ön yüzdeki liste arayüzü.
@@ -58,6 +58,14 @@ ve uçları, ön yüzdeki liste arayüzü.
   "Kaynak sözlük" `dictionary.jsonl` ve listenin başladığı andaki sürümdür.
 - Requirement 16 ve Decision 14: Yeni liste aynı işlemde yazılırken sahibin en yeni 5 listesi
   dışındakiler terimleriyle kalıcı silinir; analiz kayıtları kalır.
+- Requirement 4, 7, 12, 14–16 ve Decision 8, 14: Liste uçları oturum yerine `X-Device-Id` ile
+  ziyaretçiyi tanır (başlıksız `400 device_id_required`); `term_list` sahibi hesap ya da ziyaretçidir
+  (tam biri dolu, kayıt anındaki IP adresi ve makine adıyla); 409 iletisi çalışan listenin sahibi
+  ziyaretçiyi isteği yapan ziyaretçiyle karşılaştırır; 5 liste kuralı ve listeleme sahip
+  (ziyaretçi) başınadır; terim analizleri sahip ziyaretçi adına yürür, terim ayrıntısında oylar
+  isteği yapan ziyaretçiye göre uygulanır. Ziyaretçi tablosu, sahiplik sütunları, göç ve ön yüzdeki
+  cihaz kimliği [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)
+  ile birlikte uygulanır.
 - Requirement 18: Beklenmeyen hatada terim `term_analysis_failed` koduyla ve kaynaktaki güvenli
   Türkçe iletiyle kalır; istisna metni hiçbir yere yazılmaz, günlükte yalnız hata sınıfı vardır.
 

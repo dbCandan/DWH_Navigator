@@ -20,18 +20,19 @@ const SearchSettingsPage = lazy(() => import('@/pages/admin/SearchSettingsPage')
 const MaintenancePage = lazy(() => import('@/pages/admin/MaintenancePage'));
 
 /**
- * The application's addresses: the main screen at `/`, the admin screen under `/admin`
- * (`yonetici` and the super admin; search-settings Requirement 20), the account screens.
- * Item addresses (`/admin/analizler/<public_id>`, `/admin/sozluk/<DB.Şema.Obje>`) open their
- * page; an unknown `/admin/...` address is "not found".
+ * The application's addresses: the main screen at `/` without signing in (application-foundation
+ * 003-anonymous-visitor Requirement 1), the admin screen under `/admin` (`yonetici` and the super
+ * admin; search-settings Requirement 20) and the account screens behind the sign-in. Item
+ * addresses (`/admin/analizler/<public_id>`, `/admin/sozluk/<DB.Şema.Obje>`) open their page; an
+ * unknown `/admin/...` address is "not found".
  */
 export default function App() {
   return (
     <Suspense fallback={null}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<ExplorerPage />} />
         <Route element={<AuthGuard />}>
-          <Route path="/" element={<ExplorerPage />} />
           <Route path="/parola" element={<PasswordChangePage />} />
           <Route path="/admin" element={<RequireAccess need="administer" />}>
             <Route element={<AdminShell />}>

@@ -1,4 +1,4 @@
-import {apiFetch} from '@/lib/apiClient';
+import {apiFetch, visitorFetch} from '@/lib/apiClient';
 
 /**
  * File downloads (Excel reports, dictionary export and template) go through the shared client
@@ -6,8 +6,14 @@ import {apiFetch} from '@/lib/apiClient';
  * browser saves it. A plain link would carry no token, and the token never travels in an
  * address (user-accounts Requirement 12).
  */
-export async function downloadFile(path: string, fallbackName: string, init: RequestInit = {}): Promise<string> {
-  const response = await apiFetch(path, init);
+export async function downloadFile(
+  path: string,
+  fallbackName: string,
+  init: RequestInit = {},
+  visitor = false,
+): Promise<string> {
+  // A main-screen report goes as the visitor of the device id (003-anonymous-visitor).
+  const response = visitor ? await visitorFetch(path, init) : await apiFetch(path, init);
   const name = attachmentName(response.headers.get('Content-Disposition')) ?? fallbackName;
   saveBlob(await response.blob(), name);
   return name;

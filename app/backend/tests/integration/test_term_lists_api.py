@@ -89,7 +89,8 @@ async def test_term_list_end_to_end(qa: Qa) -> None:
     assert response.status_code == 201, response.text
     started = response.json()
     assert [i["term"] for i in started["items"]] == [TERM, OTHER]
-    assert started["status"] == "running" and started["owner"]["public_id"] == qa.user.public_id
+    assert started["status"] == "running"
+    assert started["owner"] == {"public_id": await qa.visitor_id(), "display_name": ""}
     assert started["dictionary_version"] == qa.dd.index.engine().dictionary.version
     job = await finished(qa, started["id"])
     assert job["status"] == "completed" and job["done"] == 2 and job["total"] == 2

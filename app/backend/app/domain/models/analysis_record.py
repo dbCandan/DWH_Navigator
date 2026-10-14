@@ -36,6 +36,7 @@ from app.domain.analysis_records import (
     SUMMARY_MAX_CHARS,
 )
 from app.domain.models.mixins import AuditSoftDeleteMixin, new_public_id
+from app.domain.models.visitor import ADDRESS_MAX_CHARS, HOST_MAX_CHARS
 
 _STATES = "'queued', 'running', 'completed', 'failed', 'cancelled', 'interrupted'"
 _FLOWS = "'analyst', 'reused', 'unavailable', 'cancelled', 'failed', 'interrupted'"
@@ -63,6 +64,13 @@ class AnalysisRecord(AuditSoftDeleteMixin, Base):
             text("analysis_record_id DESC"),
         ),
         Index("ix_analysis_record_tenant_asker_asked", "tenant_id", "asked_by", "asked_at"),
+        Index(
+            "ix_analysis_record_tenant_visitor_asked",
+            "tenant_id",
+            "asked_by_visitor_id",
+            "asked_at",
+        ),
+        CheckConstraint("(asked_by IS NULL) <> (asked_by_visitor_id IS NULL)", name="one_asker"),
         CheckConstraint(f"state IN ({_STATES})", name="state_allowed"),
         CheckConstraint(f"flow IS NULL OR flow IN ({_FLOWS})", name="flow_allowed"),
         CheckConstraint(
@@ -88,8 +96,8 @@ class AnalysisRecord(AuditSoftDeleteMixin, Base):
                 "single question or one term of a term list, from acceptance to its end, with "
                 "its full answer and steps. question-analysis opens and updates it; a row in a "
                 "terminal state never changes again. Kept without a time limit and deleted "
-                "physically only by a manager; is_deleted stays false (Decision 13). No client "
-                "address or host name is kept."
+                "physically only by a manager; is_deleted stays false (Decision 13). Asked by "
+                "exactly one account or visitor; a visitor's row keeps its address and host name."
             )
         },
     )
@@ -108,11 +116,39 @@ class AnalysisRecord(AuditSoftDeleteMixin, Base):
         nullable=False,
         comment="Owning tenant; references tenant.tenant_id.",
     )
-    asked_by: Mapped[int] = mapped_column(
+    asked_by: Mapped[int | None] = mapped_column(
         BigInteger,
         ForeignKey("app_user.user_id", ondelete="RESTRICT"),
-        nullable=False,
-        comment="The signed-in user who asked; references app_user.user_id (never deleted).",
+        nullable=True,
+        comment=(
+            "The account that asked; references app_user.user_id (never deleted). Empty when a "
+            "visitor asked; exactly one of asked_by and asked_by_visitor_id is set."
+        ),
+    )
+    asked_by_visitor_id: Mapped[int | None] = mapped_column(
+        BigInteger,
+        ForeignKey("visitor.visitor_id", ondelete="RESTRICT"),
+        nullable=True,
+        comment=(
+            "The visitor that asked without an account; references visitor.visitor_id. Empty "
+            "when an account asked."
+        ),
+    )
+    client_address: Mapped[str | None] = mapped_column(
+        String(ADDRESS_MAX_CHARS),
+        nullable=True,
+        comment=(
+            "The visitor's client IP address when it asked; empty for an account "
+            "(personal data, kept and deleted with the row)."
+        ),
+    )
+    client_host: Mapped[str | None] = mapped_column(
+        String(HOST_MAX_CHARS),
+        nullable=True,
+        comment=(
+            "The host name the reverse DNS lookup of client_address returned when "
+            "it asked; empty when none or for an account (personal data)."
+        ),
     )
     state: Mapped[str] = mapped_column(
         String(16),

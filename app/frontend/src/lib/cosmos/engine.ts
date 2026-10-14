@@ -3,10 +3,8 @@
  * dictionary-explorer Requirement 5-8 and 14.
  *
  * The drawing, the frame budget (about 30 frames a second, 20 while reading or waiting), the
- * pointer behaviour and the voyage phases are the source's. With the system's "reduce motion"
- * preference the map is still: no rotation, twinkle, pointer drift, radar, probe or landing
- * rings; the selected star and the result constellation get still marks, the camera moves at
- * once and the radar is not waited for (Requirement 8).
+ * pointer behaviour and the voyage phases are the source's. The map moves whatever the system's
+ * "reduce motion" preference says (Requirement 8, Decision 8).
  */
 import {buildGalaxy, findTable, nearestStar, project, type Galaxy, type GalaxyItem, type Star, type View} from './layout';
 import {hsla, rgba, type CosmosPalette} from './palette';
@@ -97,7 +95,6 @@ export class CosmosEngine {
     private readonly canvas: HTMLCanvasElement,
     private readonly palette: CosmosPalette,
     private readonly hooks: CosmosHooks,
-    private readonly reduce: boolean,
   ) {
     const ctx = canvas.getContext('2d');
     if (ctx === null) throw new Error('canvas 2d context unavailable');
@@ -107,7 +104,6 @@ export class CosmosEngine {
     const resize = () => {
       if (!this.running) return;
       this.resize();
-      this.requestStill();
     };
     const visibility = () => {
       if (!this.running) return;
@@ -132,7 +128,7 @@ export class CosmosEngine {
   }
 
   get radarMs(): number {
-    return this.reduce ? 0 : RADAR_MS;
+    return RADAR_MS;
   }
 
   start(): void {
@@ -156,7 +152,6 @@ export class CosmosEngine {
     this.selected = selectedKey ? (this.galaxy.byKey.get(selectedKey) ?? null) : null;
     this.hover = null;
     this.hooks.onCount(this.galaxy.stars.length, this.galaxy.clusters.length);
-    this.requestStill();
   }
 
   /** The one table matching a typed name (Requirement 9); null without the map. */
@@ -175,14 +170,13 @@ export class CosmosEngine {
       this.selected = star;
       this.selectedAt = this.t;
     }
-    this.requestStill();
     return star;
   }
 
   /** A search starts: plot a route out of the search field. */
   begin({read = false, columns = 0, shortlist = 8}: {read?: boolean; columns?: number; shortlist?: number} = {}): void {
     this.origin = this.searchOrigin();
-    this.mode = this.reduce ? 'idle' : 'plan';
+    this.mode = 'plan';
     this.modeAt = this.t;
     this.readExpected = read;
     this.shortlist = shortlist;
@@ -237,7 +231,6 @@ export class CosmosEngine {
       this.mode = 'idle';
       this.route = [];
     }
-    this.requestStill();
   }
 
   // --------------------------------------------------------------- internals
@@ -256,8 +249,8 @@ export class CosmosEngine {
       rot: this.rot,
       width: this.width,
       height: this.height,
-      mouseX: this.reduce ? 0.5 : this.mouse.sx,
-      mouseY: this.reduce ? 0.5 : this.mouse.sy,
+      mouseX: this.mouse.sx,
+      mouseY: this.mouse.sy,
       camX: this.cam.x,
       camY: this.cam.y,
     };
@@ -280,23 +273,8 @@ export class CosmosEngine {
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
 
-  /** With reduced motion nothing moves by itself: draw once after a change. */
-  private requestStill(): void {
-    if (!this.running || !this.reduce) return;
-    cancelAnimationFrame(this.raf);
-    this.raf = requestAnimationFrame(() => {
-      this.steer(0);
-      this.draw();
-    });
-  }
-
   private readonly frame = (now: number): void => {
     if (!this.running) return;
-    if (this.reduce) {
-      this.steer(0);
-      this.draw();
-      return;
-    }
     this.raf = requestAnimationFrame(this.frame);
     // The chat model shares the (integrated) GPU with the browser: keep the sky light.
     const budget = this.mode === 'read' || this.mode === 'wait' ? 50 : 33;
@@ -324,7 +302,7 @@ export class CosmosEngine {
       tx = this.cam.x + ((this.width - panel - 12) / 2 - x);
       ty = this.cam.y + (this.height / 2 - y);
     }
-    const k = this.reduce ? 1 : 1 - Math.pow(0.94, dt / 16);
+    const k = 1 - Math.pow(0.94, dt / 16);
     this.cam.x += (tx - this.cam.x) * k;
     this.cam.y += (ty - this.cam.y) * k;
   }
@@ -506,7 +484,6 @@ export class CosmosEngine {
         this.hudSteps = [];
         this.hooks.onLog('');
       }
-      this.requestStill();
       return;
     }
     const readingPrefix = this.hooks.text('explorer.voyage.reading', {name: ''});
@@ -516,13 +493,6 @@ export class CosmosEngine {
       this.hudSteps.pop();
     if (!this.hudSteps.length && query) this.hudSteps.push(this.hooks.text('explorer.voyage.query', {query}));
     this.log(this.hooks.text('explorer.voyage.arrived', {count: this.focusList.length, name: this.focusList[0].name}));
-    if (this.reduce) {
-      // Still marks: no flight, the constellation appears at once.
-      this.mode = 'idle';
-      this.route = [];
-      this.requestStill();
-      return;
-    }
     const from = this.mode === 'idle' ? this.searchOrigin() : this.shipPos();
     const stops = [...this.focusList].reverse().map((f) => ({n: byKey?.get(f.key) as Star}));
     this.trail = [];
@@ -588,7 +558,7 @@ export class CosmosEngine {
     const n = this.selected as Star;
     const x = n.sx;
     const y = n.sy;
-    const age = this.reduce ? 1 : (this.t - this.selectedAt) / 1000;
+    const age = (this.t - this.selectedAt) / 1000;
     const grow = Math.min(1, age * 2.5);
     ctx.lineWidth = 0.8;
     for (const m of n.g.members) {
@@ -605,7 +575,7 @@ export class CosmosEngine {
     }
     this.glow(x, y, 40 * grow, hsla(n.hue, c.selectedGlow, 0.4));
     const r = 15 + 14 * (1 - grow);
-    const spin = this.reduce ? 0 : this.t * 0.0011;
+    const spin = this.t * 0.0011;
     ctx.strokeStyle = hsla(n.hue, c.reticle, 0.95 * grow);
     ctx.lineWidth = 1.6;
     for (let k = 0; k < 4; k++) {
@@ -624,10 +594,8 @@ export class CosmosEngine {
       ctx.lineTo(x + Math.cos(a) * (r + 12), y + Math.sin(a) * (r + 12));
       ctx.stroke();
     }
-    if (!this.reduce) {
-      const p = (age * 0.45) % 1;
-      this.ring(x, y, r + p * 46, hsla(n.hue, c.ping, 0.45 * (1 - p)), 1);
-    }
+    const p = (age * 0.45) % 1;
+    this.ring(x, y, r + p * 46, hsla(n.hue, c.ping, 0.45 * (1 - p)), 1);
     ctx.fillStyle = rgba(c.white, 1);
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, TAU);
@@ -787,11 +755,11 @@ export class CosmosEngine {
     const {ctx, palette: c} = this;
     const byKey = this.galaxy?.byKey;
     const t = this.t;
-    const age = this.reduce ? Infinity : (t - this.focusAt) / 1000;
+    const age = (t - this.focusAt) / 1000;
     const pts = this.focusList.map((f) => byKey?.get(f.key)).filter((n): n is Star => n !== undefined);
     if (pts.length > 1 && this.mode === 'idle') {
       ctx.setLineDash([6, 8]);
-      ctx.lineDashOffset = this.reduce ? 0 : -t * 0.03;
+      ctx.lineDashOffset = -t * 0.03;
       ctx.strokeStyle = rgba(c.cyan, 0.45);
       ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -806,7 +774,7 @@ export class CosmosEngine {
       const appear = Math.max(0, Math.min(1, age * 2 - i * 0.15));
       if (!appear) return;
       const s = Math.max(0.15, f.score || 0);
-      const pulse = this.reduce ? 1 : 1 + 0.2 * Math.sin(t * 0.004 - i);
+      const pulse = 1 + 0.2 * Math.sin(t * 0.004 - i);
       this.glow(n.sx, n.sy, (16 + 26 * s) * pulse * appear, rgba(c.cyan, 0.32 * appear));
       this.ring(n.sx, n.sy, (7 + 9 * s) * pulse, rgba(c.white, 0.7 * appear), 1.3);
       ctx.fillStyle = i === 0 ? rgba(c.mint, 1) : rgba(c.white, 1);
@@ -855,10 +823,8 @@ export class CosmosEngine {
     if (!this.active || !this.galaxy) return;
     const target = e.target instanceof Element ? e.target : null;
     const n = target && !this.hooks.blocked(target) ? nearestStar(this.galaxy.stars, e.clientX, e.clientY) : null;
-    const changed = n !== this.hover;
     this.hover = n;
     this.hooks.onHover(n, e.clientX, e.clientY);
-    if (changed) this.requestStill();
   }
 
   private click(e: MouseEvent): void {
