@@ -50,6 +50,9 @@ from app.infrastructure.repositories.dictionary_sync_repository import (
 )
 from app.infrastructure.repositories.vocabulary_repository import VocabularyRepository
 from app.services.analysis.dictionary_workbook import load_dictionary, records_digest
+from app.services.dictionary_curation.decisions import Decisions
+from app.services.dictionary_curation.decisions import load as load_decisions
+from app.services.dictionary_curation.normalize import normalize_tables
 from app.services.dictionary_reading import dictionary_identity
 from app.services.dictionary_service import write_dictionary_version
 from app.services.dictionary_sync_describe import describe_tables, evidence_for
@@ -203,8 +206,10 @@ class DictionarySync:
         keys: Callable[[], SourceKeys],
         session_factory: async_sessionmaker[AsyncSession],
         kept_databases: Sequence[str] = (),
+        decisions: Decisions | None = None,
     ) -> None:
         self.kept_databases = tuple(kept_databases)
+        self.decisions = decisions or load_decisions()
         self.index = index
         self.models = models
         self.source = source
@@ -438,6 +443,7 @@ class DictionarySync:
         filled = calls = failures = 0
         suggestions: list[Any] = []
         model = ""
+        evidence: dict[Any, Any] = {}
         if work:
             await self._set(
                 run_id, phase="filling", progress_total=len(work), progress_done=0
@@ -457,8 +463,8 @@ class DictionarySync:
                 outcome = await fill_tables(plan.tables, chat, progress)
                 plan.changes.extend(outcome.changes)
                 warnings.extend(outcome.warnings)
-                evidence = await asyncio.to_thread(
-                    evidence_for, plan.tables, snapshot.code
+                evidence = dict(
+                    await asyncio.to_thread(evidence_for, plan.tables, snapshot.code)
                 )
                 described = await describe_tables(plan.tables, chat, evidence)
                 plan.changes.extend(described.changes)
@@ -479,9 +485,16 @@ class DictionarySync:
                     "Model bağlantısı kullanılamadı; boş alanlar sonraki güncellemede doldurulacak."
                 )
 
+        # The owner's rules on every text, model-written or not; an admin's edit is left alone.
+        normalized = await asyncio.to_thread(
+            normalize_tables, plan.tables, snapshot.code, self.decisions, evidence
+        )
+        plan.changes.extend(normalized.changes)
+
         counts = {
             **counts_of(plan),
             "fields_filled": filled,
+            "fields_normalized": len(normalized.changes),
             "fields_empty": count_empty(plan.tables),
             "model_calls": calls,
             "model_failures": failures,

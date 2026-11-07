@@ -52,6 +52,7 @@ class Counts(BaseModel):
     columns_excluded: int = 0
     columns_corrected: int = 0
     fields_filled: int = 0
+    fields_normalized: int = 0
     fields_empty: int = 0
     model_calls: int = 0
     model_failures: int = 0
