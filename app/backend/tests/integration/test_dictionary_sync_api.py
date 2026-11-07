@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
@@ -338,3 +338,37 @@ async def test_a_user_without_the_manager_role_cannot_start(sync: Harness) -> No
     user = await sync.dd.auth.account(sync.dd.admin, "kullanici")
     response = await sync.dd.request("POST", "/dictionary/sync", user)
     assert response.status_code == 403
+
+
+def with_code(snapshot: SourceSnapshot, factor: int, active: int = 1) -> SourceSnapshot:
+    view = (
+        "CREATE VIEW CUS.vParty AS SELECT P.Kolon0, P.Amount * {f} AS Kolon1 "
+        "FROM EDW.CUS.Party P WHERE P.Active = {a}"
+    )
+    return replace(snapshot, code={"EDWDM.CUS.vParty": view.format(f=factor, a=active)})
+
+
+async def test_only_a_changed_computation_comes_into_scope_and_no_change_means_no_model_call(
+    sync: Harness,
+) -> None:
+    sync.source.snapshot = with_code(tables("vParty"), 100)
+    await sync.run()
+    calls = sync.gateway.port.calls
+    same = await sync.run()
+    assert same["status"] == "no_change"
+    assert same["counts"]["scope_columns"] == 0
+    assert sync.gateway.port.calls == calls
+    # Reformatted code is the same computation.
+    sync.source.snapshot = replace(
+        sync.source.snapshot,
+        code={k: v.replace(" SELECT ", "\n  SELECT\n    ") for k, v in sync.source.snapshot.code.items()},
+    )
+    assert (await sync.run())["counts"]["scope_columns"] == 0
+    # A changed computation brings that column only, also after a run that wrote no version.
+    sync.source.snapshot = with_code(tables("vParty"), 1000)
+    changed = await sync.run()
+    assert changed["counts"]["scope_code_changed"] == 1
+    assert changed["counts"]["scope_columns"] == 1
+    # A changed filter of the object brings both of its columns.
+    sync.source.snapshot = with_code(tables("vParty"), 1000, active=0)
+    assert (await sync.run())["counts"]["scope_code_changed"] == 2

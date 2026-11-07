@@ -53,6 +53,9 @@ class Counts(BaseModel):
     columns_corrected: int = 0
     fields_filled: int = 0
     fields_normalized: int = 0
+    scope_tables: int = 0
+    scope_columns: int = 0
+    scope_code_changed: int = 0
     fields_empty: int = 0
     model_calls: int = 0
     model_failures: int = 0

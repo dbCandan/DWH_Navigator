@@ -53,9 +53,10 @@ from app.services.analysis.dictionary_workbook import load_dictionary, records_d
 from app.services.dictionary_curation.decisions import Decisions
 from app.services.dictionary_curation.decisions import load as load_decisions
 from app.services.dictionary_curation.normalize import normalize_tables
+from app.services.dictionary_curation.scope import Scope, plan_scope
 from app.services.dictionary_reading import dictionary_identity
 from app.services.dictionary_service import write_dictionary_version
-from app.services.dictionary_sync_describe import describe_tables, evidence_for
+from app.services.dictionary_sync_describe import describe_tables
 from app.services.dictionary_sync_fill import count_empty, fill_tables, suggest
 from app.services.dictionary_sync_merge import Change, MergePlan, fold, merge
 from app.services.llm_connections import LlmGateway
@@ -423,9 +424,12 @@ class DictionarySync:
             stopwords = await VocabularyRepository(session).items(
                 tenant_id, VocabularyList.STOPWORDS
             )
+            stored_digests = await DictionarySyncRepository(session).trail_digests(tenant_id)
         plan = merge(
             snapshot, objects, object_meta, columns, column_meta, self.kept_databases
         )
+        # Only what changed is looked at: new rows, a changed source text, a changed computation.
+        scope = await asyncio.to_thread(plan_scope, plan.tables, snapshot.code, stored_digests)
         previous = active.version if active else ""
         object_headers = list(active.object_extra_headers) if active else []
         column_headers = list(active.column_extra_headers) if active else []
@@ -443,7 +447,7 @@ class DictionarySync:
         filled = calls = failures = 0
         suggestions: list[Any] = []
         model = ""
-        evidence: dict[Any, Any] = {}
+        evidence: dict[Any, Any] = dict(scope.evidence)
         if work:
             await self._set(
                 run_id, phase="filling", progress_total=len(work), progress_done=0
@@ -463,9 +467,6 @@ class DictionarySync:
                 outcome = await fill_tables(plan.tables, chat, progress)
                 plan.changes.extend(outcome.changes)
                 warnings.extend(outcome.warnings)
-                evidence = dict(
-                    await asyncio.to_thread(evidence_for, plan.tables, snapshot.code)
-                )
                 described = await describe_tables(plan.tables, chat, evidence)
                 plan.changes.extend(described.changes)
                 warnings.extend(described.warnings)
@@ -495,6 +496,7 @@ class DictionarySync:
             **counts_of(plan),
             "fields_filled": filled,
             "fields_normalized": len(normalized.changes),
+            **scope.counts(),
             "fields_empty": count_empty(plan.tables),
             "model_calls": calls,
             "model_failures": failures,
@@ -508,6 +510,7 @@ class DictionarySync:
         }
         if not plan.has_changes:
             async with self.session_factory() as session, session.begin():
+                await self._remember(session, tenant_id, scope, plan)
                 await self._record(
                     session,
                     run_id,
@@ -556,6 +559,7 @@ class DictionarySync:
                     now=now,
                     status=DictionaryStatus.PENDING,
                 )
+                await self._remember(session, tenant_id, scope, plan)
                 await self._record(
                     session,
                     run_id,
@@ -580,6 +584,7 @@ class DictionarySync:
                 session, tenant_id, version, user_id=user_id, now=now
             )
             await self._prune(session, tenant_id, now)
+            await self._remember(session, tenant_id, scope, plan)
             await self._record(
                 session,
                 run_id,
@@ -603,6 +608,19 @@ class DictionarySync:
             column_count=len(rows),
             model_calls=calls,
             model_failures=failures,
+        )
+
+    @staticmethod
+    async def _remember(
+        session: AsyncSession, tenant_id: int, scope: Scope, plan: MergePlan
+    ) -> None:
+        """The trail digests of this run, for the next run's change detection."""
+
+        repository = DictionarySyncRepository(session)
+        await repository.save_trail_digests(tenant_id, scope.digests, datetime.now(UTC))
+        await repository.drop_trail_digests(
+            tenant_id,
+            [(fold(t.key), fold(c.record["ColumnName"])) for t in plan.tables for c in t.columns],
         )
 
     async def swap(

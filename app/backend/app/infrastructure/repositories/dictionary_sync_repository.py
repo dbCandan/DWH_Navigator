@@ -1,9 +1,11 @@
 """Persistence of the source connection, update runs and their reports (011-dictionary-sync)."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, insert, or_, select, update
+from sqlalchemy import delete, func, insert, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.dictionary_sync import (
@@ -11,6 +13,7 @@ from app.domain.models.dictionary_sync import (
     DictionarySyncChange,
     DictionarySyncRun,
     DictionarySyncSuggestion,
+    DictionaryTrailDigest,
 )
 
 RUNNING = "running"
@@ -150,3 +153,50 @@ class DictionarySyncRepository:
             .order_by(DictionarySyncSuggestion.dictionary_sync_suggestion_id)
         )
         return list(rows.scalars())
+
+    async def trail_digests(self, tenant_id: int) -> dict[tuple[str, str], str]:
+        rows = await self.session.execute(
+            select(
+                DictionaryTrailDigest.table_key,
+                DictionaryTrailDigest.column_name,
+                DictionaryTrailDigest.digest,
+            ).where(DictionaryTrailDigest.tenant_id == tenant_id)
+        )
+        return {(table, column): digest for table, column, digest in rows}
+
+    async def save_trail_digests(
+        self, tenant_id: int, digests: Mapping[tuple[str, str], str], now: datetime
+    ) -> None:
+        """Upsert the given digests; rows of columns that left the dictionary go."""
+
+        items = [
+            {"tenant_id": tenant_id, "table_key": t, "column_name": c, "digest": d, "updated_at": now}
+            for (t, c), d in digests.items()
+        ]
+        for start in range(0, len(items), INSERT_BATCH):
+            batch = items[start : start + INSERT_BATCH]
+            statement = pg_insert(DictionaryTrailDigest).values(batch)
+            await self.session.execute(
+                statement.on_conflict_do_update(
+                    index_elements=["tenant_id", "table_key", "column_name"],
+                    set_={"digest": statement.excluded.digest, "updated_at": now},
+                )
+            )
+
+    async def drop_trail_digests(
+        self, tenant_id: int, keep: Sequence[tuple[str, str]]
+    ) -> None:
+        """Rows of columns no longer in the dictionary go."""
+
+        kept = set(keep)
+        stored = await self.trail_digests(tenant_id)
+        gone = [key for key in stored if key not in kept]
+        for start in range(0, len(gone), INSERT_BATCH):
+            for table, column in gone[start : start + INSERT_BATCH]:
+                await self.session.execute(
+                    delete(DictionaryTrailDigest).where(
+                        DictionaryTrailDigest.tenant_id == tenant_id,
+                        DictionaryTrailDigest.table_key == table,
+                        DictionaryTrailDigest.column_name == column,
+                    )
+                )

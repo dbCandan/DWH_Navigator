@@ -285,3 +285,21 @@ def test_normalize_twice_changes_nothing_the_second_time() -> None:
 def test_object_code_finds_the_view_and_its_load_procedure() -> None:
     code = {"EDWDM.CRP.vRate": "SELECT 'A'", "EDWDM.CRP.ins_Rate": "INSERT 'B'", "EDWDM.CRP.vOther": "x"}
     assert sorted(object_code(code)["edwdm.crp.vrate"]) == ["INSERT 'B'", "SELECT 'A'"]
+
+
+def test_a_word_inside_a_name_keeps_its_spelling() -> None:
+    """Regression: 'İşletme Kredileri Grubu' (a project type) became 'İşletme Fon kullandırımları Grubu'."""
+
+    text = "İşletme Kredileri Grubu proje tipindeki projelerin tutarıdır. Krediler bu tutara dahildir."
+    assert rules.participation_wording(text) == (
+        "İşletme Kredileri Grubu proje tipindeki projelerin tutarıdır. Fon kullandırımları bu tutara dahildir."
+    )
+
+
+def test_the_plain_part_of_a_hedged_clause_stays() -> None:
+    """Regression: 'müşteri kaydındaki şubeden alınır' went with '… farklı olabilir'."""
+
+    text, _ = rules.remove_hedges(
+        "Müşterinin şubesinin adıdır; müşteri kaydındaki şubeden alınır ve hesabın şubesinden farklı olabilir."
+    )
+    assert text == "Müşterinin şubesinin adıdır; müşteri kaydındaki şubeden alınır."

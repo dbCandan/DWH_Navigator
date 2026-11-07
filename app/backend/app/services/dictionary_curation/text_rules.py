@@ -193,16 +193,35 @@ def remove_hedges(text: str, sources: str = "") -> tuple[str, list[str]]:
             continue
         removed.append(sentence)
         pattern = r"(?:;|\s+—\s+)" + _OUTSIDE_BRACKETS
-        good = [
-            c.strip()
-            for c in re.split(pattern, sentence.rstrip(" ."))
-            if c.strip() and not HEDGE.search(c) and not (usage and USAGE.search(c))
-        ]
+        good = []
+        for clause in re.split(pattern, sentence.rstrip(" .")):
+            clause = clause.strip()
+            if not clause or (usage and USAGE.search(clause)):
+                continue
+            if HEDGE.search(clause):
+                # 'şubeden alınır ve … farklı olabilir': the plain first part is a statement.
+                head = re.split(r"\s+ve\s+" + _OUTSIDE_BRACKETS, clause)[0].strip(" ,")
+                if head == clause or HEDGE.search(head) or len(head.split()) < 3:
+                    continue
+                clause = head
+            good.append(clause)
         if good:
             kept.append("; ".join(good) + ".")
     if not kept:
         return _squash(text), []
     return _squash(" ".join(kept)), removed
+
+
+_NAME_BEFORE = re.compile(r"(?:^|[\s(])[A-ZÇĞİÖŞÜ][\wçğıöşüÇĞİÖŞÜ]*\s+$")
+
+
+def _reworded(match: re.Match[str], replacement: str, text: str) -> str:
+    """A capitalised word after a capitalised word is part of a name ('İşletme Kredileri Grubu')."""
+
+    found = match.group(0)
+    if found[:1].isupper() and _NAME_BEFORE.search(text[: match.start()]):
+        return found
+    return _keep_case(found, match.expand(replacement))
 
 
 def participation_wording(text: str) -> str:
@@ -212,7 +231,7 @@ def participation_wording(text: str) -> str:
     for index in range(0, len(pieces), 2):
         for pattern, replacement in (*_FAIZ, *_WORDING):
             pieces[index] = pattern.sub(
-                lambda m, r=replacement: _keep_case(m.group(0), m.expand(r)), pieces[index]
+                lambda m, r=replacement, piece=pieces[index]: _reworded(m, r, piece), pieces[index]
             )
     text = "".join(pieces)
     text = _DOUBLED.sub(r"\1", text)
