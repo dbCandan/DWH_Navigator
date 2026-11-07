@@ -34,7 +34,7 @@ def test_catalog_uses_profile_and_falls_back_to_column_names() -> None:
     }
     first, second = build_catalog({"EDWDM.CUS.vA": a, "EDWDM.CUS.vB": b}, profiles).text.split("\n")
     assert first == (
-        "T1 | EDWDM.CUS.vA | Mevduat | 1 kolon | Müşteri aylık bakiyeleri. | Satır: Müşteri × Ay"
+        "T1 | EDWDM.CUS.vA | Mevduat | Müşteri aylık bakiyeleri. | Satır: Müşteri × Ay"
         " | Zaman: Period"
     )
     assert second.endswith("Kolonlar: Amount")  # no profile: names

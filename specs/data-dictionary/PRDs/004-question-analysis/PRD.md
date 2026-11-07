@@ -233,7 +233,7 @@ değiştiğini ya da aynen kaldığını söyler.
   `parse_shortlist`; `src/vsa/llm/analyst_prompts.py` `shortlist_system`, `shortlist_user`,
   `SHORTLIST_SCHEMA`; kaynak kararları ADR-029, ADR-040): Katalog, tablo başına bir satırdır, anahtara
   göre sıralıdır ve her soruda aynıdır (model sunucusu kataloğu bir kez okuyup saklayabilir):
-  `T12 | DB.Şema.Obje | grup | N kolon | açıklama | Satır: … | Zaman: …`; açıklaması olmayan tabloda
+  `T12 | DB.Şema.Obje | grup | açıklama | Satır: … | Zaman: …`; açıklaması olmayan tabloda
   kolon adları. Sistem mesajı rol + kurallar (en az 6, en çok `analyst.shortlist` = 14 aday) +
   katalogdur; kullanıcı mesajı talep + ipuçları + yanıt örneğidir; yanıt sınırı 2500 belirteçtir
   (token, modelin metin parçası). Yanıttan adaylar (yalnız katalog kimliği; tam ad ya da tek eşleşen
@@ -248,7 +248,7 @@ değiştiğini ya da aynen kaldığını söyler.
 - **2. adım — malzeme ve istem** (`Engine.analyst_read`, `analyst.table_material`, `column_line`,
   `term_matcher`, `confusable_material`, `Engine._concept_evidence`; `analyst_system`,
   `analyst_user`, `ANALYST_SCHEMA`): Okunan tablolar = adaylar + eklenenler. Her tablo
-  `### T12 · anahtar · Talep eden birim: … · N kolon · Satır: …` başlığıyla, talep kavramlarının hangi
+  `### T12 · anahtar · Talep eden birim: … · Satır: …` başlığıyla, talep kavramlarının hangi
   kolonda geçtiğini söyleyen satırla ("Talep kavramları (kelime eşleşmesi): …") ve eklenme sebebiyle
   gelir. En ilgili 8 kolon (`analyst.detail_columns`) tam açıklamasıyla (420 karakterde kelime
   sınırından kesilir), diğerleri `Ad [Rol]: özet` biçiminde gider; 90'dan (`analyst.full_table_columns`)

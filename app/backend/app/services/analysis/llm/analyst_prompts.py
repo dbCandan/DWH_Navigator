@@ -21,8 +21,8 @@ Katılım bankacılığı terminolojisi: kredi = fon kullandırım / finansman, 
 mevduat = toplanan fon (katılma hesabı = vadeli, cari hesap = vadesiz), leasing = icare."""
 
 SHORTLIST_RULES = """GÖREV (1. adım — aday tablo listesi):
-Aşağıdaki KATALOG veri ambarındaki TÜM tabloları içerir (id | tablo | talep eden birim | kolon \
-sayısı | tablonun içeriği | Satır: bir satırın neyi temsil ettiği | Zaman: dönem/tarih kolonları; \
+Aşağıdaki KATALOG veri ambarındaki TÜM tabloları içerir (id | tablo | talep eden birim | \
+tablonun içeriği | Satır: bir satırın neyi temsil ettiği | Zaman: dönem/tarih kolonları; \
 açıklaması olmayan tablolarda kolon adları). Talebi okuyup cevabın bulunabileceği tabloları seç. \
 Bir sonraki adımda bu tabloların bütün kolonları okunacak; burada kaçırdığın tablo cevaba \
 giremez. "Kelime eşleşmesi en güçlü kolonlar" ipucu, katalogda adı geçmeyen kolonları gösterir.

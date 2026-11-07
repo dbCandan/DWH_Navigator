@@ -119,7 +119,7 @@ class TestCatalog:
         assert cat.ids == {"T1": CHURN, "T2": LIST}
         assert cat.keys[LIST] == "T2"
         line = cat.text.splitlines()[1]
-        assert line.startswith("T2 | EDWDM.CON.vCreditCardList | Kart | 4 kolon |")
+        assert line.startswith("T2 | EDWDM.CON.vCreditCardList | Kart | Kolonlar: ")
         assert "MainCustomerId" in line and "CardStatusCodeName" in line
 
     def test_wide_table_keeps_keys_and_relevant_descriptions(self) -> None:

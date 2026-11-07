@@ -80,7 +80,7 @@ def build_catalog(
         tid = f"T{i}"
         ids[tid] = key
         prof = profiles.get(key)
-        parts = [tid, key, (prof.group if prof else "") or _group(cols), f"{len(cols)} kolon"]
+        parts = [tid, key, (prof.group if prof else "") or _group(cols)]
         if prof and prof.description:
             parts.append(prof.description)
             if prof.grain:
@@ -216,7 +216,7 @@ def table_material(
     heading (which request concepts the table carries, why it was added). Only the
     ``detail_columns`` most relevant columns carry the description, the others are
     compact (``Ad [Rol]: özet``, ADR-040)."""
-    head = f"### {tid} · {key} · Talep eden birim: {_group(columns)} · {len(columns)} kolon"
+    head = f"### {tid} · {key} · Talep eden birim: {_group(columns)}"
     if profile and profile.grain:
         head += f" · Satır: {profile.grain}"
     if evidence:
