@@ -66,3 +66,28 @@ def test_exception_marks_error_and_open_spans() -> None:
     spans = {s["name"]: s for s in tr.to_list()}
     assert spans["boom"]["status"] == "error"
     assert spans["left open"]["status"] == "error"
+
+
+def test_announce_reaches_the_announcer_and_stays_out_of_the_record() -> None:
+    heard: list[tuple[str, list[dict[str, object]]]] = []
+    trace.announce("prefilter", [{"key": "x"}])  # no recording: a no-op
+    with trace.recording() as t:
+        t.announcer = lambda stage, tables: heard.append((stage, tables))
+        trace.announce("prefilter", [{"key": "DB.S.vA", "source": "engine"}])
+    assert heard == [("prefilter", [{"key": "DB.S.vA", "source": "engine"}])]
+    assert t.to_list() == []
+
+
+def test_reading_tables_name_each_source_and_what_is_read() -> None:
+    from app.services.analysis.llm.analyst import Shortlist
+    from app.services.analysis.pipeline import _reading_tables
+
+    short = Shortlist("", ["A", "B"], {}, ["B", "S"], [])
+    added = {"F": "müşteri kıdemi", "R": "arama"}
+    assert _reading_tables(short, added, {"R": "arama"}) == [
+        {"key": "A", "source": "model", "read": True},
+        {"key": "B", "source": "model", "read": True},
+        {"key": "F", "source": "family", "read": True},
+        {"key": "R", "source": "search", "read": True},
+        {"key": "S", "source": "similar", "read": False},
+    ]

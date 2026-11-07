@@ -702,3 +702,11 @@ async def test_failure_carries_no_server_text(driver: FakeDriver, number: int) -
 def test_driver_is_imported_lazily() -> None:
     SqlServerDictionarySource()
     assert "pymssql" not in sys.modules
+
+
+async def test_an_ignored_column_is_left_out_of_every_object(
+    driver: FakeDriver,
+) -> None:
+    source = SqlServerDictionarySource(driver, ignored_columns=("fullname",))
+    snapshot = await source.read(CONNECTION)
+    assert [column.name for column in snapshot.columns] == ["CustomerId"]

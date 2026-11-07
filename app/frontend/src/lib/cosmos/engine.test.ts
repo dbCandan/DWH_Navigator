@@ -1,10 +1,10 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {CosmosEngine, RADAR_MS, type CosmosHooks} from './engine';
+import {CosmosEngine, MERGE_MS, RADAR_MS, type CosmosHooks} from './engine';
 import type {GalaxyItem} from './layout';
 import type {CosmosPalette} from './palette';
 
 const palette: CosmosPalette = {
-  dust: '1, 2, 3', cyan: '1, 2, 3', pink: '1, 2, 3', mint: '1, 2, 3', white: '1, 2, 3', trail: '1, 2, 3',
+  dust: '1, 2, 3', cyan: '1, 2, 3', pink: '1, 2, 3', mint: '1, 2, 3', amber: '1, 2, 3', white: '1, 2, 3', trail: '1, 2, 3',
   hoverRing: 'token', labelBg: 'token', labelText: 'token', labelFont: '12px monospace', link: '1%, 2%',
   starSaturation: '1%', starLightness: 70, starLightnessDepth: 10, kinLine: '1%, 2%', kinDot: '1%, 2%',
   selectedGlow: '1%, 2%', reticle: '1%, 2%', ping: '1%, 2%',
@@ -89,6 +89,46 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
     runFrames(Math.ceil(RADAR_MS / 40) + 5);
     expect(log.at(-1)).toContain('explorer.voyage.arrived');
     expect(frames.length).toBe(1);
+    engine.destroy();
+  });
+
+  it('marks found tables on the radar, merges them and reads only the final ones (question-analysis)', () => {
+    const log: string[] = [];
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
+    engine.start();
+    engine.load(ITEMS);
+    engine.begin({columns: 1200});
+    engine.found('prefilter', [
+      {key: 'DWH.Ornek.vA', source: 'engine'},
+      {key: 'DWH.Ornek.vC', source: 'engine'},
+      {key: 'DWH.Ornek.yok', source: 'engine'}, // not on the map: skipped
+    ]);
+    expect(log.at(-1)).toContain('explorer.voyage.found {"count":2}');
+    engine.found('reading', [
+      {key: 'DWH.Ornek.vA', source: 'model', read: true},
+      {key: 'DWH.Ornek.vB', source: 'family', read: true},
+      {key: 'DWH.Ornek.vD', source: 'similar', read: false},
+    ]);
+    expect(log.at(-1)).toContain('explorer.voyage.toRead {"count":2,"marks":4}');
+    // one radar turn (the beam passes every mark), the marks' moment in sight, then the merge
+    runFrames(Math.ceil((RADAR_MS + 2500 + MERGE_MS) / 40) + 10);
+    expect(log.some((l) => l.includes('explorer.voyage.merging {"count":2}'))).toBe(true);
+    expect(log.some((l) => l.includes('explorer.voyage.finalists {"count":2}'))).toBe(true);
+    engine.focus([{key: 'DWH.Ornek.vB', name: 'vB', score: 0.8}], 'soru');
+    expect(log.at(-1)).toContain('explorer.voyage.arrived');
+    engine.destroy();
+  });
+
+  it('keeps the radar turning while step 1 found nothing to read', () => {
+    const log: string[] = [];
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
+    engine.start();
+    engine.load(ITEMS);
+    engine.begin({columns: 1200});
+    engine.found('reading', []);
+    runFrames(Math.ceil((RADAR_MS + MERGE_MS) / 40) + 40);
+    expect(log.some((l) => l.includes('explorer.voyage.merging'))).toBe(false);
+    engine.end();
     engine.destroy();
   });
 

@@ -5566,7 +5566,7 @@ export interface components {
             step: ("saved_answer_lookup" | "queue" | "model_check" | "rule_hints" | "shortlist" | "family_search" | "analyst_report") | null;
         };
         /** @description The JSON of one event's ``data:`` line on the live progress stream (Requirement 10). */
-        AnalysisStreamEvent: components["schemas"]["SnapshotEvent"] | components["schemas"]["QueuedEvent"] | components["schemas"]["StartedEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["CompletedEvent"] | components["schemas"]["FailedEvent"] | components["schemas"]["EndedEvent"];
+        AnalysisStreamEvent: components["schemas"]["SnapshotEvent"] | components["schemas"]["QueuedEvent"] | components["schemas"]["StartedEvent"] | components["schemas"]["StepEvent"] | components["schemas"]["TablesEvent"] | components["schemas"]["CompletedEvent"] | components["schemas"]["FailedEvent"] | components["schemas"]["EndedEvent"];
         AnswerColumn: {
             caveats: string[];
             column: string;
@@ -6127,6 +6127,20 @@ export interface components {
              */
             type: "queued";
         };
+        RadarTable: {
+            /** @description Tablonun tam adı (VeriTabanı.Şema.Obje) */
+            key: string;
+            /**
+             * @description 2. adımda kolonlarıyla birlikte okunacak mı
+             * @default false
+             */
+            read: boolean;
+            /**
+             * @description engine: kural motoru ön elemesi; model: 1. adımın adayı; family: aile araması; search: tablo araması; similar: benzer (uyarı) tablo
+             * @enum {string}
+             */
+            source: "engine" | "model" | "family" | "search" | "similar";
+        };
         RecordDetail: {
             /** Format: date-time */
             asked_at: string;
@@ -6491,6 +6505,20 @@ export interface components {
             elapsed_ms: number;
             items: components["schemas"]["FoundTable"][];
             query: string;
+        };
+        /**
+         * @description Tables a stage of the analysis found, for the map's radar: ``prefilter`` once the rule
+         *     engine ranked the tables, ``reading`` once step 1 and the family search are done.
+         */
+        TablesEvent: {
+            /** @enum {string} */
+            stage: "prefilter" | "reading";
+            tables: components["schemas"]["RadarTable"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "tables";
         };
         /**
          * @description The people who voted 👍 and 👎, the support (−1..1, three decimals), the status and the

@@ -8,6 +8,7 @@ export interface CosmosPalette {
   cyan: string;
   pink: string;
   mint: string;
+  amber: string;
   white: string;
   trail: string;
   hoverRing: string;
@@ -33,6 +34,7 @@ export function readCosmosPalette(element: Element = document.documentElement): 
     cyan: token('cyan'),
     pink: token('pink'),
     mint: token('mint'),
+    amber: token('amber'),
     white: token('white'),
     trail: token('trail'),
     hoverRing: token('hover-ring'),

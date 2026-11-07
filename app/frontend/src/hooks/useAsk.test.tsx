@@ -12,7 +12,7 @@ import {ANALYSIS_ID, answer, job, serveEvents, serviceStatus} from '@/test/explo
 import {message} from '@/test/render';
 
 function fakeEngine() {
-  return {active: true, radarMs: 0, begin: vi.fn(), queued: vi.fn(), candidates: vi.fn(), focus: vi.fn(), end: vi.fn()};
+  return {active: true, radarMs: 0, begin: vi.fn(), queued: vi.fn(), found: vi.fn(), focus: vi.fn(), end: vi.fn()};
 }
 
 function setup(engine = fakeEngine(), onUnavailable = vi.fn()) {
@@ -55,7 +55,7 @@ describe('the question flow (question-analysis Requirement 19, 20)', () => {
     expect(start).toHaveBeenCalledWith('kart limit doluluk oranı', false);
     expect(follow).toHaveBeenCalledWith(ANALYSIS_ID, expect.any(Function), expect.any(AbortSignal));
     expect(get).toHaveBeenCalledWith(ANALYSIS_ID, expect.any(AbortSignal));
-    expect(engine.begin).toHaveBeenCalledWith({read: true, columns: 11136, shortlist: 14});
+    expect(engine.begin).toHaveBeenCalledWith({columns: 11136});
     // "sırada" is written while analyses are ahead; steps and numbers are never shown.
     expect(engine.queued).toHaveBeenCalled();
     expect(engine.focus).toHaveBeenCalledWith(
@@ -71,25 +71,26 @@ describe('the question flow (question-analysis Requirement 19, 20)', () => {
     expect(hook.result.current.outcome).toMatchObject({kind: 'answer', analysisId: ANALYSIS_ID});
   });
 
-  it('routes the voyage through the model-free search\'s scored tables (dictionary-explorer Requirement 7)', async () => {
-    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job({state: 'completed'}));
+  it('marks the tables the analysis finds on the radar, from its own events', async () => {
+    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job());
+    const prefilter = [{key: 'DWH.Kart.vCardLimit1', source: 'engine' as const, read: false}];
+    const reading = [
+      {key: 'DWH.Kart.vCardLimit1', source: 'model' as const, read: true},
+      {key: 'DWH.Kart.vCardLimit2', source: 'family' as const, read: true},
+      {key: 'DWH.Kart.vLimitAd', source: 'similar' as const, read: false},
+    ];
+    serveEvents(
+      {type: 'tables', stage: 'prefilter', tables: prefilter},
+      {type: 'tables', stage: 'reading', tables: reading},
+      {type: 'completed', flow: 'analyst', verdict: 'VAR'},
+    );
     vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
-    const search = vi.mocked(ExplorerService.search).mockResolvedValue({
-      query: 'kart limit doluluk oranı',
-      items: [
-        {key: 'DWH.Kart.vCardLimit1', name: 'vCardLimit1', schema: 'DWH.Kart', columns: 8, groups: [], match: 'içerik', score: 0.7},
-        {key: 'DWH.Kart.vLimitAd', name: 'vLimitAd', schema: 'DWH.Kart', columns: 3, groups: [], match: 'ad'},
-      ],
-      counts: {},
-      concepts: [],
-      elapsed_ms: 3,
-    });
+    const search = vi.spyOn(ExplorerService, 'search');
     const {hook, engine} = setup();
     await act(() => hook.result.current.ask('kart limit doluluk oranı', false));
-    expect(search).toHaveBeenCalledWith('kart limit doluluk oranı');
-    await waitFor(() =>
-      expect(engine.candidates).toHaveBeenCalledWith([{key: 'DWH.Kart.vCardLimit1', name: 'vCardLimit1', score: 0.7}]),
-    );
+    expect(engine.found).toHaveBeenNthCalledWith(1, 'prefilter', prefilter);
+    expect(engine.found).toHaveBeenNthCalledWith(2, 'reading', reading);
+    expect(search).not.toHaveBeenCalled(); // no separate table search draws a guessed route
   });
 
   it('does not write "sırada" for a job that starts at once', async () => {

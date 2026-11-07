@@ -77,8 +77,10 @@ services:
       DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: "5"
       # ERPDM is not among the local backups; an update leaves it out and keeps its records.
       DWHNAVIGATOR_DICTIONARY_IGNORED_DATABASES: "ERPDM"
+      DWHNAVIGATOR_DICTIONARY_IGNORED_COLUMNS: "PersonnelFlag"
       # Confirmed by the owner: the dictionary row names this procedure without its EDW prefix.
-      DWHNAVIGATOR_DICTIONARY_OBJECT_ALIASES: "EDWBridge.TRX.rpt_HighCashFlowCustomers=EDWBridge.TRX.rpt_EDWHighCashFlowCustomers"
+      # Owner-confirmed names until EDWUTIL is corrected (renames and schema moves).
+      DWHNAVIGATOR_DICTIONARY_OBJECT_ALIASES: "EDWBridge.TRX.rpt_HighCashFlowCustomers=EDWBridge.TRX.rpt_EDWHighCashFlowCustomers;EDWBridge.TRX.rpt_EDWPrivateBankingCustomerAssetChangeReport=EDWBridge.CUS.rpt_EDWPrivateBankingCustomerAssetChangeReport;EDWBridge.TRX.rpt_EDWPrivateBankingCustomerReport=EDWBridge.CUS.rpt_EDWPrivateBankingCustomerReport;EDWDM.PRC.vProjectPaybackPlanInstallment=EDWDM.CFM.vProjectPaybackPlanInstallment;EDWDM.PRC.vProposalPaybackPlanInstallment=EDWDM.CFM.vProposalPaybackPlanInstallment;EDWDM.CLT.vCollateralInsuranceInfo=EDWDM.INS.vCollateralInsuranceInfo"
       # Question analysis jobs: up to 4 owners in parallel, one job per owner, at most 20 waiting
       # (004-question-analysis Decision 27).
       DWHNAVIGATOR_ANALYSIS_CONCURRENCY: "4"

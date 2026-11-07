@@ -233,6 +233,24 @@ class StepEvent(BaseModel):
     elapsed_ms: int
 
 
+class RadarTable(BaseModel):
+    key: str = Field(description="Tablonun tam adı (VeriTabanı.Şema.Obje)")
+    source: Literal["engine", "model", "family", "search", "similar"] = Field(
+        description="engine: kural motoru ön elemesi; model: 1. adımın adayı; family: aile "
+        "araması; search: tablo araması; similar: benzer (uyarı) tablo"
+    )
+    read: bool = Field(default=False, description="2. adımda kolonlarıyla birlikte okunacak mı")
+
+
+class TablesEvent(BaseModel):
+    """Tables a stage of the analysis found, for the map's radar: ``prefilter`` once the rule
+    engine ranked the tables, ``reading`` once step 1 and the family search are done."""
+
+    type: Literal["tables"]
+    stage: Literal["prefilter", "reading"]
+    tables: list[RadarTable]
+
+
 class CompletedEvent(BaseModel):
     type: Literal["completed"]
     flow: Literal["analyst", "reused", "unavailable"]
@@ -254,6 +272,7 @@ AnalysisEvent = Annotated[
     | QueuedEvent
     | StartedEvent
     | StepEvent
+    | TablesEvent
     | CompletedEvent
     | FailedEvent
     | EndedEvent,

@@ -4,7 +4,6 @@ import {askCodeText, askErrorText} from '@/lib/analysisErrors';
 import type {CosmosEngine} from '@/lib/cosmos/engine';
 import {forgetTabAnalysis, rememberTabAnalysis} from '@/lib/tabAnalysis';
 import {AnalysisService} from '@/services/analyses';
-import {ExplorerService} from '@/services/explorer';
 import type {AnalysisAnswer, AnalysisJob, AnalysisStreamEvent, ServiceStatus} from '@/types/analysis';
 
 /** How a question ended on the page. */
@@ -121,18 +120,8 @@ export function useAsk({engine, status, onUnavailable}: Options) {
     setOutcome(null);
     const cosmos = map();
     const state = readStatus();
-    if (cosmos?.active) {
-      cosmos.begin({read: !!state?.llm, columns: state?.columns ?? 0, shortlist: state?.shortlist ?? 8});
-      // The voyage runs through the real candidates: the model-free table search answers long
-      // before the analyst (dictionary-explorer Requirement 7).
-      ExplorerService.search(text).then(
-        (found) =>
-          latest.current
-            .engine()
-            ?.candidates(found.items.filter((i) => i.score != null).map((i) => ({key: i.key, name: i.name, score: i.score}))),
-        () => undefined,
-      );
-    }
+    // The radar marks the tables the analysis itself finds: its `tables` events below.
+    if (cosmos?.active) cosmos.begin({columns: state?.columns ?? 0});
     // A fast answer (a kept one) still lets the radar finish its turn.
     const radarDone = radarWait(cosmos?.active ? cosmos.radarMs : 0, job.ctrl.signal);
     let ended: AskOutcome;
@@ -159,6 +148,10 @@ export function useAsk({engine, status, onUnavailable}: Options) {
             }
             if (data.type === 'snapshot' || data.type === 'queued') {
               if (waits(data.type === 'queued' ? 'queued' : data.state, data.ahead)) latest.current.engine()?.queued();
+              return false;
+            }
+            if (data.type === 'tables') {
+              latest.current.engine()?.found(data.stage, data.tables);
               return false;
             }
             if (data.type === 'completed') got.terminal = {type: 'completed'};

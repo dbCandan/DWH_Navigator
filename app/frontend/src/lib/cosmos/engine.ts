@@ -2,7 +2,7 @@
  * The "Evren" map: the source's `Cosmos` (index.html) on a canvas behind the page.
  * dictionary-explorer Requirement 5-8 and 14.
  *
- * The drawing, the frame budget (about 30 frames a second, 20 while reading or waiting), the
+ * The drawing, the frame budget (about 30 frames a second, 20 while reading), the
  * pointer behaviour and the voyage phases are the source's. The map moves whatever the system's
  * "reduce motion" preference says (Requirement 8, Decision 8).
  */
@@ -37,14 +37,37 @@ export interface CosmosHooks {
   text: (key: string, values?: Record<string, string | number>) => string;
 }
 
-type Mode = 'idle' | 'plan' | 'travel' | 'read' | 'wait' | 'final' | 'done';
+/** Who put a table on the radar: the analysis' live `tables` events (question-analysis). */
+export type TableSource = 'engine' | 'model' | 'family' | 'search' | 'similar';
+
+/** A table a stage of the analysis found; `read` tables are read with their columns in step 2. */
+export interface FoundTable {
+  key: string;
+  source: TableSource;
+  read?: boolean;
+}
+
+type Mode = 'idle' | 'plan' | 'merge' | 'read' | 'final' | 'done';
 type RoutePoint = {n: Star} | {xy: [number, number]};
 
-// The radar opens every search: its beam turns RADAR_TURNS times before the voyage moves on.
-// Candidates and answers that arrive earlier wait for it.
+/** A table marked on the radar: it lights up when the beam passes it after it arrived. */
+interface Mark {
+  star: Star;
+  source: TableSource;
+  read: boolean;
+  reveal: number; // engine time it shows
+}
+
+// The radar opens every search and turns until the tables to read are known; an answer that
+// arrives earlier (a kept one) still waits for one turn.
 const RADAR_SPEED = 1.2; // rad/s
 const RADAR_TURNS = 1;
 export const RADAR_MS = ((RADAR_TURNS * 2 * Math.PI) / RADAR_SPEED) * 1000;
+// The marks gather into the tables read in step 2, then the purple route starts.
+export const MERGE_MS = 1800;
+const MERGE_HOLD_MS = 700; // every mark stays visible this long before the merge
+// A mark found by a later stage is not hidden behind the beam for a whole turn.
+const LATE_REVEAL_MS = 1600;
 const SHIP_PACE = 0.81; // every route speed below is scaled by this
 const TAU = 6.2832;
 
@@ -71,8 +94,10 @@ export class CosmosEngine {
   // voyage state
   private mode: Mode = 'idle';
   private modeAt = 0;
-  private readExpected = false;
-  private shortlist = 8;
+  private radarTurned = false;
+  private marks = new Map<string, Mark>();
+  private finals: Star[] | null = null; // the tables read in step 2, once known
+  private mergeTargets = new Map<string, Star>();
   private origin: [number, number] = [0, 0];
   private route: RoutePoint[] = [];
   private routeAt = 0;
@@ -82,11 +107,9 @@ export class CosmosEngine {
   private loop = false;
   private arrived: number[] = [];
   private trail: [number, number][] = [];
-  private candidateList: ScoredTable[] = [];
   private hudSteps: string[] = [];
   private reading: Star | null = null;
   private landedAt = 0;
-  private pendingCandidates: ScoredTable[] | null = null;
   private pendingFocus: [ScoredTable[], string | undefined] | null = null;
   private pendingEnd = false;
   private readonly detach: () => void;
@@ -174,19 +197,19 @@ export class CosmosEngine {
   }
 
   /** A search starts: plot a route out of the search field. */
-  begin({read = false, columns = 0, shortlist = 8}: {read?: boolean; columns?: number; shortlist?: number} = {}): void {
+  begin({columns = 0}: {columns?: number} = {}): void {
     this.origin = this.searchOrigin();
     this.mode = 'plan';
     this.modeAt = this.t;
-    this.readExpected = read;
-    this.shortlist = shortlist;
+    this.radarTurned = false;
+    this.marks = new Map();
+    this.finals = null;
+    this.mergeTargets = new Map();
     this.route = [];
     this.trail = [];
-    this.candidateList = [];
     this.focusList = [];
     this.reading = null;
     this.hudSteps = [];
-    this.pendingCandidates = null;
     this.pendingFocus = null;
     this.pendingEnd = false;
     this.log(columns ? this.hooks.text('explorer.voyage.scanningColumns', {columns: fmt(columns)}) : this.hooks.text('explorer.voyage.planning'));
@@ -202,19 +225,41 @@ export class CosmosEngine {
     this.log(step);
   }
 
-  /** Real candidate tables (model-free search): the route runs through them. */
-  candidates(list: ScoredTable[]): void {
-    if (!this.active || (this.mode !== 'plan' && this.mode !== 'travel')) return;
-    if (this.mode === 'plan' && this.t - this.modeAt < RADAR_MS) {
-      this.pendingCandidates = list;
+  /**
+   * Tables a stage of the analysis found: each becomes a mark that lights up as the radar's beam
+   * passes it. The `reading` stage also names the tables read in step 2: once every mark is
+   * shown, the marks gather into those and the purple route runs through them.
+   */
+  found(stage: 'prefilter' | 'reading', tables: readonly FoundTable[]): void {
+    const byKey = this.galaxy?.byKey;
+    if (!this.active || !byKey || this.mode !== 'plan') return;
+    const late = stage === 'reading';
+    let added = 0;
+    tables.forEach((table, i) => {
+      const star = byKey.get(table.key);
+      if (!star) return;
+      const known = this.marks.get(table.key);
+      if (known) {
+        // a later stage says more about a table the pre-filter already showed
+        if (table.source !== 'engine') known.source = table.source;
+        known.read = known.read || !!table.read;
+        return;
+      }
+      const reveal = late ? this.t + 120 + i * (LATE_REVEAL_MS / Math.max(1, tables.length)) : this.beamReaches(star);
+      this.marks.set(table.key, {star, source: table.source, read: !!table.read, reveal});
+      added++;
+    });
+    if (stage === 'prefilter') {
+      if (added) this.log(this.hooks.text('explorer.voyage.found', {count: this.marks.size}));
       return;
     }
-    this.showCandidates(list);
+    this.finals = [...this.marks.values()].filter((m) => m.read).map((m) => m.star);
+    this.log(this.hooks.text('explorer.voyage.toRead', {count: this.finals.length, marks: this.marks.size}));
   }
 
   /** Final answer: fly to it, landing on the first; the results stay as a constellation. */
   focus(list: ScoredTable[], query?: string): void {
-    if (this.mode === 'plan' && this.t - this.modeAt < RADAR_MS && this.active) {
+    if (this.mode === 'plan' && !this.radarTurned && this.active) {
       this.pendingFocus = [list, query];
       return;
     }
@@ -223,14 +268,11 @@ export class CosmosEngine {
 
   /** Search finished without results, stopped or failed: stand down. */
   end(): void {
-    if (this.mode === 'plan' && this.t - this.modeAt < RADAR_MS) {
+    if (this.mode === 'plan' && !this.radarTurned) {
       this.pendingEnd = true;
       return;
     }
-    if (['plan', 'travel', 'read', 'wait'].includes(this.mode)) {
-      this.mode = 'idle';
-      this.route = [];
-    }
+    if (['plan', 'merge', 'read'].includes(this.mode)) this.standDown();
   }
 
   // --------------------------------------------------------------- internals
@@ -277,7 +319,7 @@ export class CosmosEngine {
     if (!this.running) return;
     this.raf = requestAnimationFrame(this.frame);
     // The chat model shares the (integrated) GPU with the browser: keep the sky light.
-    const budget = this.mode === 'read' || this.mode === 'wait' ? 50 : 33;
+    const budget = this.mode === 'read' ? 50 : 33;
     if (now - this.last < budget) return;
     // Real time, so the voyage keeps pace even when frames are sparse; capped only to avoid a
     // jump after the tab was in the background.
@@ -380,8 +422,10 @@ export class CosmosEngine {
   }
 
   private step(dt: number): void {
-    if (this.mode === 'plan' && this.t - this.modeAt >= RADAR_MS) this.radarDone();
-    if (!this.route.length || !['travel', 'read', 'final'].includes(this.mode)) return;
+    if (this.mode === 'plan' && !this.radarTurned && this.t - this.modeAt >= RADAR_MS) this.radarDone();
+    if (this.mode === 'plan' && this.radarTurned && this.finals !== null && this.marksSettled()) this.startMerge();
+    if (this.mode === 'merge' && this.t - this.modeAt >= MERGE_MS) this.startReading();
+    if (!this.route.length || !['read', 'final'].includes(this.mode)) return;
     if (this.t - this.routeAt < (this.mode === 'final' ? 150 : 500)) return; // the route is drawn first
     const {cum, total} = this.lengths();
     this.dist += (this.speed * dt) / 1000;
@@ -399,57 +443,77 @@ export class CosmosEngine {
         this.log(this.hooks.text('explorer.voyage.reading', {name: n.name}), this.hudSteps.at(-1)?.startsWith(prefix));
       }
     }
-    if (!this.loop && this.dist >= total) {
-      if (this.mode === 'travel') {
-        if (this.readExpected) this.startReading();
-        else {
-          this.mode = 'wait';
-          this.modeAt = this.t;
-        }
-      } else if (this.mode === 'final') {
-        this.mode = 'done';
-        this.landedAt = this.t;
-      }
+    if (!this.loop && this.dist >= total && this.mode === 'final') {
+      this.mode = 'done';
+      this.landedAt = this.t;
     }
   }
 
+  /** The radar's first turn is over: an early answer or stop waits no longer. */
   private radarDone(): void {
+    this.radarTurned = true;
     const f = this.pendingFocus;
-    const c = this.pendingCandidates;
     const stop = this.pendingEnd;
     this.pendingFocus = null;
-    this.pendingCandidates = null;
     this.pendingEnd = false;
-    if (f) {
-      if (c) this.showCandidates(c);
-      this.showFocus(...f);
-    } else if (stop) {
-      this.mode = 'idle';
-      this.route = [];
-    } else if (c) this.showCandidates(c);
-    else this.patrol();
+    if (f) this.showFocus(...f);
+    else if (stop) this.standDown();
   }
 
-  /** No candidate list yet: sweep the biggest clusters. */
-  private patrol(): void {
-    const stops = (this.galaxy?.clusters ?? []).slice(0, 9).map((g) => g.members[0]).filter(Boolean);
-    this.setRoute([{xy: this.origin}, ...this.tour(this.origin, stops).map((n) => ({n}))], 260);
-    this.mode = 'travel';
-    this.modeAt = this.t;
-    this.log(this.hooks.text('explorer.voyage.clusters'));
+  private standDown(): void {
+    this.mode = 'idle';
+    this.route = [];
+    this.marks = new Map();
+    this.finals = null;
   }
 
-  private startReading(): void {
-    const byKey = this.galaxy?.byKey;
-    const fin = this.candidateList
-      .slice(0, this.shortlist || 8)
-      .map((c) => byKey?.get(c.key))
-      .filter((n): n is Star => n !== undefined);
-    if (fin.length < 2) {
-      this.mode = 'wait';
-      this.modeAt = this.t;
+  /** Engine time the beam next passes over a star (the beam turns from the search field). */
+  private beamReaches(star: Star): number {
+    const [ox, oy] = this.origin;
+    const angle = Math.atan2(star.sy - oy, star.sx - ox);
+    const beam = ((this.t - this.modeAt) / 1000) * RADAR_SPEED;
+    const ahead = (((angle - beam) % TAU) + TAU) % TAU;
+    return this.t + (ahead / RADAR_SPEED) * 1000;
+  }
+
+  /** Every mark has shown and stayed in sight a moment. */
+  private marksSettled(): boolean {
+    let last = 0;
+    for (const m of this.marks.values()) last = Math.max(last, m.reveal);
+    return this.t >= last + MERGE_HOLD_MS;
+  }
+
+  /** The marks gather: each one not read in step 2 flows into its nearest read table. */
+  private startMerge(): void {
+    const finals = this.finals ?? [];
+    if (!finals.length) {
+      // step 1 found nothing to read: the radar turns on until the answer says so
+      this.finals = null;
       return;
     }
+    this.mergeTargets = new Map();
+    for (const [key, m] of this.marks) {
+      if (m.read) continue;
+      let best = finals[0];
+      let bd = Infinity;
+      for (const f of finals) {
+        const d = (f.sx - m.star.sx) ** 2 + (f.sy - m.star.sy) ** 2;
+        if (d < bd) {
+          bd = d;
+          best = f;
+        }
+      }
+      this.mergeTargets.set(key, best);
+    }
+    this.mode = 'merge';
+    this.modeAt = this.t;
+    this.log(this.hooks.text('explorer.voyage.merging', {count: finals.length}));
+  }
+
+  /** The purple route: a closed loop through every table read in step 2, no cap. */
+  private startReading(): void {
+    const fin = this.finals ?? [];
+    for (const [key, m] of [...this.marks]) if (!m.read) this.marks.delete(key);
     const here = this.shipPos();
     this.setRoute([{xy: here}, ...this.tour(here, fin).map((n) => ({n}))], 170, true);
     this.mode = 'read';
@@ -459,28 +523,13 @@ export class CosmosEngine {
     this.log(this.hooks.text('explorer.voyage.modelReading'));
   }
 
-  private showCandidates(list: ScoredTable[]): void {
-    const byKey = this.galaxy?.byKey;
-    if (!byKey) return;
-    this.candidateList = list.filter((c) => byKey.has(c.key)).sort((a, b) => (b.score || 0) - (a.score || 0));
-    const stops = this.candidateList.slice(0, 12).map((c) => byKey.get(c.key) as Star);
-    if (!stops.length) return;
-    this.setRoute([{xy: this.origin}, ...this.tour(this.origin, stops).map((n) => ({n}))], 250);
-    this.mode = 'travel';
-    this.modeAt = this.t;
-    this.trail = [];
-    this.log(this.hooks.text('explorer.voyage.candidates', {count: this.candidateList.length}));
-    this.log(this.hooks.text('explorer.voyage.routeDrawn'));
-  }
-
   private showFocus(list: ScoredTable[], query?: string): void {
     const byKey = this.galaxy?.byKey;
     this.focusList = list.filter((f) => f && f.key && byKey?.has(f.key));
     this.focusAt = this.t;
     if (!this.active || !this.focusList.length) {
       if (!this.focusList.length && this.mode !== 'idle') {
-        this.mode = 'idle';
-        this.route = [];
+        this.standDown();
         this.hudSteps = [];
         this.hooks.onLog('');
       }
@@ -489,13 +538,14 @@ export class CosmosEngine {
     const readingPrefix = this.hooks.text('explorer.voyage.reading', {name: ''});
     if (this.hudSteps.at(-1)?.startsWith(readingPrefix)) this.hudSteps.pop();
     const last = this.hudSteps.at(-1);
-    if (last === this.hooks.text('explorer.voyage.modelReading') || last === this.hooks.text('explorer.voyage.routeDrawn'))
-      this.hudSteps.pop();
+    if (last === this.hooks.text('explorer.voyage.modelReading')) this.hudSteps.pop();
     if (!this.hudSteps.length && query) this.hudSteps.push(this.hooks.text('explorer.voyage.query', {query}));
     this.log(this.hooks.text('explorer.voyage.arrived', {count: this.focusList.length, name: this.focusList[0].name}));
     const from = this.mode === 'idle' ? this.searchOrigin() : this.shipPos();
     const stops = [...this.focusList].reverse().map((f) => ({n: byKey?.get(f.key) as Star}));
     this.trail = [];
+    this.marks = new Map();
+    this.finals = null;
     this.setRoute([{xy: from}, ...stops], 900);
     this.mode = 'final';
     this.modeAt = this.t;
@@ -520,6 +570,7 @@ export class CosmosEngine {
     if (!galaxy) return;
     const voyage = this.mode !== 'idle';
     const onRoute = new Set(this.route.map((p) => ('n' in p ? p.n : null)).filter(Boolean));
+    for (const m of this.marks.values()) if (t >= m.reveal) onRoute.add(m.star);
     const dim = voyage && this.mode !== 'done' ? 0.3 : this.focusList.length ? 0.45 : 1;
 
     ctx.lineWidth = 0.5;
@@ -546,6 +597,8 @@ export class CosmosEngine {
       ctx.fill();
     }
     if (this.mode === 'plan') this.drawPlanning();
+    if (this.mode === 'plan' || this.mode === 'merge') this.drawMarks();
+    if (this.mode === 'merge') this.drawShip(this.origin[0], this.origin[1], -Math.PI / 2, 1);
     if (this.route.length > 1 && this.mode !== 'idle') this.drawRoute();
     this.drawFocus();
     if (this.selected) this.drawSelected();
@@ -626,6 +679,54 @@ export class CosmosEngine {
     this.drawShip(ox, oy, -Math.PI / 2, 1);
   }
 
+  /** A mark's ring color tells who found the table. */
+  private sourceColor(source: TableSource): string {
+    const c = this.palette;
+    return {engine: c.cyan, model: c.pink, family: c.mint, search: c.amber, similar: c.white}[source];
+  }
+
+  /** The radar's marks; while merging, the tables not read flow into the ones that are. */
+  private drawMarks(): void {
+    const {ctx} = this;
+    const t = this.t;
+    const merging = this.mode === 'merge';
+    const k = merging ? Math.min(1, (t - this.modeAt) / MERGE_MS) : 0;
+    const ease = k * k * (3 - 2 * k);
+    for (const [key, m] of this.marks) {
+      if (t < m.reveal) continue;
+      const color = this.sourceColor(m.source);
+      const since = (t - m.reveal) / 1000;
+      let x = m.star.sx;
+      let y = m.star.sy;
+      let alpha = 1;
+      if (merging && !m.read) {
+        const to = this.mergeTargets.get(key);
+        if (to) {
+          ctx.strokeStyle = rgba(color, 0.25 * (1 - ease));
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, y);
+          x += (to.sx - x) * ease;
+          y += (to.sy - y) * ease;
+          ctx.lineTo(x, y);
+          ctx.stroke();
+        }
+        alpha = 1 - ease;
+      }
+      if (!merging && since < 1.2) this.ring(x, y, 4 + since * 30, rgba(color, 0.8 * (1 - since / 1.2)), 1.4);
+      const grow = merging && m.read ? 1 + ease * 0.6 : 1;
+      if (m.source === 'similar') ctx.setLineDash([2, 3]);
+      this.ring(x, y, (m.source === 'engine' ? 5 : 7) * grow, rgba(color, 0.75 * alpha), m.read ? 1.6 : 1.1);
+      ctx.setLineDash([]);
+      if (merging && m.read) this.glow(x, y, 22 * ease, rgba(this.palette.pink, 0.35 * ease));
+      ctx.fillStyle = rgba(color, 0.95 * alpha);
+      ctx.beginPath();
+      ctx.arc(x, y, m.source === 'engine' ? 2 : 2.6, 0, TAU);
+      ctx.fill();
+      if (!merging && m.source !== 'engine' && since < 2.2) this.label(x, y, m.star.name, '', Math.min(1, (2.2 - since) * 2));
+    }
+  }
+
   private drawRoute(): void {
     const {ctx, palette: c} = this;
     const t = this.t;
@@ -653,11 +754,13 @@ export class CosmosEngine {
     this.route.forEach((p, k) => {
       if (k === 0 || !('n' in p)) return;
       const [x, y] = this.point(p);
-      const scored =
-        this.candidateList.find((s) => s.key === p.n.key) || this.focusList.find((f) => f.key === p.n.key);
+      const scored = this.focusList.find((f) => f.key === p.n.key);
+      const mark = this.mode === 'read' ? this.marks.get(p.n.key) : undefined;
+      const tone = mark ? this.sourceColor(mark.source) : c.cyan;
       const since = this.arrived[k] ? (t - this.arrived[k]) / 1000 : -1;
-      if (since >= 0 && since < 1.2) this.ring(x, y, 6 + since * 34, rgba(c.cyan, 0.8 * (1 - since / 1.2)), 1.5);
-      this.ring(x, y, since >= 0 ? 6 : 4, since >= 0 ? rgba(c.white, 0.85) : rgba(c.cyan, 0.5), 1.2);
+      if (since >= 0 && since < 1.2) this.ring(x, y, 6 + since * 34, rgba(tone, 0.8 * (1 - since / 1.2)), 1.5);
+      if (mark) this.ring(x, y, 9, rgba(tone, 0.7), 1.6); // who found it
+      this.ring(x, y, since >= 0 ? 6 : 4, since >= 0 ? rgba(c.white, 0.85) : rgba(tone, 0.5), 1.2);
       const show = this.mode === 'read' ? p.n === this.reading : since >= 0 && since < 2.2 && this.mode !== 'final';
       if (show)
         this.label(

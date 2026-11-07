@@ -15,6 +15,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from app.domain.analysis import (
@@ -367,6 +368,7 @@ class Engine:
         with trace.span("Kural motoru ipuçları", key="rule_hints"):
             ranked, q = self.rank_objects(query, limit=ANALYST_RULE_POOL)
             relevance = self._column_relevance(q)
+        trace.announce("prefilter", [{"key": m.object_key, "source": "engine"} for m in ranked])
         started = time.perf_counter()
         with trace.span(
             "1. adım — aday seçimi", f"{len(catalog.ids)} tablonun kataloğu", key="shortlist"
@@ -392,6 +394,7 @@ class Engine:
             if sp is not None:
                 sp.detail = f"{len(added)} tablo eklendi"
         readable = [*short.candidates, *added]
+        trace.announce("reading", _reading_tables(short, added, by_search))
         material = confusables = ""
         if readable:
             terms = [*short.search_terms, *(w for _, words in short.families for w in words)]
@@ -728,6 +731,24 @@ class Engine:
             elapsed_ms=round((time.perf_counter() - started) * 1000),
             confidence_factor=factor,
         )
+
+
+def _reading_tables(
+    short: Shortlist, added: Mapping[str, str], by_search: Mapping[str, str]
+) -> list[dict[str, Any]]:
+    """The tables of step 2 for the live map: what step 1 picked, what family and table
+    search added (read with their columns), and the look-alikes (warning evidence only)."""
+    tables: list[dict[str, Any]] = [
+        {"key": k, "source": "model", "read": True} for k in short.candidates
+    ]
+    tables += [
+        {"key": k, "source": "search" if k in by_search else "family", "read": True} for k in added
+    ]
+    read = {t["key"] for t in tables}
+    tables += [
+        {"key": k, "source": "similar", "read": False} for k in short.confusables if k not in read
+    ]
+    return tables
 
 
 # Tokenizing 11k column texts is ~95% of building an engine (~3 s). Every settings change

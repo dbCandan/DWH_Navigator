@@ -147,6 +147,7 @@
   --cosmos-cyan: 124, 244, 255;
   --cosmos-pink: 255, 93, 214;
   --cosmos-mint: 61, 252, 180;
+  --cosmos-amber: 255, 196, 92;      /* radar: table search's tables */
   --cosmos-white: 255, 255, 255;
   --cosmos-trail: 190, 250, 255;
   --cosmos-hover-ring: rgba(255, 255, 255, .8);

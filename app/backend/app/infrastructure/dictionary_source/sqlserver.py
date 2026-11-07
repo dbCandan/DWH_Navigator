@@ -182,11 +182,13 @@ class SqlServerDictionarySource:
         self,
         driver: Any | None = None,
         ignored_databases: Collection[str] = (),
+        ignored_columns: Collection[str] = (),
         aliases: Mapping[str, str] | None = None,
     ) -> None:
         self._driver = driver
         self._aliases = aliases or {}
         self._ignored = {name.casefold() for name in ignored_databases}
+        self._ignored_columns = {name.casefold() for name in ignored_columns}
 
     async def read(self, connection: SourceConnection) -> SourceSnapshot:
         return await asyncio.to_thread(self._session, connection, self._read)
@@ -285,6 +287,7 @@ class SqlServerDictionarySource:
                 r
                 for r in definitions.columns
                 if r.database.casefold() not in self._ignored
+                and r.name.casefold() not in self._ignored_columns
             ),
         )
 

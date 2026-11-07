@@ -547,7 +547,8 @@
             "queued": "#/components/schemas/QueuedEvent",
             "snapshot": "#/components/schemas/SnapshotEvent",
             "started": "#/components/schemas/StartedEvent",
-            "step": "#/components/schemas/StepEvent"
+            "step": "#/components/schemas/StepEvent",
+            "tables": "#/components/schemas/TablesEvent"
           },
           "propertyName": "type"
         },
@@ -563,6 +564,9 @@
           },
           {
             "$ref": "#/components/schemas/StepEvent"
+          },
+          {
+            "$ref": "#/components/schemas/TablesEvent"
           },
           {
             "$ref": "#/components/schemas/CompletedEvent"
@@ -3126,6 +3130,35 @@
         ],
         "type": "object"
       },
+      "RadarTable": {
+        "properties": {
+          "key": {
+            "description": "Tablonun tam ad\u0131 (VeriTaban\u0131.\u015eema.Obje)",
+            "type": "string"
+          },
+          "read": {
+            "default": false,
+            "description": "2. ad\u0131mda kolonlar\u0131yla birlikte okunacak m\u0131",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "engine: kural motoru \u00f6n elemesi; model: 1. ad\u0131m\u0131n aday\u0131; family: aile aramas\u0131; search: tablo aramas\u0131; similar: benzer (uyar\u0131) tablo",
+            "enum": [
+              "engine",
+              "model",
+              "family",
+              "search",
+              "similar"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "source"
+        ],
+        "type": "object"
+      },
       "RecordDetail": {
         "properties": {
           "asked_at": {
@@ -5007,6 +5040,34 @@
           "counts",
           "concepts",
           "elapsed_ms"
+        ],
+        "type": "object"
+      },
+      "TablesEvent": {
+        "description": "Tables a stage of the analysis found, for the map's radar: ``prefilter`` once the rule\nengine ranked the tables, ``reading`` once step 1 and the family search are done.",
+        "properties": {
+          "stage": {
+            "enum": [
+              "prefilter",
+              "reading"
+            ],
+            "type": "string"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/RadarTable"
+            },
+            "type": "array"
+          },
+          "type": {
+            "const": "tables",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "stage",
+          "tables"
         ],
         "type": "object"
       },

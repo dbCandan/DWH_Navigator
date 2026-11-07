@@ -179,20 +179,18 @@ describe('the main screen moves whatever the system\'s "reduce motion" says (dic
   };
   const voyageLog = () => document.getElementById('hud-focus')?.textContent ?? '';
 
-  it('keeps the frame loop, waits for the radar and routes through the candidates', async () => {
+  it('keeps the frame loop, marks the found tables on the radar and reads the final ones', async () => {
     vi.useFakeTimers({
       shouldAdvanceTime: true,
       toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'performance'],
     });
-    vi.mocked(ExplorerService.search).mockResolvedValue({
-      query: '',
-      items: GALAXY.slice(0, 2).map((t, i) => ({...t, score: 0.9 - i / 10})) as never,
-      counts: {},
-      concepts: [],
-      elapsed_ms: 1,
-    });
+    const [a, b, c] = GALAXY.map((t) => t.key);
     vi.spyOn(AnalysisService, 'start').mockResolvedValue(job());
-    serveEvents({type: 'completed', flow: 'analyst', verdict: 'VAR'});
+    serveEvents(
+      {type: 'tables', stage: 'prefilter', tables: [{key: a, source: 'engine', read: false}, {key: c, source: 'engine', read: false}]},
+      {type: 'tables', stage: 'reading', tables: [{key: a, source: 'model', read: true}, {key: b, source: 'family', read: true}]},
+      {type: 'completed', flow: 'analyst', verdict: 'VAR'},
+    );
     vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
     await openExplorer();
     await fly(200);
@@ -206,7 +204,7 @@ describe('the main screen moves whatever the system\'s "reduce motion" says (dic
     expect(screen.queryByText(message('answer.verdict.partial'))).toBeNull(); // still on the radar's turn
     expect(document.documentElement).toHaveClass('busy');
     await fly(RADAR_MS / 2 + 400);
-    expect(voyageLog()).toContain(message('explorer.voyage.candidates', {count: 2}));
+    expect(voyageLog()).toContain(message('explorer.voyage.toRead', {count: 2, marks: 3}));
     await screen.findByText(message('answer.verdict.partial'));
     expect(frames.length).toBe(1);
   });

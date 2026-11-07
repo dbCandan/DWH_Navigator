@@ -379,6 +379,14 @@ class AnalysisJobs:
 
         return heard
 
+    def _announcer(self, job: AnalysisJob) -> Callable[[str, list[dict[str, Any]]], None]:
+        """The tables a stage found become a ``tables`` event: the map marks them on its radar."""
+
+        def found(stage: str, tables: list[dict[str, Any]]) -> None:
+            self._on_loop(lambda: self._emit(job, "tables", {"stage": stage, "tables": tables}))
+
+        return found
+
     # ------------------------------------------------------------------ acceptance
 
     def check_rate(self, user_public_id: str, address: str | None = None) -> None:
@@ -430,6 +438,7 @@ class AnalysisJobs:
             text_key=text_key(query),
         )
         job.timeline.listener = self._listener(job)
+        job.timeline.announcer = self._announcer(job)
         if not fresh:
             engine = self.index.engine()
             connection = await self.models.snapshot(

@@ -63,6 +63,9 @@ class Trace:
         # Told when a keyed step "started", "finished" or ended in an "error", from whichever
         # thread runs it (the live progress stream of the analysis job).
         self.listener = listener
+        # Told which tables a stage found (the pre-filter, the tables read in step 2), from
+        # whichever thread runs it; the map shows them on the radar. Not part of the record.
+        self.announcer: Callable[[str, list[dict[str, Any]]], None] | None = None
 
     def notify(self, span: Span, what: str) -> None:
         if self.listener is not None and span.key:
@@ -148,6 +151,13 @@ def event(name: str, detail: str = "", status: str = "warn") -> None:
     s = trace.open(name, _parent.get(), EVENT, detail)
     s.status = status
     trace.close(s)
+
+
+def announce(stage: str, tables: list[dict[str, Any]]) -> None:
+    """Tell the live stream which tables a stage found; nothing is stored in the trace."""
+    trace = _trace.get()
+    if trace is not None and trace.announcer is not None:
+        trace.announcer(stage, tables)
 
 
 def current() -> Span | None:
