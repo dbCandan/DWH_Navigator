@@ -15,7 +15,7 @@ timeouts bound that thread; cancelling the awaiting task does not stop it.
 import asyncio
 import importlib
 from collections.abc import Callable, Collection, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time
 from typing import Any
 
@@ -41,9 +41,7 @@ MAX_TABLES = 5_000
 MAX_COLUMNS = 200_000
 APP_NAME = "dwhnavigator-dictionary-sync"
 
-DEFINITIONS_SQL = (
-    "SELECT DatabaseName, SchemaName, ObjectName, Description FROM OPR.DatasetDefinition"
-)
+DEFINITIONS_SQL = "SELECT DatabaseName, SchemaName, ObjectName, Description FROM OPR.DatasetDefinition"
 DETAILS_SQL = (
     "SELECT DatabaseName, SchemaName, ObjectName, ColumnName, ColumnDescription, DatasetGroup "
     "FROM OPR.DatasetDefinitionDetail"
@@ -70,10 +68,23 @@ CATALOG_COLUMNS_SQL = (
     "WHERE o.type = 'V'"
 )
 
+# The warehouse layers below the served objects: where load procedures compute their columns.
+CODE_LAYERS = ("EDW", "EDWLRY", "EDWSKEY", "EDWUTIL")
+MODULES_SQL = (
+    "SELECT s.name, o.name, m.definition FROM {database}.sys.sql_modules AS m "
+    "JOIN {database}.sys.objects AS o ON o.object_id = m.object_id "
+    "JOIN {database}.sys.schemas AS s ON s.schema_id = o.schema_id "
+    "WHERE o.type IN ('V', 'P')"
+)
+
 _SCHEMA_ERRORS = frozenset({207, 208, 4104})
-_LOGIN_ERRORS = frozenset({229, 230, 916, 4060, 4064, 18452, 18456, 18470, 18487, 18488})
+_LOGIN_ERRORS = frozenset(
+    {229, 230, 916, 4060, 4064, 18452, 18456, 18470, 18487, 18488}
+)
 _TIMEOUT_ERRORS = frozenset({20003})
-_CLIENT_ERRORS = range(20000, 21000)  # DB-Library's own numbers; the others come from the server
+_CLIENT_ERRORS = range(
+    20000, 21000
+)  # DB-Library's own numbers; the others come from the server
 
 
 def _error_parts(error: BaseException) -> tuple[int, str]:
@@ -111,7 +122,9 @@ def _sort_key(row: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:
     return tuple(value.casefold() for value in row), row
 
 
-def _fetch_rows(cursor: Any, key_width: int, limit: int) -> tuple[list[tuple[str, ...]], int]:
+def _fetch_rows(
+    cursor: Any, key_width: int, limit: int
+) -> tuple[list[tuple[str, ...]], int]:
     """Read trimmed rows, count those without a full key, and stop past ``limit`` distinct keys."""
     rows: list[tuple[str, ...]] = []
     keys: set[tuple[str, ...]] = set()
@@ -143,6 +156,23 @@ class _Targets:
     databases: dict[str, str]  # source spelling -> reachable catalog name
     catalogs: dict[str, DatabaseCatalog]
     missing: tuple[str, ...]
+    code: dict[str, str] = field(
+        default_factory=dict
+    )  # Database.Schema.Name -> definition
+
+
+def _read_modules(
+    cursor: Any, driver: Any, name: str, quoted: str, code: dict[str, str]
+) -> None:
+    """Definitions are evidence only: a refusal leaves the dictionary update untouched."""
+
+    try:
+        cursor.execute(MODULES_SQL.format(database=quoted))
+        for schema, object_name, body in cursor:
+            if body:
+                code[f"{name}.{schema}.{object_name}"] = str(body)
+    except driver.Error:
+        return
 
 
 class SqlServerDictionarySource:
@@ -198,7 +228,36 @@ class SqlServerDictionarySource:
         targets = self._targets(cursor, driver, definitions)
         if targets.missing:
             raise TargetUnavailable(targets.missing)
-        return self._reconciled(definitions, targets)
+        snapshot = self._reconciled(definitions, targets)
+        code = dict(targets.code)
+        for name in self._layers(cursor, set(targets.catalogs)):
+            self._modules(cursor, driver, name, code)
+        return replace(snapshot, code=code)
+
+    @staticmethod
+    def _layers(cursor: Any, targets: set[str]) -> list[str]:
+        cursor.execute(DATABASE_NAMES_SQL)
+        server = {_text(row[0]).casefold(): _text(row[0]) for row in cursor}
+        wanted = {
+            server[name.casefold()] for name in CODE_LAYERS if name.casefold() in server
+        }
+        return sorted(wanted - targets)
+
+    @staticmethod
+    def _modules(cursor: Any, driver: Any, name: str, code: dict[str, str]) -> None:
+        """A layer's view and procedure text; one that cannot be read only loses its evidence."""
+
+        try:
+            cursor.execute(DATABASE_STATE_SQL, (name,))
+            rows = list(cursor)
+            if len(rows) != 1 or rows[0][2] != "ONLINE" or rows[0][3] != 1:
+                return
+            server_name, quoted = rows[0][0], rows[0][1]
+            if quoted != "[" + str(server_name).replace("]", "]]") + "]":
+                return
+            _read_modules(cursor, driver, server_name, quoted, code)
+        except driver.Error:
+            return
 
     def _probe(self, cursor: Any, driver: Any) -> SourceProbe:
         """Count what ``read`` would return from the databases that can be reached."""
@@ -218,14 +277,20 @@ class SqlServerDictionarySource:
         return replace(
             definitions,
             tables=tuple(
-                r for r in definitions.tables if r.database.casefold() not in self._ignored
+                r
+                for r in definitions.tables
+                if r.database.casefold() not in self._ignored
             ),
             columns=tuple(
-                r for r in definitions.columns if r.database.casefold() not in self._ignored
+                r
+                for r in definitions.columns
+                if r.database.casefold() not in self._ignored
             ),
         )
 
-    def _reconciled(self, definitions: _Definitions, targets: _Targets) -> SourceSnapshot:
+    def _reconciled(
+        self, definitions: _Definitions, targets: _Targets
+    ) -> SourceSnapshot:
         snapshot = reconcile(
             definitions.tables,
             definitions.columns,
@@ -262,8 +327,9 @@ class SqlServerDictionarySource:
 
         missing = {spelling for spelling, name in names.items() if name is None}
         catalogs: dict[str, DatabaseCatalog] = {}
+        code: dict[str, str] = {}
         for name in sorted({name for name in names.values() if name is not None}):
-            catalog = self._catalog(cursor, driver, name)
+            catalog = self._catalog(cursor, driver, name, code)
             if catalog is None:
                 missing.add(name)
             else:
@@ -276,10 +342,13 @@ class SqlServerDictionarySource:
             },
             catalogs=catalogs,
             missing=tuple(sorted(missing, key=lambda name: (name.casefold(), name))),
+            code=code,
         )
 
     @staticmethod
-    def _catalog(cursor: Any, driver: Any, name: str) -> DatabaseCatalog | None:
+    def _catalog(
+        cursor: Any, driver: Any, name: str, code: dict[str, str] | None = None
+    ) -> DatabaseCatalog | None:
         """Read one catalog; None means the database cannot be trusted, not that it is empty."""
         failure: SourceUnavailable | SourceInvalid
         try:
@@ -308,10 +377,16 @@ class SqlServerDictionarySource:
                 known = schemas.get(schema, {}).get(object_name)
                 if known is not None:
                     known.add(column)
+            if code is not None:
+                _read_modules(cursor, driver, str(server_name), quoted, code)
             return schemas
         except driver.Error as error:
             number, message = _error_parts(error)
-            if number != 0 and number not in _CLIENT_ERRORS and "timed out" not in message:
+            if (
+                number != 0
+                and number not in _CLIENT_ERRORS
+                and "timed out" not in message
+            ):
                 return None  # the server refused this database: unreadable
             failure = _classify(error, driver)
         raise failure

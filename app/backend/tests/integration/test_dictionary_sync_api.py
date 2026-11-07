@@ -192,8 +192,9 @@ async def test_only_the_changed_table_reaches_the_model_and_filled_values_stay(
     run = await sync.run()
     assert run["status"] == "completed", run
     assert run["counts"]["tables_added"] == 1
-    # One fill call for the new table; the suggestion call has nothing or one more.
-    assert sync.gateway.port.calls <= 2
+    # The new table only: one fill call, one describe call per new column (two) and one for the
+    # new object, and at most one suggestion call. The five unchanged tables add none.
+    assert sync.gateway.port.calls <= 5
     table = (await sync.dd.get("/dictionary/tables/EDWDM.CUS.vParty")).json()
     assert table["object"]["Grain"] == "Müşteri"
     assert table["columns"][0]["Role"] == "Anahtar"

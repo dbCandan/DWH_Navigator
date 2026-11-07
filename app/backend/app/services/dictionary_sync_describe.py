@@ -15,6 +15,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.domain.llm import LlmChatRequest, LlmChatResult, LlmPurpose
+from app.infrastructure.dictionary_source.lineage import (
+    Code,
+    column_evidence,
+    object_scope,
+)
 from app.services.dictionary_sync_fill import (
     COLUMN_TEXT_MAX,
     SUMMARY_MAX_CHARS,
@@ -114,7 +119,9 @@ def column_request(
     record = column.record
     payload = {
         "nesne": object_context(table),
-        "kardes_kolonlar": [c.record["ColumnName"] for c in table.columns if c is not column],
+        "kardes_kolonlar": [
+            c.record["ColumnName"] for c in table.columns if c is not column
+        ],
         "kolon": record["ColumnName"],
         "rol": record.get("Role", ""),
         "mevcut": record.get("ColumnDescription", ""),
@@ -173,17 +180,29 @@ def apply_column(
     name = record["ColumnName"]
     old = record.get("ColumnDescription", "")
     new = _text(value.get("ColumnDescription"))
-    facts = _facts(old, name, table.record.get("ObjectDescription", ""), evidence=evidence)
+    facts = _facts(
+        old, name, table.record.get("ObjectDescription", ""), evidence=evidence
+    )
     if not _accepted(new, old, facts, COLUMN_TEXT_MAX):
         if new and new != old:
-            outcome.warnings.append(f"{table.key}.{name}: model metni denetimden geçmedi.")
+            outcome.warnings.append(
+                f"{table.key}.{name}: model metni denetimden geçmedi."
+            )
         return
     column.kept.setdefault("description_before", old)
     record["ColumnDescription"] = new
     column.origins["ColumnDescription"] = ORIGIN_EDITED
     outcome.changed += 1
     outcome.changes.append(
-        Change("column_changed", table.key, name, "ColumnDescription", old, new, ORIGIN_EDITED)
+        Change(
+            "column_changed",
+            table.key,
+            name,
+            "ColumnDescription",
+            old,
+            new,
+            ORIGIN_EDITED,
+        )
     )
     summary = _text(value.get("Summary"))
     old_summary = record.get("Summary", "")
@@ -192,11 +211,19 @@ def apply_column(
         column.origins["Summary"] = ORIGIN_EDITED
         outcome.changes.append(
             Change(
-                "column_changed", table.key, name, "Summary", old_summary, summary, ORIGIN_EDITED
+                "column_changed",
+                table.key,
+                name,
+                "Summary",
+                old_summary,
+                summary,
+                ORIGIN_EDITED,
             )
         )
     if decision == DECISION_CONTRADICTS:
-        outcome.warnings.append(f"{table.key}.{name}: mevcut metin kanıtla çelişiyordu.")
+        outcome.warnings.append(
+            f"{table.key}.{name}: mevcut metin kanıtla çelişiyordu."
+        )
 
 
 def apply_object(
@@ -211,15 +238,38 @@ def apply_object(
     old = table.record.get("ObjectDescription", "")
     new = _text(value.get("ObjectDescription"))
     names = " ".join(c.record["ColumnName"] for c in table.columns)
-    if not _accepted(new, old, _facts(old, table.key, names, evidence=evidence), TABLE_TEXT_MAX):
+    if not _accepted(
+        new, old, _facts(old, table.key, names, evidence=evidence), TABLE_TEXT_MAX
+    ):
         return
     table.kept.setdefault("description_before", old)
     table.record["ObjectDescription"] = new
     table.origins["ObjectDescription"] = ORIGIN_EDITED
     outcome.changed += 1
     outcome.changes.append(
-        Change("table_changed", table.key, "", "ObjectDescription", old, new, ORIGIN_EDITED)
+        Change(
+            "table_changed", table.key, "", "ObjectDescription", old, new, ORIGIN_EDITED
+        )
     )
+
+
+def evidence_for(tables: Sequence[MergedTable], code: Mapping[str, str]) -> Evidence:
+    """What the warehouse code says about each new row: the column's trail, the object's scope."""
+
+    if not code:
+        return {}
+    index = Code.build(code)
+    found: dict[tuple[str, str], Sequence[str]] = {}
+    for table in tables:
+        if table.is_new:
+            found[(fold(table.key), "")] = object_scope(index, table.key)
+        for row in table.columns:
+            if row.is_new:
+                name = row.record["ColumnName"]
+                found[(fold(table.key), fold(name))] = column_evidence(
+                    index, table.key, name
+                ).steps
+    return found
 
 
 async def describe_tables(

@@ -52,7 +52,7 @@ from app.infrastructure.repositories.vocabulary_repository import VocabularyRepo
 from app.services.analysis.dictionary_workbook import load_dictionary, records_digest
 from app.services.dictionary_reading import dictionary_identity
 from app.services.dictionary_service import write_dictionary_version
-from app.services.dictionary_sync_describe import describe_tables
+from app.services.dictionary_sync_describe import describe_tables, evidence_for
 from app.services.dictionary_sync_fill import count_empty, fill_tables, suggest
 from app.services.dictionary_sync_merge import Change, MergePlan, fold, merge
 from app.services.llm_connections import LlmGateway
@@ -74,7 +74,9 @@ KIND_ROLLBACK = "geri_donus"
 RUN_IN_PROGRESS_MESSAGE = "Bir sözlük güncellemesi sürüyor; bitince yeniden deneyin."
 SOURCE_NOT_CONFIGURED_MESSAGE = "Önce kaynak bağlantısını ve parolasını kaydedin."
 SOURCE_UNAVAILABLE_MESSAGE = "Sözlük kaynağına ulaşılamadı."
-SOURCE_INVALID_MESSAGE = "Sözlük kaynağının yapısı beklenenden farklı veya sınırları aşıyor."
+SOURCE_INVALID_MESSAGE = (
+    "Sözlük kaynağının yapısı beklenenden farklı veya sınırları aşıyor."
+)
 SOURCE_EMPTY_MESSAGE = "Sözlük kaynağı boş döndü; etkin sözlük değişmedi."
 INTERRUPTED_MESSAGE = "Güncelleme uygulama yeniden başladığı için kesildi."
 FAILED_MESSAGE = "Güncelleme beklenmedik bir hatayla durdu; etkin sözlük değişmedi."
@@ -88,7 +90,9 @@ def run_in_progress() -> ApplicationError:
 
 def source_not_configured() -> ApplicationError:
     return ApplicationError(
-        status.HTTP_409_CONFLICT, "dictionary_source_not_configured", SOURCE_NOT_CONFIGURED_MESSAGE
+        status.HTTP_409_CONFLICT,
+        "dictionary_source_not_configured",
+        SOURCE_NOT_CONFIGURED_MESSAGE,
     )
 
 
@@ -106,16 +110,22 @@ class SourceKeys:
     def __init__(self, settings: Settings) -> None:
         key = settings.settings_encryption_key
         self._cipher = (
-            SecretCipher(decode_encryption_key(key.get_secret_value())) if key is not None else None
+            SecretCipher(decode_encryption_key(key.get_secret_value()))
+            if key is not None
+            else None
         )
 
     @property
     def available(self) -> bool:
         return self._cipher is not None
 
-    def seal(self, password: str, *, tenant_public_id: str, row: DictionarySource) -> str:
+    def seal(
+        self, password: str, *, tenant_public_id: str, row: DictionarySource
+    ) -> str:
         assert self._cipher is not None
-        return self._cipher.encrypt(password, context=source_context(tenant_public_id, row))
+        return self._cipher.encrypt(
+            password, context=source_context(tenant_public_id, row)
+        )
 
     def open(self, row: DictionarySource, *, tenant_public_id: str) -> str | None:
         if self._cipher is None or row.password_ciphertext is None:
@@ -221,7 +231,11 @@ class DictionarySync:
                 )
                 await self._prune(session, await self.index.tenant_id(), now)
         except Exception as error:  # noqa: BLE001 - logged; the next start tries again
-            log_event(logger, "dictionary.sync_startup_failed", error_type=type(error).__name__)
+            log_event(
+                logger,
+                "dictionary.sync_startup_failed",
+                error_type=type(error).__name__,
+            )
 
     async def shutdown(self) -> None:
         for task in list(self._tasks):
@@ -241,7 +255,9 @@ class DictionarySync:
 
     # ------------------------------------------------------------------ start
 
-    async def _open_run(self, tenant_id: int, kind: str, user_id: int, phase: str) -> Started:
+    async def _open_run(
+        self, tenant_id: int, kind: str, user_id: int, phase: str
+    ) -> Started:
         now = datetime.now(UTC)
         try:
             async with self.session_factory() as session, session.begin():
@@ -267,13 +283,16 @@ class DictionarySync:
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
 
-    async def start_update(self, tenant_id: int, tenant_public_id: str, user_id: int) -> str:
+    async def start_update(
+        self, tenant_id: int, tenant_public_id: str, user_id: int
+    ) -> str:
         async with self.session_factory() as session:
             await self._connection(session, tenant_id, tenant_public_id)
         started = await self._open_run(tenant_id, KIND_UPDATE, user_id, "reading")
         self._spawn(
             self._guarded(
-                started.run_id, self._update(started.run_id, tenant_id, tenant_public_id, user_id)
+                started.run_id,
+                self._update(started.run_id, tenant_id, tenant_public_id, user_id),
             )
         )
         return started.public_id
@@ -282,7 +301,8 @@ class DictionarySync:
         started = await self._open_run(tenant_id, KIND_ROLLBACK, user_id, "indexing")
         self._spawn(
             self._guarded(
-                started.run_id, self._restore(started.run_id, tenant_id, version_id, user_id)
+                started.run_id,
+                self._restore(started.run_id, tenant_id, version_id, user_id),
             )
         )
         return started.public_id
@@ -348,9 +368,13 @@ class DictionarySync:
         try:
             snapshot = await self.source.read(connection)
         except SourceUnavailable:
-            raise _RunFailed("dictionary_source_unavailable", SOURCE_UNAVAILABLE_MESSAGE) from None
+            raise _RunFailed(
+                "dictionary_source_unavailable", SOURCE_UNAVAILABLE_MESSAGE
+            ) from None
         except SourceInvalid:
-            raise _RunFailed("dictionary_source_invalid", SOURCE_INVALID_MESSAGE) from None
+            raise _RunFailed(
+                "dictionary_source_invalid", SOURCE_INVALID_MESSAGE
+            ) from None
         except TargetUnavailable as target:
             raise _RunFailed(
                 "dictionary_target_unavailable", target_message(tuple(target.databases))
@@ -388,11 +412,15 @@ class DictionarySync:
             columns = await repository.columns(active) if active else []
             object_meta = await repository.object_meta(active) if active else []
             column_meta = await repository.column_meta(active) if active else []
-            terms = await VocabularyRepository(session).items(tenant_id, VocabularyList.TERMS)
+            terms = await VocabularyRepository(session).items(
+                tenant_id, VocabularyList.TERMS
+            )
             stopwords = await VocabularyRepository(session).items(
                 tenant_id, VocabularyList.STOPWORDS
             )
-        plan = merge(snapshot, objects, object_meta, columns, column_meta, self.kept_databases)
+        plan = merge(
+            snapshot, objects, object_meta, columns, column_meta, self.kept_databases
+        )
         previous = active.version if active else ""
         object_headers = list(active.object_extra_headers) if active else []
         column_headers = list(active.column_extra_headers) if active else []
@@ -411,7 +439,9 @@ class DictionarySync:
         suggestions: list[Any] = []
         model = ""
         if work:
-            await self._set(run_id, phase="filling", progress_total=len(work), progress_done=0)
+            await self._set(
+                run_id, phase="filling", progress_total=len(work), progress_done=0
+            )
             target = await self.models.snapshot(
                 tenant_id=tenant_id, tenant_public_id=tenant_public_id
             )
@@ -427,13 +457,18 @@ class DictionarySync:
                 outcome = await fill_tables(plan.tables, chat, progress)
                 plan.changes.extend(outcome.changes)
                 warnings.extend(outcome.warnings)
-                described = await describe_tables(plan.tables, chat)
+                evidence = await asyncio.to_thread(
+                    evidence_for, plan.tables, snapshot.code
+                )
+                described = await describe_tables(plan.tables, chat, evidence)
                 plan.changes.extend(described.changes)
                 warnings.extend(described.warnings)
                 filled = outcome.filled + described.changed
                 calls = outcome.calls + described.calls
                 failures = outcome.failures + described.failures
-                known = {fold(i["term"]) for i in terms} | {fold(i["word"]) for i in stopwords}
+                known = {fold(i["term"]) for i in terms} | {
+                    fold(i["word"]) for i in stopwords
+                }
                 for item in terms:
                     known.update(fold(e) for e in item["equivalents"])
                 suggestions, answered = await suggest(changed, known, chat)
@@ -502,7 +537,11 @@ class DictionarySync:
         if active is not None and plan.removal_share() > REMOVAL_LIMIT:
             async with self.session_factory() as session, session.begin():
                 written, _pruned = await DictionaryRepository(session).write_version(
-                    tenant_id, version, user_id=user_id, now=now, status=DictionaryStatus.PENDING
+                    tenant_id,
+                    version,
+                    user_id=user_id,
+                    now=now,
+                    status=DictionaryStatus.PENDING,
                 )
                 await self._record(
                     session,
@@ -516,7 +555,9 @@ class DictionarySync:
                     dictionary_version_id=written.dictionary_version_id,
                     **report,
                 )
-            log_event(logger, "dictionary.sync_end", outcome="pending_approval", error_code="")
+            log_event(
+                logger, "dictionary.sync_end", outcome="pending_approval", error_code=""
+            )
             return
 
         await self._set(run_id, phase="indexing")
@@ -561,11 +602,14 @@ class DictionarySync:
     ) -> None:
         """Build the new engine first; the write commits only when the build succeeded."""
 
-        async def plan(inputs: SearchInputs, _serving: ServingEngine | None) -> ChangePlan:
+        async def plan(
+            inputs: SearchInputs, _serving: ServingEngine | None
+        ) -> ChangePlan:
             dictionary = load_dictionary(objects, columns, number, digest)
             return ChangePlan(
                 inputs=inputs.replace(
-                    dictionary=dictionary, dictionary_identity=dictionary_identity(number, digest)
+                    dictionary=dictionary,
+                    dictionary_identity=dictionary_identity(number, digest),
                 ),
                 write=write,
             )
@@ -574,7 +618,9 @@ class DictionarySync:
 
     # ------------------------------------------------------------------ rollback
 
-    async def _restore(self, run_id: int, tenant_id: int, version_id: int, user_id: int) -> None:
+    async def _restore(
+        self, run_id: int, tenant_id: int, version_id: int, user_id: int
+    ) -> None:
         async with self.session_factory() as session:
             repository = DictionaryRepository(session)
             active = await repository.version(tenant_id, DictionaryStatus.ACTIVE)

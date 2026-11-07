@@ -49,12 +49,19 @@ class SourceSnapshot:
     excluded_tables: tuple[str, ...]  # DB.Schema.Object keys absent from the target
     excluded_columns: tuple[tuple[str, str], ...]  # (table key, column name)
     corrected_tables: tuple[tuple[str, str], ...]  # (source key, catalog key)
-    corrected_columns: tuple[tuple[str, str, str], ...]  # (catalog table key, source, catalog name)
-    unverified_tables: tuple[str, ...] = ()  # objects whose columns the catalog cannot show
+    corrected_columns: tuple[
+        tuple[str, str, str], ...
+    ]  # (catalog table key, source, catalog name)
+    unverified_tables: tuple[
+        str, ...
+    ] = ()  # objects whose columns the catalog cannot show
     # database -> schema -> object -> columns (None: a procedure); what the warehouse really has.
     catalogs: Mapping[str, Mapping[str, Mapping[str, Collection[str] | None]]] = field(
         default_factory=dict, repr=False
     )
+    # Database.Schema.Name -> view or procedure text of the target and warehouse layers, for
+    # following a column through its load code. Empty when no definition could be read.
+    code: Mapping[str, str] = field(default_factory=dict, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +69,9 @@ class SourceProbe:
     table_count: int
     column_count: int
     last_change_at: datetime | None
-    missing_databases: tuple[str, ...]  # databases the dictionary names that cannot be reached
+    missing_databases: tuple[
+        str, ...
+    ]  # databases the dictionary names that cannot be reached
 
 
 class SourceUnavailable(Exception):
