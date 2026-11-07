@@ -652,7 +652,7 @@ class LlmIntegrationService:
             return LlmModelsResult(
                 ok=False, code=_code(key), message=probe_message(key), models=[], ms=0
             )
-        connection = self._connection(fields, key, row)
+        connection = self._connection(fields, key, row, scope.tenant.tenant_id)
         listing = await self.adapter.list_models(connection, operation=ProbeOperation.MODELS)
         probe = listing.probe
         in_use = row.chat_model if row is not None and row.active else None
@@ -666,7 +666,10 @@ class LlmIntegrationService:
 
     @staticmethod
     def _connection(
-        fields: IntegrationFields, api_key: str | None, row: LlmIntegration | None
+        fields: IntegrationFields,
+        api_key: str | None,
+        row: LlmIntegration | None,
+        tenant_id: int,
     ) -> LlmConnection:
         return LlmConnection(
             endpoint=fields.endpoint,
@@ -677,6 +680,7 @@ class LlmIntegrationService:
             seed=fields.seed,
             api_key=api_key,
             public_id=row.public_id if row is not None else None,
+            tenant_id=tenant_id,
         )
 
     async def inventory(self, context: RequestContext) -> LlmInventory:
@@ -765,7 +769,7 @@ class LlmIntegrationService:
                 )
             )
         else:
-            connection = self._connection(fields, key, row)
+            connection = self._connection(fields, key, row, scope.tenant.tenant_id)
             steps.extend(await self._test_steps(connection))
         ok = all(step.ok for step in steps)
         if body.record and row is not None:

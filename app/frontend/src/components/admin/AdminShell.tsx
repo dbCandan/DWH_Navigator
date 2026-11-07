@@ -5,7 +5,7 @@ import {PersonIcon} from '@/components/auth/PersonIcon';
 import {useAuth} from '@/contexts/AuthContext';
 import {useIntl} from '@/contexts/IntlContext';
 import {useDocumentTitle} from '@/hooks/useDocumentTitle';
-import {pickDictionaryWorkbook, useDownload, useIndexRebuild} from '@/hooks/useAdminActions';
+import {useDownload, useIndexRebuild} from '@/hooks/useAdminActions';
 import {useDictionaryState} from '@/hooks/useDictionaryState';
 import {useLlmState} from '@/hooks/useLlmState';
 import {useSearchState} from '@/hooks/useSearchState';
@@ -20,7 +20,6 @@ import {AnalysisRecordsService} from '@/services/analysisRecords';
 import {DictionaryService} from '@/services/dictionary';
 import type {RecordRow} from '@/types/records';
 import {CommandPalette} from './CommandPalette';
-import {DictionaryDrop} from './DictionaryDrop';
 import {DictionaryStateProvider} from './DictionaryStateProvider';
 import {Icon} from './Icon';
 import {LlmStateProvider} from './LlmStateProvider';
@@ -270,26 +269,10 @@ function ShellLayout() {
       {
         groupId: 'actions',
         group: actionGroup,
-        icon: 'import' as const,
-        title: t('admin.palette.importDictionary'),
-        subtitle: t('admin.palette.importDictionaryTip'),
-        run: pickDictionaryWorkbook,
-      },
-      {
-        groupId: 'actions',
-        group: actionGroup,
         icon: 'export' as const,
         title: t('admin.palette.exportDictionary'),
         subtitle: t('admin.palette.exportDictionaryTip'),
         run: () => void download(DictionaryService.exportWorkbook),
-      },
-      {
-        groupId: 'actions',
-        group: actionGroup,
-        icon: 'file' as const,
-        title: t('admin.palette.template'),
-        subtitle: t('admin.palette.templateTip'),
-        run: () => void download(DictionaryService.template),
       },
       {
         groupId: 'actions',
@@ -522,7 +505,6 @@ function ShellLayout() {
         </defs>
       </svg>
       <SaveBar />
-      <DictionaryDrop onWordsPage={page === 'kelimeler'} />
       {paletteOpen && <CommandPalette entries={entries} onClose={() => setPaletteOpen(false)} />}
     </>
   );

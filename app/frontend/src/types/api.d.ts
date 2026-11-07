@@ -1830,52 +1830,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/dwhnavigator/v1/dictionary/imports": {
+    "/api/dwhnavigator/v1/dictionary/source": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /**
-         * Import Dictionary
-         * @description Import a workbook in the template; 201 with a new version, 200 when the content is the
-         *     active version's (Requirement 7).
-         */
-        post: {
+        /** Read Source */
+        get: {
             parameters: {
                 query?: never;
-                header?: {
-                    "X-Filename"?: string | null;
-                };
+                header?: never;
                 path?: never;
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "application/octet-stream": string;
-                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
-                };
-            };
+            requestBody?: never;
             responses: {
-                /** @description İçerik etkin sürümle aynı */
+                /** @description Successful Response */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["DictionaryImported"];
-                    };
-                };
-                /** @description Successful Response */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["DictionaryImported"];
+                        "application/json": components["schemas"]["Source"];
                     };
                 };
                 /** @description not_authenticated: oturum yok */
@@ -1896,8 +1874,33 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description dictionary_import_in_progress: başka bir içe aktarma yazıyor */
-                409: {
+            };
+        };
+        /** Save Source */
+        put: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SourceInput"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Source"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1905,8 +1908,8 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description upload_too_large: gövde 20 MB'tan büyük */
-                413: {
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1914,26 +1917,58 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description unsupported_media_type: gövde Excel değil */
-                415: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description dictionary_file_empty: gövde boş; dictionary_workbook_invalid: dosya şablona uymuyor */
+                /** @description Validation Error */
                 422: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
+                        "application/json": components["schemas"]["HTTPValidationError"];
                     };
                 };
-                /** @description search_index_build_failed: indeks kurulamadı, hiçbir şey yazılmadı */
-                500: {
+            };
+        };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/source/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test Source */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SourceInput"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SourceTest"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1941,13 +1976,476 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description search_change_busy: başka bir değişiklik uygulanıyor */
-                503: {
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start Sync */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunSummary"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/sync/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runs */
+        get: {
+            parameters: {
+                query?: {
+                    page?: number;
+                    page_size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunsPage"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Run */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Run */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Changes */
+        get: {
+            parameters: {
+                query?: {
+                    kind?: string;
+                    search?: string;
+                    page?: number;
+                    page_size?: number;
+                };
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ChangesPage"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Run */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/suggestions/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply Suggestions */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApplySuggestions"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
                     };
                 };
             };
@@ -2113,17 +2611,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/dwhnavigator/v1/dictionary/template": {
+    "/api/dwhnavigator/v1/dictionary/versions": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Dictionary Template
-         * @description The empty template: both sheets with their header rows.
-         */
+        /** List Versions */
         get: {
             parameters: {
                 query?: never;
@@ -2133,13 +2628,13 @@ export interface paths {
             };
             requestBody?: never;
             responses: {
-                /** @description Excel çalışma kitabı */
+                /** @description Successful Response */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                        "application/json": components["schemas"]["VersionsPage"];
                     };
                 };
                 /** @description not_authenticated: oturum yok */
@@ -2164,6 +2659,71 @@ export interface paths {
         };
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/versions/{version_id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore Version */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    version_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunSummary"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -2475,6 +3035,157 @@ export interface paths {
                         "application/json": {
                             [key: string]: string;
                         };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/llm-call-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Calls
+         * @description The newest calls without their bodies, and how many match the filters.
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description Çağrının amacı */
+                    purpose?: string | null;
+                    /** @description Çağrının sonucu */
+                    outcome?: string | null;
+                    /** @description İstek ve yanıtta aranan metin */
+                    q?: string | null;
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmCallLogPage"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description invalid_filter: amaç, sonuç, metin ya da sayı geçersiz */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/llm-call-logs/{public_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Call
+         * @description One call with the request and response bodies of each HTTP request.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    public_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmCallLogDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_call_log_not_found: kayıt yok ya da süresi dolmuş */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
                     };
                 };
             };
@@ -4773,7 +5484,7 @@ export interface components {
         };
         ActiveDictionaryVersion: {
             /** @enum {string} */
-            channel: "arayuz" | "betik";
+            channel: "arayuz" | "betik" | "kaynak" | "geri_donus";
             column_count: number;
             /** Format: date-time */
             imported_at: string;
@@ -4863,7 +5574,6 @@ export interface components {
             group: string | null;
             key: string;
             object: string;
-            pii: boolean;
             role: string;
             signals: string[];
             synonyms: string[];
@@ -4921,6 +5631,9 @@ export interface components {
             match: string;
             query: string;
         };
+        ApplySuggestions: {
+            suggestion_ids: string[];
+        };
         /**
          * @description Who asked: an account (its display name) or a visitor ('<host> · <address>' of the
          *     moment, 003-anonymous-visitor Requirement 7).
@@ -4961,6 +5674,21 @@ export interface components {
             name: string;
             score: number;
         };
+        Change: {
+            column_name: string;
+            field: string;
+            kind: string;
+            new_value: string;
+            old_value: string;
+            origin: string;
+            table_key: string;
+        };
+        ChangesPage: {
+            items: components["schemas"]["Change"][];
+            page: number;
+            page_size: number;
+            total: number;
+        };
         CompletedEvent: {
             /** @enum {string} */
             flow: "analyst" | "reused" | "unavailable";
@@ -4972,6 +5700,38 @@ export interface components {
             /** @enum {string} */
             verdict: "VAR" | "KISMEN VAR" | "BULUNAMADI";
         };
+        Counts: {
+            /** @default 0 */
+            columns_added: number;
+            /** @default 0 */
+            columns_changed: number;
+            /** @default 0 */
+            columns_corrected: number;
+            /** @default 0 */
+            columns_excluded: number;
+            /** @default 0 */
+            columns_removed: number;
+            /** @default 0 */
+            fields_empty: number;
+            /** @default 0 */
+            fields_filled: number;
+            /** @default 0 */
+            model_calls: number;
+            /** @default 0 */
+            model_failures: number;
+            /** @default 0 */
+            tables_added: number;
+            /** @default 0 */
+            tables_changed: number;
+            /** @default 0 */
+            tables_corrected: number;
+            /** @default 0 */
+            tables_excluded: number;
+            /** @default 0 */
+            tables_removed: number;
+            /** @default 0 */
+            warnings: number;
+        };
         DailyCounts: {
             days: components["schemas"]["DayCount"][];
         };
@@ -4979,12 +5739,6 @@ export interface components {
             date: string;
             with_tables: number;
             without_tables: number;
-        };
-        DictionaryImported: {
-            changed: boolean;
-            index: components["schemas"]["SearchIndexState"];
-            version: components["schemas"]["DictionaryVersionSummary"];
-            warnings: string[];
         };
         DictionaryImporter: {
             display_name: string;
@@ -5021,7 +5775,7 @@ export interface components {
         };
         DictionaryVersionSummary: {
             /** @enum {string} */
-            channel: "arayuz" | "betik";
+            channel: "arayuz" | "betik" | "kaynak" | "geri_donus";
             column_count: number;
             /** Format: date-time */
             imported_at: string;
@@ -5114,6 +5868,57 @@ export interface components {
             /** Format: uuid */
             public_id: string;
         };
+        /** @description One HTTP request of a call; ``status`` is empty when no response arrived. */
+        LlmCallExchange: {
+            duration_ms: number;
+            request: string;
+            request_truncated: boolean;
+            response: string;
+            response_truncated: boolean;
+            status: number | null;
+        };
+        LlmCallLogDetail: {
+            adaptations: string[];
+            analysis_public_id: string | null;
+            completion_tokens: number;
+            duration_ms: number;
+            exchanges: components["schemas"]["LlmCallExchange"][];
+            http_status: number | null;
+            integration_public_id: string | null;
+            model: string;
+            outcome: string;
+            prompt_tokens: number;
+            public_id: string;
+            purpose: string;
+            repaired: boolean;
+            requests: number;
+            /** Format: date-time */
+            started_at: string;
+            wait_ms: number;
+        };
+        LlmCallLogPage: {
+            retention_days: number;
+            rows: components["schemas"]["LlmCallLogRow"][];
+            total: number;
+        };
+        /** @description One chat call in the list, without its bodies. */
+        LlmCallLogRow: {
+            analysis_public_id: string | null;
+            completion_tokens: number;
+            duration_ms: number;
+            http_status: number | null;
+            integration_public_id: string | null;
+            model: string;
+            outcome: string;
+            prompt_tokens: number;
+            public_id: string;
+            purpose: string;
+            repaired: boolean;
+            requests: number;
+            /** Format: date-time */
+            started_at: string;
+            wait_ms: number;
+        };
         /** @description A new integration: name and address; every other field takes its default. */
         LlmIntegrationCreate: {
             activate?: boolean | null;
@@ -5198,7 +6003,7 @@ export interface components {
         };
         LlmInventoryServer: {
             active: boolean;
-            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "invalid_json" | "response_too_large" | "cancelled") | null;
+            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "output_truncated" | "invalid_json" | "response_too_large" | "cancelled") | null;
             message: string;
             models: components["schemas"]["LlmModelRow"][];
             name: string;
@@ -5223,7 +6028,7 @@ export interface components {
         };
         /** @description Requirement 12; ``name`` is the active integration's name on the AI page. */
         LlmModelState: {
-            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "invalid_json" | "response_too_large" | "cancelled") | null;
+            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "output_truncated" | "invalid_json" | "response_too_large" | "cancelled") | null;
             model: string;
             name: string | null;
             reason: string;
@@ -5237,7 +6042,7 @@ export interface components {
             public_id?: string | null;
         };
         LlmModelsResult: {
-            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "invalid_json" | "response_too_large" | "cancelled") | null;
+            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "output_truncated" | "invalid_json" | "response_too_large" | "cancelled") | null;
             message: string;
             models: components["schemas"]["LlmModelRow"][];
             ms: number;
@@ -5262,7 +6067,7 @@ export interface components {
             steps: components["schemas"]["LlmTestStep"][];
         };
         LlmTestStep: {
-            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "invalid_json" | "response_too_large" | "cancelled") | null;
+            code: ("not_configured" | "key_unreadable" | "network_policy_denied" | "name_unresolved" | "connect_refused" | "connect_error" | "tls_error" | "timeout" | "unauthorized" | "context_exceeded" | "upstream_status" | "invalid_response" | "output_truncated" | "invalid_json" | "response_too_large" | "cancelled") | null;
             detail: string;
             ms: number;
             name: string;
@@ -5303,6 +6108,10 @@ export interface components {
             /** Format: password */
             new_password: string;
             username: string;
+        };
+        Person: {
+            display_name: string;
+            public_id: string;
         };
         PhaseAverage: {
             average_ms: number | null;
@@ -5439,6 +6248,56 @@ export interface components {
             /** @enum {string} */
             role: "kullanici" | "yonetici";
         };
+        RunDetail: {
+            counts: components["schemas"]["Counts"];
+            error_code: string;
+            error_message: string;
+            finished_at: string | null;
+            /** @enum {string} */
+            kind: "guncelleme" | "geri_donus";
+            model: string;
+            new_version: string;
+            /** @enum {string} */
+            phase: "reading" | "comparing" | "filling" | "indexing" | "done";
+            previous_version: string;
+            progress_done: number;
+            progress_total: number;
+            public_id: string;
+            /** Format: date-time */
+            started_at: string;
+            started_by: components["schemas"]["Person"] | null;
+            /** @enum {string} */
+            status: "running" | "completed" | "no_change" | "pending_approval" | "rejected" | "failed" | "interrupted";
+            suggestions: components["schemas"]["Suggestion"][];
+            warnings: string[];
+        };
+        RunSummary: {
+            counts: components["schemas"]["Counts"];
+            error_code: string;
+            error_message: string;
+            finished_at: string | null;
+            /** @enum {string} */
+            kind: "guncelleme" | "geri_donus";
+            model: string;
+            new_version: string;
+            /** @enum {string} */
+            phase: "reading" | "comparing" | "filling" | "indexing" | "done";
+            previous_version: string;
+            progress_done: number;
+            progress_total: number;
+            public_id: string;
+            /** Format: date-time */
+            started_at: string;
+            started_by: components["schemas"]["Person"] | null;
+            /** @enum {string} */
+            status: "running" | "completed" | "no_change" | "pending_approval" | "rejected" | "failed" | "interrupted";
+        };
+        RunsPage: {
+            items: components["schemas"]["RunSummary"][];
+            page: number;
+            page_size: number;
+            total: number;
+        };
         SavedAnswerSummaryOut: {
             newest_at: string | null;
             total: number;
@@ -5533,6 +6392,34 @@ export interface components {
              */
             type: "snapshot";
         };
+        Source: {
+            configured: boolean;
+            database: string;
+            encrypt: boolean;
+            has_password: boolean;
+            host: string;
+            port: number;
+            updated_at: string | null;
+            username: string;
+        };
+        SourceInput: {
+            database: string;
+            /** @default false */
+            encrypt: boolean;
+            host: string;
+            password?: string | null;
+            port: number;
+            username: string;
+        };
+        SourceTest: {
+            column_count: number;
+            last_change_at: string | null;
+            message: string;
+            /** @default [] */
+            missing_databases: string[];
+            ok: boolean;
+            table_count: number;
+        };
         StartedEvent: {
             /**
              * @description discriminator enum property added by openapi-typescript
@@ -5565,13 +6452,22 @@ export interface components {
             group: string;
             word: string;
         };
+        Suggestion: {
+            equivalents: string[];
+            /** @enum {string} */
+            kind: "term" | "stopword";
+            note: string;
+            public_id: string;
+            /** @enum {string} */
+            status: "pending" | "applied";
+            value: string;
+        };
         TableColumn: {
             column: string;
             description: string;
             group: string | null;
             key: string;
             object: string;
-            pii: boolean;
             synonyms: string[];
         };
         /** @description Requirement 11: the table's columns in dictionary order and its join keys. */
@@ -5703,6 +6599,24 @@ export interface components {
             loc: (string | number)[];
             msg: string;
             type: string;
+        };
+        Version: {
+            can_restore: boolean;
+            channel: string;
+            column_count: number;
+            expires_at: string | null;
+            /** Format: date-time */
+            imported_at: string;
+            imported_by: components["schemas"]["Person"] | null;
+            object_count: number;
+            public_id: string;
+            run_public_id: string | null;
+            /** @enum {string} */
+            status: "active" | "previous" | "pending";
+            version: string;
+        };
+        VersionsPage: {
+            items: components["schemas"]["Version"][];
         };
         VocabularyListSave: {
             items?: unknown;

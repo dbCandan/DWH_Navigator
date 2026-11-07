@@ -214,10 +214,10 @@ describe('term list view (list-search Requirement 17)', () => {
     expect(onResume).toHaveBeenCalled();
     expect(alert).not.toHaveBeenCalled();
     vi.mocked(onResume).mockResolvedValue(
-      new ApiError(409, 'Başka bir kullanıcının listesi çalışıyor; bitince yeniden deneyin.', 'term_list_running'),
+      new ApiError(409, 'Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun.', 'term_list_running'),
     );
     await act(async () => fireEvent.click(resume));
-    expect(alert).toHaveBeenCalledWith('Başka bir kullanıcının listesi çalışıyor; bitince yeniden deneyin.');
+    expect(alert).toHaveBeenCalledWith('Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun.');
     expect(resume).not.toBeDisabled();
   });
 

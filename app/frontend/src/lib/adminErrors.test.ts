@@ -9,7 +9,7 @@ const t = (key: string, values: Record<string, string | number> = {}) =>
 
 describe('admin error texts (rules/31)', () => {
   it('shows the server sentence only for the validation codes built from the sent content', () => {
-    for (const code of ['dictionary_workbook_invalid', 'vocabulary_term_duplicate', 'search_setting_invalid', 'search_setting_unknown'])
+    for (const code of ['vocabulary_term_duplicate', 'search_setting_invalid', 'search_setting_unknown'])
       expect(adminErrorText(new ApiError(422, 'sunucu cümlesi', code), t)).toBe('sunucu cümlesi');
   });
 
@@ -19,10 +19,16 @@ describe('admin error texts (rules/31)', () => {
       'search_change_busy',
       'upload_too_large',
       'unsupported_media_type',
-      'dictionary_file_empty',
-      'dictionary_import_in_progress',
       'dictionary_not_imported',
       'dictionary_table_not_found',
+      'dictionary_sync_in_progress',
+      'dictionary_source_not_configured',
+      'dictionary_source_unavailable',
+      'dictionary_source_invalid',
+      'dictionary_target_unavailable',
+      'dictionary_version_expired',
+      'dictionary_run_not_pending',
+      'settings_encryption_unavailable',
     ]) {
       const text = adminErrorText(new ApiError(500, 'iç ayrıntı', code), t);
       expect(text).toBe(catalog[`admin.error.${code}`]);

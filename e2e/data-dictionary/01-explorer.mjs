@@ -9,7 +9,7 @@ import {api, preparePerson, retirePeople, signInPerson} from '../shared/people.m
 // schemas is asked as a question, a question draws the voyage and the result constellation, the
 // map keeps moving, the compass turns and a kept answer still waits for the radar with "reduce
 // motion" (Requirement 8, Decision 8), and neither role sees a link
-// to the admin screen. The map rebuilt after another import is in 02-dictionary-versions.mjs.
+// to the admin screen. The map rebuilt after a new version is in 02-dictionary-versions.mjs.
 const QUESTION = 'Kredi kartı limit doluluk oranı verisine ihtiyacımız var, nerede?';
 
 await withBrowser('main screen map, table file by keyboard, voyage and roles', async ({page: admin, assert, open}) => {

@@ -269,7 +269,7 @@ export default function OverviewPage() {
           }
         >
           <Link className="btn sm" to={adminPath('sozluk')}>
-            {d.state === 'none' ? t('overview.dictionary.import') : t('overview.dictionary.open')}
+            {d.state === 'none' ? t('overview.dictionary.connect') : t('overview.dictionary.open')}
             <Icon name="arrow" />
           </Link>
         </HealthCard>

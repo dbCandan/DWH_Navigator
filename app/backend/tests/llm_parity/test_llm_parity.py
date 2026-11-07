@@ -4,9 +4,11 @@ Requirement 6, 7, 8 and 13: for every scenario the fake server receives exactly 
 the source client sent (adaptation and repair resends included), the returned JSON objects are
 equal, and each failure is its Requirement 13 class. The source side is recorded in the snapshot
 by ``tests.llm_parity.run_source``; with ``DWHNAVIGATOR_PARITY_SOURCE_DIR`` naming an export of the
-source at that commit, the source is also run again here and must reproduce the snapshot. The only
-target difference is the declared ``chat_template_kwargs`` field of Requirement 7, rule 3
-(``Scenario.thinking_off_from``); it is added to the source bytes here, never to the snapshot.
+source at that commit, the source is also run again here and must reproduce the snapshot. The
+target differs in two declared places only (Requirement 6): the ``chat_template_kwargs`` field of
+Requirement 7, rule 3 (``Scenario.thinking_off_from``), added to the source bytes here and never to
+the snapshot, and the repair request it does not send after a reply cut at ``max_tokens``
+(Requirement 8, Decision 20; ``TRUNCATIONS``).
 """
 
 import json
@@ -26,7 +28,14 @@ from app.domain.llm import (
     short_reason,
 )
 from app.infrastructure.llm.openai_adapter import OpenAICompatibleAdapter
-from tests.llm_parity.scenarios import SCENARIOS, SOURCE_COMMIT, Scenario
+from tests.llm_parity.scenarios import (
+    SCENARIOS,
+    SOURCE_COMMIT,
+    TRUNCATIONS,
+    Answer,
+    Scenario,
+    Truncation,
+)
 from tests.llm_parity.stdlib_server import ScriptedServer
 
 pytestmark = pytest.mark.unit
@@ -86,10 +95,12 @@ def test_the_snapshot_is_the_source_commit_and_covers_every_scenario() -> None:
     assert set(data["scenarios"]) == {scenario.name for scenario in SCENARIOS}
 
 
-@pytest.mark.parametrize("scenario", SCENARIOS, ids=[scenario.name for scenario in SCENARIOS])
-async def test_the_adapter_sends_the_source_bytes(scenario: Scenario) -> None:
-    source = _snapshot()["scenarios"][scenario.name]
-    server = ScriptedServer(scenario.answers)
+async def _run(
+    scenario: Scenario, answers: tuple[Answer, ...]
+) -> tuple[list[str], list[str], list[Any]]:
+    """The target's request bodies, outcomes and values for the scenario's calls."""
+
+    server = ScriptedServer(answers)
     outcomes: list[str] = []
     values: list[Any] = []
     try:
@@ -123,16 +134,45 @@ async def test_the_adapter_sends_the_source_bytes(scenario: Scenario) -> None:
                 assert "error" not in reason and "127.0.0.1" not in reason
     finally:
         server.close()
+    return [body.decode("ascii") for body in server.bodies], outcomes, values
 
-    assert [body.decode("ascii") for body in server.bodies] == target_bodies(
-        scenario, source["bodies"]
-    )
+
+@pytest.mark.parametrize("scenario", SCENARIOS, ids=[scenario.name for scenario in SCENARIOS])
+async def test_the_adapter_sends_the_source_bytes(scenario: Scenario) -> None:
+    source = _snapshot()["scenarios"][scenario.name]
+    bodies, outcomes, values = await _run(scenario, scenario.answers)
+
+    assert bodies == target_bodies(scenario, source["bodies"])
     assert values == source["values"]
     assert outcomes == list(scenario.expected)
     # The source failed exactly where the target failed.
     assert [error != "" for error in source["errors"]] == [
         outcome != LlmOutcome.OK.value for outcome in outcomes
     ]
+
+
+def _texts(answers: tuple[Answer, ...]) -> list[Any]:
+    """The reply texts the source reads: a truncation changes only ``finish_reason``."""
+
+    texts: list[Any] = []
+    for _status, payload in answers:
+        body = json.loads(payload)
+        for choice in body.get("choices", []):
+            choice.pop("finish_reason", None)
+        texts.append(body)
+    return texts
+
+
+@pytest.mark.parametrize("case", TRUNCATIONS, ids=[case.name for case in TRUNCATIONS])
+async def test_a_reply_cut_at_max_tokens_is_not_repaired(case: Truncation) -> None:
+    scenario = next(s for s in SCENARIOS if s.name == case.source)
+    assert _texts(case.answers) == _texts(scenario.answers)
+    source = _snapshot()["scenarios"][scenario.name]
+    bodies, outcomes, values = await _run(scenario, case.answers)
+
+    assert bodies == target_bodies(scenario, source["bodies"])[: case.requests]
+    assert outcomes == [case.expected]
+    assert values == (source["values"] if case.expected == LlmOutcome.OK.value else [None])
 
 
 def test_the_source_reproduces_the_snapshot_when_its_copy_is_given() -> None:

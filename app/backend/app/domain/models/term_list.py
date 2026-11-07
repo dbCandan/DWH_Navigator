@@ -2,9 +2,11 @@
 
 A list belongs to the user who uploaded it; the newest five per person are kept and an older one is
 deleted physically with its terms (``is_deleted`` stays false, the deviation from rules/41 the
-migrated schema test checks). At most one list of a tenant runs: a partial unique index over the
-``running`` rows. A term row is a dependent row keyed by its list and position (no public_id); it
-keeps its answer in full, independent of the dictionary.
+migrated schema test checks). At most one list per owner runs: two partial unique indexes over the
+``running`` rows, one keyed by ``(tenant_id, owner_id)`` for accounts and one by
+``(tenant_id, owner_visitor_id)`` for visitors; different owners' lists may run at the same time.
+A term row is a dependent row keyed by its list and position (no public_id); it keeps its answer
+in full, independent of the dictionary.
 """
 
 from datetime import datetime
@@ -44,10 +46,18 @@ class TermList(AuditSoftDeleteMixin, Base):
     __tablename__ = "term_list"
     __table_args__ = (
         Index(
-            "uq_term_list_one_running_per_tenant",
+            "uq_term_list_one_running_per_owner_user",
             "tenant_id",
+            "owner_id",
             unique=True,
-            postgresql_where=text("status = 'running'"),
+            postgresql_where=text("status = 'running' AND owner_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_term_list_one_running_per_owner_visitor",
+            "tenant_id",
+            "owner_visitor_id",
+            unique=True,
+            postgresql_where=text("status = 'running' AND owner_visitor_id IS NOT NULL"),
         ),
         Index("ix_term_list_owner_created", "owner_id", text("created_at DESC")),
         Index("ix_term_list_visitor_created", "owner_visitor_id", text("created_at DESC")),
@@ -65,7 +75,8 @@ class TermList(AuditSoftDeleteMixin, Base):
                 "uploaded one-column Excel list whose terms go one by one through the question "
                 "analysis. Owned by the uploading account or visitor, the newest five per owner are kept, an older "
                 "one is deleted physically with its terms (is_deleted stays false). At most one "
-                "running list per tenant. The uploaded file itself is never stored."
+                "running list per owner; different owners' lists may run at the same time. "
+                "The uploaded file itself is never stored."
             )
         },
     )

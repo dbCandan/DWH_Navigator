@@ -1,7 +1,7 @@
 """Shared setup of the question analysis and analysis record integration tests.
 
 The real application on a real HTTP server (uvicorn on a free local port, so live streams are
-read as they come), PostgreSQL, the synthetic dictionary imported through the API, an active chat
+read as they come), PostgreSQL, the synthetic dictionary seeded through the index, an active chat
 model on a real-TCP fake server answered by the parity fake analyst, and the process's analysis jobs
 rebuilt for each test with short time limits.
 """
@@ -251,8 +251,7 @@ async def qa_harness(
     await reset_analyses()
     dd.auth.use_settings(environment="development")
     if import_dictionary:
-        imported = await dd.import_dictionary(SYNTHETIC_WORKBOOK.read_bytes())
-        assert imported.status_code in (200, 201), imported.text
+        await dd.seed_dictionary(SYNTHETIC_WORKBOOK.read_bytes())
     fake = await FakeLlmServer().start()
     model = AnalystServer(fake)
     adapter = OpenAICompatibleAdapter(

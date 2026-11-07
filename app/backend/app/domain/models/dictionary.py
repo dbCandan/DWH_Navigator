@@ -46,22 +46,20 @@ class DictionaryVersion(AuditSoftDeleteMixin, Base):
             "public_id",
             postgresql_where=text("is_deleted = false"),
         ),
-        # Requirement 8: at most one active and one previous version per tenant.
+        # At most one active version per tenant; replaced versions are kept for a month.
         Index(
             "uq_dictionary_version_tenant_active",
             "tenant_id",
             unique=True,
             postgresql_where=text("status = 'active' AND is_deleted = false"),
         ),
-        Index(
-            "uq_dictionary_version_tenant_previous",
-            "tenant_id",
-            unique=True,
-            postgresql_where=text("status = 'previous' AND is_deleted = false"),
+        CheckConstraint(
+            "status IN ('active', 'previous', 'pending', 'pruned')", name="status_allowed"
         ),
-        CheckConstraint("status IN ('active', 'previous', 'pruned')", name="status_allowed"),
         CheckConstraint("(status = 'pruned') = is_deleted", name="pruned_is_deleted"),
-        CheckConstraint("channel IN ('arayuz', 'betik')", name="channel_allowed"),
+        CheckConstraint(
+            "channel IN ('arayuz', 'betik', 'kaynak', 'geri_donus')", name="channel_allowed"
+        ),
         CheckConstraint("content_digest ~ '^[0-9a-f]{12}$'", name="content_digest_format"),
         CheckConstraint(
             f"char_length(source_name) BETWEEN 1 AND {SOURCE_NAME_MAX_LENGTH}",
@@ -123,10 +121,15 @@ class DictionaryVersion(AuditSoftDeleteMixin, Base):
         comment="Name of the imported workbook without folders and control characters.",
     )
     channel: Mapped[str] = mapped_column(
-        String(8),
+        String(16),
         nullable=False,
         comment="Code reflection app.domain.dictionary.ImportChannel: 'arayuz' = admin screen, "
-        "'betik' = backend script.",
+        "'betik' = backend script, 'kaynak' = warehouse sync, 'geri_donus' = rollback.",
+    )
+    superseded_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="When this version stopped being active; the 30 day retention starts here.",
     )
     imported_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, comment="UTC time of the import."

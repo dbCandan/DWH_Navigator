@@ -80,8 +80,8 @@ rules = {
     and all(networks[name].get("internal") for name in attached("backend")),
     "host-gate-backend-only": members("host-gate") == {"backend"},
     "host-gate-backend-and-gate": members("host-gate") == {"backend", "local-egress"},
-    "gate-default-alias": aliases == ["host.docker.internal"],
-    "gate-named-alias": aliases == ["llm.lab.internal"],
+    "gate-default-alias": aliases == ["host.docker.internal", "dwh-source"],
+    "gate-named-alias": aliases == ["llm.lab.internal", "dwh-source"],
     "gate-one-target": environment == {"MODEL_PORT": "1234", "MODEL_ADDRESS": ""},
     "gate-named-target": environment == {"MODEL_PORT": "443", "MODEL_ADDRESS": "10.20.30.40"},
     "gate-networks": set(gate.get("networks", {})) == {"host-gate", "egress"},
@@ -129,9 +129,9 @@ check 'the gate maps host.docker.internal to this computer' assert "$scratch/on.
 check 'the gate uses the pinned reverse proxy image' assert "$scratch/on.json" gate-pinned-image
 
 # --- gate configuration ----------------------------------------------------------------------------
-check 'the gate has exactly one listener and one forward' bash -c '
-  test "$(grep -cE "^[[:space:]]*listen[[:space:]]" "$1")" = 1 &&
-  test "$(grep -cE "^[[:space:]]*proxy_pass[[:space:]]" "$1")" = 1 &&
+check 'the gate has the model and the dictionary source forwards only' bash -c '
+  test "$(grep -cE "^[[:space:]]*listen[[:space:]]" "$1")" = 2 &&
+  test "$(grep -cE "^[[:space:]]*proxy_pass[[:space:]]" "$1")" = 2 &&
   grep -qE "^[[:space:]]*listen MODEL_PORT;" "$1" &&
   grep -qE "^[[:space:]]*proxy_pass MODEL_ADDRESS:MODEL_PORT;" "$1"
 ' _ "$gate_conf"

@@ -177,7 +177,7 @@ talebi NASIL karşıladığını kolonları anarak açıkla; neden ana kaynak ol
 farkını söyle.
   · caveat: somut riskler — yanıltıcı kolon, birim belirsizliği (ay/yıl), granülerlik \
 (hesap / sözleşme / işlem seviyesi → toplulaştırma), snapshot / güncel değer, kapsam \
-(bireysel / tüzel), model tahmini etiketi, KVKK kişisel veri. Yalnız talebe ve önerdiğin \
+(bireysel / tüzel), model tahmini etiketi. Yalnız talebe ve önerdiğin \
 kolonlara ilişkin riskleri yaz; kolon ADLARINDAKİ yazım hataları (Dept/Debt gibi) sonucu \
 değiştirmez, bunları caveat ve attention içinde YAZMA. Yoksa "-".
   · usage: "… isteniyorsa tercih edilmeli" veya "… için ilk tercih" biçiminde tek cümle.

@@ -8,11 +8,13 @@ it after any later import — so its form is the same with each column's diction
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from typing import Any
 
 from app.domain.analysis import AnalysisResult, DictColumn
 from app.services.analysis import answer_cache
+
+_COLUMN_FIELDS = frozenset(f.name for f in fields(DictColumn))
 
 
 def _hits(matches: list[dict[str, Any]], replace: Any) -> list[dict[str, Any]]:
@@ -38,14 +40,16 @@ def record_form(result: AnalysisResult) -> dict[str, Any]:
 
 
 def from_record_form(data: dict[str, Any]) -> AnalysisResult | None:
-    """The answer back from the record alone; None when the stored form does not fit."""
+    """The answer back from the record alone; None when the stored form does not fit. A row's
+    fields the dictionary column no longer has are ignored, so older records stay readable."""
 
     try:
         columns: dict[str, DictColumn] = {}
         for m in (*data["objects"], *data["near_misses"]):
             for h in m["columns"]:
                 row = h["col"]
-                column = DictColumn(**{**row, "synonyms": tuple(row["synonyms"])})
+                known = {k: v for k, v in row.items() if k in _COLUMN_FIELDS}
+                column = DictColumn(**{**known, "synonyms": tuple(row["synonyms"])})
                 columns[column.key] = column
 
         def key(row: dict[str, Any]) -> str:

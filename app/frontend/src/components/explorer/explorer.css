@@ -110,7 +110,6 @@ html[data-surface="explorer"], [data-surface="explorer"] body { margin: 0; }
 }
 [data-surface="explorer"] .col:hover, [data-surface="explorer"] .col[aria-expanded="true"] { border-color: var(--accent); }
 [data-surface="explorer"] .col { max-width: 100%; text-align: left; flex-wrap: wrap; }
-[data-surface="explorer"] .col .flag { color: var(--low); }
 [data-surface="explorer"] .detail {
   margin-top: 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px;
   background: var(--surface-2); font-size: 13.5px; display: none;
@@ -532,14 +531,14 @@ html[data-surface="explorer"].dossier-open #hud { opacity: 0; pointer-events: no
   background: var(--slate-a60); color: var(--muted); font-size: 15px; display: grid; place-items: center; transition: transform .2s, color .2s, border-color .2s;
 }
 [data-surface="explorer"] .ds-close:hover { color: var(--white); border-color: var(--tone); transform: rotate(90deg); }
-[data-surface="explorer"] .ds-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 22px 14px; }
+[data-surface="explorer"] .ds-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 0 22px 14px; }
 [data-surface="explorer"] .ds-stat {
   border: 1px solid var(--periwinkle-a14); background: var(--tint-a05); border-radius: 14px; padding: 9px 10px 8px;
   animation: rise .45s ease both; animation-delay: calc(120ms + var(--i, 0) * 60ms);
 }
 [data-surface="explorer"] .ds-stat b { display: block; font: 700 22px/1.1 var(--display); color: var(--white); font-variant-numeric: tabular-nums; }
 [data-surface="explorer"] .ds-stat span { font-size: 11px; color: var(--muted); letter-spacing: .3px; }
-[data-surface="explorer"] .ds-stat.pii b { color: var(--low); } [data-surface="explorer"] .ds-stat.key b { color: var(--tone); }
+[data-surface="explorer"] .ds-stat.key b { color: var(--tone); }
 [data-surface="explorer"] .ds-stat.zero b { color: var(--faint); }
 [data-surface="explorer"] .ds-tools { padding: 0 22px 12px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--line); }
 [data-surface="explorer"] .ds-search {
@@ -570,7 +569,6 @@ html[data-surface="explorer"].dossier-open #hud { opacity: 0; pointer-events: no
   background: var(--mist-a35);
 }
 [data-surface="explorer"] .ds-col.is-key::before { background: var(--tone); box-shadow: 0 0 8px var(--tone); }
-[data-surface="explorer"] .ds-col.is-pii::before { background: var(--low); box-shadow: 0 0 8px var(--low); }
 [data-surface="explorer"] .ds-col:hover, [data-surface="explorer"] .ds-col:has(> .ds-ctop:focus-visible) { background: var(--tint-a07); border-color: var(--periwinkle-a14); }
 /* The row's open action is a native button (Decision 7) that looks like the source's row top. */
 [data-surface="explorer"] .ds-col:has(> .ds-ctop:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -582,7 +580,6 @@ html[data-surface="explorer"].dossier-open #hud { opacity: 0; pointer-events: no
 [data-surface="explorer"] .ds-cname { font: 600 13.5px var(--mono); color: var(--text-mono); overflow-wrap: anywhere; }
 [data-surface="explorer"] .ds-badge { font-size: 10.5px; font-weight: 600; letter-spacing: .4px; border-radius: 999px; padding: 0 7px; line-height: 18px; white-space: nowrap; }
 [data-surface="explorer"] .ds-badge.key { color: var(--tone); background: var(--tone-soft); }
-[data-surface="explorer"] .ds-badge.pii { color: var(--low); background: var(--low-bg); }
 [data-surface="explorer"] .ds-desc {
   margin: 4px 0 0; font-size: 13.5px; color: var(--text-desc); overflow-wrap: anywhere;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;

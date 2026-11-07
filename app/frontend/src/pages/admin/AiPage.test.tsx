@@ -112,6 +112,63 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(await dialog(message('ai.editor.newTitle'))).toBeInTheDocument();
   });
 
+  it('offers the fetched models in its own list: mouse, arrows, typing, a free name and Esc', async () => {
+    vi.spyOn(LlmIntegrationService, 'models').mockResolvedValue({
+      ok: true,
+      code: null,
+      message: '',
+      ms: 12,
+      models: [model('qwen3-8b', {context: 32768}), model('google/gemma-4-31b'), model('Qwen3-32B')],
+    });
+    await openPage(llmState([]));
+    fireEvent.click(screen.getByRole('button', {name: message('ai.hero.new')}));
+    const editor = await dialog(message('ai.editor.newTitle'));
+    fireEvent.change(within(editor).getByLabelText(message('ai.editor.endpoint')), {target: {value: 'http://10.0.0.7:1234/v1'}});
+    fireEvent.click(within(editor).getByRole('button', {name: message('ai.editor.fetch')}));
+    await within(editor).findByText(message('ai.editor.fetched', {count: 3}));
+
+    const box = within(editor).getByRole('combobox', {name: message('ai.editor.chatModel')});
+    const list = () => within(editor).queryByRole('listbox', {name: message('ai.editor.chatModelList')});
+    const options = () => within(list() as HTMLElement).getAllByRole('option');
+    expect(box).toHaveAttribute('aria-expanded', 'false');
+    expect(list()).not.toBeInTheDocument();
+
+    fireEvent.click(box);
+    expect(box).toHaveAttribute('aria-expanded', 'true');
+    expect(options()).toHaveLength(3);
+    fireEvent.click(options()[1]);
+    expect(box).toHaveValue('google/gemma-4-31b');
+    expect(list()).not.toBeInTheDocument();
+
+    // A chosen name does not narrow the list; typing does, in either case.
+    fireEvent.click(box);
+    expect(options()).toHaveLength(3);
+    expect(options()[1]).toHaveAttribute('aria-selected', 'true');
+    fireEvent.keyDown(box, {key: 'Escape'});
+    fireEvent.change(box, {target: {value: 'QWEN'}});
+    expect(options()).toHaveLength(2);
+    fireEvent.keyDown(box, {key: 'ArrowDown'});
+    fireEvent.keyDown(box, {key: 'ArrowDown'});
+    expect(box).toHaveAttribute('aria-activedescendant', options()[1].id);
+    fireEvent.keyDown(box, {key: 'Enter'});
+    expect(box).toHaveValue('Qwen3-32B');
+    expect(list()).not.toBeInTheDocument();
+
+    // A name the server did not offer stays as typed.
+    fireEvent.change(box, {target: {value: 'ozel-model'}});
+    expect(box).toHaveValue('ozel-model');
+    expect(list()).not.toBeInTheDocument();
+
+    // Esc closes the open list first and the drawer only after it.
+    fireEvent.change(box, {target: {value: ''}});
+    expect(list()).toBeInTheDocument();
+    fireEvent.keyDown(box, {key: 'Escape'});
+    expect(list()).not.toBeInTheDocument();
+    expect(screen.getByRole('dialog', {name: message('ai.editor.newTitle')})).toBeInTheDocument();
+    fireEvent.keyDown(box, {key: 'Escape'});
+    await waitFor(() => expect(screen.queryByRole('dialog', {name: message('ai.editor.newTitle')})).not.toBeInTheDocument());
+  });
+
   it('adds an integration: fetches the models, picks the only one, tests and saves it active', async () => {
     const models = vi
       .spyOn(LlmIntegrationService, 'models')
@@ -140,7 +197,8 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(await within(editor).findByText(message('ai.editor.fetched', {count: 1}))).toBeInTheDocument();
     expect(models).toHaveBeenCalledWith({endpoint: 'http://10.0.0.7:1234/v1'});
     expect(within(editor).getByLabelText(message('ai.editor.chatModel'))).toHaveValue('qwen3-8b');
-    expect(editor.ownerDocument.querySelector('#dl-chat option')).toHaveTextContent('bağlam 32.768');
+    fireEvent.click(within(editor).getByRole('combobox', {name: message('ai.editor.chatModel')}));
+    expect(within(editor).getByRole('option', {name: /qwen3-8b/})).toHaveTextContent('bağlam 32.768');
 
     fireEvent.click(within(editor).getByRole('button', {name: message('ai.editor.test')}));
     expect(await within(editor).findByText('Cevap verdi: “Ankara”')).toBeInTheDocument();

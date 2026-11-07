@@ -48,3 +48,31 @@
   ([PRD](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md)); bu PRD yeniden kabul
   edilmeden başlamaz.
   Durum (2026-10-15): kod ve testler yazıldı (önce kırmızı, sonra yeşil). Arka uç: pytest 996 testten 992'si geçti; kalan 4'ten 3'ü bu değişiklikle güncellendi ve geçiyor, 1'i (`test_two_parallel_activations_let_one_win`) değişiklikten önceki kodda da ara sıra kırılan bir yarış durumu. Ruff, mypy, `alembic check` temiz; `OpenAPI` ve ön yüz tipleri yeniden üretildi. Ön yüz: Vitest 39 dosya / 320 test (iki işçiyle) geçti, ESLint ve tip denetimi temiz. Yerel yığında oturumsuz ana ekran, cihaz kimliği ve ziyaretçi adına yazılan analiz kaydı tarayıcıda gözlendi. Açık: `scripts/quality-gate.sh all` ve tarayıcı senaryoları çalıştırılmadı (`kt-iskelet` ve çevrimdışı E2E paketi yok); nonprod gözlemi yapılmadı.
+- [x] Task 13 — Requirement 4 / Decision 3 / Acceptance 8 (revize): kiracı geneli tek çalışan liste
+  kuralı sahip (ziyaretçi/hesap) başına tek çalışan listeye çevrildi. Göç
+  [202611040001_term_list_running_per_owner.py](../../../../schema/alembic/versions/202611040001_term_list_running_per_owner.py)
+  kiracı geneli kısmi benzersiz dizini kaldırıp sahip başına iki yeni dizini ve
+  güncellenmiş tablo yorumunu ekliyor;
+  [term_list.py](../../../../app/backend/app/domain/models/term_list.py:46) modeli bu dizinleri
+  taşıyor;
+  [term_list_repository.py](../../../../app/backend/app/infrastructure/repositories/term_list_repository.py:73)
+  `running_for_owner(tenant_id, user_id, visitor_id)` sunuyor;
+  [term_lists.py](../../../../app/backend/app/services/term_lists.py:106) servisi tek 409
+  mesajını kullanıyor ve `refuse_while_running` ile `resume` bu sahip başına kontrole bağlı.
+  Kanıt — yerel kapsayıcıda backend paketi: `pytest -q` 1009 passed, 2 skipped (atlananlar
+  ilgisiz); etkilenen testler (`test_only_one_list_runs_per_owner`,
+  `test_two_owners_run_lists_at_the_same_time`, `test_two_uploads_from_one_owner_start_one_list`,
+  `test_a_list_is_its_owners_alone`) geçiyor. Ön yüz: `TermListView.test.tsx` (13/13) ve
+  `ExplorerPage.lists.test.tsx` (12/12) geçiyor; proje genelinde başka test dosyalarında bu
+  revizyonla ilgisiz 36 başarısızlık mevcut (admin sayfalarında `role="table"` değişiklikleri),
+  bu revizyonun kapsamı dışıdır. Kalan açık nokta: `scripts/quality-gate.sh all` koşumu bu
+  kutuda ruff'un EXE002 kuralı yüzünden ön yüz-öncesi düşüyor; sorun Windows OneDrive →
+  Docker bağlama ortamında bütün .py dosyalarına verilen `+x` bitinin etkisi, kodla ilgili
+  değil. Kanıt seviyesi L1 (etkilenen alanda).
+- [ ] Task 12 — Requirement 11, 15, 17 / Decision 15: ana ekran sayfa açılışında Listeler ucunu
+  kendiliğinden çağırmaz; yüklenen listenin kimliği yalnız onu yükleyen sekmenin `sessionStorage`
+  belleğinde tutulur; aynı sekmede sayfa yenilendiğinde hap bu kimlikle geri kurulur; sekme
+  kapandığında kayıt kaybolur. Kanıt: `app/frontend/src/pages/ExplorerPage.lists.test.tsx`
+  (yenilenen testler); `app/frontend/src/hooks/useTermList.ts` ve `tabAnalysis` örüntüsüne benzeyen
+  tab-kapsamlı yardımcı.
+- [ ] Task 13 — Requirement 5, Decision 3: farklı ziyaretçilerin listelerinin terimleri paralel analiz edilir; uygulama question-analysis Task 18'dir. Kanıt: question-analysis Task 18 testleri ve iki ziyaretçili canlı gözlem.

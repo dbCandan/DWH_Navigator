@@ -6,7 +6,9 @@ resends (at most three times, learned per connection), and a reply without a JSO
 repair request. On top of the source: only private addresses, verified TLS without proxies or
 redirects, a 4 MiB response limit, the process-wide slot limit, fixed failure classes, a stop that
 closes the open request, and one content-free summary, log event, span and metric set per call.
-No prompt, schema, reply, server error text, address or key is logged, traced or summarized.
+No prompt, schema, reply, server error text, address or key is logged, traced or summarized. The
+one place that holds bodies is the LLM call log's table, and only when a sink is set: see
+``app.domain.llm_call_log``.
 """
 
 import asyncio
@@ -68,6 +70,12 @@ from app.domain.llm import (
     lm_studio_models_url,
     parse_json_reply,
     refused_feature,
+)
+from app.domain.llm_call_log import (
+    CallLogSink,
+    LlmCallTrace,
+    LlmExchange,
+    readable_body,
 )
 from app.domain.turkish_text import fold
 from app.infrastructure.llm.call_slots import CallSlots
@@ -284,6 +292,14 @@ def _message_content(data: Mapping[str, Any]) -> str | None:
     return str(message.get("content") or "")
 
 
+def _cut_at_max_tokens(data: Mapping[str, Any]) -> bool:
+    """The server says it stopped the reply at ``max_tokens`` (Requirement 8, Decision 20)."""
+    try:
+        return bool(data["choices"][0].get("finish_reason") == "length")
+    except (KeyError, IndexError, TypeError, AttributeError):
+        return False
+
+
 def _context_length(value: object) -> int | None:
     if isinstance(value, float) and not math.isfinite(value):
         return None
@@ -330,8 +346,9 @@ def _ms(seconds: float) -> int:
 
 @dataclass(slots=True)
 class _CallState:
-    """Counters of one chat call; the parsed reply is the only content it holds."""
+    """Counters of one chat call; content is the parsed reply and the call log's exchanges."""
 
+    exchanges: list[LlmExchange] = field(default_factory=list)
     wait_ms: int = 0
     http_status: int | None = None
     requests: int = 0
@@ -363,6 +380,38 @@ class OpenAICompatibleAdapter:
         # Keyed by integration (or fingerprint without one); a changed connection starts afresh.
         self._features: dict[str, tuple[str, RequestFeatures]] = {}
         self._health: dict[str, tuple[str, float, LlmProbeResult]] = {}
+        self._call_log: CallLogSink | None = None
+        self._call_log_writes: set[asyncio.Task[None]] = set()
+
+    def set_call_log(self, sink: CallLogSink | None) -> None:
+        """Keep every finished chat call with its bodies in ``sink``; ``None`` keeps none."""
+
+        self._call_log = sink
+
+    def _keep_call(
+        self,
+        connection: LlmConnection,
+        request: LlmChatRequest,
+        state: _CallState,
+        summary: LlmCallSummary,
+    ) -> None:
+        """Hand the call to the log in the background: the caller does not wait for the write."""
+
+        if self._call_log is None or connection.tenant_id is None:
+            return
+        trace = LlmCallTrace(
+            tenant_id=connection.tenant_id,
+            summary=summary,
+            analysis_public_id=request.analysis_public_id,
+            exchanges=tuple(state.exchanges),
+        )
+        write = asyncio.get_running_loop().create_task(self._write_call(self._call_log, trace))
+        self._call_log_writes.add(write)
+        write.add_done_callback(self._call_log_writes.discard)
+
+    @staticmethod
+    async def _write_call(sink: CallLogSink, trace: LlmCallTrace) -> None:
+        await sink(trace)
 
     @asynccontextmanager
     async def _client(self, *, read: float, connect: float) -> AsyncIterator[httpx.AsyncClient]:
@@ -456,10 +505,14 @@ class OpenAICompatibleAdapter:
             try:
                 outcome = await self._cancellable(work, cancel)
             except asyncio.CancelledError:
-                self._finish(connection, request, state, LlmOutcome.CANCELLED, started, started_at)
+                summary = self._finish(
+                    connection, request, state, LlmOutcome.CANCELLED, started, started_at
+                )
+                self._keep_call(connection, request, state, summary)
                 record.outcome = LlmOutcome.CANCELLED.value
                 raise
             summary = self._finish(connection, request, state, outcome, started, started_at)
+            self._keep_call(connection, request, state, summary)
             record.outcome = outcome.value
             record.http_status = state.http_status
             record.requests = state.requests
@@ -562,8 +615,16 @@ class OpenAICompatibleAdapter:
                     )
                     state.requests += 1
                     state.http_status = None
+                    exchange = self._open_exchange(connection, state, body)
+                    sent_at = self._clock()
                     status, raw = await self._send(client, "POST", url, headers, body)
                     state.http_status = status
+                    if exchange is not None:
+                        exchange.status = status
+                        exchange.duration_ms = _ms(self._clock() - sent_at)
+                        exchange.response, exchange.response_truncated = readable_body(
+                            raw, connection.api_key
+                        )
                     if status == 400 and adaptations < MAX_ADAPTATIONS:
                         refused = features.refused(fold(_error_text(raw)))
                         if refused is not None:
@@ -588,6 +649,9 @@ class OpenAICompatibleAdapter:
                     if parsed is not None:
                         state.value = parsed
                         return LlmOutcome.OK
+                    if _cut_at_max_tokens(data):
+                        # Decision 20: a repair would go with the same max_tokens and be cut again.
+                        return LlmOutcome.OUTPUT_TRUNCATED
                     # Requirement 8: one repair request with the start of the invalid reply.
                     state.repaired = True
                     messages = [
@@ -598,6 +662,18 @@ class OpenAICompatibleAdapter:
                 return LlmOutcome.INVALID_JSON
         except Exception as error:  # noqa: BLE001 - classify re-raises what it does not know
             return classify_transport_error(error)
+
+    def _open_exchange(
+        self, connection: LlmConnection, state: _CallState, body: bytes
+    ) -> LlmExchange | None:
+        """The call log's row of this request; it stays open when no response arrives."""
+
+        if self._call_log is None or connection.tenant_id is None:
+            return None
+        text, truncated = readable_body(body, connection.api_key)
+        exchange = LlmExchange(request=text, request_truncated=truncated)
+        state.exchanges.append(exchange)
+        return exchange
 
     def _finish(
         self,

@@ -98,9 +98,10 @@ describe('admin shell (search-settings Requirement 20-22, 24)', () => {
     expect(box).toHaveAttribute('placeholder', message('admin.palette.placeholder'));
     expect(screen.getByText(message('admin.palette.pages'))).toBeInTheDocument();
     expect(screen.getByText(message('admin.palette.actions'))).toBeInTheDocument();
-    // The pages, then the dictionary's three, the index rebuild, "Yeni model entegrasyonu",
+    // The pages, then the dictionary's export, the index rebuild, "Yeni model entegrasyonu",
     // "Model envanteri", "Performans ayrıntıları" and "Uygulamaya dön".
-    expect(screen.getAllByRole('option')).toHaveLength(NAV_PAGES.length + 8);
+    expect(screen.getAllByRole('option')).toHaveLength(NAV_PAGES.length + 6);
+    expect(screen.getByText(message('admin.palette.exportDictionary'))).toBeInTheDocument();
 
     fireEvent.change(box, {target: {value: 'kullanici'}});
     expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual([

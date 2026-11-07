@@ -66,7 +66,6 @@ class TableColumn(BaseModel):
     object: str
     description: str
     synonyms: list[str]
-    pii: bool
     group: str | None
 
 

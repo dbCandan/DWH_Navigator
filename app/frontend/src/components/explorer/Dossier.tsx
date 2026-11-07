@@ -16,8 +16,8 @@ const SIBLINGS = 14;
 const SHORT_DESCRIPTION = 140;
 const COPY_NOTE_MS = 1400;
 
-type Filter = 'all' | 'key' | 'pii';
-const FILTERS: readonly Filter[] = ['all', 'key', 'pii'];
+type Filter = 'all' | 'key';
+const FILTERS: readonly Filter[] = ['all', 'key'];
 
 /** The table that is open: its key, its star when it has one, and an opening count. */
 export interface OpenTable {
@@ -58,7 +58,7 @@ function ColumnRow({column, index, term, isKey}: {column: TableColumn; index: nu
     if (event.detail !== 0 && getSelection()?.toString()) return;
     setOpen(!open);
   }
-  const cls = 'ds-col' + (isKey ? ' is-key' : '') + (column.pii ? ' is-pii' : '') + (open ? ' open' : '');
+  const cls = 'ds-col' + (isKey ? ' is-key' : '') + (open ? ' open' : '');
   return (
     <div className={cls} style={{'--i': index} as CSSProperties} onClick={toggle}>
       <button className="ds-ctop" type="button" aria-expanded={open}>
@@ -66,11 +66,6 @@ function ColumnRow({column, index, term, isKey}: {column: TableColumn; index: nu
         {isKey ? (
           <span className="ds-badge key" title={t('dossier.keyTip')}>
             {t('dossier.keyBadge')}
-          </span>
-        ) : null}
-        {column.pii ? (
-          <span className="ds-badge pii" title={t('dossier.piiTip')}>
-            {t('dossier.piiBadge')}
           </span>
         ) : null}
       </button>
@@ -105,9 +100,9 @@ function Stat({cls, n, label, i}: {cls: string; n: number; label: string; i: num
 
 /**
  * The table file (dictionary-explorer Requirement 11-13; index.html Dossier): the panel that
- * opens from the right with every column of a table, its join keys and KVKK marks, a column
- * search, filters and the other tables of its cluster. It locks the page behind it: the focus
- * goes to "Kapat", stays in the panel, Esc closes and the focus goes back to the opener.
+ * opens from the right with every column of a table, its join keys, a column search, filters
+ * and the other tables of its cluster. It locks the page behind it: the focus goes to "Kapat",
+ * stays in the panel, Esc closes and the focus goes back to the opener.
  */
 export function Dossier({table, onOpen, onClose}: Props) {
   const {t} = useIntl();
@@ -219,7 +214,7 @@ export function Dossier({table, onOpen, onClose}: Props) {
   const detail = loaded?.seq === shownSeq ? loaded.detail : null;
   const error = loaded?.seq === shownSeq ? loaded.error : null;
   const keys = new Set(detail?.join_keys ?? []);
-  const kind = (c: TableColumn): Record<Filter, boolean> => ({all: true, key: keys.has(c.column), pii: c.pii});
+  const kind = (c: TableColumn): Record<Filter, boolean> => ({all: true, key: keys.has(c.column)});
   const term = fold(query.trim());
   const columns = detail?.columns ?? [];
   const shown = columns.filter(
@@ -248,7 +243,7 @@ export function Dossier({table, onOpen, onClose}: Props) {
     }
   }
 
-  const filterName: Record<Filter, string> = {all: t('dossier.filterAll'), key: t('dossier.filterKey'), pii: t('dossier.filterPii')};
+  const filterName: Record<Filter, string> = {all: t('dossier.filterAll'), key: t('dossier.filterKey')};
 
   return (
     <aside
@@ -295,7 +290,6 @@ export function Dossier({table, onOpen, onClose}: Props) {
           <>
             <Stat cls="" n={columns.length} label={t('dossier.statColumns')} i={0} />
             <Stat cls="key" n={columns.filter((c) => keys.has(c.column)).length} label={t('dossier.statKeys')} i={1} />
-            <Stat cls="pii" n={columns.filter((c) => c.pii).length} label={t('dossier.statPii')} i={2} />
           </>
         ) : null}
       </div>

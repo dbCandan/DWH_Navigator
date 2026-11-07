@@ -3,9 +3,11 @@
 Standard library only: the source side imports this module next to the source package. Each
 scenario is a connection, the chat calls made on one client in order, and the scripted answers
 of the fake server. ``expected`` is the Requirement 13 class of each call on the target.
-``thinking_off_from`` declares the one target difference (Requirement 7, rule 3): from that
+``thinking_off_from`` declares the first target difference (Requirement 7, rule 3): from that
 request on, the target sends ``chat_template_kwargs`` where the source sent nothing, because the
-server refused ``reasoning_effort: "none"``. Every other byte stays the source's.
+server refused ``reasoning_effort: "none"``. ``TRUNCATIONS`` declares the second (Requirement 8,
+Decision 20): after a non-JSON reply cut at ``max_tokens`` the target sends no repair request.
+Every other byte stays the source's.
 """
 
 import json
@@ -43,10 +45,19 @@ TEST_SCHEMA: dict[str, Any] = {
 }
 
 
-def reply(content: str, *, prompt_tokens: int = 1200, completion_tokens: int = 40) -> Answer:
+def reply(
+    content: str,
+    *,
+    prompt_tokens: int = 1200,
+    completion_tokens: int = 40,
+    finish_reason: str | None = None,
+) -> Answer:
+    choice: dict[str, Any] = {"index": 0, "message": {"role": "assistant", "content": content}}
+    if finish_reason is not None:
+        choice["finish_reason"] = finish_reason
     body = {
         "id": "sohbet-1",
-        "choices": [{"index": 0, "message": {"role": "assistant", "content": content}}],
+        "choices": [choice],
         "usage": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
     }
     return 200, json.dumps(body)
@@ -185,5 +196,48 @@ SCENARIOS: tuple[Scenario, ...] = (
         "onarimda_ret",
         (reply("JSON değil"), error(400, _JSON_MODE), reply(_OK)),
         ("ok",),
+    ),
+)
+
+
+@dataclass(frozen=True)
+class Truncation:
+    """Requirement 8, Decision 20: a recorded source scenario whose replies also say why they ended.
+
+    The source never reads ``finish_reason``, so with the same reply texts it sends the bodies it
+    sent for ``source``; the target sends the first ``requests`` of them.
+    """
+
+    name: str
+    source: str
+    answers: tuple[Answer, ...]
+    expected: str
+    requests: int
+
+
+TRUNCATIONS: tuple[Truncation, ...] = (
+    Truncation(
+        "kesilen_json_olmayan",
+        "iki_kez_json_olmayan",
+        (reply("düz metin", finish_reason="length"), reply("yine düz metin")),
+        "output_truncated",
+        1,
+    ),
+    Truncation(
+        "onarimda_kesilen",
+        "iki_kez_json_olmayan",
+        (reply("düz metin"), reply("yine düz metin", finish_reason="length")),
+        "output_truncated",
+        2,
+    ),
+    Truncation(
+        "stop_ile_json_olmayan",
+        "iki_kez_json_olmayan",
+        (reply("düz metin", finish_reason="stop"), reply("yine düz metin", finish_reason="stop")),
+        "invalid_json",
+        2,
+    ),
+    Truncation(
+        "kesilmis_gecerli_json", "duz_yanit", (reply(_OK, finish_reason="length"),), "ok", 1
     ),
 )

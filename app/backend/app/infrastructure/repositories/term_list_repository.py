@@ -1,8 +1,10 @@
 """Persistence of term lists and their terms (data-dictionary 005-list-search Veri ve geçiş).
 
-Every query is scoped to a tenant except the process-wide checks of running lists. A list and its
-terms are written in one transaction; an older list of the same owner beyond the newest five is
-deleted physically in the transaction that writes the new one, its terms with it.
+Every query is scoped to a tenant except the process-wide checks of running lists. The running
+check is per owner (account or visitor): different owners' lists may run at the same time
+(Decision 3). A list and its terms are written in one transaction; an older list of the same owner
+beyond the newest five is deleted physically in the transaction that writes the new one, its terms
+with it.
 """
 
 from dataclasses import dataclass
@@ -70,9 +72,15 @@ class TermListRepository:
 
     # ------------------------------------------------------------------ reading
 
-    async def running(self, tenant_id: int) -> ListRow | None:
+    async def running_for_owner(
+        self, tenant_id: int, user_id: int | None, visitor_id: int | None
+    ) -> ListRow | None:
+        """The owner's one running list, or none; different owners' lists may run at once."""
+
         statement = _with_owner().where(
-            TermList.tenant_id == tenant_id, TermList.status == ListStatus.RUNNING.value
+            TermList.tenant_id == tenant_id,
+            TermList.status == ListStatus.RUNNING.value,
+            owned_by(user_id, visitor_id),
         )
         row = (await self.session.execute(statement)).first()
         return ListRow(*row) if row is not None else None

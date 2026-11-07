@@ -32,6 +32,7 @@
 - [x] Task 8 — Requirement 19 / Acceptance 5: Yapay zekâ sayfası (etkin model kartı, entegrasyon
   kartları, düzenleyici ve envanter çekmeceleri, onaylar ve bildirimler), kabuktaki rozet, sistem
   durumu satırı ve Ctrl K'daki iki eylem; Vitest testleri, OpenAPI ve üretilmiş tiplerin güncelliği.
+  Sohbet modeli öneri listesi tarayıcının çizdiği `datalist` yerine temaya uyan `SuggestCombobox`'tır.
   Kanıt: `app/frontend/src/pages/admin/AiPage.test.tsx`, `scripts/quality-gate.sh frontend`.
 - [x] Task 9 — Dağıtım etkisi (nonprod): `deploy-hooks.sh`'ın şifreleme anahtarını bir kez
   üretmesi, kurum kök sertifikasının imaja eklenmesi, ağ çıkış kuralı (kubernetes-delivery).
@@ -49,3 +50,25 @@
   çalıştırıldı; sayfa, model listesi, düzenleyicinin üç adımı ve envanter masaüstü ve telefon
   genişliğinde yan yana karşılaştırıldı. Farklar yalnız model sunucusunun adresi (hedefte kapı adı,
   kaynakta makinenin kendisi), hata metninde adresin olmaması (Requirement 13) ve oturum alanıdır.
+- [ ] Task 13 — Requirement 6, 8, 13, 18, Decision 20 / Acceptance 2, Acceptance 4: uzunluk
+  sınırında kesilen yanıt. Önce başarısız testler: `finish_reason: "length"` taşıyan JSON olmayan
+  ilk yanıtta sunucu tek istek alır, sonuç `output_truncated`, `repaired` yanlış, token'lar
+  toplanır; onarım yanıtı kesilirse de `output_truncated`; kesilmiş ama geçerli JSON kabul edilir;
+  `finish_reason`'sız JSON olmayan yanıt kaynaktaki gibi onarılır ve `invalid_json` olur; ölçüm
+  etiket kümesi 16 sınıf; analiz sebebi "Model hatası: model cevabı uzunluk sınırında kesildi"
+  (question-analysis Requirement 5). Sonra bağdaştırıcı, sınıf ve metin tabloları, OpenAPI ve ön yüz
+  tipleri, analiz kayıtları etiketi. Kanıt: `tests/unit/test_llm_adapter.py`,
+  `tests/llm_parity/test_llm_parity.py`, `tests/unit/test_llm_domain.py`, analiz sebebi testi,
+  `scripts/quality-gate.sh all`.
+  Durum (2026-11-04): testler önce kırmızı (6), sonra yeşil. Odaklı pytest 193 geçti, 1 atlandı
+  (kaynak kopyası yok); ruff (EXE002 dışında), black, isort ve mypy temiz; `export-openapi.sh
+  --check`, `generate-types.sh --check` ve `render-clients.sh --check` geçti; Vitest
+  `analysisRecords` ve yerelleştirme anahtar denetimi geçti. Gerçek model sunucusunda (LM Studio,
+  `gemma-4-26b-a4b-qat`) 20 token sınırıyla çağrı tek istekle `output_truncated` verdi, onarım
+  gitmedi. Açık: `scripts/quality-gate.sh all` geçmedi: Windows bağlamasında her dosya 777
+  göründüğü için ruff EXE002 verir; PostgreSQL'li 273 test, aynı çalışma ağacındaki kayıtsız
+  `term_list` değişikliğinin şema sapmasıyla (`202611040001_term_list_running_per_owner.py`)
+  hazırlıkta durdu; `render-charts.sh` için `kt-iskelet` yok; Vitest'te iki yönetim sayfası
+  dosyasının ilk testi soğuk yüklemede 1 saniye sınırını aşıyor (sıra karıştırılınca ilk sıradaki
+  başka test düşüyor).
+- [ ] Task 14 — Requirement 1, 17, Decision 11 / Acceptance 3: sohbet çağrısı sınırının varsayılanı 5 (question-analysis Task 18 ile birlikte). Kanıt: ayar testi, `tests/unit/test_llm_call_slots.py`, `scripts/check-config-sync.py`.

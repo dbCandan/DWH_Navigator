@@ -176,14 +176,15 @@ async def test_a_list_is_its_owners_alone(qa: Qa) -> None:
             assert error(await qa.request(method, path, who)) == (404, "term_list_not_found")
         listed = await qa.request("GET", "/term-lists", who)
         assert listed.json()["items"] == []
-    refused = await upload(qa, xlsx(["Terim", TERM]), qa.other)
-    assert error(refused) == (409, "term_list_running")
-    assert refused.json()["detail"]["message"] == (
-        "Başka bir kullanıcının listesi çalışıyor; bitince yeniden deneyin."
-    )
-    # The running list is checked before the file is read, an empty one too (the source's order).
-    assert error(await upload(qa, b"", qa.other)) == (409, "term_list_running")
+    # Another visitor's running list is not an engel (Decision 3, Version 1.3.0): the second
+    # visitor starts its own list in parallel.
+    parallel = await upload(qa, xlsx(["Terim", TERM]), qa.other)
+    assert parallel.status_code == 201
+    second_id = parallel.json()["id"]
+    assert await sql("SELECT count(*) FROM term_list WHERE status = 'running'") == [(2,)]
+    # The same owner cannot start a second list while one runs.
     own = await upload(qa, xlsx(["Terim", TERM]))
+    assert error(own) == (409, "term_list_running")
     assert own.json()["detail"]["message"] == (
         "Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun."
     )
@@ -193,15 +194,30 @@ async def test_a_list_is_its_owners_alone(qa: Qa) -> None:
     )
     qa.model.hold.set()
     await finished(qa, list_id)
+    await finished(qa, second_id, qa.other)
 
 
-async def test_two_uploads_at_once_start_one_list(qa: Qa) -> None:
+async def test_two_uploads_from_one_owner_start_one_list(qa: Qa) -> None:
+    """Two parallel uploads from the same owner: at most one running row survives (Decision 3)."""
+
+    qa.model.hold = asyncio.Event()
+    first, second = await asyncio.gather(
+        upload(qa, xlsx(["Terim", TERM])), upload(qa, xlsx(["Terim", OTHER]))
+    )
+    assert sorted([first.status_code, second.status_code]) == [201, 409]
+    assert await sql("SELECT count(*) FROM term_list WHERE status = 'running'") == [(1,)]
+    qa.model.hold.set()
+
+
+async def test_two_owners_run_lists_at_the_same_time(qa: Qa) -> None:
+    """Different owners' uploads race without engel; both running lists survive (Decision 3)."""
+
     qa.model.hold = asyncio.Event()
     first, second = await asyncio.gather(
         upload(qa, xlsx(["Terim", TERM])), upload(qa, xlsx(["Terim", OTHER]), qa.other)
     )
-    assert sorted([first.status_code, second.status_code]) == [201, 409]
-    assert await sql("SELECT count(*) FROM term_list WHERE status = 'running'") == [(1,)]
+    assert first.status_code == 201 and second.status_code == 201
+    assert await sql("SELECT count(*) FROM term_list WHERE status = 'running'") == [(2,)]
     qa.model.hold.set()
 
 
@@ -260,13 +276,12 @@ async def test_a_saved_answer_is_given_again_and_marked(qa: Qa) -> None:
     assert [i["flow"] for i in again["items"]] == ["reused", "analyst"]
 
 
-async def test_answers_and_reports_outlive_a_dictionary_import(qa: Qa) -> None:
+async def test_answers_and_reports_outlive_a_new_dictionary_version(qa: Qa) -> None:
     done = await run_list(qa, ["Terim", TERM])
     best = done["items"][0]["best"]["key"]
     before = await qa.request("GET", f"/term-lists/{done['id']}/report")
     sample = xlsx_bytes({"Kolonlar": SAMPLE_ROWS, "Objeler": SAMPLE_OBJECTS})
-    imported = await qa.dd.import_dictionary(sample)
-    assert imported.status_code in (200, 201), imported.text
+    await qa.dd.seed_dictionary(sample)
     assert best not in qa.dd.index.engine().objects
     item = await qa.request("GET", f"/term-lists/{done['id']}/items/1")
     assert item.status_code == 200 and item.json()["objects"][0]["key"] == best

@@ -14,3 +14,7 @@ Her satır bağımsız teslim edilebilir bir yeteneği kabul edilmiş PRD'sine b
 | 008 | analysis-records | [PRD](PRDs/008-analysis-records/PRD.md) | Accepted |
 | 009 | search-settings | [PRD](PRDs/009-search-settings/PRD.md) | Accepted |
 | 010 | quality-evaluation | [PRD](PRDs/010-quality-evaluation/PRD.md) | Accepted |
+| 011 | dictionary-sync | [PRD](PRDs/011-dictionary-sync/PRD.md) | Draft |
+
+Sahip kararı: Sözlük güncellemesinin periyodik zamanlayıcısı `dictionary-sync` dışında bırakılmıştır;
+düğmeli güncelleme teslim edildikten sonra kendi satırı ve PRD'siyle ele alınacaktır.

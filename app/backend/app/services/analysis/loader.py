@@ -2,7 +2,7 @@
 (list-search Requirement 1-3, Decision 10).
 
 The parsing helpers are pure and byte-for-byte the source's: header mapping, cell texts,
-synonym splitting, the KVKK mark, dataset groups, object profiles, row warnings, the
+synonym splitting, dataset groups, object profiles, row warnings, the
 version and the term list rules (``parse_term_sheet``). A workbook is read from its bytes in
 memory with openpyxl (read-only, values only; openpyxl parses the XML with defusedxml); a term
 list is opened by the shared safe Excel reader, which bounds its unpacked size. Nothing touches
@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import hashlib
 import math
-import re
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from io import BytesIO
@@ -25,8 +24,6 @@ from app.domain.analysis import DictColumn, ObjectProfile
 from app.domain.term_lists import Rejection, TermListRejected
 from app.domain.turkish_text import fold
 from app.infrastructure.excel import reader as excel_reader
-
-_PII_MARKER = re.compile(r"kvkk|kişisel\s+veri", re.IGNORECASE)
 
 # Template column names, matched case-insensitively.
 _REQUIRED = {
@@ -157,7 +154,6 @@ def build_columns(
                 description=description,
                 synonyms=tuple(split_synonyms(listed)),
                 dataset_group=groups.get(f"{db}.{schema}.{obj}") or None,
-                has_pii=bool(_PII_MARKER.search(f"{description} {listed}")),
                 role=_cell(rec.get(names["role"])) if "role" in names else "",
                 summary=_cell(rec.get(names["summary"])) if "summary" in names else "",
             )

@@ -539,6 +539,51 @@ async def test_a_repaired_reply_is_returned(server: FakeLlmServer) -> None:
     assert result.ok and result.value == {"ok": True} and result.summary.repaired
 
 
+async def test_a_reply_cut_at_max_tokens_is_not_repaired(server: FakeLlmServer) -> None:
+    # Decision 20: the repair would go with the same max_tokens and be cut again.
+    server.scenario = script(
+        [
+            chat_reply('{"adaylar": ["T1", "T2"', completion_tokens=2500, finish_reason="length"),
+            chat_reply('{"ok": true}'),
+        ]
+    )
+    result = await adapter().chat(connection(server), ask())
+    assert result.outcome is LlmOutcome.OUTPUT_TRUNCATED and result.value is None
+    assert not result.summary.repaired and result.summary.requests == 1
+    assert (result.summary.prompt_tokens, result.summary.completion_tokens) == (11, 2500)
+    assert len(server.chat_bodies()) == 1
+
+
+async def test_a_repair_reply_cut_at_max_tokens_is_truncated(server: FakeLlmServer) -> None:
+    server.scenario = script(
+        [chat_reply("düz metin"), chat_reply('{"adaylar": [', finish_reason="length")]
+    )
+    result = await adapter().chat(connection(server), ask())
+    assert result.outcome is LlmOutcome.OUTPUT_TRUNCATED and result.value is None
+    assert result.summary.repaired and result.summary.requests == 2
+
+
+async def test_a_cut_reply_that_is_valid_json_is_accepted(server: FakeLlmServer) -> None:
+    server.scenario = script([chat_reply('{"ok": true}', finish_reason="length")])
+    result = await adapter().chat(connection(server), ask())
+    assert result.ok and result.value == {"ok": True} and not result.summary.repaired
+
+
+@pytest.mark.parametrize("finish_reason", ["stop", "", "LENGTH"])
+async def test_other_finish_reasons_keep_the_source_repair(
+    server: FakeLlmServer, finish_reason: str
+) -> None:
+    server.scenario = script(
+        [
+            chat_reply("düz metin", finish_reason=finish_reason),
+            chat_reply("yine düz metin", finish_reason=finish_reason),
+        ]
+    )
+    result = await adapter().chat(connection(server), ask())
+    assert result.outcome is LlmOutcome.INVALID_JSON
+    assert result.summary.repaired and result.summary.requests == 2
+
+
 # --- Requirement 9, 10 and 13: failure classes --------------------------------------------------
 
 

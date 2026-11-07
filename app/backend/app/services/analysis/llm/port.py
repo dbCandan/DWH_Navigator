@@ -32,6 +32,7 @@ class FailureCode(StrEnum):
     CONTEXT_EXCEEDED = "context_exceeded"
     UPSTREAM_STATUS = "upstream_status"
     INVALID_RESPONSE = "invalid_response"
+    OUTPUT_TRUNCATED = "output_truncated"
     INVALID_JSON = "invalid_json"
     RESPONSE_TOO_LARGE = "response_too_large"
     CANCELLED = "cancelled"

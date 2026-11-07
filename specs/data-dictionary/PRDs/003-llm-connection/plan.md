@@ -1,6 +1,6 @@
 # Plan — llm-connection
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.0.2). Uygulama dört parçadır: backend
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.2.0). Uygulama dört parçadır: backend
 (veri modeli, model portu ve bağdaştırıcısı, yönetim uçları, gözlemlenebilirlik), motorun portu
 kullanması ([question-analysis](../004-question-analysis/PRD.md)), çağrı özetinin analiz kaydına
 yazılması ([analysis-records](../008-analysis-records/PRD.md)) ve ön yüzdeki Yapay zekâ sayfası.
@@ -39,6 +39,13 @@ yazılması ([analysis-records](../008-analysis-records/PRD.md)) ve ön yüzdeki
   5'tedir (PRD 1.0.1); bu PRD sınıfı, HTTP kodunu ve test/yoklama kısa nedenini üretir.
 - Kayıtta ad çözme ve özel ağ denetimi, adres ilk kez kaydedilirken ve değiştiğinde yapılır.
 - Kayıtlı test sonucu (`record`) `updated_at`'i değiştirmez; bağlantı değişikliği sayılmaz.
+- Requirement 8, 13, Decision 20: `domain/llm.py`'ye `LlmOutcome.OUTPUT_TRUNCATED` ve metni,
+  `openai_adapter.py` `_exchange`'e `choices[0].finish_reason` okuması (geçersiz yanıt ve `"length"`
+  ise onarımsız `output_truncated`), `core/telemetry.py` sonuç kümesi, `schemas/llm/integrations.py`
+  sınıf listesi, analiz motorunun port sınıfı (`services/analysis/llm/port.py`) ve sebep metni
+  (`services/analysis/pipeline.py`, question-analysis Requirement 5), analiz kayıtlarındaki sonuç
+  etiketi (`app/frontend/src/lib/analysisRecords.ts`, `tr.json`); OpenAPI ve ön yüz tipleri yeniden
+  üretilir. Fark testine kesilen yanıt senaryoları eklenir; kaynağın kaydı değişmez.
 - Yerel çıkış kapısı (kubernetes-delivery Requirement 17): `app/infra/.env`'de
   `COMPOSE_PROFILES=local-egress`, `LOCAL_EGRESS_MODEL_PORT`, isteğe bağlı
   `LOCAL_EGRESS_MODEL_ADDRESS` (IPv4; boşsa bu bilgisayar) ve `LOCAL_EGRESS_MODEL_HOST` (API

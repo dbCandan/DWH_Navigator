@@ -1,0 +1,166 @@
+import {useEffect, useState} from 'react';
+import {Drawer} from '@/components/admin/Drawer';
+import {Skeleton} from '@/components/admin/Skeleton';
+import {useIntl} from '@/contexts/IntlContext';
+import {useToast} from '@/hooks/useToast';
+import {adminErrorText} from '@/lib/adminErrors';
+import {versionDigits} from '@/lib/adminStatus';
+import {runFailureText, runPill} from '@/lib/dictionarySync';
+import {formatDateTime, formatNumber} from '@/lib/format';
+import {DictionarySyncService} from '@/services/dictionarySync';
+import type {SyncCounts, SyncRunDetail, SyncRunSummary} from '@/types/dictionarySync';
+import {Fact} from './Fact';
+import {RunChanges} from './RunChanges';
+import {RunSuggestions} from './RunSuggestions';
+
+/** The report's numbers, in reading order. */
+const COUNTS: readonly (keyof SyncCounts)[] = [
+  'tables_added',
+  'tables_removed',
+  'tables_changed',
+  'tables_excluded',
+  'tables_corrected',
+  'columns_added',
+  'columns_removed',
+  'columns_changed',
+  'columns_excluded',
+  'columns_corrected',
+  'fields_filled',
+  'fields_empty',
+  'model_calls',
+  'model_failures',
+  'warnings',
+];
+
+const version = (value: string) => (value ? versionDigits(value) : '—');
+
+interface Props {
+  runId: string;
+  onClose: () => void;
+  /** An action changed the run: the page's lists and states follow. */
+  onChanged: (run: SyncRunSummary) => void;
+}
+
+/**
+ * The update report (dictionary-sync Requirement 7, 9, 12): when, who and what came out, the
+ * counts, the warnings, the failure class, the suggestions and the change lines; a run waiting
+ * for approval is applied or rejected here.
+ */
+export function RunReport({runId, onClose, onChanged}: Props) {
+  const {t} = useIntl();
+  const {toast, reportUnreachable} = useToast();
+  const [run, setRun] = useState<SyncRunDetail | null>(null);
+  const [failure, setFailure] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    DictionarySyncService.run(runId).then(
+      (answer) => {
+        if (live) setRun(answer);
+      },
+      (error: unknown) => {
+        reportUnreachable(error);
+        if (live) setFailure(adminErrorText(error, t));
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, [runId, t, reportUnreachable]);
+
+  async function act(request: () => Promise<SyncRunDetail>, failedTitle: string) {
+    setBusy(true);
+    try {
+      const answer = await request();
+      setRun(answer);
+      onChanged(answer);
+    } catch (error) {
+      reportUnreachable(error);
+      toast(t(failedTitle), [adminErrorText(error, t)], true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function approve() {
+    if (window.confirm(t('dictionary.report.approveConfirm')))
+      void act(() => DictionarySyncService.approve(runId), 'dictionary.report.actionFailed');
+  }
+
+  function reject() {
+    if (window.confirm(t('dictionary.report.rejectConfirm')))
+      void act(() => DictionarySyncService.reject(runId), 'dictionary.report.actionFailed');
+  }
+
+  const pending = run?.status === 'pending_approval';
+  const failed = run?.status === 'failed' || run?.status === 'interrupted';
+  return (
+    <Drawer
+      wide
+      title={t('dictionary.report.title')}
+      sub={run ? formatDateTime(run.started_at) : undefined}
+      onClose={onClose}
+      foot={
+        pending ? (
+          <>
+            <button className="btn danger" type="button" disabled={busy} onClick={reject}>
+              {t('dictionary.report.reject')}
+            </button>
+            <button className="btn primary" type="button" disabled={busy} onClick={approve}>
+              {t('dictionary.report.approve')}
+            </button>
+          </>
+        ) : undefined
+      }
+    >
+      {failure ? <div className="msg bad">{failure}</div> : null}
+      {!run && !failure ? <Skeleton /> : null}
+      {run ? (
+        <>
+          <div className="info">
+            <Fact
+              label={t('dictionary.report.result')}
+              value={<span className={runPill(run.status)}>{t(`dictionary.sync.status.${run.status}`)}</span>}
+            />
+            <Fact label={t('dictionary.report.kind')} value={t(`dictionary.runs.kind.${run.kind}`)} />
+            <Fact label={t('dictionary.report.finished')} value={run.finished_at ? formatDateTime(run.finished_at) : '—'} />
+            <Fact label={t('dictionary.report.by')} value={run.started_by?.display_name ?? '—'} />
+            <Fact label={t('dictionary.report.previous')} value={version(run.previous_version)} title={run.previous_version} />
+            <Fact label={t('dictionary.report.new')} value={version(run.new_version)} title={run.new_version} />
+            <Fact label={t('dictionary.report.model')} value={run.model || '—'} />
+          </div>
+          {failed ? (
+            <div className="msg bad" id="d-failure">
+              <b>{runFailureText(run, t)}</b>
+              {run.error_message ? <div>{run.error_message}</div> : null}
+            </div>
+          ) : null}
+          {pending ? <div className="msg warn">{t('dictionary.report.pendingNotice')}</div> : null}
+          <h3>{t('dictionary.report.counts')}</h3>
+          <div className="info" id="d-counts">
+            {COUNTS.map((name) => (
+              <Fact key={name} label={t(`dictionary.report.count.${name}`)} value={formatNumber(run.counts[name])} />
+            ))}
+          </div>
+          {run.warnings.length ? (
+            <div className="msg warn">
+              {t('dictionary.report.warnings', {count: formatNumber(run.warnings.length)})}
+              <ul>
+                {run.warnings.map((warning, at) => (
+                  <li key={at}>{warning}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <RunSuggestions
+            suggestions={run.suggestions}
+            busy={busy}
+            onApply={(ids) => void act(() => DictionarySyncService.applySuggestions(runId, ids), 'dictionary.suggestions.failed')}
+          />
+          <RunChanges runId={runId} />
+        </>
+      ) : null}
+    </Drawer>
+  );
+}

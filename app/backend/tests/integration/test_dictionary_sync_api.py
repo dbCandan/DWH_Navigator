@@ -1,0 +1,339 @@
+"""Dictionary update end to end on PostgreSQL with a fake source and model (011-dictionary-sync)."""
+
+import asyncio
+from collections.abc import AsyncIterator
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
+from typing import Any
+
+import pytest
+
+from app.db.session import async_session_factory
+from app.domain.dictionary_source import (
+    SourceColumn,
+    SourceProbe,
+    SourceSnapshot,
+    SourceTable,
+    SourceUnavailable,
+    TargetUnavailable,
+)
+from app.domain.llm import LlmConnection
+from app.main import app
+from app.services.dictionary_sync import DictionarySync
+from tests.integration.data_dictionary import DataDictionary, error, sql
+
+pytestmark = pytest.mark.integration
+
+
+def tables(*names: str, columns: int = 2, description: str = "Kolon açıklaması") -> SourceSnapshot:
+    return SourceSnapshot(
+        tables=tuple(SourceTable("EDWDM", "CUS", n, f"{n} tablosu") for n in names),
+        columns=tuple(
+            SourceColumn("EDWDM", "CUS", n, f"Kolon{i}", description, "Müşteri")
+            for n in names
+            for i in range(columns)
+        ),
+        skipped=0,
+        excluded_tables=(),
+        excluded_columns=(),
+        corrected_tables=(),
+        corrected_columns=(),
+    )
+
+
+@dataclass
+class FakeSource:
+    snapshot: SourceSnapshot = field(default_factory=lambda: tables("vParty"))
+    failure: Exception | None = None
+    gate: asyncio.Event | None = None
+
+    async def probe(self, connection: Any) -> SourceProbe:
+        return SourceProbe(table_count=1, column_count=2, last_change_at=None, missing_databases=())
+
+    async def read(self, connection: Any) -> SourceSnapshot:
+        if self.gate is not None:
+            await self.gate.wait()
+        if self.failure is not None:
+            raise self.failure
+        return self.snapshot
+
+
+class FakeKeys:
+    available = True
+
+    def seal(self, password: str, **_: Any) -> str:
+        return f"sealed:{password}"
+
+    def open(self, row: Any, **_: Any) -> str | None:
+        value = row.password_ciphertext
+        return value.removeprefix("sealed:") if value else None
+
+
+@dataclass
+class FakePort:
+    calls: int = 0
+
+    async def chat(self, _connection: Any, request: Any) -> Any:
+        self.calls += 1
+        return SimpleNamespace(
+            ok=True,
+            value={
+                "table": {"Grain": "Müşteri"},
+                "columns": [{"name": "Kolon0", "Role": "Anahtar"}],
+                "terms": [],
+                "stopwords": [],
+            },
+        )
+
+
+@dataclass
+class FakeGateway:
+    port: FakePort = field(default_factory=FakePort)
+
+    async def snapshot(self, **_: Any) -> LlmConnection:
+        return LlmConnection(endpoint="http://model.test/v1", chat_model="test-model")
+
+
+@dataclass
+class Harness:
+    dd: DataDictionary
+    source: FakeSource
+    gateway: FakeGateway
+
+    async def connect(self) -> None:
+        response = await self.dd.request(
+            "PUT",
+            "/dictionary/source",
+            json={
+                "host": "dwh-source",
+                "port": 1433,
+                "database": "EDWUTIL",
+                "username": "navigator",
+                "password": "gizli-parola",
+                "encrypt": False,
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert "gizli-parola" not in response.text
+
+    async def run(self) -> dict[str, Any]:
+        response = await self.dd.request("POST", "/dictionary/sync")
+        assert response.status_code == 202, response.text
+        return await self.finished(response.json()["public_id"])
+
+    async def finished(self, public_id: str) -> dict[str, Any]:
+        for _ in range(400):
+            run = (await self.dd.get(f"/dictionary/sync/runs/{public_id}")).json()
+            if run["status"] != "running":
+                return dict(run)
+            await asyncio.sleep(0.02)
+        raise AssertionError("the run did not end")
+
+    async def active(self) -> tuple[str, int]:
+        state = (await self.dd.get("/dictionary")).json()
+        return state["active"]["version"], state["active"]["object_count"]
+
+
+@pytest.fixture
+async def sync(dd: DataDictionary) -> AsyncIterator[Harness]:
+    source = FakeSource()
+    gateway = FakeGateway()
+    previous = getattr(app.state, "dictionary_sync", None)
+    app.state.dictionary_sync = DictionarySync(
+        index=dd.index,
+        models=gateway,  # type: ignore[arg-type]
+        source=source,
+        keys=FakeKeys,  # type: ignore[arg-type]
+        session_factory=async_session_factory,
+    )
+    harness = Harness(dd, source, gateway)
+    await harness.connect()
+    try:
+        yield harness
+    finally:
+        await app.state.dictionary_sync.shutdown()
+        app.state.dictionary_sync = previous
+
+
+async def test_the_first_update_creates_the_active_version_and_its_report(sync: Harness) -> None:
+    run = await sync.run()
+    assert run["status"] == "completed", run
+    assert run["counts"]["tables_added"] == 1
+    assert run["counts"]["columns_added"] == 2
+    assert run["counts"]["fields_filled"] >= 2
+    assert run["model"] == "test-model"
+    version, objects = await sync.active()
+    assert version == run["new_version"]
+    assert objects == 1
+    assert sync.dd.index.serving is not None
+    assert sync.dd.index.serving.engine.dictionary.version == version
+    changes = (await sync.dd.get(f"/dictionary/sync/runs/{run['public_id']}/changes")).json()
+    assert changes["total"] >= 1
+
+
+async def test_an_unchanged_source_makes_no_version_and_no_model_call(sync: Harness) -> None:
+    first = await sync.run()
+    calls = sync.gateway.port.calls
+    second = await sync.run()
+    assert second["status"] == "no_change"
+    assert sync.gateway.port.calls == calls
+    assert (await sync.active())[0] == first["new_version"]
+
+
+async def test_only_the_changed_table_reaches_the_model_and_filled_values_stay(
+    sync: Harness,
+) -> None:
+    sync.source.snapshot = tables("vParty", "vOther", "vThird", "vFourth", "vFifth")
+    await sync.run()
+    sync.gateway.port.calls = 0
+    grown = tables("vParty", "vOther", "vThird", "vFourth", "vFifth", "vSixth")
+    sync.source.snapshot = grown
+    run = await sync.run()
+    assert run["status"] == "completed", run
+    assert run["counts"]["tables_added"] == 1
+    # One fill call for the new table; the suggestion call has nothing or one more.
+    assert sync.gateway.port.calls <= 2
+    table = (await sync.dd.get("/dictionary/tables/EDWDM.CUS.vParty")).json()
+    assert table["object"]["Grain"] == "Müşteri"
+    assert table["columns"][0]["Role"] == "Anahtar"
+
+
+async def test_a_large_removal_waits_for_approval_and_can_be_approved(sync: Harness) -> None:
+    sync.source.snapshot = tables("vA", "vB", "vC")
+    first = await sync.run()
+    sync.source.snapshot = tables("vA")
+    run = await sync.run()
+    assert run["status"] == "pending_approval"
+    assert (await sync.active())[0] == first["new_version"]
+
+    approved = await sync.dd.request("POST", f"/dictionary/sync/runs/{run['public_id']}/approve")
+    assert approved.status_code == 200, approved.text
+    assert approved.json()["status"] == "completed"
+    assert await sync.active() == (run["new_version"], 1)
+
+
+async def test_a_rejected_version_never_becomes_active(sync: Harness) -> None:
+    sync.source.snapshot = tables("vA", "vB", "vC")
+    first = await sync.run()
+    sync.source.snapshot = tables("vA")
+    run = await sync.run()
+    rejected = await sync.dd.request("POST", f"/dictionary/sync/runs/{run['public_id']}/reject")
+    assert rejected.json()["status"] == "rejected"
+    assert (await sync.active())[0] == first["new_version"]
+    again = await sync.dd.request("POST", f"/dictionary/sync/runs/{run['public_id']}/approve")
+    assert error(again) == (409, "dictionary_run_not_pending")
+
+
+@pytest.mark.parametrize(
+    ("failure", "code"),
+    [
+        (SourceUnavailable("network"), "dictionary_source_unavailable"),
+        (TargetUnavailable(("EDWDM",)), "dictionary_target_unavailable"),
+    ],
+)
+async def test_an_access_problem_fails_and_leaves_the_dictionary_alone(
+    sync: Harness, failure: Exception, code: str
+) -> None:
+    first = await sync.run()
+    sync.source.failure = failure
+    run = await sync.run()
+    assert run["status"] == "failed"
+    assert run["error_code"] == code
+    assert (await sync.active())[0] == first["new_version"]
+
+
+async def test_an_empty_source_fails_instead_of_emptying_the_dictionary(sync: Harness) -> None:
+    first = await sync.run()
+    sync.source.snapshot = tables()
+    run = await sync.run()
+    assert run["status"] == "failed"
+    assert (await sync.active())[0] == first["new_version"]
+
+
+async def test_rollback_makes_a_new_active_version_and_keeps_history(sync: Harness) -> None:
+    first = await sync.run()
+    sync.source.snapshot = tables("vParty", columns=3)
+    second = await sync.run()
+    assert second["status"] == "completed"
+    versions = (await sync.dd.get("/dictionary/versions")).json()["items"]
+    old = next(v for v in versions if v["version"] == first["new_version"])
+    assert old["can_restore"] is True
+    assert old["expires_at"] is not None
+
+    response = await sync.dd.request("POST", f"/dictionary/versions/{old['public_id']}/restore")
+    assert response.status_code == 202, response.text
+    run = await sync.finished(response.json()["public_id"])
+    assert run["kind"] == "geri_donus"
+    assert run["status"] == "completed", run
+    assert (await sync.active())[0] == first["new_version"]
+    after = (await sync.dd.get("/dictionary/versions")).json()["items"]
+    assert len(after) == 3
+    assert after[0]["channel"] == "geri_donus"
+    assert sum(v["status"] == "active" for v in after) == 1
+
+
+async def test_versions_older_than_a_month_are_pruned_and_cannot_be_restored(sync: Harness) -> None:
+    first = await sync.run()
+    sync.source.snapshot = tables("vParty", columns=3)
+    await sync.run()
+    versions = (await sync.dd.get("/dictionary/versions")).json()["items"]
+    old = next(v for v in versions if v["version"] == first["new_version"])
+    await sql(
+        "UPDATE dictionary_version SET superseded_at = :t WHERE public_id = :p",
+        t=datetime.now(UTC) - timedelta(days=31),
+        p=old["public_id"],
+    )
+    sync.source.snapshot = tables("vParty", columns=4)
+    await sync.run()
+    response = await sync.dd.request("POST", f"/dictionary/versions/{old['public_id']}/restore")
+    assert error(response) == (410, "dictionary_version_expired")
+    rows = await sql(
+        "SELECT count(*) FROM dictionary_column_record r JOIN dictionary_version v "
+        "USING (dictionary_version_id) WHERE v.public_id = :p",
+        p=old["public_id"],
+    )
+    assert rows[0][0] == 0
+
+
+async def test_a_second_update_is_refused_while_one_runs(sync: Harness) -> None:
+    sync.source.gate = asyncio.Event()
+    started = await sync.dd.request("POST", "/dictionary/sync")
+    assert started.status_code == 202
+    second = await sync.dd.request("POST", "/dictionary/sync")
+    assert error(second) == (409, "dictionary_sync_in_progress")
+    sync.source.gate.set()
+    await sync.finished(started.json()["public_id"])
+
+
+async def test_an_update_needs_a_saved_connection(dd: DataDictionary, sync: Harness) -> None:
+    await sql("DELETE FROM dictionary_source")
+    response = await dd.request("POST", "/dictionary/sync")
+    assert error(response) == (409, "dictionary_source_not_configured")
+
+
+async def test_the_password_is_never_returned(sync: Harness) -> None:
+    source = await sync.dd.get("/dictionary/source")
+    assert source.json()["has_password"] is True
+    assert "gizli" not in source.text
+
+
+async def test_a_new_address_drops_the_saved_password(sync: Harness) -> None:
+    response = await sync.dd.request(
+        "PUT",
+        "/dictionary/source",
+        json={
+            "host": "baska-sunucu",
+            "port": 1433,
+            "database": "EDWUTIL",
+            "username": "navigator",
+            "encrypt": False,
+        },
+    )
+    assert response.json()["has_password"] is False
+
+
+async def test_a_user_without_the_manager_role_cannot_start(sync: Harness) -> None:
+    user = await sync.dd.auth.account(sync.dd.admin, "kullanici")
+    response = await sync.dd.request("POST", "/dictionary/sync", user)
+    assert response.status_code == 403

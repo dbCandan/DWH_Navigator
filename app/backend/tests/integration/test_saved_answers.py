@@ -29,8 +29,7 @@ FP = "0123456789abcdef"
 @pytest.fixture
 async def engine(dd: DataDictionary) -> AsyncIterator[Engine]:
     await sql("DELETE FROM saved_answer")
-    imported = await dd.import_dictionary(SYNTHETIC_WORKBOOK.read_bytes())
-    assert imported.status_code in (200, 201), imported.text
+    await dd.seed_dictionary(SYNTHETIC_WORKBOOK.read_bytes())
     inputs = await read_inputs(async_session_factory, await dd.index.tenant_id())
     yield build_engine(inputs, None, IndexTrigger.STARTUP)
 

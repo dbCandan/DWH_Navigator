@@ -32,3 +32,5 @@ googleapis-common-protos==1.75.3
 # defusedxml when it is installed.
 openpyxl==3.1.5
 defusedxml==0.7.1
+# The dictionary source adapter's SQL Server driver (data-dictionary/PRDs/011-dictionary-sync plan).
+pymssql==2.4.6

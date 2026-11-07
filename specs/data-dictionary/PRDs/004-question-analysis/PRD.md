@@ -2,9 +2,9 @@
 
 Status: Accepted
 
-Version: 1.3.0
+Version: 1.5.0
 
-Acceptance date: 2026-10-14
+Acceptance date: 2026-11-04
 
 Domain: [data-dictionary](../../DOMAIN.md)
 
@@ -13,7 +13,12 @@ Kabul kaydı: Proje sahibi bu PRD'yi ilk kez 2026-10-08'de kabul etti;
 (Requirement 19, [dictionary-explorer](../007-dictionary-explorer/PRD.md) Decision 8), her tarayıcı
 sekmesinin kendi analizini yürütmesini (Requirement 19, Decision 26) ve ana ekranın girişsiz
 kullanılmasını ([anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md))
-istedi.
+istedi; bu sürüm 2026-10-14'te kabul edildi. 2026-11-04'te uzunluk sınırında kesilen model
+yanıtının analizde kendi sebebiyle gösterilmesini istedi (Requirement 5,
+[llm-connection](../003-llm-connection/PRD.md) Decision 20) ve bu sürümü aynı gün kabul etti; aynı
+gün farklı soranların analizlerinin birbirini beklemeden paralel yürümesini, bir soranın ise aynı
+anda tek analiz yürütmesini istedi (Decision 2, Requirement 9, Decision 27) ve bu sürümü aynı gün
+kabul etti.
 
 ## Amaç
 
@@ -99,11 +104,10 @@ sonra ölçülür ([quality-evaluation](../010-quality-evaluation/PRD.md)).
 Decision 2: Analiz sunucuda iş olarak yürür: başlatma isteği hemen döner, ilerleme canlı olay
 akışıyla (sunucunun tarayıcıya sürekli olay gönderdiği bağlantı) gelir, sonuç ayrı uçtan okunur, iş
 durdurulabilir. Analiz süresince açık kalan tek istek kullanılmaz; kümenin giriş kapısındaki
-(ingress) zaman aşımı bir analizi kesemez. Kaynaktaki "tek motor, tek kilit" seri çalışması korunur:
-aynı anda yürüyen analiz sayısı her ortamda varsayılan olarak 1'dir (ayar 1–4; model sunucusu seri
-çalışır, kalite ölçümleri seri yapıldı, paralel istek sonucu koşudan koşuya yaklaşık ±2 puan
-oynatıyordu). Eşzamanlılık artırılmadan önce altın setle önce ve sonra ölçülür
-([quality-evaluation](../010-quality-evaluation/PRD.md)). Bu iş modeli list-search PRD'sinin de
+(ingress) zaman aşımı bir analizi kesemez. Kaynaktaki "tek motor, tek kilit" seri çalışmasından
+bilinçli olarak ayrılınır (Decision 27): farklı sahiplerin analizleri birbirini beklemeden aynı anda
+yürür, bir sahibin ise aynı anda en çok bir analizi yürür; aynı anda yürüyen analiz sayısının üst
+sınırı her ortamda varsayılan olarak 4'tür (ayar 1–8). Bu iş modeli list-search PRD'sinin de
 kullandığı modeldir.
 
 Decision 3: Kayıtlı cevaplar kaynak kararı ADR-035'in anlamını korur (iki anahtar, parmak izi, 30 gün,
@@ -151,9 +155,10 @@ değiştiğini ya da aynen kaldığını söyler.
   kilidi alınca `Engine.analyze` çalışır. Aynı anda tek analiz yürür. Kilidin sırası garanti
   değildir; aynı soru iki kez beklerken iki kez analiz edilir. Ayar kaydı motoru kilitsiz yeniler
   (`App.reload`): süren analiz eski motorla biter, yeni motor sonrakilere geçer. **Hedefte:** açık,
-  ilk gelen ilk çıkar sıralı kuyruk; aynı anda yürüyen analiz sayısı varsayılan 1; bekleyen
-  soran yalnız sırada olduğunu görür, önündeki analiz sayısı gösterilmez; aynı soru tek kez
-  analiz edilir (Requirement 9, 14, 20).
+  ilk gelen ilk çıkar sıralı kuyruk; farklı sahiplerin analizleri aynı anda yürür (üst sınır
+  varsayılan 4), bir sahibin aynı anda tek analizi yürür; bekleyen soran yalnız sırada olduğunu
+  görür, önündeki analiz sayısı gösterilmez; aynı soru tek kez analiz edilir (Requirement 9, 14, 20,
+  Decision 27).
 - **Motor girişi** (`src/vsa/pipeline.py` `Engine.analyze`, `Engine._unavailable`,
   `fallback_reason`; `src/vsa/llm/client.py` `health`): Sırasıyla: sözlük boşsa "Sözlük henüz içe
   aktarılmadı; Yönetim → Sözlük ekranından şablondaki Excel'i içe aktarın."; sohbet modeli yoksa
@@ -497,12 +502,14 @@ satır "Analiz yapılamadı — cevabı yalnız analist (sohbet modeli) yazar (A
 | Analist: bağlam penceresi aşıldı | Modelin bağlam penceresi tablo kataloğu için küçük (~70k token gerekir). Model sunucusunda daha geniş bağlam açın (vLLM: --max-model-len) veya Yönetim → Yapay zekâ'dan daha geniş bağlamlı bir sohbet modeli seçin. |
 | Analist: zaman aşımı ya da HTTP 504 kodu | Model zamanında yanıt vermedi (zaman aşımı). |
 | Analist: bağlantı kurulamadı (ret, ad çözümü, sertifika ya da ağ politikası) | Model sunucusuna ulaşılamadı. |
+| Analist: yanıt uzunluk sınırında kesildi ve geçerli yapılandırılmış yanıt yok | Model hatası: model cevabı uzunluk sınırında kesildi |
 | Analist: onarım denemesinden sonra da geçerli yapılandırılmış yanıt yok | Model hatası: model geçerli JSON üretmedi |
 | Analist: tanınmayan yanıt | Model hatası: beklenmeyen yanıt |
 | Analist: başka HTTP kodu | Model hatası: HTTP <kod> |
 | Analist: sebepsiz başarısızlık | Model yanıt vermedi. |
 
-Durum, llm-connection PRD'sinin hata sınıfından çıkarılır; bağlam aşımı kendi sınıfıyla ayırt edilir.
+Durum, llm-connection PRD'sinin hata sınıfından çıkarılır; bağlam aşımı ve uzunluk sınırında kesilme
+(`output_truncated`) kendi sınıflarıyla ayırt edilir.
 
 Requirement 6: Doğrulama ve asıl kavram kuralları kaynak testleriyle korunur: öneri yalnız okunan
 tablolardan ve yalnız katalog kimliği, tam ad ya da okunanlar içinde tek eşleşen tablo adıyla seçilir;
@@ -539,16 +546,21 @@ kayıtlı cevap bulunursa doğrudan `completed`, yoksa `queued`; `queued` → `r
 Requirement 5); iş kimliği analiz kaydının `public_id` değeridir.
 
 Requirement 9: Kuyruk ve eşzamanlılık: (a) tek süreç içi kuyruk ilk gelen ilk çıkar sırasıyla yürür;
-(b) aynı anda yürüyen iş sayısı `DWHNAVIGATOR_ANALYSIS_CONCURRENCY` değerini (varsayılan 1; 1–4;
-Decision 2) hiçbir anda aşmaz; (c) sırada bekleyen iş sayısı `DWHNAVIGATOR_ANALYSIS_QUEUE_LIMIT`
-değerine (varsayılan 20; 1–200) ulaştıysa yeni tek soru `503 analysis_queue_full` alır ("Şu anda çok
-sayıda analiz sırada; biraz sonra yeniden deneyin."), kabulde kayıtlı cevapla biten iş kuyruğa
-girmediği için bu sınıra takılmaz; (d) ziyaretçi başına iş sınırı yoktur: aynı ziyaretçinin yeni tek
-soru isteği de sıraya girer (kaynakla aynı, Decision 23); (e) list-search bir listenin terimlerini
-kuyruğa birer birer koyar: sonraki terim, önceki terim son duruma ulaşınca kuyruğun sonuna girer,
-böylece eşzamanlılık 1 iken tek soru en çok bir liste teriminin bitmesini bekler; (f) bekleyen işin
-önündeki iş sayısı (`ahead`: yürüyenler + önündeki bekleyenler) API'de ve canlı akışta bildirilir;
-arayüz bu sayıyı göstermez (Requirement 20).
+yer açılınca, sahibinin yürüyen bir işi olmayan en öndeki iş başlar; (b) bir sahibin (işi başlatan
+ziyaretçi; [anonymous-visitor](../../../application-foundation/PRDs/003-anonymous-visitor/PRD.md))
+aynı anda en çok bir işi yürür: tek sorusu da liste terimi de olsa ikinci işi, ilki son duruma
+ulaşana kadar sırada kalır ve arkasındaki başka sahiplerin işlerini bekletmez (Decision 27);
+(c) farklı sahiplerin işleri birbirini beklemeden aynı anda yürür; aynı anda yürüyen iş sayısı
+`DWHNAVIGATOR_ANALYSIS_CONCURRENCY` değerini (varsayılan 4; 1–8; Decision 2) hiçbir anda aşmaz;
+(d) sırada bekleyen iş sayısı `DWHNAVIGATOR_ANALYSIS_QUEUE_LIMIT` değerine (varsayılan 20; 1–200)
+ulaştıysa yeni tek soru `503 analysis_queue_full` alır ("Şu anda çok sayıda analiz sırada; biraz
+sonra yeniden deneyin."), kabulde kayıtlı cevapla biten iş kuyruğa girmediği için bu sınıra
+takılmaz; (e) ziyaretçi başına sıradaki iş sayısı sınırı yoktur: aynı ziyaretçinin yeni tek soru
+isteği de sıraya girer (Decision 23); (f) list-search bir listenin terimlerini kuyruğa birer birer
+koyar: sonraki terim, önceki terim son duruma ulaşınca kuyruğun sonuna girer; başka sahiplerin
+soruları ve listeleri listeyi beklemez, aynı sahibin tek sorusu en çok bir liste teriminin
+bitmesini bekler; (g) bekleyen işin önündeki iş sayısı (`ahead`: yürüyenler + önündeki bekleyenler)
+API'de ve canlı akışta bildirilir; arayüz bu sayıyı göstermez (Requirement 20).
 
 Requirement 10: Canlı ilerleme akışı `GET /analyses/{analysis_id}/events` yalnız işin sahibine
 açılır; cihaz kimliği (`X-Device-Id`) ve sahiplik akış açılmadan denetlenir, başarısızsa normal hata
@@ -930,7 +942,7 @@ ekranındaki kayıtlı cevap sayıları → `GET /saved-answers/summary`. `ask_i
 
 ## Dağıtım etkisi
 
-- **Yeni ayarlar:** `DWHNAVIGATOR_ANALYSIS_CONCURRENCY` (1; 1–4) ve `DWHNAVIGATOR_ANALYSIS_QUEUE_LIMIT`
+- **Yeni ayarlar:** `DWHNAVIGATOR_ANALYSIS_CONCURRENCY` (4; 1–8) ve `DWHNAVIGATOR_ANALYSIS_QUEUE_LIMIT`
   (20; 1–200). Sır değildir; tipli ayarlar, `app/backend/.env.example`, yerel Compose ortam bloğu ve
   `helm/dwhnavigator/values-project.yaml` içindeki `backend.config` birlikte güncellenir;
   `python3 scripts/check-config-sync.py` geçer.
@@ -1084,8 +1096,10 @@ Kaynak vektör aramasını kaynak kararı ADR-039 ile kaldırdı; bu PRD gömme 
   anlık görüntüyü bayt bayt aynı yeniden üretir ve hedefle 0 fark verir; koşum raporu soru, çeşit ve
   karşılaştırılan çıktı sayısını yazar (Requirement 2).
 - [ ] Acceptance 4: L1 — Otomatik testlerden geçti: iş modeli, kuyruk, durdurma, yeniden başlama,
-  kayıtlı cevap hizmeti ve analiz kaydı hizmet testleri gerçek PostgreSQL ile geçer (Requirement 3,
-  8, 9, 11–15, 18).
+  kayıtlı cevap hizmeti ve analiz kaydı hizmet testleri gerçek PostgreSQL ile geçer; iki farklı
+  sahibin işi aynı anda model çağrısında bulunur, aynı sahibin ikinci işi ilki bitene kadar sırada
+  kalır ve arkasındaki başka sahibin işi onu beklemeden başlar (Requirement 3, 8, 9, 11–15, 18,
+  Decision 27).
 - [ ] Acceptance 5: L1 — Otomatik testlerden geçti: API testleri ve sızıntı testi geçer; oturumsuz
   ana ekran uçları `X-Device-Id` ile çalışır, başlıksız istek `400 device_id_required`, başka cihaz
   kimliğinin işi `404 analysis_not_found` alır; işaret dizeleri log, ölçüm etiketi ve iz
@@ -1182,9 +1196,10 @@ Kaynak vektör aramasını kaynak kararı ADR-039 ile kaldırdı; bu PRD gömme 
   önündeki analiz sayısı gösterilmez. Kaynakta olmayan sıra durumu, Evren'in bilgi satırına yazılan
   "sırada" sözüyle bildirilir. Gerekçe: görünür yeni öğe eklenmez; seri kuyrukta bekleme dakikalarca
   sürebildiği için kullanıcı analizinin sırada olduğunu bilmelidir.
-- Decision 23: Ziyaretçi başına iş sınırı yoktur; aynı ziyaretçinin yeni tek soru isteği de sıraya
-  girer (kaynakla aynı). Her sekme aynı anda tek soru yürütür; birden çok sekmeden gelen istekleri
-  kuyruk sınırı ve hız sınırı (Requirement 9, 23) sınırlar.
+- Decision 23: Ziyaretçi başına sıradaki iş sayısı sınırı yoktur; aynı ziyaretçinin yeni tek soru
+  isteği de sıraya girer (kaynakla aynı) ve ziyaretçinin yürüyen işi bitince başlar (Decision 27).
+  Her sekme aynı anda tek soru yürütür; birden çok sekmeden gelen istekleri kuyruk sınırı ve hız
+  sınırı (Requirement 9, 23) sınırlar.
 - Decision 24: Kayıtlı cevap kiracı içinde soranlar arasında paylaşılır ve "aynı anlam"
   eşleşmesinde önceki sorunun metni gösterilir (kaynakla aynı). Gerekçe: cevap soranlara özgü veri
   taşımaz; oylar cevaba okunurken isteği yapan ziyaretçi için uygulanır.
@@ -1198,6 +1213,17 @@ Kaynak vektör aramasını kaynak kararı ADR-039 ile kaldırdı; bu PRD gömme 
   her sekmenin kendi analizini yürütmesini istedi. Sekme belleğinde yalnız işin genel kimliği
   (`analysis_id`) durur; soru metni, belirteç ya da kişisel veri tutulmaz ve iş yine yalnız sahibine
   açıktır (`404 analysis_not_found`). `GET /analyses/active` API'de kalır; ana ekran onu kullanmaz.
+- Decision 27: Farklı sahiplerin analizleri paralel yürür; bir sahibin aynı anda tek analizi yürür
+  (Requirement 9 b, c). Üst sınır varsayılan 4'tür ve model çağrı sınırı (llm-connection Requirement
+  17, varsayılan 5) bir bağlantı testine de yer bırakacak biçimde ondan büyüktür. Gerekçe: proje
+  sahibi 2026-11-04'te iki kullanıcının listelerinin terim terim birbirini beklediğini gözledi ve
+  farklı kullanıcıların işlerinin birbirinden yalıtılmış, paralel yürümesini istedi. Bilinen bedeller
+  ve sınırlar: kaynağın kalite ölçümleri seri yapıldı ve paralel isteklerin sonucu koşudan koşuya
+  yaklaşık ±2 puan oynattığı görülmüştü; altın set ölçümü
+  ([quality-evaluation](../010-quality-evaluation/PRD.md)) henüz uygulanmadığından bu değişiklik
+  önce ve sonra ölçülmeden yapılır ve ölçüm o PRD uygulanınca paralel yükle tekrarlanır. Gerçek
+  paralellik model sunucusunun da aynı anda birden çok isteği işlemesine bağlıdır; sunucu istekleri
+  sıraya koyuyorsa analizler uygulamada paralel başlar ama sunucuda yine sırayla yanıtlanır.
 
 ## Teslim akışı
 
@@ -1205,6 +1231,11 @@ Belirtim → Plan → Görevler → Uygulama
 
 ## Riskler
 
+- **Paralel analizin kalitesi ve kapasitesi:** Analizler paralel yürüdüğünde (Decision 27) cevap
+  kalitesi seri ölçümden sapabilir ve altın setle henüz ölçülmedi. Aynı anda 4 analiz, model
+  sunucusuna aynı anda 4 büyük katalog istemi (her biri yaklaşık 48 bin token) gönderebilir;
+  sunucunun bellek ve bağlam kapasitesi yetmezse istekler yavaşlar, sıraya girer ya da hata verir.
+  Paylaşılan nonprod model ucunda üst sınır kapasite sahibiyle kararlaştırılır.
 - **Fark testinin kapsamı:** Fark testi sahte modelle yapılır. Bayt bayt aynılık kodun aynılığıdır;
   gerçek modelin cevabı sunucuya, modele ve sürüme göre değişir. Cevap kalitesinin korunduğu altın
   setle ölçülür (quality-evaluation).

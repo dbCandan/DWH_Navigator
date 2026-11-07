@@ -74,9 +74,14 @@ services:
       # The default local network has no egress; a model server is reached only through the opt-in
       # local-egress gate below. Empty trust store: the image's system trust store.
       DWHNAVIGATOR_LLM_CA_BUNDLE: ""
-      DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: "2"
-      # Question analysis jobs: one at a time, at most 20 waiting (004-question-analysis).
-      DWHNAVIGATOR_ANALYSIS_CONCURRENCY: "1"
+      DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: "5"
+      # ERPDM is not among the local backups; an update leaves it out and keeps its records.
+      DWHNAVIGATOR_DICTIONARY_IGNORED_DATABASES: "ERPDM"
+      # Confirmed by the owner: the dictionary row names this procedure without its EDW prefix.
+      DWHNAVIGATOR_DICTIONARY_OBJECT_ALIASES: "EDWBridge.TRX.rpt_HighCashFlowCustomers=EDWBridge.TRX.rpt_EDWHighCashFlowCustomers"
+      # Question analysis jobs: up to 4 owners in parallel, one job per owner, at most 20 waiting
+      # (004-question-analysis Decision 27).
+      DWHNAVIGATOR_ANALYSIS_CONCURRENCY: "4"
       DWHNAVIGATOR_ANALYSIS_QUEUE_LIMIT: "20"
       # OpenTelemetry export stays off here; the observability overlay sets its collector address.
       DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT: "${DWHNAVIGATOR_OTEL_EXPORTER_OTLP_ENDPOINT:-}"
@@ -130,7 +135,9 @@ services:
         if ! printf '%s\n' "$$address" | grep -Eq '^([0-9]{1,3}[.]){3}[0-9]{1,3}$$'; then
           echo "local-egress: LOCAL_EGRESS_MODEL_ADDRESS must be an IPv4 address" >&2; exit 1
         fi
+        source_address="$$(awk '$$2 == "host.docker.internal" && $$1 !~ /:/ { print $$1; exit }' /etc/hosts)"
         sed -e "s/MODEL_ADDRESS/$$address/" -e "s/MODEL_PORT/$$MODEL_PORT/g" \
+          -e "s/127[.]0[.]0[.]1:14333/$${source_address:-127.0.0.1}:14333/" \
           /etc/nginx/local-egress.conf > /tmp/local-egress.conf
         exec nginx -c /tmp/local-egress.conf -g "daemon off;"
     user: "101:101"
@@ -153,6 +160,8 @@ services:
       host-gate:
         aliases:
           - ${LOCAL_EGRESS_MODEL_HOST:-host.docker.internal}
+          # SQL Server on this computer's port 14333, as dwh-source:1433 (011-dictionary-sync).
+          - dwh-source
       egress: {}
     restart: unless-stopped
 

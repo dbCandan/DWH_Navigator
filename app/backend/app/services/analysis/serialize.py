@@ -19,7 +19,6 @@ def column(col: DictColumn) -> dict[str, Any]:
         "object": col.object_key,
         "description": col.description,
         "synonyms": list(col.synonyms),
-        "pii": col.has_pii,
         "group": col.dataset_group,
     }
 

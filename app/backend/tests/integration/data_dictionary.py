@@ -21,6 +21,7 @@ from app.db.session import async_session_factory, engine
 from app.infrastructure.excel.writer import XLSX_MEDIA_TYPE
 from app.main import app
 from app.services.search_index import SearchIndex, build_engine
+from tests.dictionary_seed import DEFAULT_NAME, Seeded, seed_through_index
 from tests.integration.conftest import AuthHarness, SignedIn, visitor_headers
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -60,6 +61,8 @@ async def sql(statement: str, **params: Any) -> list[Any]:
 async def reset_data_dictionary() -> None:
     async with engine.begin() as connection:
         for table in (
+            "dictionary_sync_run",
+            "dictionary_source",
             "dictionary_column_record",
             "dictionary_object_record",
             "dictionary_version",
@@ -137,8 +140,13 @@ class DataDictionary:
             headers={"Content-Type": media_type, "X-Filename": name},
         )
 
-    async def import_dictionary(self, data: bytes, name: str = "sozluk.xlsx") -> Response:
-        return await self.upload("/dictionary/imports", data, name=name)
+    async def seed_dictionary(self, data: bytes, name: str = DEFAULT_NAME) -> Seeded:
+        """A workbook written as the manager's version, through the search index."""
+
+        ((user_id,),) = await sql(
+            "SELECT user_id FROM app_user WHERE public_id = :p", p=self.manager.public_id
+        )
+        return await seed_through_index(self.index, data, name=name, user_id=int(user_id))
 
     async def put_list(self, kind: str, items: Any, who: SignedIn | None = None) -> Response:
         return await self.request("PUT", f"/vocabulary/{kind}", who, json={"items": items})

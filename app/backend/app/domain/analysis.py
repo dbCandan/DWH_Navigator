@@ -18,7 +18,6 @@ class DictColumn:
     description: str
     synonyms: tuple[str, ...] = ()
     dataset_group: str | None = None
-    has_pii: bool = False  # description mentions KVKK / kişisel veri
     role: str = ""  # Anahtar | Kod | Ad | Zaman | Ölçü | Bayrak | Metin
     summary: str = ""  # ≤70-char compressed meaning, what the LLM reads instead of description
 

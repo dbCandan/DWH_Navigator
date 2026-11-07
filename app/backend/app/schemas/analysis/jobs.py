@@ -52,7 +52,6 @@ class AnswerColumn(BaseModel):
     object: str
     description: str
     synonyms: list[str]
-    pii: bool
     group: str | None
     role: str
     signals: list[str]

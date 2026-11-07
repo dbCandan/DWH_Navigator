@@ -117,7 +117,7 @@ describe('Genel bakış page (analysis-records Requirement 13-15)', () => {
     expect(line(message('overview.model.title'))).toBe(message('overview.model.noneLine'));
     expect(value(message('overview.dictionary.title'))).toBe(message('overview.dictionary.none'));
     expect(line(message('overview.dictionary.title'))).toBe(message('overview.dictionary.noneLine'));
-    expect(within(card(message('overview.dictionary.title'))).getByRole('link', {name: message('overview.dictionary.import')})).toBeInTheDocument();
+    expect(within(card(message('overview.dictionary.title'))).getByRole('link', {name: message('overview.dictionary.connect')})).toBeInTheDocument();
     expect(line(message('overview.index.title'))).toBe(message('overview.index.emptyLine'));
     const setup = screen.getByText(message('overview.setup.title')).closest('section') as HTMLElement;
     expect(within(setup).getByText(message('overview.setup.progress', {done: 0}))).toBeInTheDocument();

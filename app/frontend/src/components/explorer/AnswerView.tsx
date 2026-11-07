@@ -197,11 +197,6 @@ function ColumnChips({m}: {m: AnswerObject}) {
             <span>
               <Breakable name={c.column} />
             </span>
-            {c.pii ? (
-              <span className="flag" title={t('answer.pii')}>
-                ●
-              </span>
-            ) : null}
           </button>
         ))}
         {rest > 0 && !all ? (

@@ -278,18 +278,23 @@ html[data-surface="admin"] { background: radial-gradient(1200px 700px at 85% -15
 [data-surface="admin"] .fld small { color: var(--muted); font-size: 12px; }
 [data-surface="admin"] .fld input, [data-surface="admin"] .fld select { width: 100%; }
 [data-surface="admin"] .fld .mono, [data-surface="admin"] .fld input.mono { font-family: var(--mono); font-size: 13px; }
+/* A text box with its suggestion list (SuggestCombobox). */
+[data-surface="admin"] .combo { position: relative; }
+[data-surface="admin"] .combo.has-list input { padding-right: 34px; }
+[data-surface="admin"] .combo.has-list::after { content: ""; position: absolute; top: 50%; right: 14px; width: 7px; height: 7px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+[data-surface="admin"] .combo-list { position: absolute; z-index: 2; top: calc(100% + 6px); left: 0; right: 0; margin: 0; padding: 6px; list-style: none; max-height: 260px; overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; background: var(--option-bg); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); }
+[data-surface="admin"] .combo-option { display: flex; align-items: baseline; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
+[data-surface="admin"] .combo-option:hover, [data-surface="admin"] .combo-option.on { background: var(--surface-3); }
+[data-surface="admin"] .combo-option[aria-selected="true"] .combo-name { color: var(--accent); }
+[data-surface="admin"] .combo-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+[data-surface="admin"] .combo-list.mono .combo-name { font-family: var(--mono); font-size: 13px; }
+[data-surface="admin"] .combo-option small { flex: none; color: var(--muted); font-size: 11.5px; }
 [data-surface="admin"] .f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 [data-surface="admin"] .stepno { display: flex; align-items: center; gap: 10px; margin: 6px 0 -4px; font: 700 13px var(--display); color: var(--muted); }
 [data-surface="admin"] .stepno i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; background: var(--grad); color: var(--on-accent); }
 [data-surface="admin"] .check { display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; }
 
 /* ---------- dictionary ---------- */
-[data-surface="admin"] .dz { border: 2px dashed var(--line-2); border-radius: var(--radius); padding: 28px 20px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
-[data-surface="admin"] .dz:hover { border-color: var(--accent); background: var(--accent-soft); }
-[data-surface="admin"] .dz svg { width: 38px; height: 38px; color: var(--accent); }
-[data-surface="admin"] .dz b { display: block; font-size: 16px; margin: 8px 0 4px; }
-[data-surface="admin"] .dropzone { position: fixed; inset: 14px; z-index: 60; border: 3px dashed var(--accent); border-radius: 22px; display: grid; place-items: center;
-  background: var(--basin-a82); font: 700 22px var(--display); color: var(--accent); pointer-events: none; }
 [data-surface="admin"] .info { display: flex; gap: 18px; flex-wrap: wrap; align-items: center; }
 [data-surface="admin"] .info .it { min-width: 0; }
 [data-surface="admin"] .info .it .k { color: var(--faint); font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }

@@ -17,10 +17,20 @@ def _settings(**values: Any) -> Settings:
     return Settings(_env_file=None, **values)
 
 
-def test_defaults_use_the_system_trust_store_and_two_slots() -> None:
+def test_defaults_use_the_system_trust_store_and_five_slots() -> None:
+    # Decision 11: four parallel analyses (question-analysis Decision 27) and a connection test.
     settings = _settings()
     assert settings.llm_ca_bundle == ""
-    assert settings.llm_max_concurrent_calls == 2
+    assert settings.llm_max_concurrent_calls == 5
+    assert settings.analysis_concurrency == 4
+    assert settings.llm_max_concurrent_calls > settings.analysis_concurrency
+
+
+@pytest.mark.parametrize("value", [0, 9, -1])
+def test_the_analysis_concurrency_is_one_to_eight(value: int) -> None:
+    with pytest.raises(ValidationError):
+        _settings(analysis_concurrency=value)
+    assert _settings(analysis_concurrency=8).analysis_concurrency == 8
 
 
 @pytest.mark.parametrize("value", [0, 9, -1])

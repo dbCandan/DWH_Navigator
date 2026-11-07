@@ -7,7 +7,7 @@ The dictionary is invented (no institution data) but shaped like a warehouse dic
 every rule of the parser and the engine has something to act on: Turkish letters and İ/ı,
 compound and underscore names, a name with a trailing space, one table name in two schemas,
 a table wider than 90 columns, tables without a profile, a synonym listed by more than 40
-columns, roles and summaries, KVKK marks (a negative sentence included), a "bazlı değil"
+columns, roles and summaries, a "bazlı değil"
 scope note, narrow-population tables, period and daily time columns, customer keys, product
 breakdown columns in long and wide format, the legacy ``DAtabaseName`` header, a repeated
 column row, an incomplete row, a blank row, number cells and extra sheet columns.

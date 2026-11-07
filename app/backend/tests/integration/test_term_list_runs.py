@@ -396,12 +396,16 @@ async def test_a_list_left_running_is_interrupted_at_start_and_by_the_check(
     assert (await bench.snapshot(snap["id"]))["status"] == "interrupted"
 
 
-async def test_only_one_list_runs_in_the_tenant(bench: Bench) -> None:
+async def test_only_one_list_runs_per_owner(bench: Bench) -> None:
+    """Decision 3: the same owner cannot start a second list while one runs; another owner's
+    list is not an engel (data-dictionary 005-list-search Version 1.3.0)."""
+
     bench.jobs.plan["g1"] = "hold"
     snap = await bench.start("g1")
     with pytest.raises(ApplicationError) as running:
         await bench.start("g2")
     assert (running.value.status_code, running.value.code) == (409, "term_list_running")
+    assert running.value.message == "Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun."
     await bench.lists.cancel(bench.tenant.tenant_id, bench.owner.public_id, snap["id"])
     bench.jobs.plan["g3"] = "hold"
     other = await bench.start("g3")
@@ -410,3 +414,37 @@ async def test_only_one_list_runs_in_the_tenant(bench: Bench) -> None:
     assert busy.value.code == "term_list_running"
     bench.jobs.release("g3")
     await bench.until(other["id"], "completed")
+
+
+async def test_two_owners_run_lists_at_the_same_time(
+    bench: Bench, dd: DataDictionary
+) -> None:
+    """Decision 3: different owners' lists run in parallel; neither engels the other."""
+
+    other_user = await dd.auth.account(dd.admin, "kullanici")
+    rows = await sql(
+        "SELECT user_id, display_name FROM app_user WHERE public_id = :p", p=other_user.public_id
+    )
+    other_user_id, other_display = rows[0]
+    other = Asker(other_user_id, other_user.public_id, other_display)
+
+    bench.jobs.plan["h1"] = "hold"
+    bench.jobs.plan["h2"] = "hold"
+    first = await bench.start("h1")
+    second = await bench.lists.start(
+        tenant=bench.tenant, owner=other, file_name="t.xlsx", data=xlsx(["Terim", "h2"])
+    )
+    await bench.until_asked(2)
+    assert bench.jobs.asked() == ["h1", "h2"]
+    assert bench.jobs.most_active == 2
+    bench.jobs.release("h1")
+    bench.jobs.release("h2")
+    await bench.until(first["id"], "completed")
+    async with asyncio.timeout(10):
+        while True:
+            snap = await bench.lists.snapshot(
+                bench.tenant.tenant_id, other.public_id, second["id"]
+            )
+            if snap["status"] == "completed":
+                break
+            await asyncio.sleep(0.02)

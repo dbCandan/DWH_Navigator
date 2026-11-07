@@ -70,6 +70,10 @@ def test_server_check_reasons(failure: ModelFailure, reason: str) -> None:
         (ModelFailure(FailureCode.TLS_ERROR), UNREACHABLE),
         (ModelFailure(FailureCode.NETWORK_POLICY_DENIED), UNREACHABLE),
         (ModelFailure(FailureCode.CONNECT_ERROR), UNREACHABLE),
+        (
+            ModelFailure(FailureCode.OUTPUT_TRUNCATED),
+            "Model hatası: model cevabı uzunluk sınırında kesildi",
+        ),
         (ModelFailure(FailureCode.INVALID_JSON), "Model hatası: model geçerli JSON üretmedi"),
         (ModelFailure(FailureCode.INVALID_RESPONSE), "Model hatası: beklenmeyen yanıt"),
         (ModelFailure(FailureCode.UPSTREAM_STATUS, 500), "Model hatası: HTTP 500"),

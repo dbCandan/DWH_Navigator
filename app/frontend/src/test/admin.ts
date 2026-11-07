@@ -2,11 +2,13 @@ import {vi} from 'vitest';
 import {ApiError} from '@/lib/apiClient';
 import {AnalysisRecordsService} from '@/services/analysisRecords';
 import {DictionaryService} from '@/services/dictionary';
+import {DictionarySyncService} from '@/services/dictionarySync';
 import {LlmIntegrationService} from '@/services/llmIntegrations';
 import {SavedAnswersService} from '@/services/savedAnswers';
 import {SearchSettingsService} from '@/services/searchSettings';
 import {VocabularyService} from '@/services/vocabulary';
 import type {DictionaryState, DictionaryTable} from '@/types/dictionary';
+import type {DictionarySource, DictionaryVersion, SyncChange, SyncCounts, SyncRunDetail, SyncRunSummary} from '@/types/dictionarySync';
 import type {RecordDetail, RecordPage, RecordRow, RecordSummary} from '@/types/records';
 import type {SearchIndexState, SearchSettingField, SearchSettings} from '@/types/search';
 import {llmState} from './llm';
@@ -133,6 +135,91 @@ export const table = (key: string, overrides: Partial<DictionaryTable> = {}): Di
   ...overrides,
 });
 
+export const dictionarySource = (overrides: Partial<DictionarySource> = {}): DictionarySource => ({
+  configured: false,
+  host: '',
+  port: 1433,
+  database: '',
+  username: '',
+  has_password: false,
+  encrypt: true,
+  updated_at: null,
+  ...overrides,
+});
+
+const NO_COUNTS: SyncCounts = {
+  tables_added: 0,
+  tables_removed: 0,
+  tables_changed: 0,
+  tables_excluded: 0,
+  tables_corrected: 0,
+  columns_added: 0,
+  columns_removed: 0,
+  columns_changed: 0,
+  columns_excluded: 0,
+  columns_corrected: 0,
+  fields_filled: 0,
+  fields_empty: 0,
+  model_calls: 0,
+  model_failures: 0,
+  warnings: 0,
+};
+
+type WithCounts<T> = Partial<Omit<T, 'counts'>> & {counts?: Partial<SyncCounts>};
+
+/** A run's summary; a finished update unless a test says otherwise. */
+export const syncRun = (overrides: WithCounts<SyncRunSummary> = {}): SyncRunSummary => ({
+  public_id: '00000000-0000-4000-8000-0000000000e1',
+  kind: 'guncelleme',
+  status: 'completed',
+  phase: 'done',
+  progress_done: 0,
+  progress_total: 0,
+  started_at: '2026-10-08T09:00:00Z',
+  finished_at: '2026-10-08T09:05:00Z',
+  started_by: {public_id: '00000000-0000-4000-8000-0000000000b1', display_name: 'Ali Veli'},
+  previous_version: 'aaaaaaaaaaaa-100',
+  new_version: 'bbbbbbbbbbbb-130',
+  model: 'org/qwen-32b',
+  error_code: '',
+  error_message: '',
+  ...overrides,
+  counts: {...NO_COUNTS, ...overrides.counts},
+});
+
+export const syncDetail = (overrides: WithCounts<SyncRunDetail> = {}): SyncRunDetail => ({
+  warnings: [],
+  suggestions: [],
+  ...overrides,
+  ...syncRun(overrides),
+});
+
+export const syncChange = (overrides: Partial<SyncChange> = {}): SyncChange => ({
+  kind: 'table_added',
+  table_key: 'EDWDM.DBO.vMusteri',
+  column_name: '',
+  field: '',
+  old_value: '',
+  new_value: '',
+  origin: '',
+  ...overrides,
+});
+
+export const dictionaryVersion = (overrides: Partial<DictionaryVersion> = {}): DictionaryVersion => ({
+  public_id: '00000000-0000-4000-8000-0000000000f1',
+  version: 'aaaaaaaaaaaa-100',
+  status: 'previous',
+  channel: 'kaynak',
+  imported_at: '2026-10-01T09:00:00Z',
+  imported_by: null,
+  object_count: 10,
+  column_count: 90,
+  run_public_id: null,
+  expires_at: '2026-11-01T09:00:00Z',
+  can_restore: true,
+  ...overrides,
+});
+
 export const termList = (items: TermItem[], revision = 1): VocabularyListState => ({list: 'terms', revision, items});
 export const stopList = (items: StopwordItem[], revision = 1): VocabularyListState => ({list: 'stopwords', revision, items});
 
@@ -217,6 +304,10 @@ export function serveAdminDefaults() {
   vi.spyOn(SearchSettingsService, 'index').mockResolvedValue(indexState({columns: 0, objects: 0, dictionary_version: ''}));
   vi.spyOn(DictionaryService, 'state').mockResolvedValue(EMPTY_DICTIONARY);
   vi.spyOn(DictionaryService, 'tables').mockResolvedValue([]);
+  vi.spyOn(DictionarySyncService, 'source').mockResolvedValue(dictionarySource());
+  vi.spyOn(DictionarySyncService, 'runs').mockResolvedValue({items: [], total: 0, page: 1, page_size: 20});
+  vi.spyOn(DictionarySyncService, 'versions').mockResolvedValue([]);
+  vi.spyOn(DictionarySyncService, 'changes').mockResolvedValue({items: [], total: 0, page: 1, page_size: 50});
   vi.spyOn(SavedAnswersService, 'summary').mockResolvedValue({total: 0, usable: 0, newest_at: null});
   vi.spyOn(AnalysisRecordsService, 'list').mockResolvedValue(recordPage());
   vi.spyOn(AnalysisRecordsService, 'summary').mockResolvedValue(recordSummary());

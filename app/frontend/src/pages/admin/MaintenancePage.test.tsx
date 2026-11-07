@@ -62,7 +62,7 @@ describe('Bakım page (search-settings Requirement 14-16, 19)', () => {
     expect(within(card()).getByText(message('maintenance.index.empty'))).toBeInTheDocument();
     expect(within(card()).getByText(message('maintenance.index.dictionaryNone'))).toBeInTheDocument();
     expect(within(card()).getByText('—')).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: message('maintenance.toDictionaryImport')})).toBeInTheDocument();
+    expect(screen.getByRole('link', {name: message('maintenance.toDictionarySetup')})).toBeInTheDocument();
   });
 
   it('reads the index every 2 seconds while it builds', async () => {

@@ -35,7 +35,9 @@
           "channel": {
             "enum": [
               "arayuz",
-              "betik"
+              "betik",
+              "kaynak",
+              "geri_donus"
             ],
             "type": "string"
           },
@@ -604,9 +606,6 @@
           "object": {
             "type": "string"
           },
-          "pii": {
-            "type": "boolean"
-          },
           "role": {
             "type": "string"
           },
@@ -629,7 +628,6 @@
           "object",
           "description",
           "synonyms",
-          "pii",
           "group",
           "role",
           "signals",
@@ -856,6 +854,22 @@
         ],
         "type": "object"
       },
+      "ApplySuggestions": {
+        "properties": {
+          "suggestion_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": [
+          "suggestion_ids"
+        ],
+        "type": "object"
+      },
       "Asker": {
         "description": "Who asked: an account (its display name) or a visitor ('<host> \u00b7 <address>' of the\nmoment, 003-anonymous-visitor Requirement 7).",
         "properties": {
@@ -1001,6 +1015,67 @@
         ],
         "type": "object"
       },
+      "Change": {
+        "properties": {
+          "column_name": {
+            "type": "string"
+          },
+          "field": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "new_value": {
+            "type": "string"
+          },
+          "old_value": {
+            "type": "string"
+          },
+          "origin": {
+            "type": "string"
+          },
+          "table_key": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "table_key",
+          "column_name",
+          "field",
+          "old_value",
+          "new_value",
+          "origin"
+        ],
+        "type": "object"
+      },
+      "ChangesPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Change"
+            },
+            "type": "array"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "type": "object"
+      },
       "CompletedEvent": {
         "properties": {
           "flow": {
@@ -1029,6 +1104,71 @@
           "flow",
           "verdict"
         ],
+        "type": "object"
+      },
+      "Counts": {
+        "properties": {
+          "columns_added": {
+            "default": 0,
+            "type": "integer"
+          },
+          "columns_changed": {
+            "default": 0,
+            "type": "integer"
+          },
+          "columns_corrected": {
+            "default": 0,
+            "type": "integer"
+          },
+          "columns_excluded": {
+            "default": 0,
+            "type": "integer"
+          },
+          "columns_removed": {
+            "default": 0,
+            "type": "integer"
+          },
+          "fields_empty": {
+            "default": 0,
+            "type": "integer"
+          },
+          "fields_filled": {
+            "default": 0,
+            "type": "integer"
+          },
+          "model_calls": {
+            "default": 0,
+            "type": "integer"
+          },
+          "model_failures": {
+            "default": 0,
+            "type": "integer"
+          },
+          "tables_added": {
+            "default": 0,
+            "type": "integer"
+          },
+          "tables_changed": {
+            "default": 0,
+            "type": "integer"
+          },
+          "tables_corrected": {
+            "default": 0,
+            "type": "integer"
+          },
+          "tables_excluded": {
+            "default": 0,
+            "type": "integer"
+          },
+          "tables_removed": {
+            "default": 0,
+            "type": "integer"
+          },
+          "warnings": {
+            "default": 0,
+            "type": "integer"
+          }
+        },
         "type": "object"
       },
       "DailyCounts": {
@@ -1061,32 +1201,6 @@
           "date",
           "with_tables",
           "without_tables"
-        ],
-        "type": "object"
-      },
-      "DictionaryImported": {
-        "properties": {
-          "changed": {
-            "type": "boolean"
-          },
-          "index": {
-            "$ref": "#/components/schemas/SearchIndexState"
-          },
-          "version": {
-            "$ref": "#/components/schemas/DictionaryVersionSummary"
-          },
-          "warnings": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": [
-          "changed",
-          "version",
-          "warnings",
-          "index"
         ],
         "type": "object"
       },
@@ -1239,7 +1353,9 @@
           "channel": {
             "enum": [
               "arayuz",
-              "betik"
+              "betik",
+              "kaynak",
+              "geri_donus"
             ],
             "type": "string"
           },
@@ -1621,6 +1737,252 @@
           "public_id",
           "name",
           "model"
+        ],
+        "type": "object"
+      },
+      "LlmCallExchange": {
+        "description": "One HTTP request of a call; ``status`` is empty when no response arrived.",
+        "properties": {
+          "duration_ms": {
+            "type": "integer"
+          },
+          "request": {
+            "type": "string"
+          },
+          "request_truncated": {
+            "type": "boolean"
+          },
+          "response": {
+            "type": "string"
+          },
+          "response_truncated": {
+            "type": "boolean"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "request",
+          "request_truncated",
+          "status",
+          "response",
+          "response_truncated",
+          "duration_ms"
+        ],
+        "type": "object"
+      },
+      "LlmCallLogDetail": {
+        "properties": {
+          "adaptations": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "analysis_public_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completion_tokens": {
+            "type": "integer"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "exchanges": {
+            "items": {
+              "$ref": "#/components/schemas/LlmCallExchange"
+            },
+            "type": "array"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "integration_public_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "prompt_tokens": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "repaired": {
+            "type": "boolean"
+          },
+          "requests": {
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "wait_ms": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "public_id",
+          "purpose",
+          "outcome",
+          "model",
+          "integration_public_id",
+          "analysis_public_id",
+          "started_at",
+          "wait_ms",
+          "duration_ms",
+          "http_status",
+          "requests",
+          "repaired",
+          "prompt_tokens",
+          "completion_tokens",
+          "adaptations",
+          "exchanges"
+        ],
+        "type": "object"
+      },
+      "LlmCallLogPage": {
+        "properties": {
+          "retention_days": {
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/LlmCallLogRow"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "rows",
+          "total",
+          "retention_days"
+        ],
+        "type": "object"
+      },
+      "LlmCallLogRow": {
+        "description": "One chat call in the list, without its bodies.",
+        "properties": {
+          "analysis_public_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "completion_tokens": {
+            "type": "integer"
+          },
+          "duration_ms": {
+            "type": "integer"
+          },
+          "http_status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "integration_public_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "prompt_tokens": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "repaired": {
+            "type": "boolean"
+          },
+          "requests": {
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "wait_ms": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "public_id",
+          "purpose",
+          "outcome",
+          "model",
+          "integration_public_id",
+          "analysis_public_id",
+          "started_at",
+          "wait_ms",
+          "duration_ms",
+          "http_status",
+          "requests",
+          "repaired",
+          "prompt_tokens",
+          "completion_tokens"
         ],
         "type": "object"
       },
@@ -2115,6 +2477,7 @@
                   "context_exceeded",
                   "upstream_status",
                   "invalid_response",
+                  "output_truncated",
                   "invalid_json",
                   "response_too_large",
                   "cancelled"
@@ -2245,6 +2608,7 @@
                   "context_exceeded",
                   "upstream_status",
                   "invalid_response",
+                  "output_truncated",
                   "invalid_json",
                   "response_too_large",
                   "cancelled"
@@ -2346,6 +2710,7 @@
                   "context_exceeded",
                   "upstream_status",
                   "invalid_response",
+                  "output_truncated",
                   "invalid_json",
                   "response_too_large",
                   "cancelled"
@@ -2538,6 +2903,7 @@
                   "context_exceeded",
                   "upstream_status",
                   "invalid_response",
+                  "output_truncated",
                   "invalid_json",
                   "response_too_large",
                   "cancelled"
@@ -2692,6 +3058,21 @@
           "username",
           "current_password",
           "new_password"
+        ],
+        "type": "object"
+      },
+      "Person": {
+        "properties": {
+          "display_name": {
+            "type": "string"
+          },
+          "public_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "display_name"
         ],
         "type": "object"
       },
@@ -3430,6 +3811,252 @@
         ],
         "type": "object"
       },
+      "RunDetail": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/Counts"
+          },
+          "error_code": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "guncelleme",
+              "geri_donus"
+            ],
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "new_version": {
+            "type": "string"
+          },
+          "phase": {
+            "enum": [
+              "reading",
+              "comparing",
+              "filling",
+              "indexing",
+              "done"
+            ],
+            "type": "string"
+          },
+          "previous_version": {
+            "type": "string"
+          },
+          "progress_done": {
+            "type": "integer"
+          },
+          "progress_total": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "started_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Person"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "running",
+              "completed",
+              "no_change",
+              "pending_approval",
+              "rejected",
+              "failed",
+              "interrupted"
+            ],
+            "type": "string"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/Suggestion"
+            },
+            "type": "array"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "public_id",
+          "kind",
+          "status",
+          "phase",
+          "progress_done",
+          "progress_total",
+          "started_at",
+          "finished_at",
+          "started_by",
+          "previous_version",
+          "new_version",
+          "model",
+          "counts",
+          "error_code",
+          "error_message",
+          "warnings",
+          "suggestions"
+        ],
+        "type": "object"
+      },
+      "RunSummary": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/Counts"
+          },
+          "error_code": {
+            "type": "string"
+          },
+          "error_message": {
+            "type": "string"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "guncelleme",
+              "geri_donus"
+            ],
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "new_version": {
+            "type": "string"
+          },
+          "phase": {
+            "enum": [
+              "reading",
+              "comparing",
+              "filling",
+              "indexing",
+              "done"
+            ],
+            "type": "string"
+          },
+          "previous_version": {
+            "type": "string"
+          },
+          "progress_done": {
+            "type": "integer"
+          },
+          "progress_total": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "started_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Person"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "running",
+              "completed",
+              "no_change",
+              "pending_approval",
+              "rejected",
+              "failed",
+              "interrupted"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "kind",
+          "status",
+          "phase",
+          "progress_done",
+          "progress_total",
+          "started_at",
+          "finished_at",
+          "started_by",
+          "previous_version",
+          "new_version",
+          "model",
+          "counts",
+          "error_code",
+          "error_message"
+        ],
+        "type": "object"
+      },
+      "RunsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunSummary"
+            },
+            "type": "array"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "page_size": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "type": "object"
+      },
       "SavedAnswerSummaryOut": {
         "properties": {
           "newest_at": {
@@ -3978,6 +4605,141 @@
         ],
         "type": "object"
       },
+      "Source": {
+        "properties": {
+          "configured": {
+            "type": "boolean"
+          },
+          "database": {
+            "type": "string"
+          },
+          "encrypt": {
+            "type": "boolean"
+          },
+          "has_password": {
+            "type": "boolean"
+          },
+          "host": {
+            "type": "string"
+          },
+          "port": {
+            "type": "integer"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "username": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "configured",
+          "host",
+          "port",
+          "database",
+          "username",
+          "has_password",
+          "encrypt",
+          "updated_at"
+        ],
+        "type": "object"
+      },
+      "SourceInput": {
+        "properties": {
+          "database": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "encrypt": {
+            "default": false,
+            "type": "boolean"
+          },
+          "host": {
+            "maxLength": 255,
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "anyOf": [
+              {
+                "maxLength": 512,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "port": {
+            "maximum": 65535.0,
+            "minimum": 1.0,
+            "type": "integer"
+          },
+          "username": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "host",
+          "port",
+          "database",
+          "username"
+        ],
+        "type": "object"
+      },
+      "SourceTest": {
+        "properties": {
+          "column_count": {
+            "type": "integer"
+          },
+          "last_change_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "missing_databases": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "table_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ok",
+          "message",
+          "table_count",
+          "column_count",
+          "last_change_at"
+        ],
+        "type": "object"
+      },
       "StartedEvent": {
         "properties": {
           "type": {
@@ -4075,6 +4837,48 @@
         ],
         "type": "object"
       },
+      "Suggestion": {
+        "properties": {
+          "equivalents": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "kind": {
+            "enum": [
+              "term",
+              "stopword"
+            ],
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "applied"
+            ],
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "kind",
+          "value",
+          "equivalents",
+          "note",
+          "status"
+        ],
+        "type": "object"
+      },
       "TableColumn": {
         "properties": {
           "column": {
@@ -4099,9 +4903,6 @@
           "object": {
             "type": "string"
           },
-          "pii": {
-            "type": "boolean"
-          },
           "synonyms": {
             "items": {
               "type": "string"
@@ -4115,7 +4916,6 @@
           "object",
           "description",
           "synonyms",
-          "pii",
           "group"
         ],
         "type": "object"
@@ -4693,6 +5493,99 @@
           "loc",
           "msg",
           "type"
+        ],
+        "type": "object"
+      },
+      "Version": {
+        "properties": {
+          "can_restore": {
+            "type": "boolean"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "column_count": {
+            "type": "integer"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "imported_at": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "imported_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Person"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "object_count": {
+            "type": "integer"
+          },
+          "public_id": {
+            "type": "string"
+          },
+          "run_public_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "enum": [
+              "active",
+              "previous",
+              "pending"
+            ],
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "public_id",
+          "version",
+          "status",
+          "channel",
+          "imported_at",
+          "imported_by",
+          "object_count",
+          "column_count",
+          "run_public_id",
+          "expires_at",
+          "can_restore"
+        ],
+        "type": "object"
+      },
+      "VersionsPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Version"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
         ],
         "type": "object"
       },
@@ -7057,38 +7950,57 @@
         ]
       }
     },
-    "/api/dwhnavigator/v1/dictionary/imports": {
-      "post": {
-        "description": "Import a workbook in the template; 201 with a new version, 200 when the content is the\nactive version's (Requirement 7).",
-        "parameters": [
-          {
-            "in": "header",
-            "name": "X-Filename",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
+    "/api/dwhnavigator/v1/dictionary/source": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Source"
                 }
-              ]
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/octet-stream": {
-              "schema": {
-                "format": "binary",
-                "type": "string"
               }
             },
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Read Source",
+        "tags": [
+          "dictionary"
+        ]
+      },
+      "put": {
+        "requestBody": {
+          "content": {
+            "application/json": {
               "schema": {
-                "format": "binary",
-                "type": "string"
+                "$ref": "#/components/schemas/SourceInput"
               }
             }
           },
@@ -7099,17 +8011,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/DictionaryImported"
-                }
-              }
-            },
-            "description": "\u0130\u00e7erik etkin s\u00fcr\u00fcmle ayn\u0131"
-          },
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DictionaryImported"
+                  "$ref": "#/components/schemas/Source"
                 }
               }
             },
@@ -7135,65 +8037,15 @@
             },
             "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
           },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "dictionary_import_in_progress: ba\u015fka bir i\u00e7e aktarma yaz\u0131yor"
-          },
-          "413": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "upload_too_large: g\u00f6vde 20 MB'tan b\u00fcy\u00fck"
-          },
-          "415": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "unsupported_media_type: g\u00f6vde Excel de\u011fil"
-          },
           "422": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             },
-            "description": "dictionary_file_empty: g\u00f6vde bo\u015f; dictionary_workbook_invalid: dosya \u015fablona uymuyor"
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "search_index_build_failed: indeks kurulamad\u0131, hi\u00e7bir \u015fey yaz\u0131lmad\u0131"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "search_change_busy: ba\u015fka bir de\u011fi\u015fiklik uygulan\u0131yor"
+            "description": "Validation Error"
           }
         },
         "security": [
@@ -7202,7 +8054,578 @@
             "tenant": []
           }
         ],
-        "summary": "Import Dictionary",
+        "summary": "Save Source",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/source/test": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceTest"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Test Source",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync": {
+      "post": {
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Start Sync",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync/runs": {
+      "get": {
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "List Runs",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Read Run",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/approve": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Approve Run",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/changes": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangesPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Read Changes",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/reject": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Reject Run",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/suggestions/apply": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplySuggestions"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Apply Suggestions",
         "tags": [
           "dictionary"
         ]
@@ -7375,20 +8798,18 @@
         ]
       }
     },
-    "/api/dwhnavigator/v1/dictionary/template": {
+    "/api/dwhnavigator/v1/dictionary/versions": {
       "get": {
-        "description": "The empty template: both sheets with their header rows.",
         "responses": {
           "200": {
             "content": {
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+              "application/json": {
                 "schema": {
-                  "format": "binary",
-                  "type": "string"
+                  "$ref": "#/components/schemas/VersionsPage"
                 }
               }
             },
-            "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
+            "description": "Successful Response"
           },
           "401": {
             "content": {
@@ -7417,7 +8838,73 @@
             "tenant": []
           }
         ],
-        "summary": "Dictionary Template",
+        "summary": "List Versions",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/versions/{version_id}/restore": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "version_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Restore Version",
         "tags": [
           "dictionary"
         ]
@@ -7742,6 +9229,205 @@
         "summary": "Liveness",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/llm-call-logs": {
+      "get": {
+        "description": "The newest calls without their bodies, and how many match the filters.",
+        "parameters": [
+          {
+            "description": "\u00c7a\u011fr\u0131n\u0131n amac\u0131",
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "\u00c7a\u011fr\u0131n\u0131n amac\u0131"
+            }
+          },
+          {
+            "description": "\u00c7a\u011fr\u0131n\u0131n sonucu",
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "\u00c7a\u011fr\u0131n\u0131n sonucu"
+            }
+          },
+          {
+            "description": "\u0130stek ve yan\u0131tta aranan metin",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "\u0130stek ve yan\u0131tta aranan metin"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmCallLogPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "invalid_filter: ama\u00e7, sonu\u00e7, metin ya da say\u0131 ge\u00e7ersiz"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "List Calls",
+        "tags": [
+          "llm-call-logs"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/llm-call-logs/{public_id}": {
+      "get": {
+        "description": "One call with the request and response bodies of each HTTP request.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmCallLogDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_call_log_not_found: kay\u0131t yok ya da s\u00fcresi dolmu\u015f"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Read Call",
+        "tags": [
+          "llm-call-logs"
         ]
       }
     },

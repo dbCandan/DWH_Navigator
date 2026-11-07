@@ -29,7 +29,6 @@ PENALTY_SCOPE = 0.10
 NEGATION_WINDOW = 1  # "bazlı" is a stopword, so "Kart bazlı değil" -> (kart, değil)
 
 CAVEAT_DERIVATION = "Hazır oran değil; oran pay/payda alanlarından türetilmeli"
-CAVEAT_PII = "Kişisel veri (KVKK) içerir; maskelenmiş alternatif tercih edilmeli"
 
 
 def covers(tokens: frozenset[str], concept: Concept) -> bool:
@@ -93,9 +92,6 @@ def score_column(
     for c in covered:
         if c.scope_note:
             caveats.append(c.scope_note)
-
-    if f.col.has_pii:
-        caveats.append(CAVEAT_PII)
 
     return ColumnHit(
         col=f.col,

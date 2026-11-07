@@ -182,12 +182,11 @@ def _clip(text: str, limit: int) -> str:
 def column_line(col: DictColumn, desc_chars: int, detail: bool = True) -> str:
     """One column for the model: ``- Name [Rol]: summary`` when compact, the (clipped)
     description when ``detail`` is asked for or the dictionary has no summary."""
-    kvkk = " [KVKK]" if col.has_pii else ""
     role = f" [{col.role}]" if col.role else ""
     if not detail and col.summary:
-        return f"- {col.column}{role}{kvkk}: {col.summary}"
+        return f"- {col.column}{role}: {col.summary}"
     text = _clip(col.description, desc_chars) or col.summary or "(açıklama yok)"
-    return f"- {col.column}{role}{kvkk}: {text}"
+    return f"- {col.column}{role}: {text}"
 
 
 def term_matcher(terms: Iterable[str]) -> Callable[[DictColumn], int]:

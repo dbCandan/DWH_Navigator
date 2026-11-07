@@ -798,6 +798,8 @@ def fallback_reason(failure: ModelFailure | None) -> str:
         return "Model zamanında yanıt vermedi (zaman aşımı)."
     if code in _UNREACHABLE:
         return "Model sunucusuna ulaşılamadı."
+    if code is FailureCode.OUTPUT_TRUNCATED:
+        return "Model hatası: model cevabı uzunluk sınırında kesildi"
     if code is FailureCode.INVALID_JSON:
         return "Model hatası: model geçerli JSON üretmedi"
     if code is FailureCode.INVALID_RESPONSE:

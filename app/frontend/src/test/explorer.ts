@@ -72,7 +72,6 @@ export const answerObject = (rank: number, overrides: Partial<AnswerObject> = {}
     object: `DWH.Kart.vCardLimit${rank}`,
     description: `Kolon ${i} açıklaması`,
     synonyms: i === 0 ? ['limit tutarı'] : [],
-    pii: i === 1,
     group: null,
     role: i === 0 ? 'eşleşme' : i === 1 ? 'yapısal' : '',
     signals: i === 0 ? ['ad eşleşmesi'] : [],
@@ -140,7 +139,6 @@ export const column = (name: string, overrides: Partial<TableColumn> = {}): Tabl
   object: 'DWH.Kart.vCardLimit1',
   description: `${name} açıklaması`,
   synonyms: [],
-  pii: false,
   group: 'Kartlar',
   ...overrides,
 });
@@ -153,7 +151,7 @@ export const tableDetail = (overrides: Partial<TableDetail> = {}): TableDetail =
   columns: [
     column('CustomerPartyId', {description: 'Müşteri anahtarı'}),
     column('CardLimitAmount', {description: 'Kartın İŞLEM limiti', synonyms: ['limit tutarı', 'kredi limiti']}),
-    column('CustomerName', {description: '', pii: true}),
+    column('CustomerName', {description: ''}),
     column('DataDate', {description: 'x'.repeat(150)}),
   ],
   join_keys: ['CustomerPartyId', 'DataDate'],

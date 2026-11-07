@@ -17,3 +17,6 @@ test-results/
 *.log
 app/infra/.data/
 .kt-scaffold/evidence.json
+
+# Local dictionary build workspace: warehouse metadata and generated files, never committed.
+app/backend/.dm/

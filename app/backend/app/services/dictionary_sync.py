@@ -1,0 +1,636 @@
+"""Dictionary update and rollback runs (011-dictionary-sync).
+
+A run lives in this process: accepted at once, then read, compared, filled and written in the
+background. One partial unique index allows one running run per tenant. The active dictionary
+changes only through the search index's change queue, so a failed read, model or build leaves it as
+it was. No table, column, description or model text reaches a log line.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import logging
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+from fastapi import status
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
+from app.core.config import Settings
+from app.core.errors import ApplicationError
+from app.core.logging import log_event
+from app.core.secret_cipher import SecretCipher, SecretUnreadable, decode_encryption_key
+from app.domain.dictionary import (
+    MAX_KEPT_WARNINGS,
+    VERSION_RETENTION_DAYS,
+    DictionaryStatus,
+    ImportChannel,
+)
+from app.domain.dictionary_source import (
+    DictionarySourcePort,
+    SourceConnection,
+    SourceInvalid,
+    SourceUnavailable,
+    TargetUnavailable,
+)
+from app.domain.llm import LlmChatRequest, LlmChatResult, LlmConnection
+from app.domain.models.dictionary import DictionaryVersion
+from app.domain.models.dictionary_sync import DictionarySource, DictionarySyncRun
+from app.domain.vocabulary import VocabularyList
+from app.infrastructure.repositories.dictionary_repository import (
+    DictionaryRepository,
+    NewDictionaryVersion,
+)
+from app.infrastructure.repositories.dictionary_sync_repository import (
+    DictionarySyncRepository,
+)
+from app.infrastructure.repositories.vocabulary_repository import VocabularyRepository
+from app.services.analysis.dictionary_workbook import load_dictionary, records_digest
+from app.services.dictionary_reading import dictionary_identity
+from app.services.dictionary_service import write_dictionary_version
+from app.services.dictionary_sync_describe import describe_tables
+from app.services.dictionary_sync_fill import count_empty, fill_tables, suggest
+from app.services.dictionary_sync_merge import Change, MergePlan, fold, merge
+from app.services.llm_connections import LlmGateway
+from app.services.search_index import (
+    ChangePlan,
+    IndexTrigger,
+    SearchIndex,
+    ServingEngine,
+)
+from app.services.search_inputs import SearchInputs
+
+logger = logging.getLogger("app.dictionary")
+
+REMOVAL_LIMIT = 0.10
+MAX_STORED_WARNINGS = 200
+KIND_UPDATE = "guncelleme"
+KIND_ROLLBACK = "geri_donus"
+
+RUN_IN_PROGRESS_MESSAGE = "Bir sözlük güncellemesi sürüyor; bitince yeniden deneyin."
+SOURCE_NOT_CONFIGURED_MESSAGE = "Önce kaynak bağlantısını ve parolasını kaydedin."
+SOURCE_UNAVAILABLE_MESSAGE = "Sözlük kaynağına ulaşılamadı."
+SOURCE_INVALID_MESSAGE = "Sözlük kaynağının yapısı beklenenden farklı veya sınırları aşıyor."
+SOURCE_EMPTY_MESSAGE = "Sözlük kaynağı boş döndü; etkin sözlük değişmedi."
+INTERRUPTED_MESSAGE = "Güncelleme uygulama yeniden başladığı için kesildi."
+FAILED_MESSAGE = "Güncelleme beklenmedik bir hatayla durdu; etkin sözlük değişmedi."
+
+
+def run_in_progress() -> ApplicationError:
+    return ApplicationError(
+        status.HTTP_409_CONFLICT, "dictionary_sync_in_progress", RUN_IN_PROGRESS_MESSAGE
+    )
+
+
+def source_not_configured() -> ApplicationError:
+    return ApplicationError(
+        status.HTTP_409_CONFLICT, "dictionary_source_not_configured", SOURCE_NOT_CONFIGURED_MESSAGE
+    )
+
+
+def target_message(databases: tuple[str, ...]) -> str:
+    return "Şu veritabanları okunamadı, etkin sözlük değişmedi: " + ", ".join(databases)
+
+
+def source_context(tenant_public_id: str, row: DictionarySource) -> str:
+    """A saved password opens only for the address it was saved with."""
+
+    return f"dictionary_source:{tenant_public_id}:{row.public_id}:{row.host}:{row.port}"
+
+
+class SourceKeys:
+    def __init__(self, settings: Settings) -> None:
+        key = settings.settings_encryption_key
+        self._cipher = (
+            SecretCipher(decode_encryption_key(key.get_secret_value())) if key is not None else None
+        )
+
+    @property
+    def available(self) -> bool:
+        return self._cipher is not None
+
+    def seal(self, password: str, *, tenant_public_id: str, row: DictionarySource) -> str:
+        assert self._cipher is not None
+        return self._cipher.encrypt(password, context=source_context(tenant_public_id, row))
+
+    def open(self, row: DictionarySource, *, tenant_public_id: str) -> str | None:
+        if self._cipher is None or row.password_ciphertext is None:
+            return None
+        try:
+            return self._cipher.decrypt(
+                row.password_ciphertext, context=source_context(tenant_public_id, row)
+            )
+        except SecretUnreadable:
+            return None
+
+
+def connection_of(row: DictionarySource, password: str) -> SourceConnection:
+    return SourceConnection(
+        host=row.host,
+        port=row.port,
+        database=row.database_name,
+        username=row.username,
+        password=password,
+        encrypt=row.encrypt,
+    )
+
+
+def counts_of(plan: MergePlan) -> dict[str, int]:
+    kinds: dict[str, int] = {}
+    seen: set[tuple[str, str, str]] = set()
+    for change in plan.changes:
+        key = (change.kind, change.table_key, change.column_name)
+        if key not in seen:
+            seen.add(key)
+            kinds[change.kind] = kinds.get(change.kind, 0) + 1
+    new_columns = sum(len(t.columns) for t in plan.tables if t.is_new)
+    return {
+        "tables_added": kinds.get("table_added", 0),
+        "tables_removed": plan.removed_tables,
+        "tables_changed": kinds.get("table_changed", 0),
+        "tables_excluded": kinds.get("table_excluded", 0),
+        "tables_corrected": kinds.get("table_corrected", 0),
+        "columns_added": kinds.get("column_added", 0) + new_columns,
+        "columns_removed": plan.removed_columns,
+        "columns_changed": kinds.get("column_changed", 0),
+        "columns_excluded": kinds.get("column_excluded", 0),
+        "columns_corrected": kinds.get("column_corrected", 0),
+    }
+
+
+def with_extra_headers(records: list[dict[str, str]], headers: list[str]) -> None:
+    """Every record carries the version's extra columns, as the stored read gives them back."""
+
+    for record in records:
+        for header in headers:
+            record.setdefault(header, "")
+
+
+@dataclass(frozen=True, slots=True)
+class Started:
+    run_id: int
+    public_id: str
+
+
+class _RunFailed(Exception):
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(code)
+        self.code = code
+        self.message = message
+
+
+class DictionarySync:
+    def __init__(
+        self,
+        *,
+        index: SearchIndex,
+        models: LlmGateway,
+        source: DictionarySourcePort,
+        keys: Callable[[], SourceKeys],
+        session_factory: async_sessionmaker[AsyncSession],
+        kept_databases: Sequence[str] = (),
+    ) -> None:
+        self.kept_databases = tuple(kept_databases)
+        self.index = index
+        self.models = models
+        self.source = source
+        self.keys = keys
+        self.session_factory = session_factory
+        self._tasks: set[asyncio.Task[None]] = set()
+
+    # ------------------------------------------------------------------ lifecycle
+
+    async def run_startup(self, database_ready: Callable[[], Any]) -> None:
+        while not await database_ready():
+            await asyncio.sleep(1.0)
+        try:
+            now = datetime.now(UTC)
+            async with self.session_factory() as session, session.begin():
+                await DictionarySyncRepository(session).interrupt_running(
+                    {
+                        "status": "interrupted",
+                        "phase": "done",
+                        "finished_at": now,
+                        "error_code": "interrupted",
+                        "error_message": INTERRUPTED_MESSAGE,
+                    }
+                )
+                await self._prune(session, await self.index.tenant_id(), now)
+        except Exception as error:  # noqa: BLE001 - logged; the next start tries again
+            log_event(logger, "dictionary.sync_startup_failed", error_type=type(error).__name__)
+
+    async def shutdown(self) -> None:
+        for task in list(self._tasks):
+            task.cancel()
+        for task in list(self._tasks):
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
+
+    @staticmethod
+    async def _prune(session: AsyncSession, tenant_id: int, now: datetime) -> None:
+        before = now - timedelta(days=VERSION_RETENTION_DAYS)
+        pruned = await DictionaryRepository(session).prune_expired(
+            tenant_id, before=before, now=now
+        )
+        if pruned:
+            log_event(logger, "dictionary.pruned_expired", versions=pruned)
+
+    # ------------------------------------------------------------------ start
+
+    async def _open_run(self, tenant_id: int, kind: str, user_id: int, phase: str) -> Started:
+        now = datetime.now(UTC)
+        try:
+            async with self.session_factory() as session, session.begin():
+                run = DictionarySyncRun(
+                    tenant_id=tenant_id,
+                    kind=kind,
+                    status="running",
+                    phase=phase,
+                    started_at=now,
+                    created_at=now,
+                    updated_at=now,
+                    created_by=user_id,
+                    updated_by=user_id,
+                )
+                session.add(run)
+                await session.flush()
+                return Started(run.dictionary_sync_run_id, run.public_id)
+        except IntegrityError:
+            raise run_in_progress() from None
+
+    def _spawn(self, work: Any) -> None:
+        task = asyncio.create_task(work)
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
+
+    async def start_update(self, tenant_id: int, tenant_public_id: str, user_id: int) -> str:
+        async with self.session_factory() as session:
+            await self._connection(session, tenant_id, tenant_public_id)
+        started = await self._open_run(tenant_id, KIND_UPDATE, user_id, "reading")
+        self._spawn(
+            self._guarded(
+                started.run_id, self._update(started.run_id, tenant_id, tenant_public_id, user_id)
+            )
+        )
+        return started.public_id
+
+    async def start_restore(self, tenant_id: int, version_id: int, user_id: int) -> str:
+        started = await self._open_run(tenant_id, KIND_ROLLBACK, user_id, "indexing")
+        self._spawn(
+            self._guarded(
+                started.run_id, self._restore(started.run_id, tenant_id, version_id, user_id)
+            )
+        )
+        return started.public_id
+
+    async def _connection(
+        self, session: AsyncSession, tenant_id: int, tenant_public_id: str
+    ) -> SourceConnection:
+        row = await DictionarySyncRepository(session).source(tenant_id)
+        password = row and self.keys().open(row, tenant_public_id=tenant_public_id)
+        if row is None or not password:
+            raise source_not_configured()
+        return connection_of(row, password)
+
+    # ------------------------------------------------------------------ run plumbing
+
+    async def _guarded(self, run_id: int, work: Any) -> None:
+        try:
+            await work
+        except asyncio.CancelledError:
+            await self._end(run_id, "interrupted", "interrupted", INTERRUPTED_MESSAGE)
+            raise
+        except _RunFailed as failed:
+            await self._end(run_id, "failed", failed.code, failed.message)
+        except Exception as error:  # noqa: BLE001 - the run ends failed; the type is logged
+            log_event(logger, "dictionary.sync_failed", error_type=type(error).__name__)
+            await self._end(run_id, "failed", "dictionary_sync_failed", FAILED_MESSAGE)
+
+    async def _end(self, run_id: int, state: str, code: str, message: str) -> None:
+        await self._set(
+            run_id,
+            status=state,
+            phase="done",
+            finished_at=datetime.now(UTC),
+            error_code=code,
+            error_message=message,
+        )
+        log_event(logger, "dictionary.sync_end", outcome=state, error_code=code)
+
+    async def _set(self, run_id: int, **values: Any) -> None:
+        async with self.session_factory() as session, session.begin():
+            run = await DictionarySyncRepository(session).run_by_id(run_id)
+            for name, value in values.items():
+                setattr(run, name, value)
+
+    async def _record(
+        self,
+        session: AsyncSession,
+        run_id: int,
+        changes: list[Change],
+        suggestions: list[Any],
+        **values: Any,
+    ) -> None:
+        repository = DictionarySyncRepository(session)
+        await repository.add_changes(run_id, changes)
+        await repository.add_suggestions(run_id, suggestions)
+        run = await repository.run_by_id(run_id)
+        for name, value in values.items():
+            setattr(run, name, value)
+
+    # ------------------------------------------------------------------ update
+
+    async def _read(self, connection: SourceConnection) -> Any:
+        try:
+            snapshot = await self.source.read(connection)
+        except SourceUnavailable:
+            raise _RunFailed("dictionary_source_unavailable", SOURCE_UNAVAILABLE_MESSAGE) from None
+        except SourceInvalid:
+            raise _RunFailed("dictionary_source_invalid", SOURCE_INVALID_MESSAGE) from None
+        except TargetUnavailable as target:
+            raise _RunFailed(
+                "dictionary_target_unavailable", target_message(tuple(target.databases))
+            ) from None
+        if not snapshot.tables or not snapshot.columns:
+            raise _RunFailed("dictionary_source_invalid", SOURCE_EMPTY_MESSAGE)
+        return snapshot
+
+    async def _reject_waiting(self, tenant_id: int, user_id: int) -> None:
+        """A new update replaces a version that was still waiting for approval."""
+
+        now = datetime.now(UTC)
+        async with self.session_factory() as session, session.begin():
+            repository = DictionaryRepository(session)
+            for run in await DictionarySyncRepository(session).pending_runs(tenant_id):
+                waiting = await repository.version(tenant_id, DictionaryStatus.PENDING)
+                if waiting is not None:
+                    await repository.prune(waiting, user_id=user_id, now=now)
+                run.status = "rejected"
+                run.finished_at = now
+
+    async def _update(
+        self, run_id: int, tenant_id: int, tenant_public_id: str, user_id: int
+    ) -> None:
+        await self._reject_waiting(tenant_id, user_id)
+        async with self.session_factory() as session:
+            connection = await self._connection(session, tenant_id, tenant_public_id)
+        snapshot = await self._read(connection)
+        await self._set(run_id, phase="comparing")
+
+        async with self.session_factory() as session:
+            repository = DictionaryRepository(session)
+            active = await repository.version(tenant_id, DictionaryStatus.ACTIVE)
+            objects = await repository.objects(active) if active else []
+            columns = await repository.columns(active) if active else []
+            object_meta = await repository.object_meta(active) if active else []
+            column_meta = await repository.column_meta(active) if active else []
+            terms = await VocabularyRepository(session).items(tenant_id, VocabularyList.TERMS)
+            stopwords = await VocabularyRepository(session).items(
+                tenant_id, VocabularyList.STOPWORDS
+            )
+        plan = merge(snapshot, objects, object_meta, columns, column_meta, self.kept_databases)
+        previous = active.version if active else ""
+        object_headers = list(active.object_extra_headers) if active else []
+        column_headers = list(active.column_extra_headers) if active else []
+        warnings: list[str] = []
+        if self.kept_databases:
+            names = ", ".join(self.kept_databases)
+            warnings.append(f"{names} değerlendirilmedi; mevcut kayıtları korundu.")
+        if snapshot.skipped:
+            warnings.append(
+                f"{snapshot.skipped} kaynak satırı bozuk veya yinelenen olduğu için atlandı."
+            )
+
+        work = [t for t in plan.tables if t.needs_model]
+        changed = list(work)
+        filled = calls = failures = 0
+        suggestions: list[Any] = []
+        model = ""
+        if work:
+            await self._set(run_id, phase="filling", progress_total=len(work), progress_done=0)
+            target = await self.models.snapshot(
+                tenant_id=tenant_id, tenant_public_id=tenant_public_id
+            )
+            if isinstance(target, LlmConnection):
+                model = target.chat_model
+
+                async def chat(request: LlmChatRequest) -> LlmChatResult:
+                    return await self.models.port.chat(target, request)
+
+                async def progress(done: int, total: int) -> None:
+                    await self._set(run_id, progress_done=done, progress_total=total)
+
+                outcome = await fill_tables(plan.tables, chat, progress)
+                plan.changes.extend(outcome.changes)
+                warnings.extend(outcome.warnings)
+                described = await describe_tables(plan.tables, chat)
+                plan.changes.extend(described.changes)
+                warnings.extend(described.warnings)
+                filled = outcome.filled + described.changed
+                calls = outcome.calls + described.calls
+                failures = outcome.failures + described.failures
+                known = {fold(i["term"]) for i in terms} | {fold(i["word"]) for i in stopwords}
+                for item in terms:
+                    known.update(fold(e) for e in item["equivalents"])
+                suggestions, answered = await suggest(changed, known, chat)
+                if not answered:
+                    warnings.append("Model terim ve durak kelime önerisi üretemedi.")
+            else:
+                warnings.append(
+                    "Model bağlantısı kullanılamadı; boş alanlar sonraki güncellemede doldurulacak."
+                )
+
+        counts = {
+            **counts_of(plan),
+            "fields_filled": filled,
+            "fields_empty": count_empty(plan.tables),
+            "model_calls": calls,
+            "model_failures": failures,
+            "warnings": len(warnings),
+        }
+        report = {
+            "counts": counts,
+            "warnings": warnings[:MAX_STORED_WARNINGS],
+            "previous_version": previous,
+            "model": model,
+        }
+        if not plan.has_changes:
+            async with self.session_factory() as session, session.begin():
+                await self._record(
+                    session,
+                    run_id,
+                    plan.changes,
+                    suggestions,
+                    status="no_change",
+                    phase="done",
+                    finished_at=datetime.now(UTC),
+                    new_version=previous,
+                    **report,
+                )
+            return
+
+        records = plan.objects()
+        rows = plan.columns()
+        with_extra_headers(records, object_headers)
+        with_extra_headers(rows, column_headers)
+        digest = records_digest(records, rows)
+        number = f"{digest}-{len(rows)}"
+        now = datetime.now(UTC)
+        version = NewDictionaryVersion(
+            version=number,
+            content_digest=digest,
+            source_name=connection.database,
+            channel=ImportChannel.SOURCE.value,
+            imported_at=now,
+            row_count=len(rows),
+            column_count=len(rows),
+            object_count=len(records),
+            warnings=warnings[:MAX_KEPT_WARNINGS],
+            warning_count=len(warnings),
+            objects=records,
+            columns=rows,
+            object_extra_headers=object_headers,
+            column_extra_headers=column_headers,
+            object_meta=plan.object_meta(),
+            column_meta=plan.column_meta(),
+        )
+
+        if active is not None and plan.removal_share() > REMOVAL_LIMIT:
+            async with self.session_factory() as session, session.begin():
+                written, _pruned = await DictionaryRepository(session).write_version(
+                    tenant_id, version, user_id=user_id, now=now, status=DictionaryStatus.PENDING
+                )
+                await self._record(
+                    session,
+                    run_id,
+                    plan.changes,
+                    suggestions,
+                    status="pending_approval",
+                    phase="done",
+                    finished_at=now,
+                    new_version=number,
+                    dictionary_version_id=written.dictionary_version_id,
+                    **report,
+                )
+            log_event(logger, "dictionary.sync_end", outcome="pending_approval", error_code="")
+            return
+
+        await self._set(run_id, phase="indexing")
+
+        async def write(session: AsyncSession) -> None:
+            written = await write_dictionary_version(
+                session, tenant_id, version, user_id=user_id, now=now
+            )
+            await self._prune(session, tenant_id, now)
+            await self._record(
+                session,
+                run_id,
+                plan.changes,
+                suggestions,
+                status="completed",
+                phase="done",
+                finished_at=datetime.now(UTC),
+                new_version=number,
+                dictionary_version_id=written.dictionary_version_id,
+                **report,
+            )
+
+        await self.swap(records, rows, number, digest, write)
+        log_event(
+            logger,
+            "dictionary.sync_end",
+            outcome="completed",
+            error_code="",
+            object_count=len(records),
+            column_count=len(rows),
+            model_calls=calls,
+            model_failures=failures,
+        )
+
+    async def swap(
+        self,
+        objects: list[dict[str, str]],
+        columns: list[dict[str, str]],
+        number: str,
+        digest: str,
+        write: Any,
+    ) -> None:
+        """Build the new engine first; the write commits only when the build succeeded."""
+
+        async def plan(inputs: SearchInputs, _serving: ServingEngine | None) -> ChangePlan:
+            dictionary = load_dictionary(objects, columns, number, digest)
+            return ChangePlan(
+                inputs=inputs.replace(
+                    dictionary=dictionary, dictionary_identity=dictionary_identity(number, digest)
+                ),
+                write=write,
+            )
+
+        await self.index.change(IndexTrigger.DICTIONARY, plan)
+
+    # ------------------------------------------------------------------ rollback
+
+    async def _restore(self, run_id: int, tenant_id: int, version_id: int, user_id: int) -> None:
+        async with self.session_factory() as session:
+            repository = DictionaryRepository(session)
+            active = await repository.version(tenant_id, DictionaryStatus.ACTIVE)
+            target = await session.get(DictionaryVersion, version_id)
+            assert target is not None
+            objects = await repository.objects(target)
+            columns = await repository.columns(target)
+            object_meta = await repository.object_meta(target)
+            column_meta = await repository.column_meta(target)
+        previous = active.version if active else ""
+        if active is not None and active.content_digest == target.content_digest:
+            await self._set(
+                run_id,
+                status="no_change",
+                phase="done",
+                finished_at=datetime.now(UTC),
+                previous_version=previous,
+                new_version=previous,
+            )
+            return
+        now = datetime.now(UTC)
+        version = NewDictionaryVersion(
+            version=target.version,
+            content_digest=target.content_digest,
+            source_name=target.source_name,
+            channel=ImportChannel.ROLLBACK.value,
+            imported_at=now,
+            row_count=target.row_count,
+            column_count=target.column_count,
+            object_count=target.object_count,
+            warnings=list(target.warnings),
+            warning_count=target.warning_count,
+            objects=objects,
+            columns=columns,
+            object_extra_headers=list(target.object_extra_headers),
+            column_extra_headers=list(target.column_extra_headers),
+            object_meta=object_meta,
+            column_meta=column_meta,
+        )
+
+        async def write(session: AsyncSession) -> None:
+            written = await write_dictionary_version(
+                session, tenant_id, version, user_id=user_id, now=now
+            )
+            await self._prune(session, tenant_id, now)
+            await self._record(
+                session,
+                run_id,
+                [],
+                [],
+                status="completed",
+                phase="done",
+                finished_at=datetime.now(UTC),
+                previous_version=previous,
+                new_version=target.version,
+                dictionary_version_id=written.dictionary_version_id,
+            )
+
+        await self.swap(objects, columns, target.version, target.content_digest, write)

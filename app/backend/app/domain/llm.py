@@ -102,6 +102,7 @@ class LlmOutcome(StrEnum):
     CONTEXT_EXCEEDED = "context_exceeded"
     UPSTREAM_STATUS = "upstream_status"
     INVALID_RESPONSE = "invalid_response"
+    OUTPUT_TRUNCATED = "output_truncated"
     INVALID_JSON = "invalid_json"
     RESPONSE_TOO_LARGE = "response_too_large"
     CANCELLED = "cancelled"
@@ -113,6 +114,7 @@ class LlmPurpose(StrEnum):
     ANALYSIS = "analysis"
     CONNECTION_TEST = "connection_test"
     EVALUATION = "evaluation"
+    DICTIONARY_SYNC = "dictionary_sync"
 
 
 class ProbeOperation(StrEnum):
@@ -147,6 +149,7 @@ _SHORT_REASONS: dict[LlmOutcome, str] = {
     LlmOutcome.TLS_ERROR: "güvenli bağlantı kurulamadı — sunucu sertifikası doğrulanamadı",
     LlmOutcome.TIMEOUT: "sunucu zamanında yanıt vermedi — adres erişilemez olabilir",
     LlmOutcome.CONTEXT_EXCEEDED: "modelin bağlam penceresi yetmedi",
+    LlmOutcome.OUTPUT_TRUNCATED: "model cevabı uzunluk sınırında kesildi",
     LlmOutcome.INVALID_JSON: "model geçerli JSON üretmedi",
     LlmOutcome.RESPONSE_TOO_LARGE: "yanıt izin verilen boyutu aştı",
     LlmOutcome.CANCELLED: "durduruldu",
@@ -480,6 +483,8 @@ class LlmConnection:
     seed: int = DEFAULT_SEED
     api_key: str | None = field(default=None, repr=False)
     public_id: str | None = None
+    # Whose call this is, for the LLM call log; a connection without it is not logged.
+    tenant_id: int | None = None
 
     @property
     def fingerprint(self) -> str:

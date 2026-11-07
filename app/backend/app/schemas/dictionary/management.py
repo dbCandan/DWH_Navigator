@@ -9,8 +9,6 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from app.schemas.search.settings import SearchIndexState
-
 
 class DictionaryImporter(BaseModel):
     public_id: str
@@ -23,7 +21,7 @@ class DictionaryVersionSummary(BaseModel):
     source_name: str
     imported_at: datetime
     imported_by: DictionaryImporter | None
-    channel: Literal["arayuz", "betik"]
+    channel: Literal["arayuz", "betik", "kaynak", "geri_donus"]
     object_count: int
     column_count: int
     row_count: int
@@ -61,10 +59,3 @@ class DictionaryTableRecords(BaseModel):
     key: str
     object: dict[str, str] | None
     columns: list[dict[str, str]]
-
-
-class DictionaryImported(BaseModel):
-    changed: bool
-    version: DictionaryVersionSummary
-    warnings: list[str]
-    index: SearchIndexState

@@ -71,3 +71,28 @@
   iki tarayıcı bağlamlı gözlem, `scripts/quality-gate.sh all`. Bu PRD yeniden kabul edilmeden
   uygulanmaz.
   Durum (2026-10-15): kod ve testler yazıldı (önce kırmızı, sonra yeşil). Arka uç: pytest 996 testten 992'si geçti; kalan 4'ten 3'ü bu değişiklikle güncellendi ve geçiyor, 1'i (`test_two_parallel_activations_let_one_win`) değişiklikten önceki kodda da ara sıra kırılan bir yarış durumu. Ruff, mypy, `alembic check` temiz; `OpenAPI` ve ön yüz tipleri yeniden üretildi. Ön yüz: Vitest 39 dosya / 320 test (iki işçiyle) geçti, ESLint ve tip denetimi temiz. Yerel yığında oturumsuz ana ekran, cihaz kimliği ve ziyaretçi adına yazılan analiz kaydı tarayıcıda gözlendi. Açık: `scripts/quality-gate.sh all` ve tarayıcı senaryoları çalıştırılmadı (`kt-iskelet` ve çevrimdışı E2E paketi yok); nonprod gözlemi yapılmadı.
+- [ ] Task 17 — Requirement 5 / Acceptance 2: analist adımı `output_truncated` sınıfıyla bitince
+  cevap "Analiz yapılamadı: Model hatası: model cevabı uzunluk sınırında kesildi" olur
+  ([llm-connection](../003-llm-connection/PRD.md) Requirement 8, 13, Decision 20; uygulama
+  llm-connection Task 13 ile birlikte). Önce başarısız sebep testi, sonra
+  `services/analysis/llm/port.py` sınıfı ve `services/analysis/pipeline.py` sebep metni. Kanıt:
+  sebep metni birim testi, `scripts/quality-gate.sh all`.
+  Durum (2026-11-04): `tests/unit/analysis/test_reasons.py` önce kırmızı, sonra yeşil. Tam kapının
+  durumu llm-connection Task 13'tedir.
+- [ ] Task 18 — Requirement 9, Decision 2, 23, 27 / Acceptance 4: farklı sahiplerin analizleri
+  paralel, bir sahibin aynı anda tek analizi ([list-search](../005-list-search/PRD.md) Requirement 5,
+  Decision 3; [llm-connection](../003-llm-connection/PRD.md) Requirement 17, Decision 11). Önce
+  başarısız testler: iki sahibin işi aynı anda model çağrısında; aynı sahibin ikinci işi ilki
+  bitene kadar `queued` ve arkasındaki başka sahibin işi onu beklemeden başlar; bir liste terimi ile
+  aynı sahibin tek sorusu aynı anda yürümez; varsayılan ayarlar 4 ve 5. Sonra kuyruk ve ayarlar.
+  Kanıt: `tests/integration/test_analysis_jobs_api.py`, ayar testi, `scripts/check-config-sync.py`,
+  yerel yığında iki ziyaretçinin listesiyle canlı gözlem.
+  Durum (2026-11-04): testler önce kırmızı, sonra yeşil. Ayar, kuyruk, terim listesi ve model
+  bağlantısı testlerinde 93 testten 92'si geçti; kalan `test_two_parallel_activations_let_one_win`
+  bu değişiklikten önce de ara sıra kırılan yarış testidir. ruff (EXE002 dışında), black, isort, mypy
+  ve `check-config-sync.py` temiz. Canlı yerel yığında (LM Studio, `gemma-4-26b-a4b-qat`) iki
+  ziyaretçinin ikişer terimlik listesi aynı saniyede başladı, hiçbir terim sırada beklemedi
+  (bekleme 0 sn) ve ikisi de tamamlandı. Her terim seri çalışmaya göre yaklaşık iki kat uzun sürdü;
+  toplam süre seri çalışmayla yaklaşık aynı kaldı, yani model sunucusu isteklerin kapasitesini
+  paylaştırıyor. Açık: tam kalite kapısı çalıştırılmadı; altın set ölçümü yapılamadı
+  (quality-evaluation uygulanmadı).

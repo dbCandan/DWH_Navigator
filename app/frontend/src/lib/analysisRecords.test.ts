@@ -47,6 +47,7 @@ describe('analysis record helpers (analysis-records Requirement 3, 18, 19)', () 
     expect(callOutcomeText({outcome: 'unauthorized', http_status: 401}, t)).toBe(
       'Sunucu HTTP 401 döndürdü (API anahtarı eksik veya geçersiz)',
     );
+    expect(callOutcomeText({outcome: 'output_truncated'}, t)).toBe('model cevabı uzunluk sınırında kesildi');
     expect(callOutcomeText({outcome: 'ok'}, t)).toBe('');
     expect(callOutcomeText(null, t)).toBe('');
   });

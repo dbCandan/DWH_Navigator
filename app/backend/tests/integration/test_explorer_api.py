@@ -1,7 +1,7 @@
 """Dictionary explorer endpoints over HTTP and PostgreSQL (data-dictionary 007-dictionary-explorer
 Requirement 3, 10, 11, 19, Decision 2; Acceptance 1).
 
-The synthetic dictionary is imported through the API; the answers are the in-process explorer
+The synthetic dictionary is seeded through the index; the answers are the in-process explorer
 functions' on the serving engine (whose parity with the source is ``test_explorer_parity``), the
 roles and errors are the PRD's, a running analysis never makes a search wait and the content layer
 never blocks the event loop.
@@ -29,8 +29,7 @@ QUESTION = "kredi kartı limit doluluk oranı"
 
 @pytest.fixture
 async def user(dd: DataDictionary) -> SignedIn:
-    imported = await dd.import_dictionary(SYNTHETIC_WORKBOOK.read_bytes())
-    assert imported.status_code in (200, 201), imported.text
+    await dd.seed_dictionary(SYNTHETIC_WORKBOOK.read_bytes())
     return await dd.auth.account(dd.admin, "kullanici")
 
 
@@ -99,7 +98,7 @@ async def test_a_table_detail_and_its_join_keys(dd: DataDictionary, user: Signed
     detail = (await dd.get(f"/explorer/tables/{with_keys[0]}", user)).json()
     assert detail["join_keys"] == engine.join_keys[with_keys[0]]
     assert set(detail["columns"][0]) == {
-        "key", "column", "object", "description", "synonyms", "pii", "group"
+        "key", "column", "object", "description", "synonyms", "group"
     }  # fmt: skip
     assert error(await dd.get("/explorer/tables/SYNDM.yok.Tablo", user)) == (
         404,

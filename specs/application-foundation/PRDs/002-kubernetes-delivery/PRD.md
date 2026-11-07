@@ -2,14 +2,16 @@
 
 Status: Accepted
 
-Version: 1.0.0
+Version: 1.1.0
 
-Acceptance date: 2026-10-08
+Acceptance date: 2026-11-04
 
 Domain: [application-foundation](../../DOMAIN.md)
 
-Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
-korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
+Kabul kaydı: Proje sahibi bu PRD'yi ilk kez 2026-10-08'de, kaynak uygulamanın davranışının olduğu
+gibi korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti. 2026-11-04'te analizlerin
+paralel yürümesini istedi; bu yüzden Decision 5'in gerekçesi tek süreç içi kuyruğa göre yeniden
+yazıldı (tek kopya kuralı değişmez) ve bu sürümü aynı gün kabul etti.
 
 ## Amaç
 
@@ -63,8 +65,8 @@ Windows ve macOS'ta aynı komutlarla açılır.
 - Decision 4: `deploy.sh` iskeletin güvencelerini korur (rules/45): kümeye dokunmadan önce her imajın
   yayımlandığını doğrular, süren (`pending-*`) release'i bekler, yarım kalan güncellemeyi son sürüme
   geri alır ve hizmet vermiş release'i asla kaldırmaz.
-- Decision 5: Backend tek kopya çalışır: arama indeksi süreç belleğindedir ve analizler kaynaktaki
-  "tek motor, tek kilit" düzeniyle sırayla yürür (data-dictionary alanının
+- Decision 5: Backend tek kopya çalışır: arama indeksi süreç belleğindedir ve analizlerin kuyruğu
+  ile eşzamanlılık sınırı süreç içindedir (data-dictionary alanının
   [search-settings](../../../data-dictionary/PRDs/009-search-settings/PRD.md) ve
   [question-analysis](../../../data-dictionary/PRDs/004-question-analysis/PRD.md) PRD'leri).
   `backend.replicaCount` 1'den büyük yapılmaz. Güncellemede eski ve yeni backend süreci birlikte

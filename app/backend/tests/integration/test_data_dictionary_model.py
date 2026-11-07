@@ -2,7 +2,7 @@
 
 The mandatory block and comments (rules/41 and 43), the PRDs' documented deviations from the block
 (record rows of a version, item rows of a list, the settings mapping), the database rules behind
-the requirements (one active and one previous version, unique current terms and positions) and the
+the requirements (one active version, any number of kept ones, unique current terms and positions) and the
 three migrations going down and up again.
 """
 
@@ -96,7 +96,6 @@ async def test_the_tables_carry_the_block_its_deviations_and_comments(
         )
     for name in (
         "uq_dictionary_version_tenant_active",
-        "uq_dictionary_version_tenant_previous",
         "uq_vocabulary_term_tenant_term_key",
         "uq_vocabulary_term_tenant_position",
         "uq_vocabulary_stopword_tenant_position",
@@ -152,22 +151,21 @@ async def test_the_database_refuses_invalid_versions(
         await session.rollback()
 
 
-async def test_one_active_and_one_previous_version_per_tenant(migrated_database: None) -> None:
+async def test_one_active_version_per_tenant_and_many_kept(migrated_database: None) -> None:
     tenant = await _tenant()
     base = {"tenant": tenant, "digest": "0123456789ab", "name": "s.xlsx", "channel": "betik"}
     async with async_session_factory() as session:
         await session.execute(text("DELETE FROM dictionary_column_record"))
         await session.execute(text("DELETE FROM dictionary_object_record"))
         await session.execute(text("DELETE FROM dictionary_version"))
-        for status in ("active", "previous"):
-            await session.execute(text(_VERSION), base | {"status": status, "deleted": False})
-        await session.execute(text(_VERSION), base | {"status": "pruned", "deleted": True})
-        await session.execute(text(_VERSION), base | {"status": "pruned", "deleted": True})
+        await session.execute(text(_VERSION), base | {"status": "active", "deleted": False})
+        for _ in range(2):
+            await session.execute(text(_VERSION), base | {"status": "previous", "deleted": False})
+            await session.execute(text(_VERSION), base | {"status": "pruned", "deleted": True})
         await session.commit()
-        for status in ("active", "previous"):
-            with pytest.raises(DBAPIError):
-                await session.execute(text(_VERSION), base | {"status": status, "deleted": False})
-            await session.rollback()
+        with pytest.raises(DBAPIError):
+            await session.execute(text(_VERSION), base | {"status": "active", "deleted": False})
+        await session.rollback()
         await session.execute(text("DELETE FROM dictionary_version"))
         await session.commit()
 

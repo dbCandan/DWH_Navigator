@@ -1,0 +1,8 @@
+/* The LLM log page's drawer: bodies are long and must wrap inside it. */
+[data-surface="admin"] .llm-exchange { display: flex; flex-direction: column; gap: 8px; }
+[data-surface="admin"] .llm-exchange + .llm-exchange { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+[data-surface="admin"] .llm-exchange h3 { margin: 0; font-size: 14px; }
+[data-surface="admin"] .llm-exchange h4 { display: flex; align-items: baseline; gap: 8px; margin: 8px 0 0; font-size: 13px; }
+[data-surface="admin"] .llm-exchange pre { margin: 4px 0 0; padding: 10px 12px; max-height: 420px; overflow: auto; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--surface-2); font: 12.5px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+[data-surface="admin"] .llm-exchange summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }

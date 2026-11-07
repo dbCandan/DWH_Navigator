@@ -184,13 +184,10 @@ def _sheet(
     ws.freeze_panes = "A2"
 
 
-def export(
-    objects: Sequence[Mapping[str, str]] | None, columns: Sequence[Mapping[str, str]] | None
-) -> bytes:
-    """Stored records in the dictionary template (Objeler · Kolonlar) as workbook bytes;
-    ``None``: the empty template."""
+def export(objects: Sequence[Mapping[str, str]], columns: Sequence[Mapping[str, str]]) -> bytes:
+    """Stored records in the dictionary template (Objeler · Kolonlar) as workbook bytes."""
     wb = Workbook()
     wb.remove(wb.worksheets[0])
-    _sheet(wb, OBJECTS_SHEET, OBJECT_FIELDS, objects or [])
-    _sheet(wb, COLUMNS_SHEET, COLUMN_FIELDS, columns or [])
+    _sheet(wb, OBJECTS_SHEET, OBJECT_FIELDS, objects)
+    _sheet(wb, COLUMNS_SHEET, COLUMN_FIELDS, columns)
     return workbook_bytes(wb)

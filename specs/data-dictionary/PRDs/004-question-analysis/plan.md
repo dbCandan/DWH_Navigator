@@ -1,6 +1,6 @@
 # Plan — question-analysis
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.3.0). Uygulama dört parçadır: kaynaktan
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.5.0). Uygulama dört parçadır: kaynaktan
 taşınan çekirdek ve fark testi, analiz işi (kabul, kuyruk, canlı ilerleme, durdurma, yeniden
 başlama) ile motorun model portuna bağlanması, kayıtlı cevaplar, rapor ve durum ucu ve ön yüzdeki
 soru çubuğu ile cevap görünümü.
@@ -24,6 +24,14 @@ soru çubuğu ile cevap görünümü.
 | Ön yüz | Soru çubuğu, ilerleme, cevap görünümü, `tr.json` | 19-22 |
 
 ## Kararların uygulaması
+
+- Decision 27, Requirement 9 b, c: `services/analysis/jobs.py` `_pump`, yer açılınca kuyrukta
+  sahibinin (`Asker` kimliği) yürüyen işi olmayan en öndeki işi başlatır; sahibinin işi yürüyen iş
+  yerinde kalır. `core/config.py` `analysis_concurrency` varsayılanı 4, aralığı 1–8;
+  `llm_max_concurrent_calls` varsayılanı 5. `app/backend/.env.example`, yerel Compose ortam bloğu ve
+  `helm/dwhnavigator/values-project.yaml` aynı değerleri taşır; `scripts/check-config-sync.py` geçer.
+  Test: `tests/integration/test_analysis_jobs_api.py` (iki sahip aynı anda model çağrısında, aynı
+  sahibin ikinci işi sırada, arkasındaki başka sahip onu beklemeden başlar).
 
 - Decision 2 ve 15: İşler süreç belleğindeki tek kuyruktadır; yürüyen iş motoru `asyncio.to_thread`
   ile ayrı iş parçacığında çalıştırır. Motorun model çağrıları `JobModel` üzerinden olay döngüsündeki

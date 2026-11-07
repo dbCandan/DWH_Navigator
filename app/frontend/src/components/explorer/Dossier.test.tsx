@@ -69,20 +69,17 @@ describe('table file (dictionary-explorer Requirement 11-14)', () => {
     expect(stats).toEqual([
       '4' + message('dossier.statColumns'),
       '2' + message('dossier.statKeys'),
-      '1' + message('dossier.statPii'),
     ]);
     expect(panel().querySelector('.ds-stat.zero')).toBeNull();
     expect(panel().style.getPropertyValue('--hue')).toBe(String(star('DWH.Kart.vCardLimit1')?.hue));
   });
 
-  it('writes the key and KVKK badges and folds a long description; "Ek not yok" only when short', async () => {
+  it('writes the key badge and folds a long description; "Ek not yok" only when short', async () => {
     show();
     await screen.findByText('CardLimitAmount');
     const rows = [...panel().querySelectorAll('.ds-col')] as HTMLElement[];
     expect(rows[0]).toHaveClass('is-key');
     expect(within(rows[0]).getByText(message('dossier.keyBadge'))).toHaveAttribute('title', message('dossier.keyTip'));
-    expect(rows[2]).toHaveClass('is-pii');
-    expect(within(rows[2]).getByText(message('dossier.piiBadge'))).toHaveAttribute('title', message('dossier.piiTip'));
     expect(within(rows[2]).getByText(message('dossier.noDescription'))).toHaveClass('ds-desc', 'none');
     expect(within(rows[0]).getByText(message('dossier.noNote'))).toBeInTheDocument();
     expect(within(rows[3]).queryByText(message('dossier.noNote'))).toBeNull();
@@ -121,7 +118,7 @@ describe('table file (dictionary-explorer Requirement 11-14)', () => {
     expect(screen.getByText(message('dossier.empty'))).toHaveClass('ds-empty');
   });
 
-  it('filters by key and KVKK; a filter without columns is disabled and the chosen one pressed', async () => {
+  it('filters by key; the chosen filter is pressed', async () => {
     vi.mocked(ExplorerService.table).mockResolvedValue(
       tableDetail({columns: [column('CustomerPartyId'), column('Amount')], join_keys: ['CustomerPartyId']}),
     );
@@ -129,13 +126,18 @@ describe('table file (dictionary-explorer Requirement 11-14)', () => {
     await screen.findByText('Amount');
     const all = screen.getByRole('button', {name: `${message('dossier.filterAll')} · 2`});
     const keys = screen.getByRole('button', {name: `${message('dossier.filterKey')} · 1`});
-    const pii = screen.getByRole('button', {name: `${message('dossier.filterPii')} · 0`});
     expect(all).toHaveAttribute('aria-pressed', 'true');
-    expect(pii).toBeDisabled();
-    expect(panel().querySelector('.ds-stat.pii')).toHaveClass('zero');
     fireEvent.click(keys);
     expect(keys).toHaveAttribute('aria-pressed', 'true');
     expect(panel().querySelectorAll('.ds-col')).toHaveLength(1);
+  });
+
+  it('disables a filter without columns and dims its zero stat', async () => {
+    vi.mocked(ExplorerService.table).mockResolvedValue(tableDetail({columns: [column('Amount')], join_keys: []}));
+    show();
+    await screen.findByText('Amount');
+    expect(screen.getByRole('button', {name: `${message('dossier.filterKey')} · 0`})).toBeDisabled();
+    expect(panel().querySelector('.ds-stat.key')).toHaveClass('zero');
   });
 
   it('lists at most 14 neighbours of the cluster by column count; another table replaces the file', async () => {

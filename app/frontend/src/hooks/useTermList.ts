@@ -1,4 +1,5 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {forgetTabList, rememberTabList, recallTabList} from '@/lib/tabList';
 import {TermListService} from '@/services/termLists';
 import type {TermList} from '@/types/termLists';
 
@@ -13,9 +14,10 @@ export type ListStart =
   | {kind: 'refused'; error: unknown};
 
 /**
- * The person's term list on the main screen (list-search Requirement 11, 15, 17): the newest
- * kept list is found when the page opens, a running list is asked again every 1.5 seconds and
- * not at all once it stopped. A failed poll stops following it (index.html Bulk.refresh).
+ * The person's term list on the main screen (list-search Requirement 11, 15, 17; Decision 15):
+ * the tab's own list is kept in `sessionStorage`, a running list is asked again every 1.5 seconds
+ * and not at all once it stopped. A failed poll stops following it (index.html Bulk.refresh). The
+ * main screen does not call the Listeler endpoint on page open; a new tab opens empty.
  */
 export function useTermList() {
   const [list, setList] = useState<TermList | null>(null);
@@ -39,19 +41,23 @@ export function useTermList() {
     if (!mounted.current) return;
     setList(next);
     setFollowing(true);
+    rememberTabList(next.id);
   }, []);
 
-  // The newest kept list when the page opens (Requirement 15).
+  // Reload in the same tab: the sessionStorage id reads the list once; nothing is fetched
+  // without a remembered id, so a fresh tab opens empty (Decision 15).
   useEffect(() => {
+    const id = recallTabList();
+    if (id === null) return;
     let live = true;
-    TermListService.newest()
-      .then((page) => (page.items[0] ? TermListService.get(page.items[0].id) : null))
-      .then(
-        (found) => {
-          if (live && found !== null && current.current === null) take(found);
-        },
-        () => undefined,
-      );
+    TermListService.get(id).then(
+      (found) => {
+        if (live && current.current === null) take(found);
+      },
+      () => {
+        if (live) forgetTabList(id);
+      },
+    );
     return () => {
       live = false;
     };

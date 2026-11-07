@@ -2,6 +2,7 @@ import {useEffect, useRef, useState} from 'react';
 import {Drawer} from '@/components/admin/Drawer';
 import {Field} from '@/components/admin/Field';
 import {Icon} from '@/components/admin/Icon';
+import {SuggestCombobox} from '@/components/admin/SuggestCombobox';
 import {useIntl} from '@/contexts/IntlContext';
 import {useToast} from '@/hooks/useToast';
 import {formatNumber} from '@/lib/format';
@@ -250,26 +251,20 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
           {t('ai.editor.stepModel')}
         </div>
         <Field id="ai-chat-model" label={t('ai.editor.chatModel')} hint={t('ai.editor.chatModelHint')}>
-          <input
+          <SuggestCombobox
             id="ai-chat-model"
-            type="text"
-            className="mono"
-            list="dl-chat"
-            placeholder={t('ai.editor.chatModelPlaceholder')}
-            autoComplete="off"
-            spellCheck={false}
-            aria-describedby="ai-chat-model-hint"
+            mono
             value={chatModel}
-            onChange={(event) => setChatModel(event.target.value)}
+            options={offered.map((row) => ({
+              value: row.id,
+              note: row.context ? t('ai.editor.context', {context: formatNumber(row.context)}) : '',
+            }))}
+            listLabel={t('ai.editor.chatModelList')}
+            placeholder={t('ai.editor.chatModelPlaceholder')}
+            describedBy="ai-chat-model-hint"
+            onChange={setChatModel}
           />
         </Field>
-        <datalist id="dl-chat">
-          {offered.map((row) => (
-            <option key={row.id} value={row.id}>
-              {row.context ? t('ai.editor.context', {context: formatNumber(row.context)}) : ''}
-            </option>
-          ))}
-        </datalist>
         <details className="fold">
           <summary>{t('ai.editor.advanced')}</summary>
           <div className="f2">

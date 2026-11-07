@@ -27,10 +27,10 @@ backend:
     DWHNAVIGATOR_LLM_CA_BUNDLE: /usr/local/share/ca-certificates/corporate-inference-root.crt
     # Process-wide model call limit (data-dictionary/PRDs/003-llm-connection Requirement 1,
     # Decision 11); the RunAI capacity owner may change it here.
-    DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: 2
-    # One running analysis and a queue of 20 (data-dictionary/PRDs/004-question-analysis
-    # Requirement 9, Decision 2).
-    DWHNAVIGATOR_ANALYSIS_CONCURRENCY: 1
+    DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: 5
+    # Up to 4 owners analysing in parallel, one job each, and a queue of 20
+    # (data-dictionary/PRDs/004-question-analysis Requirement 9, Decision 27).
+    DWHNAVIGATOR_ANALYSIS_CONCURRENCY: 4
     DWHNAVIGATOR_ANALYSIS_QUEUE_LIMIT: 20
     # No model address, model name or API key here: the super admin adds the model connection in
     # the application, which keeps it in PostgreSQL with the key encrypted (llm-connection).

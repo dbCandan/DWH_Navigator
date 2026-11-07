@@ -79,9 +79,16 @@ await withBrowser('term list uploaded, followed, stopped, resumed and reported',
       }
     }
     const bytes = await readFile(LIST);
-    const refused = await api(otherPage, 'POST', '/term-lists', undefined, {name: 'baska.xlsx', type: XLSX, bytes});
-    assert.equal(refused.status, 409);
-    assert.equal(refused.body.detail.message, 'Başka bir kullanıcının listesi çalışıyor; bitince yeniden deneyin.');
+    // Decision 3 (Version 1.3.0): another visitor's upload succeeds in parallel; the primary
+    // visitor's own second upload is refused with the single engel message.
+    const parallel = await api(otherPage, 'POST', '/term-lists', undefined, {name: 'baska.xlsx', type: XLSX, bytes});
+    assert.equal(parallel.status, 201);
+    const parallelId = parallel.body.id;
+    const selfRefused = await api(page, 'POST', '/term-lists', undefined, {name: 'kendi.xlsx', type: XLSX, bytes});
+    assert.equal(selfRefused.status, 409);
+    assert.equal(selfRefused.body.detail.message, 'Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun.');
+    const cancelled = await api(otherPage, 'POST', `/term-lists/${parallelId}/cancel`);
+    assert.equal(cancelled.status, 200);
 
     // Stop, then resume: the answered terms stay, the rest is asked in order.
     await page.getByRole('button', {name: message('list.stop')}).click();

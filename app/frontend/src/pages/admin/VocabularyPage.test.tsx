@@ -64,6 +64,23 @@ describe('Kelimeler page (vocabulary-management Requirement 10-13)', () => {
     expect(screen.getByText(message('vocabulary.terms.noMatch'))).toBeInTheDocument();
   });
 
+  it('suggests the existing domains in its own list and keeps a new one as typed', async () => {
+    await openPage();
+    fireEvent.click(screen.getByRole('button', {name: message('vocabulary.terms.new')}));
+    const drawer = await screen.findByRole('dialog', {name: message('vocabulary.term.new')});
+    const box = within(drawer).getByRole('combobox', {name: message('vocabulary.term.domain')});
+    const list = () => within(drawer).queryByRole('listbox', {name: message('vocabulary.term.domainList')});
+
+    fireEvent.click(box);
+    fireEvent.click(within(list() as HTMLElement).getByRole('option', {name: 'katılım'}));
+    expect(box).toHaveValue('katılım');
+    expect(list()).not.toBeInTheDocument();
+
+    fireEvent.change(box, {target: {value: 'yeni alan'}});
+    expect(box).toHaveValue('yeni alan');
+    expect(list()).not.toBeInTheDocument();
+  });
+
   it('adds a term at the top, checks it on the screen and saves the list with the index', async () => {
     const save = vi.spyOn(VocabularyService, 'save').mockImplementation(async (_list, items) => saved('terms', items as TermItem[]));
     await openPage();

@@ -37,7 +37,6 @@ class TestBuildColumns:
             "limit doluluk", "kart kullanım oranı", "utilization (kart bazlı)", "fullness",
         )  # fmt: skip
         assert first.dataset_group == "Kart"  # from the object sheet
-        assert d.columns[2].has_pii
 
     def test_correct_spelling_also_accepted(self) -> None:
         rows = [{"DatabaseName": "DB", "SchemaName": "S", "ObjectName": "T",
@@ -73,7 +72,7 @@ def test_real_dictionary(real_workbook: bytes) -> None:
     assert "EDWDM.CMP.vCardLimitFullness.CardLimitFullnessToday" in d.by_key()
 
 
-def test_synonyms_and_pii() -> None:
+def test_synonyms() -> None:
     rows = [
         {"DatabaseName": "EDWDM", "SchemaName": "CUS", "ObjectName": "vCustomer",
          "ColumnName": "CustomerName",
@@ -84,8 +83,8 @@ def test_synonyms_and_pii() -> None:
     ]  # fmt: skip
     cols, _ = build_columns(rows)
     assert cols[0].synonyms == ("müşteri adı", "unvan (tüzel)", "name")
-    assert cols[0].description == "Müşteri adı; KVKK kapsamında kişisel veri." and cols[0].has_pii
-    assert cols[1].synonyms == () and not cols[1].has_pii
+    assert cols[0].description == "Müşteri adı; KVKK kapsamında kişisel veri."
+    assert cols[1].synonyms == ()
 
 
 def test_group_comes_from_object_sheet() -> None:

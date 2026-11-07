@@ -103,13 +103,14 @@ def term_not_answered() -> ApplicationError:
     return ApplicationError(404, "term_list_item_not_answered", "Kayıt bulunamadı")
 
 
-def _running(own: bool) -> ApplicationError:
-    message = (
-        "Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun."
-        if own
-        else "Başka bir kullanıcının listesi çalışıyor; bitince yeniden deneyin."
+def _running() -> ApplicationError:
+    """The caller already has a running list (Decision 3; another owner's list is not an engel)."""
+
+    return ApplicationError(
+        409,
+        "term_list_running",
+        "Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun.",
     )
-    return ApplicationError(409, "term_list_running", message)
 
 
 def _nothing_to_resume() -> ApplicationError:
@@ -180,7 +181,8 @@ def _item_row(row: TermList, item: TermListItem) -> dict[str, Any]:
 
 
 class TermLists:
-    """The process's term lists: one may run in a tenant at a time (Decision 3)."""
+    """The process's term lists: one may run per owner at a time; different owners run in
+    parallel (Decision 3)."""
 
     def __init__(
         self,
@@ -345,22 +347,25 @@ class TermLists:
 
     # ------------------------------------------------------------------ starting
 
-    async def refuse_while_running(self, tenant_id: int, owner_public_id: str) -> None:
-        """Requirement 4: any running list of the tenant refuses a new one, before reading."""
+    async def refuse_while_running(self, tenant: Tenant, owner: Asker) -> None:
+        """Requirement 4: the caller's own running list refuses a new one, before reading;
+        another owner's running list is not an engel (Decision 3)."""
 
         async with self._session_factory() as session:
-            running = await TermListRepository(session).running(tenant_id)
+            running = await TermListRepository(session).running_for_owner(
+                tenant.tenant_id, owner.user_id, owner.visitor_id
+            )
         if running is not None:
             telemetry.record_term_list_upload_rejected("term_list_running")
             log_event(logger, "term_list.upload_rejected", code="term_list_running")
-            raise _running(running.owner_public_id == owner_public_id)
+            raise _running()
 
     async def start(
         self, *, tenant: Tenant, owner: Asker, file_name: str, data: bytes
     ) -> dict[str, Any]:
         """Read the list, keep it with its terms and start it at once."""
 
-        await self.refuse_while_running(tenant.tenant_id, owner.public_id)
+        await self.refuse_while_running(tenant, owner)
         self.jobs.ready()
         try:
             terms = await asyncio.to_thread(load_term_list, data)
@@ -393,7 +398,7 @@ class TermLists:
                 term_list_id, public_id = record.term_list_id, record.public_id
                 self._claimed.add(term_list_id)
         except IntegrityError:
-            await self.refuse_while_running(tenant.tenant_id, owner.public_id)
+            await self.refuse_while_running(tenant, owner)
             raise  # pragma: no cover - the unique running row is the only constraint here
         run = Run(term_list_id, public_id, file_name, tenant, owner)
         self._begin(run)
@@ -625,10 +630,12 @@ class TermLists:
             return await self.snapshot_of(row)
         async with self._session_factory() as session:
             repository = TermListRepository(session)
-            running = await repository.running(tenant.tenant_id)
+            running = await repository.running_for_owner(
+                tenant.tenant_id, owner.user_id, owner.visitor_id
+            )
             left = await repository.unanswered_count(r.term_list_id)
         if running is not None:
-            raise _running(running.owner_public_id == owner.public_id)
+            raise _running()
         if not left:
             raise _nothing_to_resume()
         self.jobs.ready()
@@ -646,9 +653,7 @@ class TermLists:
             )
         except IntegrityError:
             self._claimed.discard(r.term_list_id)
-            async with self._session_factory() as session:
-                running = await TermListRepository(session).running(tenant.tenant_id)
-            raise _running(running is not None and running.owner_public_id == owner.public_id)
+            raise _running()
         self._begin(Run(r.term_list_id, r.public_id, r.file_name, tenant, owner))
         log_event(logger, "term_list.resumed", list_id=r.public_id, terms=left)
         return await self.snapshot(tenant.tenant_id, owner.public_id, list_id)

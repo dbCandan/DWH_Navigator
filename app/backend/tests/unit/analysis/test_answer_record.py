@@ -32,6 +32,21 @@ def test_the_answer_comes_back_without_the_dictionary(sample_dictionary: Diction
     assert from_record_form({"objects": "bozuk"}) is None
 
 
+def test_a_row_field_the_column_no_longer_has_is_ignored(sample_dictionary: Dictionary) -> None:
+    core = FakeAnalyst()
+    query = "kart limit doluluk oranı"
+    core.begin(query, "normal")
+    engine = Engine(sample_dictionary, Settings(), Resources(), llm=TargetClient(core))
+    result = engine.analyze(query, 5)
+    stored = record_form(result)
+    for match in stored["objects"]:
+        for hit in match["columns"]:
+            hit["col"]["has_pii"] = True
+    again = from_record_form(stored)
+    assert again is not None
+    assert serialize.analysis(again) == serialize.analysis(result)
+
+
 def test_the_envelope_has_the_sources_fields(sample_dictionary: Dictionary) -> None:
     core = FakeAnalyst()
     core.begin("kart", "normal")

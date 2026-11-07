@@ -109,6 +109,7 @@ const OUTCOMES = new Set([
   'context_exceeded',
   'upstream_status',
   'invalid_response',
+  'output_truncated',
   'invalid_json',
   'response_too_large',
   'cancelled',

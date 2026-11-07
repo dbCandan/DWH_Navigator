@@ -1,38 +1,22 @@
 import {readFile} from 'node:fs/promises';
 import {accounts, baseUrl, message, signIn, withBrowser} from '../shared/harness.mjs';
+import {seedDictionary} from '../shared/dictionary.mjs';
 import {api, preparePerson, retirePeople, signInPerson} from '../shared/people.mjs';
+import {workbookText} from '../shared/xlsx.mjs';
 
-// dictionary-management Acceptance 4 (Requirement 7, 8, 13-15) and the map part of
-// dictionary-explorer Acceptance 3 (Requirement 2, 16): a manager drops a second synthetic workbook
-// on Genel bakış, sees the counts and the warnings, opens a table by its address, exports and
-// re-imports the dictionary unchanged, is refused a workbook off the template, and after one more
-// import the previous version is the one before, with no button to go back. An ordinary user gets
-// no Sözlük page and 403 from /dictionary, and the open main screen shows the new column count and
-// draws the new tables within a status poll. The original synthetic dictionary is imported back.
-const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+// dictionary-management Acceptance 4 (Requirement 8, 12-15) and the map part of
+// dictionary-explorer Acceptance 3 (Requirement 2, 16): a second synthetic dictionary is seeded and
+// the index rebuilt; a manager sees the counts and the warnings, opens a table by its address and
+// exports the dictionary, and after one more version the previous one is the one before, with no
+// button to go back. An ordinary user gets no Sözlük page and 403 from /dictionary, and the open
+// main screen shows the new column count and draws the new tables within a status poll. The Excel
+// upload and the template are gone (dictionary-sync Requirement 13), so both routes refuse here.
+// The original synthetic dictionary is seeded back.
 const ORIGINAL = new URL('../../app/backend/tests/fixtures/parity/sozluk_sentetik.xlsx', import.meta.url);
 const SECOND = new URL('../fixtures/sozluk_sentetik_ek.xlsx', import.meta.url);
-const OFF_TEMPLATE = new URL('../fixtures/liste_on_terim.xlsx', import.meta.url);
 const ADDED_TABLE = 'SYNDM.E2E.vE2eEkTablo';
 
-/** Drop a workbook on the admin page, accept the replace question and wait for the toast. */
-async function drop(page, file, name, toast) {
-  const bytes = [...(await readFile(file))];
-  const transfer = await page.evaluateHandle(
-    ({bytes, name, type}) => {
-      const data = new DataTransfer();
-      data.items.add(new File([new Uint8Array(bytes)], name, {type}));
-      return data;
-    },
-    {bytes, name, type: XLSX},
-  );
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.dispatchEvent('body', 'dragenter', {dataTransfer: transfer});
-  await page.dispatchEvent('body', 'drop', {dataTransfer: transfer});
-  await page.locator('.toast').filter({hasText: toast}).first().waitFor({timeout: 120000});
-}
-
-await withBrowser('dictionary versions, roles and the map after an import', async ({page: admin, assert, open}) => {
+await withBrowser('dictionary versions, roles and the map after a new version', async ({page: admin, assert, open}) => {
   await signIn(admin, accounts.superAdmin);
   const people = [];
   try {
@@ -56,11 +40,12 @@ await withBrowser('dictionary versions, roles and the map after an import', asyn
     await signInPerson(page, manager);
     const first = (await api(page, 'GET', '/dictionary')).body.active.version;
 
-    // A second workbook dropped on Genel bakış becomes the active version.
-    await page.goto(baseUrl + '/admin');
-    await page.getByRole('heading', {level: 1, name: message('admin.page.genel.label')}).waitFor();
-    await page.waitForLoadState('networkidle');
-    await drop(page, SECOND, 'sozluk_sentetik_ek.xlsx', message('dictionary.import.done'));
+    // The upload and the template answer no more, whoever asks.
+    assert.ok([404, 405].includes((await api(page, 'POST', '/dictionary/imports')).status));
+    assert.ok([404, 405].includes((await api(page, 'GET', '/dictionary/template')).status));
+
+    // A second dictionary becomes the active version.
+    await seedDictionary(page, SECOND);
     const state = (await api(page, 'GET', '/dictionary')).body;
     assert.notEqual(state.active.version, first);
     assert.equal(state.previous.version, first, 'the version before is kept as the previous one');
@@ -89,26 +74,20 @@ await withBrowser('dictionary versions, roles and the map after an import', asyn
     await home.locator('#dossier.on #ds-path').filter({hasText: ADDED_TABLE}).waitFor();
     await home.keyboard.press('Escape');
 
-    // Exported and imported unchanged: "Sözlük değişmedi" and the same version.
+    // The export gives the active version back.
     const download = page.waitForEvent('download');
     await page.getByRole('button', {name: message('dictionary.export.button')}).click();
-    const exported = await (await download).path();
-    await drop(page, exported, 'disa-aktarilan.xlsx', message('dictionary.import.unchanged'));
-    assert.equal((await api(page, 'GET', '/dictionary')).body.active.version, state.active.version);
+    const exported = await readFile(await (await download).path());
+    assert.ok(workbookText(exported).includes('vE2eEkTablo'), 'the export carries the new table');
 
-    // A workbook off the template is refused and the dictionary stays.
-    await drop(page, OFF_TEMPLATE, 'liste.xlsx', message('dictionary.import.failed'));
-    assert.equal((await api(page, 'GET', '/dictionary')).body.active.version, state.active.version);
-
-    // One more import: the version before becomes the previous one.
-    await drop(page, ORIGINAL, 'sozluk_sentetik.xlsx', message('dictionary.import.done'));
+    // One more version: the version before becomes the previous one.
+    await seedDictionary(page, ORIGINAL);
     const last = (await api(page, 'GET', '/dictionary')).body;
     assert.equal(last.previous.version, state.active.version);
     await home.locator('#hud-count').filter({hasText: String(before.objects)}).waitFor({timeout: 130000});
   } finally {
     // The original synthetic dictionary is active again whatever happened above.
-    const bytes = await readFile(ORIGINAL);
-    await api(admin, 'POST', '/dictionary/imports', undefined, {name: 'sozluk_sentetik.xlsx', type: XLSX, bytes});
+    await seedDictionary(admin, ORIGINAL);
     await retirePeople(admin, people);
   }
 });

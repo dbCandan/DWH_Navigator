@@ -11,7 +11,8 @@
   `tests/integration/test_data_dictionary_model.py`, `scripts/quality-gate.sh all`.
 - [x] Task 3 — Requirement 10-13 / Acceptance 3: Kelimeler sayfası (terim tablosu ve çekmecesi,
   gruplu durak kelimeler, kartta biriken değişiklikler, Excel içe ve dışa aktarma) ve Vitest
-  testleri. Kanıt: `app/frontend/src/pages/admin/VocabularyPage.test.tsx`,
+  testleri. Alan öneri listesi tarayıcının çizdiği `datalist` yerine temaya uyan
+  `SuggestCombobox`'tır. Kanıt: `app/frontend/src/pages/admin/VocabularyPage.test.tsx`,
   `scripts/quality-gate.sh frontend`.
 - [ ] Task 4 — Acceptance 4: yerel Compose'da tarayıcıyla senaryo; sözlük gezgini adımı
   dictionary-explorer ile.

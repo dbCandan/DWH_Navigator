@@ -3,7 +3,9 @@
 
 A question is a job. Acceptance answers at once: with a saved answer the job is completed there;
 otherwise it waits in one first-in first-out queue of this process. At most ``concurrency`` jobs
-run at a time (1 by default, the source's "one engine, one lock"). A running job pins the serving
+run at a time (4 by default), at most one per owner: different owners run in parallel and an
+owner's next job waits for its running one without holding up the others (Decision 27; the source
+ran one analysis at a time, "one engine, one lock"). A running job pins the serving
 engine and the active chat model (llm-connection Requirement 5) and runs the engine in a worker
 thread; the engine reaches the model through the job's own view of the port. Progress is a list of
 content-free events kept in memory while the process lives; a stream replays it from
@@ -74,7 +76,7 @@ from app.services.search_index import SearchIndex, search_index_not_ready
 
 logger = logging.getLogger("app.analysis")
 
-DEFAULT_CONCURRENCY = 1
+DEFAULT_CONCURRENCY = 4
 DEFAULT_QUEUE_LIMIT = 20
 KEEPALIVE_SECONDS = 15.0
 MAX_STREAMS_PER_USER = 5
@@ -493,11 +495,26 @@ class AnalysisJobs:
             for other in self._running
         )
 
+    def _owner_busy(self, job: AnalysisJob) -> bool:
+        """Requirement 9 b, Decision 27: an owner runs at most one job at a time."""
+
+        owner = (job.tenant.tenant_id, job.asker.public_id)
+        return any(
+            (other.tenant.tenant_id, other.asker.public_id) == owner for other in self._running
+        )
+
     def _pump(self) -> None:
         if not self.accepting:
             return
         while len(self._running) < self.concurrency:
-            nxt = next((job for job in self._waiting if not self._blocked(job)), None)
+            nxt = next(
+                (
+                    job
+                    for job in self._waiting
+                    if not self._blocked(job) and not self._owner_busy(job)
+                ),
+                None,
+            )
             if nxt is None:
                 break
             self._waiting.remove(nxt)

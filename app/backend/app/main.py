@@ -16,6 +16,7 @@ from app.core.logging import configure_logging
 from app.core.telemetry import configure_telemetry
 from app.db.readiness import packaged_schema
 from app.db.session import async_session_factory, engine
+from app.infrastructure.dictionary_source.sqlserver import SqlServerDictionarySource
 from app.middleware.cross_site import CrossSiteRequestMiddleware
 from app.middleware.request_logging import RequestLoggingMiddleware
 from app.middleware.security_headers import SecurityHeadersMiddleware
@@ -23,8 +24,10 @@ from app.middleware.tenant_context import TenantContextMiddleware
 from app.services.analysis.jobs import AnalysisJobs
 from app.services.analysis.saved_answers import SavedAnswers
 from app.services.answer_feedback import AnswerVotes
+from app.services.dictionary_sync import DictionarySync, SourceKeys
 from app.services.explorer import ExplorerIndex
-from app.services.llm_connections import llm_gateway
+from app.services.llm_call_log import LlmCallLogWriter
+from app.services.llm_connections import llm_gateway, shared_adapter
 from app.services.search_index import SearchIndex
 from app.services.super_admin_service import run_super_admin_bootstrap
 from app.services.term_lists import TermLists
@@ -52,13 +55,17 @@ def _lifespan(settings: Settings) -> Callable[[FastAPI], AbstractAsyncContextMan
         # are interrupted, then a minute check; at the end running lists are interrupted.
         term_lists: TermLists = application.state.term_lists
         lists_startup = asyncio.create_task(term_lists.run_startup(database_readiness.is_ready))
+        # 011-dictionary-sync: runs an earlier process left are interrupted, old versions go.
+        dictionary_sync: DictionarySync = application.state.dictionary_sync
+        sync_startup = asyncio.create_task(dictionary_sync.run_startup(database_readiness.is_ready))
         try:
             yield
         finally:
             term_lists.closing = True
+            await dictionary_sync.shutdown()
             await analysis_jobs.shutdown()
             await term_lists.shutdown()
-            for task in (bootstrap, index_startup, jobs_startup, lists_startup):
+            for task in (bootstrap, index_startup, jobs_startup, lists_startup, sync_startup):
                 task.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await task
@@ -80,6 +87,10 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         openapi_url="/openapi.json",
         lifespan=_lifespan(settings),
     )
+    if settings.llm_call_log_days:
+        shared_adapter(settings).set_call_log(
+            LlmCallLogWriter(async_session_factory, days=settings.llm_call_log_days)
+        )
     application.state.search_index = SearchIndex(async_session_factory)
     application.state.explorer_index = ExplorerIndex()
     saved_answers = SavedAnswers(async_session_factory)
@@ -99,6 +110,24 @@ def create_application(settings: Settings | None = None) -> FastAPI:
     )
     application.state.term_lists = TermLists(
         jobs=application.state.analysis_jobs, session_factory=async_session_factory
+    )
+    ignored_databases = tuple(
+        name.strip() for name in settings.dictionary_ignored_databases.split(",") if name.strip()
+    )
+    application.state.dictionary_sync = DictionarySync(
+        index=application.state.search_index,
+        models=llm_gateway(settings, async_session_factory),
+        source=SqlServerDictionarySource(
+            ignored_databases=ignored_databases,
+            aliases=dict(
+                pair.strip().split("=", 1)
+                for pair in settings.dictionary_object_aliases.split(";")
+                if "=" in pair
+            ),
+        ),
+        kept_databases=ignored_databases,
+        keys=lambda: SourceKeys(settings),
+        session_factory=async_session_factory,
     )
     # Starlette makes the middleware added last the outermost. From the outside in: security
     # headers and the 500 envelope, request logging and tracing, CORS, the cross-site guard (before

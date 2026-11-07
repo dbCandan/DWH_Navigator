@@ -102,6 +102,7 @@ def connection_of(row: LlmIntegration, api_key: str | None) -> LlmConnection:
         seed=row.seed,
         api_key=api_key,
         public_id=row.public_id,
+        tenant_id=row.tenant_id,
     )
 
 

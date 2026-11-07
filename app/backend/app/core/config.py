@@ -131,12 +131,19 @@ class Settings(BaseSettings):
     # 003-llm-connection Requirement 1 and 10); empty uses the image's system trust store. A file
     # that cannot be read as certificates stops startup. Verification itself cannot be turned off.
     llm_ca_bundle: str = ""
+    # 011-dictionary-sync: comma-separated databases an update leaves out; their records stay
+    # in the dictionary unchanged.
+    dictionary_ignored_databases: str = ""
+    # Names the owner confirmed by hand: 'source key=catalog key', separated by semicolons.
+    dictionary_object_aliases: str = ""
     # Process-wide limit of concurrent /chat/completions requests (Requirement 17, Decision 11).
-    llm_max_concurrent_calls: Annotated[int, Field(ge=1, le=8)] = 2
+    llm_max_concurrent_calls: Annotated[int, Field(ge=1, le=8)] = 5
+    # Days the admin screen's LLM log keeps chat calls with their prompts and replies; 0 keeps none.
+    llm_call_log_days: Annotated[int, Field(ge=0, le=90)] = 7
     # Analysis jobs running at the same time and jobs waiting in the queue (data-dictionary/PRDs/
-    # 004-question-analysis Requirement 9, Decision 2): the source ran one analysis at a time;
-    # raise the concurrency only after measuring the gold set before and after.
-    analysis_concurrency: Annotated[int, Field(ge=1, le=4)] = 1
+    # 004-question-analysis Requirement 9, Decision 2 and 27): different owners' jobs run in
+    # parallel up to this limit, one job per owner; keep it below the call limit above.
+    analysis_concurrency: Annotated[int, Field(ge=1, le=8)] = 4
     analysis_queue_limit: Annotated[int, Field(ge=1, le=200)] = 20
 
     # OpenTelemetry traces and metrics over OTLP/gRPC (app/core/telemetry.py). Empty disables

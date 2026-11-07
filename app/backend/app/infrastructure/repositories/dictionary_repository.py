@@ -2,8 +2,9 @@
 
 Records are read back in the workbook's shape: every template field under its template name, then
 the version's extra columns in header order (empty: ''), exactly as the source's ``_texts`` gives
-them. A new version is written in one transaction: the previous version is pruned (its records
-deleted, its row soft-deleted), the active one becomes previous and the new one active.
+them. A new version is written in one transaction: the active one becomes previous and the new
+one active. Replaced versions keep their records for a month, then are pruned (records deleted,
+row soft-deleted).
 """
 
 from collections.abc import Mapping, Sequence
@@ -50,6 +51,9 @@ class NewDictionaryVersion:
     columns: Sequence[Mapping[str, str]]
     object_extra_headers: Sequence[str]
     column_extra_headers: Sequence[str]
+    # Sync bookkeeping stored beside each record, by position (011-dictionary-sync).
+    object_meta: Sequence[Mapping[str, Any]] = ()
+    column_meta: Sequence[Mapping[str, Any]] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,11 +84,14 @@ def _record(row: Sequence[Any], fields: Sequence[str], extra_headers: Sequence[s
 
 
 def _row(
-    record: Mapping[str, str], columns: Mapping[str, str], extra_headers: Sequence[str]
+    record: Mapping[str, str],
+    columns: Mapping[str, str],
+    extra_headers: Sequence[str],
+    meta: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     row: dict[str, Any] = {column: record.get(field, "") for field, column in columns.items()}
     extra = {h: record[h] for h in extra_headers if record.get(h)}
-    row["props"] = {_EXTRA_CELLS: extra} if extra else {}
+    row["props"] = {**(meta or {}), **({_EXTRA_CELLS: extra} if extra else {})}
     return row
 
 
@@ -95,10 +102,15 @@ class DictionaryRepository:
     async def version(
         self, tenant_id: int, status: DictionaryStatus, *, for_update: bool = False
     ) -> DictionaryVersion | None:
-        statement = select(DictionaryVersion).where(
-            DictionaryVersion.tenant_id == tenant_id,
-            DictionaryVersion.status == status.value,
-            DictionaryVersion.is_deleted.is_(False),
+        statement = (
+            select(DictionaryVersion)
+            .where(
+                DictionaryVersion.tenant_id == tenant_id,
+                DictionaryVersion.status == status.value,
+                DictionaryVersion.is_deleted.is_(False),
+            )
+            .order_by(DictionaryVersion.dictionary_version_id.desc())
+            .limit(1)
         )
         if for_update:
             statement = statement.with_for_update()
@@ -179,57 +191,19 @@ class DictionaryRepository:
         *,
         user_id: int | None,
         now: datetime,
+        status: DictionaryStatus = DictionaryStatus.ACTIVE,
     ) -> tuple[DictionaryVersion, PrunedVersion | None]:
-        """Prune the previous version, demote the active one and insert ``new`` as active.
+        """Write ``new``: active (the active one becomes previous) or waiting for approval.
 
-        The caller holds the import lock and owns the transaction.
+        Replaced versions keep their records until ``prune_expired``. The caller holds the import
+        lock and owns the transaction.
         """
 
-        pruned: PrunedVersion | None = None
-        previous = await self.version(tenant_id, DictionaryStatus.PREVIOUS, for_update=True)
-        if previous is not None:
-            version_id = previous.dictionary_version_id
-            removed_objects = await self.session.execute(
-                delete(DictionaryObjectRecord).where(
-                    DictionaryObjectRecord.dictionary_version_id == version_id
-                )
-            )
-            removed_columns = await self.session.execute(
-                delete(DictionaryColumnRecord).where(
-                    DictionaryColumnRecord.dictionary_version_id == version_id
-                )
-            )
-            await self.session.execute(
-                update(DictionaryVersion)
-                .where(DictionaryVersion.dictionary_version_id == version_id)
-                .values(
-                    status=DictionaryStatus.PRUNED.value,
-                    is_deleted=True,
-                    deleted_at=now,
-                    deleted_by=user_id,
-                    updated_at=now,
-                    updated_by=user_id,
-                )
-            )
-            pruned = PrunedVersion(
-                previous.version,
-                int(getattr(removed_objects, "rowcount", 0) or 0),
-                int(getattr(removed_columns, "rowcount", 0) or 0),
-            )
-        active = await self.version(tenant_id, DictionaryStatus.ACTIVE, for_update=True)
-        if active is not None:
-            await self.session.execute(
-                update(DictionaryVersion)
-                .where(DictionaryVersion.dictionary_version_id == active.dictionary_version_id)
-                .values(
-                    status=DictionaryStatus.PREVIOUS.value,
-                    updated_at=now,
-                    updated_by=user_id,
-                )
-            )
+        if status is DictionaryStatus.ACTIVE:
+            await self.demote_active(tenant_id, user_id=user_id, now=now)
         version = DictionaryVersion(
             tenant_id=tenant_id,
-            status=DictionaryStatus.ACTIVE.value,
+            status=status.value,
             version=new.version,
             content_digest=new.content_digest,
             source_name=new.source_name,
@@ -254,7 +228,12 @@ class DictionaryRepository:
             {
                 "dictionary_version_id": version_id,
                 "position": position,
-                **_row(record, OBJECT_FIELD_COLUMNS, new.object_extra_headers),
+                **_row(
+                    record,
+                    OBJECT_FIELD_COLUMNS,
+                    new.object_extra_headers,
+                    new.object_meta[position] if new.object_meta else None,
+                ),
             }
             for position, record in enumerate(new.objects)
         ]
@@ -262,7 +241,12 @@ class DictionaryRepository:
             {
                 "dictionary_version_id": version_id,
                 "position": position,
-                **_row(record, COLUMN_FIELD_COLUMNS, new.column_extra_headers),
+                **_row(
+                    record,
+                    COLUMN_FIELD_COLUMNS,
+                    new.column_extra_headers,
+                    new.column_meta[position] if new.column_meta else None,
+                ),
             }
             for position, record in enumerate(new.columns)
         ]
@@ -270,4 +254,119 @@ class DictionaryRepository:
             await self.session.execute(insert(DictionaryObjectRecord), object_rows)
         if column_rows:
             await self.session.execute(insert(DictionaryColumnRecord), column_rows)
-        return version, pruned
+        return version, None
+
+    async def demote_active(self, tenant_id: int, *, user_id: int | None, now: datetime) -> None:
+        active = await self.version(tenant_id, DictionaryStatus.ACTIVE, for_update=True)
+        if active is None:
+            return
+        await self.session.execute(
+            update(DictionaryVersion)
+            .where(DictionaryVersion.dictionary_version_id == active.dictionary_version_id)
+            .values(
+                status=DictionaryStatus.PREVIOUS.value,
+                superseded_at=now,
+                updated_at=now,
+                updated_by=user_id,
+            )
+        )
+
+    async def activate(
+        self, version: DictionaryVersion, *, user_id: int | None, now: datetime
+    ) -> None:
+        """A waiting version becomes active; the caller holds the import lock."""
+
+        await self.demote_active(version.tenant_id, user_id=user_id, now=now)
+        version.status = DictionaryStatus.ACTIVE.value
+        version.imported_at = now
+        version.updated_at = now
+        version.updated_by = user_id
+        await self.session.flush()
+
+    async def prune(
+        self, version: DictionaryVersion, *, user_id: int | None, now: datetime
+    ) -> PrunedVersion:
+        """Delete the version's records; its row stays soft-deleted."""
+
+        version_id = version.dictionary_version_id
+        objects = await self.session.execute(
+            delete(DictionaryObjectRecord).where(
+                DictionaryObjectRecord.dictionary_version_id == version_id
+            )
+        )
+        columns = await self.session.execute(
+            delete(DictionaryColumnRecord).where(
+                DictionaryColumnRecord.dictionary_version_id == version_id
+            )
+        )
+        await self.session.execute(
+            update(DictionaryVersion)
+            .where(DictionaryVersion.dictionary_version_id == version_id)
+            .values(
+                status=DictionaryStatus.PRUNED.value,
+                is_deleted=True,
+                deleted_at=now,
+                deleted_by=user_id,
+                updated_at=now,
+                updated_by=user_id,
+            )
+        )
+        return PrunedVersion(
+            version.version,
+            int(getattr(objects, "rowcount", 0) or 0),
+            int(getattr(columns, "rowcount", 0) or 0),
+        )
+
+    async def prune_expired(self, tenant_id: int, *, before: datetime, now: datetime) -> int:
+        """Prune replaced versions older than ``before``; the active version is never touched."""
+
+        rows = await self.session.execute(
+            select(DictionaryVersion).where(
+                DictionaryVersion.tenant_id == tenant_id,
+                DictionaryVersion.status == DictionaryStatus.PREVIOUS.value,
+                DictionaryVersion.is_deleted.is_(False),
+                DictionaryVersion.superseded_at < before,
+            )
+        )
+        expired = list(rows.scalars())
+        for version in expired:
+            await self.prune(version, user_id=None, now=now)
+        return len(expired)
+
+    async def kept_versions(self, tenant_id: int) -> list[DictionaryVersion]:
+        """Active, waiting and kept versions, newest first."""
+
+        rows = await self.session.execute(
+            select(DictionaryVersion)
+            .where(
+                DictionaryVersion.tenant_id == tenant_id,
+                DictionaryVersion.is_deleted.is_(False),
+            )
+            .order_by(DictionaryVersion.dictionary_version_id.desc())
+        )
+        return list(rows.scalars())
+
+    async def by_public_id(self, tenant_id: int, public_id: str) -> DictionaryVersion | None:
+        rows = await self.session.execute(
+            select(DictionaryVersion).where(
+                DictionaryVersion.tenant_id == tenant_id,
+                DictionaryVersion.public_id == public_id,
+            )
+        )
+        return rows.scalar_one_or_none()
+
+    async def object_meta(self, version: DictionaryVersion) -> list[dict[str, Any]]:
+        """Each object record's sync bookkeeping, in record order."""
+
+        return await self._meta(DictionaryObjectRecord, version)
+
+    async def column_meta(self, version: DictionaryVersion) -> list[dict[str, Any]]:
+        return await self._meta(DictionaryColumnRecord, version)
+
+    async def _meta(self, model: Any, version: DictionaryVersion) -> list[dict[str, Any]]:
+        rows = await self.session.execute(
+            select(model.props)
+            .where(model.dictionary_version_id == version.dictionary_version_id)
+            .order_by(model.position)
+        )
+        return [{k: v for k, v in (p or {}).items() if k != _EXTRA_CELLS} for (p,) in rows.all()]

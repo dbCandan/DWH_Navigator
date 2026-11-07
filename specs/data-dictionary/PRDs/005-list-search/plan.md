@@ -1,6 +1,6 @@
 # Plan — list-search
 
-[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.1.0). Uygulama üç parçadır: kaynaktan
+[PRD](PRD.md) belgesinden türetildi (`Status: Accepted`, 1.4.0). Uygulama üç parçadır: kaynaktan
 taşınan saf okuma kuralları ve liste raporu (fark testiyle), listelerin kalıcı tabloları ile süreçteki
 liste işi (yükleme, terimlerin analiz sırasına tek tek verilmesi, durdurma, sürdürme, yarıda kesilme)
 ve uçları, ön yüzdeki liste arayüzü.
@@ -24,11 +24,14 @@ ve uçları, ön yüzdeki liste arayüzü.
 
 ## Kararların uygulaması
 
-- Decision 3 ve Requirement 4: Kurumda tek çalışan liste, `term_list` tablosunda yalnız `running`
-  satırlarına uygulanan kısmi benzersiz dizindir (`uq_term_list_one_running_per_tenant`). Yükleme
-  önce gövdeyi okur (413, 415), sonra çalışan listeye bakar (409, dosya ayrıştırılmadan), sonra
-  dosyayı okur (422); aynı anda gelen iki yüklemeden ikincisini dizin 409'a çevirir. İleti, çalışan
-  liste isteği yapanınsa ya da başkasınınsa kaynaktaki iki metindir.
+- Decision 3 ve Requirement 4: Sahip başına tek çalışan liste, `term_list` tablosunda yalnız
+  `running` satırlarına uygulanan iki kısmi benzersiz dizindir
+  (`uq_term_list_one_running_per_owner_user` üzerinde `(tenant_id, owner_id)` ve
+  `uq_term_list_one_running_per_owner_visitor` üzerinde `(tenant_id, owner_visitor_id)`). Yükleme
+  önce gövdeyi okur (413, 415), sonra isteği yapan ziyaretçinin çalışan listesine bakar (409, dosya
+  ayrıştırılmadan), sonra dosyayı okur (422); aynı ziyaretçiden eş zamanlı gelen iki yüklemeden
+  ikincisini dizin 409'a çevirir. Başka bir ziyaretçinin çalışan listesi engel değildir. 409
+  iletisi tek metindir: "Bir liste zaten çalışıyor; bitmesini bekleyin ya da durdurun."
 - Decision 4 ve Requirement 5: Liste görevi terimi `AnalysisJobs.start` ile analiz sırasına verir
   (`origin=list`, `top=5`, `fresh=false`, liste kimliği, dosya adı ve sıra) ve işin son durumunu
   bekler; sonraki terim ancak o zaman sıraya girer. Liste terimi tek soruların kuyruk sınırına
@@ -81,13 +84,13 @@ ve uçları, ön yüzdeki liste arayüzü.
 | Requirement | Test |
 |---|---|
 | 1-3 | `tests/unit/analysis/test_term_lists.py`, `tests/parity/test_term_lists_parity.py`, `tests/integration/test_term_lists_api.py` (`test_term_list_rejects_bad_files`) |
-| 4 | `tests/integration/test_term_list_runs.py` (`test_only_one_list_runs_in_the_tenant`), `tests/integration/test_term_lists_api.py` (`test_a_list_is_its_owners_alone`, `test_two_uploads_at_once_start_one_list`) |
+| 4 | `tests/integration/test_term_list_runs.py` (`test_only_one_list_runs_per_owner`, `test_two_owners_run_lists_at_the_same_time`), `tests/integration/test_term_lists_api.py` (`test_a_list_is_its_owners_alone`, `test_two_uploads_from_one_owner_start_one_list`, `test_two_owners_run_lists_at_the_same_time`) |
 | 5, 6 | `tests/integration/test_term_list_runs.py` (`test_terms_go_one_at_a_time_in_file_order_and_are_kept_at_once`), `tests/integration/test_term_lists_api.py` (`test_a_question_waits_for_one_term_at_most`, `test_a_saved_answer_is_given_again_and_marked`, `test_answers_and_reports_outlive_a_dictionary_import`) |
 | 7-9 | `tests/integration/test_term_list_runs.py`, `tests/integration/test_term_lists_api.py` (`test_stop_and_resume_over_http`) |
 | 10 | `tests/integration/test_term_list_runs.py` (`test_a_closing_process_interrupts_the_list`, `test_a_list_left_running_is_interrupted_at_start_and_by_the_check`) |
 | 12, 14 | `tests/integration/test_term_lists_api.py` |
 | 13 | `tests/parity/test_term_lists_parity.py`, `tests/integration/test_term_lists_api.py` |
-| 15, 16 | `tests/integration/test_term_lists_api.py` (`test_the_newest_five_lists_of_a_person_are_kept`) |
+| 15, 16 | `tests/integration/test_term_lists_api.py` (`test_the_newest_five_lists_of_a_person_are_kept`); ön yüz tarafı: `app/frontend/src/pages/ExplorerPage.lists.test.tsx` (sayfa açılışında Listeler ucu çağrılmaz; yüklenen liste `sessionStorage` ile aynı sekmede yenilemeye dayanır; sekme kapanınca kayıt silinir) |
 | 18 | `tests/integration/test_term_list_runs.py` (`test_unavailable_answers_are_kept_and_failed_terms_asked_again`) |
 | Veri ve geçiş | `tests/integration/test_list_and_vote_data_model.py` |
 | Gözlemlenebilirlik | `tests/integration/test_telemetry_signals.py`, `tests/integration/test_term_lists_api.py` (`test_logs_and_metrics_carry_no_term_or_file_name`) |

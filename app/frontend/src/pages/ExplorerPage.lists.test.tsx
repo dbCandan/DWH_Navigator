@@ -34,6 +34,7 @@ describe('term list on the main screen (list-search Requirement 11, 15, 17)', ()
     vi.restoreAllMocks();
     vi.useRealTimers();
     clearAuth();
+    sessionStorage.removeItem('dwhnavigator.list');
     document.documentElement.className = '';
   });
 
@@ -122,13 +123,16 @@ describe('term list on the main screen (list-search Requirement 11, 15, 17)', ()
     expect(screen.getByRole('heading', {level: 2, name: 'terimler.xlsx'})).toBeInTheDocument();
   });
 
-  it('finds the newest kept list on opening and leads back to it with the pill', async () => {
-    vi.mocked(TermListService.newest).mockResolvedValue({
-      items: [{id: LIST_ID, name: 'terimler.xlsx', owner: termList().owner, status: 'completed', stop_requested: false, total: 3, done: 3, created_at: '2026-10-09T08:00:00Z', finished_at: '2026-10-09T08:01:00Z'}],
-      page: 1,
-      page_size: 1,
-      total: 1,
-    });
+  it('opens empty in a fresh tab and reads no list on page open (Decision 15)', async () => {
+    const get = vi.spyOn(TermListService, 'get');
+    sessionStorage.removeItem('dwhnavigator.list');
+    await openExplorer();
+    expect(get).not.toHaveBeenCalled();
+    expect(pill()).toBeNull();
+  });
+
+  it('recalls the tab\'s list from sessionStorage on reload and leads back to it with the pill', async () => {
+    sessionStorage.setItem('dwhnavigator.list', LIST_ID);
     vi.spyOn(TermListService, 'get').mockResolvedValue(termList({status: 'completed', done: 3, eta_ms: null}));
     await openExplorer();
     const button = await screen.findByRole('button', {name: message('list.pillResult')});
@@ -140,6 +144,22 @@ describe('term list on the main screen (list-search Requirement 11, 15, 17)', ()
     fireEvent.click(button);
     expect(screen.getByRole('heading', {level: 2, name: 'terimler.xlsx'})).toBeInTheDocument();
     expect(pill()).toBeNull();
+  });
+
+  it('forgets the tab\'s list when the server no longer has it', async () => {
+    sessionStorage.setItem('dwhnavigator.list', LIST_ID);
+    vi.spyOn(TermListService, 'get').mockRejectedValue(new ApiError(404, 'bulunamadı', 'term_list_not_found'));
+    await openExplorer();
+    await waitFor(() => expect(sessionStorage.getItem('dwhnavigator.list')).toBeNull());
+    expect(pill()).toBeNull();
+  });
+
+  it('writes the tab\'s list id to sessionStorage when one is uploaded', async () => {
+    sessionStorage.removeItem('dwhnavigator.list');
+    vi.spyOn(TermListService, 'start').mockResolvedValue(termList({status: 'completed', eta_ms: null}));
+    await openExplorer();
+    await act(async () => choose(workbook()));
+    expect(sessionStorage.getItem('dwhnavigator.list')).toBe(LIST_ID);
   });
 
   it('gives the page to a question; the pill comes back with the answer and a running list\'s poll', async () => {

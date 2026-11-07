@@ -3,12 +3,11 @@ import {ApiError, isUnreachable} from '@/lib/apiClient';
 type Translate = (key: string, values?: Record<string, string | number>) => string;
 
 /**
- * Codes whose `message` the screen shows as the server words it: the dictionary workbook's
- * validation (dictionary-management Requirement 5, 15), the word lists' checks
+ * Codes whose `message` the screen shows as the server words it: the word lists' checks
  * (vocabulary-management Decision 6) and the settings' checks (search-settings Decision 12).
  * Each message is built only from the uploaded file or the sent values.
  */
-const SERVER_WORDED = /^(dictionary_workbook_invalid|vocabulary_.+|search_setting_(unknown|invalid))$/;
+const SERVER_WORDED = /^(vocabulary_.+|search_setting_(unknown|invalid))$/;
 
 /** Codes with a fixed text in the catalog (`admin.error.<code>`). */
 const CATALOGUED = new Set([
@@ -16,11 +15,18 @@ const CATALOGUED = new Set([
   'search_change_busy',
   'upload_too_large',
   'unsupported_media_type',
-  'dictionary_file_empty',
-  'dictionary_import_in_progress',
   'dictionary_not_imported',
   'dictionary_table_not_found',
+  'dictionary_sync_in_progress',
+  'dictionary_source_not_configured',
+  'dictionary_source_unavailable',
+  'dictionary_source_invalid',
+  'dictionary_target_unavailable',
+  'dictionary_version_expired',
+  'dictionary_run_not_pending',
+  'settings_encryption_unavailable',
   'analysis_record_not_found',
+  'llm_call_log_not_found',
   'analysis_delete_scope_missing',
   'invalid_filter',
 ]);

@@ -131,7 +131,7 @@ export default function MaintenancePage() {
       actions={
         <Link className="btn ghost" to={adminPath('sozluk')}>
           <Icon name="book" />
-          {dict.state === 'none' ? t('maintenance.toDictionaryImport') : t('maintenance.toDictionary')}
+          {dict.state === 'none' ? t('maintenance.toDictionarySetup') : t('maintenance.toDictionary')}
         </Link>
       }
     />

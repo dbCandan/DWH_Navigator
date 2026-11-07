@@ -253,27 +253,29 @@ async def test_the_record_keeps_the_visitor_its_address_and_host(qa: Qa) -> None
 # --- Requirement 8, 9, 11: the queue and stopping ---------------------------------------------
 
 
-async def test_one_job_runs_at_a_time_in_arrival_order(qa: Qa) -> None:
-    qa.model.hold = asyncio.Event()
-    first = await qa.started("kart limiti")
-    async with asyncio.timeout(5):
-        await qa.model.chat_started.wait()
-    second = await qa.started("mevduat bakiyesi", qa.other)
-    third = await qa.started("kredi riski")
-    assert (await qa.job(second, qa.other))["ahead"] == 1
-    assert (await qa.job(third))["ahead"] == 2
-    assert (await qa.job(first))["state"] == "running"
-    assert (await qa.job(second, qa.other))["state"] == "queued"
-    active = await qa.request("GET", "/analyses/active")
-    assert active.json()["analysis"]["analysis_id"] == third
-    qa.model.hold.set()
-    for job, who in ((first, qa.user), (second, qa.other), (third, qa.user)):
-        assert (await qa.finished(job, who))["state"] == "completed"
-    assert qa.model.fake.peak == 1
-    rows = [await record(job) for job in (first, second, third)]
-    starts = [row["started_at"] for row in rows]
-    assert starts == sorted(starts)
-    assert (await qa.request("GET", "/analyses/active")).json() == {"analysis": None}
+async def test_one_job_runs_at_a_time_in_arrival_order(dd: DataDictionary) -> None:
+    # Requirement 9 a: with the limit set to 1, the queue keeps the arrival order.
+    async for qa in qa_harness(dd, concurrency=1):
+        qa.model.hold = asyncio.Event()
+        first = await qa.started("kart limiti")
+        async with asyncio.timeout(5):
+            await qa.model.chat_started.wait()
+        second = await qa.started("mevduat bakiyesi", qa.other)
+        third = await qa.started("kredi riski")
+        assert (await qa.job(second, qa.other))["ahead"] == 1
+        assert (await qa.job(third))["ahead"] == 2
+        assert (await qa.job(first))["state"] == "running"
+        assert (await qa.job(second, qa.other))["state"] == "queued"
+        active = await qa.request("GET", "/analyses/active")
+        assert active.json()["analysis"]["analysis_id"] == third
+        qa.model.hold.set()
+        for job, who in ((first, qa.user), (second, qa.other), (third, qa.user)):
+            assert (await qa.finished(job, who))["state"] == "completed"
+        assert qa.model.fake.peak == 1
+        rows = [await record(job) for job in (first, second, third)]
+        starts = [row["started_at"] for row in rows]
+        assert starts == sorted(starts)
+        assert (await qa.request("GET", "/analyses/active")).json() == {"analysis": None}
 
 
 async def test_the_queue_limit_refuses_new_questions(dd: DataDictionary) -> None:
@@ -556,21 +558,52 @@ async def test_a_running_job_keeps_its_engine_and_writes_no_stale_answer(qa: Qa)
     assert later_system != first_system
 
 
+async def _model_calls(qa: Qa, count: int) -> None:
+    async with asyncio.timeout(5):
+        while len(qa.model.chat_requests()) < count:
+            await asyncio.sleep(0.02)
+    await asyncio.sleep(0.2)
+
+
 async def test_concurrency_two_never_runs_three(dd: DataDictionary) -> None:
     async for qa in qa_harness(dd, concurrency=2):
+        third_owner = await qa.dd.auth.account(qa.dd.admin, "kullanici")
         qa.model.hold = asyncio.Event()
-        ids = [await qa.started(q) for q in ("kart limiti", "mevduat bakiyesi", "kredi riski")]
-        async with asyncio.timeout(5):
-            while len(qa.model.chat_requests()) < 2:
-                await asyncio.sleep(0.02)
-        await asyncio.sleep(0.2)
+        owners = (qa.user, qa.other, third_owner)
+        questions = ("kart limiti", "mevduat bakiyesi", "kredi riski")
+        ids = [await qa.started(q, who) for q, who in zip(questions, owners, strict=True)]
+        await _model_calls(qa, 2)
         assert len(qa.model.chat_requests()) == 2
-        third = await qa.job(ids[2])
+        third = await qa.job(ids[2], third_owner)
         assert (third["state"], third["ahead"]) == ("queued", 2)
         qa.model.hold.set()
-        for analysis_id in ids:
-            assert (await qa.finished(analysis_id))["flow"] == "analyst"
+        for analysis_id, who in zip(ids, owners, strict=True):
+            assert (await qa.finished(analysis_id, who))["flow"] == "analyst"
         assert qa.model.fake.peak <= 2
+
+
+async def test_two_owners_run_in_parallel_and_one_owner_waits_for_itself(
+    dd: DataDictionary,
+) -> None:
+    # Requirement 9 b, c, Decision 27: different owners do not wait for each other; an owner's
+    # second job waits for its first and does not hold up another owner's job behind it.
+    async for qa in qa_harness(dd, concurrency=4):
+        qa.model.hold = asyncio.Event()
+        first = await qa.started("kart limiti", qa.user)
+        second_of_user = await qa.started("mevduat bakiyesi", qa.user)
+        of_other = await qa.started("kredi riski", qa.other)
+        await _model_calls(qa, 2)
+        assert len(qa.model.chat_requests()) == 2
+        assert (await qa.job(first))["state"] == "running"
+        assert (await qa.job(of_other, qa.other))["state"] == "running"
+        assert (await qa.job(second_of_user))["state"] == "queued"
+        qa.model.hold.set()
+        done_first = await qa.finished(first)
+        done_second = await qa.finished(second_of_user)
+        assert done_first["flow"] == done_second["flow"] == "analyst"
+        assert (await qa.finished(of_other, qa.other))["flow"] == "analyst"
+        assert done_second["started_at"] >= done_first["finished_at"]
+        assert qa.model.fake.peak == 2
 
 
 async def test_the_same_question_asked_at_once_is_analysed_once(dd: DataDictionary) -> None:

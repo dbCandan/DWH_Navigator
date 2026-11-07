@@ -10,7 +10,6 @@ from app.services.analysis.features import build_features
 from app.services.analysis.scoring.combine import level_for
 from app.services.analysis.scoring.rules import (
     CAVEAT_DERIVATION,
-    CAVEAT_PII,
     score_column,
 )
 from app.services.analysis.text.normalize import load_stopwords
@@ -73,11 +72,6 @@ def test_scope_negation_penalty() -> None:
     pos, _ = score(make("TotalLimitFullness", "Toplam limit. Kart bazlıdır."), "kart limit")
     assert neg.raw_score < pos.raw_score
     assert any("Kapsam farkı" in c for c in neg.caveats)
-
-
-def test_pii_caveat() -> None:
-    h, _ = score(make("CustomerName", "Ad soyad; KVKK kapsamında.", has_pii=True), "müşteri adı")
-    assert CAVEAT_PII in h.caveats
 
 
 def test_score_clipped() -> None:

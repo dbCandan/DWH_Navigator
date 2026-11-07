@@ -4,6 +4,7 @@ import type {IconName} from './Icon';
 export type AdminPageId =
   | 'genel'
   | 'analizler'
+  | 'llm-kayitlari'
   | 'sozluk'
   | 'kelimeler'
   | 'yapay-zeka'
@@ -28,6 +29,7 @@ export const NAV: readonly NavEntry[] = [
   {group: 'admin.nav.monitoring'},
   {id: 'genel', icon: 'home'},
   {id: 'analizler', icon: 'chart'},
+  {id: 'llm-kayitlari', icon: 'file'},
   {group: 'admin.nav.data'},
   {id: 'sozluk', icon: 'book'},
   {id: 'kelimeler', icon: 'list'},

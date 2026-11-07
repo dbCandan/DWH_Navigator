@@ -12,6 +12,7 @@ const PasswordChangePage = lazy(() => import('@/pages/PasswordChangePage'));
 const AdminShell = lazy(() => import('@/components/admin/AdminShell').then((m) => ({default: m.AdminShell})));
 const OverviewPage = lazy(() => import('@/pages/admin/OverviewPage'));
 const AnalysesPage = lazy(() => import('@/pages/admin/AnalysesPage'));
+const LlmLogsPage = lazy(() => import('@/pages/admin/LlmLogsPage'));
 const UsersPage = lazy(() => import('@/pages/admin/UsersPage'));
 const AiPage = lazy(() => import('@/pages/admin/AiPage'));
 const DictionaryPage = lazy(() => import('@/pages/admin/DictionaryPage'));
@@ -39,6 +40,7 @@ export default function App() {
               <Route index element={<Navigate to="genel" replace />} />
               <Route path="genel" element={<OverviewPage />} />
               <Route path="analizler/:analysisId?" element={<AnalysesPage />} />
+              <Route path="llm-kayitlari" element={<LlmLogsPage />} />
               <Route path="sozluk/*" element={<DictionaryPage />} />
               <Route path="kelimeler" element={<VocabularyPage />} />
               <Route path="yapay-zeka" element={<AiPage />} />

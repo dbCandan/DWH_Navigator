@@ -86,7 +86,6 @@ describe('answer view (question-analysis Requirement 21)', () => {
     expect(card.querySelectorAll('.cols .col.hidden')).toHaveLength(2);
     expect(chips[0]).toHaveAttribute('title', 'eşleşme · Kolon 0 açıklaması');
     expect(chips[1]).toHaveAttribute('title', message('answer.roleStructural') + ' · Kolon 1 açıklaması');
-    expect(within(chips[1] as HTMLElement).getByTitle(message('answer.pii'))).toBeInTheDocument();
     fireEvent.click(within(card).getByRole('button', {name: message('answer.moreColumns', {count: 2})}));
     expect(card.querySelectorAll('.cols .col.hidden')).toHaveLength(0);
     fireEvent.click(chips[0]);

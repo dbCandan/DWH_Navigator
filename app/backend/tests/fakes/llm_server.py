@@ -138,10 +138,19 @@ def json_response(payload: object, status: int = 200) -> bytes:
     return http_response(status, json.dumps(payload).encode("utf-8"))
 
 
-def chat_reply(content: str, *, prompt_tokens: int = 11, completion_tokens: int = 7) -> bytes:
+def chat_reply(
+    content: str,
+    *,
+    prompt_tokens: int = 11,
+    completion_tokens: int = 7,
+    finish_reason: str | None = None,
+) -> bytes:
+    choice: dict[str, Any] = {"message": {"role": "assistant", "content": content}}
+    if finish_reason is not None:
+        choice["finish_reason"] = finish_reason
     return json_response(
         {
-            "choices": [{"message": {"role": "assistant", "content": content}}],
+            "choices": [choice],
             "usage": {"prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens},
         }
     )

@@ -1,6 +1,7 @@
 import {useState} from 'react';
 import {Drawer} from '@/components/admin/Drawer';
 import {Field} from '@/components/admin/Field';
+import {SuggestCombobox} from '@/components/admin/SuggestCombobox';
 import {useIntl} from '@/contexts/IntlContext';
 import {useToast} from '@/hooks/useToast';
 import {fold} from '@/lib/fold';
@@ -100,22 +101,16 @@ export function TermDrawer({
           />
         </Field>
         <Field id="term-domain" label={t('vocabulary.term.domain')} hint={t('vocabulary.term.domainHelp')}>
-          <input
+          <SuggestCombobox
             id="term-domain"
-            type="text"
             value={domain}
-            list="dl-domain"
+            options={domains.map((name) => ({value: name}))}
+            listLabel={t('vocabulary.term.domainList')}
             placeholder={t('vocabulary.term.domainPlaceholder')}
-            autoComplete="off"
-            aria-describedby="term-domain-hint"
-            onChange={(event) => setDomain(event.target.value)}
+            describedBy="term-domain-hint"
+            onChange={setDomain}
           />
         </Field>
-        <datalist id="dl-domain">
-          {domains.map((name) => (
-            <option key={name} value={name} />
-          ))}
-        </datalist>
         <Field id="term-note" label={t('vocabulary.term.note')} hint={t('vocabulary.term.noteHelp')}>
           <input
             id="term-note"

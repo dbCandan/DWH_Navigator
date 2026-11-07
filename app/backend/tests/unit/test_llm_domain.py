@@ -85,7 +85,7 @@ def test_the_telemetry_label_sets_are_the_domain_values() -> None:
     assert telemetry.LLM_PROBE_OPERATIONS == {operation.value for operation in ProbeOperation}
     assert telemetry.LLM_FEATURES == {feature.value for feature in AdaptedFeature}
     assert telemetry.LLM_TOKEN_KINDS == {"prompt", "completion"}
-    assert len(LlmOutcome) == 16  # ok and the 15 classes of Requirement 13
+    assert len(LlmOutcome) == 17  # ok and the 16 classes of Requirement 13
 
 
 def test_addresses_are_normalized_as_in_the_source() -> None:
@@ -301,6 +301,10 @@ def test_short_reasons_and_check_messages() -> None:
     )
     assert short_reason(LlmOutcome.UPSTREAM_STATUS, 500, probe=False) == "Sunucu HTTP 500 döndürdü"
     assert short_reason(LlmOutcome.INVALID_RESPONSE, probe=False) == "beklenmeyen yanıt"
+    assert short_reason(LlmOutcome.OUTPUT_TRUNCATED, probe=False) == (
+        "model cevabı uzunluk sınırında kesildi"
+    )
+    assert probe_message(LlmOutcome.OUTPUT_TRUNCATED) == "model cevabı uzunluk sınırında kesildi"
     assert short_reason(LlmOutcome.INVALID_RESPONSE, probe=True) == (
         "yanıt JSON değil — adres OpenAI uyumlu API'nin /v1 adresi mi?"
     )

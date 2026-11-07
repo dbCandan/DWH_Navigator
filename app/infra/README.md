@@ -56,7 +56,9 @@ Yerel yığın varsayılan olarak dışarı çıkmaz; arka uç model sunucusuna 
 - Geçit, sabitlenmiş nginx imajıyla çalışan TCP aktarıcısıdır (`nginx/nginx.local-egress.conf`).
   Yalnız tek bir model sunucusuna, tek bir porta aktarır: `LOCAL_EGRESS_MODEL_PORT` portunu
   `LOCAL_EGRESS_MODEL_ADDRESS` adresine (IPv4 adresi; boşsa bu bilgisayar) iletir. Başka port ve
-  başka hedef yoktur; port ya da adres geçersizse geçit açılmaz ve nedenini yazar.
+  başka hedef yoktur; port ya da adres geçersizse geçit açılmaz ve nedenini yazar. Tek ek aktarım
+  sözlük kaynağı içindir (`data-dictionary/PRDs/011-dictionary-sync`): geçit `dwh-source` adıyla
+  `1433` portunu bu bilgisayarın `14333` portundaki SQL Server'a iletir.
 - Arka uç yine yalnız iç ağlardadır. Geçit, yalnız arka uçla paylaştığı iç `host-gate` ağında
   `LOCAL_EGRESS_MODEL_HOST` adıyla (varsayılan `host.docker.internal`) görünür; dışa çıkan `egress`
   köprüsüne yalnız geçit katılır. Yapay zekâ sayfasındaki API adresi bu adı ve portu kullanır (ör.

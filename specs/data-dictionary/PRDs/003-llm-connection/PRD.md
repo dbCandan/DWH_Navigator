@@ -2,14 +2,18 @@
 
 Status: Accepted
 
-Version: 1.0.2
+Version: 1.2.0
 
-Acceptance date: 2026-10-08
+Acceptance date: 2026-11-04
 
 Domain: [data-dictionary](../../DOMAIN.md)
 
-Kabul kaydı: Proje sahibi bu PRD'yi 2026-10-08'de, kaynak uygulamanın davranışının olduğu gibi
-korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti.
+Kabul kaydı: Proje sahibi bu PRD'yi ilk kez 2026-10-08'de, kaynak uygulamanın davranışının olduğu
+gibi korunması yönergesi ve açık sorulardaki kararlarıyla kabul etti. 2026-11-04'te uzunluk
+sınırında kesilen model yanıtının ayrı hata sınıfıyla gösterilmesini ve bu durumda onarım
+istenmemesini istedi (Requirement 8 ve 13, Decision 20) ve bu sürümü aynı gün kabul etti; aynı gün
+farklı soranların analizlerinin paralel yürümesi için süreç geneli sohbet çağrısı sınırının
+varsayılanının 5'e çıkmasını istedi (Requirement 1 ve 17, Decision 11) ve bu sürümü aynı gün kabul etti.
 
 ## Amaç
 
@@ -24,7 +28,7 @@ modele ulaştığı tek arayüz) gider. Port, modele giden isteği kaynak uygula
 (`temperature` 0, `seed` 42, `reasoning_effort` `"none"`, adım başına `max_tokens`, şemalı JSON
 (yapılandırılmış metin) yanıt isteği, 900 saniye okuma süresi), yalnız kurum içi (özel ağ) adrese
 gider, ölü sunucuyu beklemez ve süreç genelinde aynı anda süren sohbet çağrısı sayısını sınırlar
-(varsayılan 2). Her model çağrısının içerik taşımayan özeti yalnız analiz kaydında saklanır.
+(varsayılan 5). Her model çağrısının içerik taşımayan özeti yalnız analiz kaydında saklanır.
 
 ## Aktörler ve sonuçlar
 
@@ -63,14 +67,14 @@ gider, ölü sunucuyu beklemez ve süreç genelinde aynı anda süren sohbet ça
 - Şifreli bağlantıda sunucu sertifikasının doğrulanması hiçbir ortamda kapatılamaz; ortamdaki vekil
   sunucu (proxy) kullanılmaz; yönlendirme (başka adrese gönderme yanıtı) izlenmez.
 - Aynı istem, şema ve bağlantı için modele giden istek gövdesi kaynak `76e21a3` ile bayt bayt
-  aynıdır (Requirement 6–8).
+  aynıdır; beyan edilmiş iki fark Requirement 6'dadır (Requirement 6–8).
 - İstem, soru metni, sözlük içeriği, model yanıtı, model sunucusunun hata metni, adres ve API
   anahtarı uygulama loguna, OpenTelemetry (ölçüm ve iz toplama sistemi) sinyallerine, hata
   yanıtlarına ve çağrı özetine girmez.
 - API anahtarı yalnız sunucu sınırındadır: PostgreSQL'de yalnız şifreli durur, yanıtta yalnız
   `has_key` bilgisi döner.
 - Aynı anda en çok bir aktif sohbet modeli vardır; bu, veritabanı kısıtıyla korunur.
-- İstem ve şema içeriği, analist adımları, analizlerin sırayla yürümesi, analizin durdurulması,
+- İstem ve şema içeriği, analist adımları, analizlerin kuyruğu ve eşzamanlılığı, analizin durdurulması,
   kayıtlı cevaplar ve "Analiz yapılamadı" cevabının gösterimi
   [question-analysis](../004-question-analysis/PRD.md) PRD'sinindir. Çağrı özetinin analiz
   kaydındaki veri modeli ve gösterimi
@@ -166,8 +170,11 @@ maddede belirtilmiştir.
   onarım istenir (modelin yanıtının ilk 2000 karakteri ve "Yanıtın geçerli JSON değil. SADECE şemaya
   uyan JSON döndür." eklenir); yine çıkmazsa "model geçerli JSON üretmedi". `choices` yoksa
   "beklenmeyen yanıt". Onarım olayı analiz izine modelin yanıtından 200 karakter yazar. Her başarılı
-  yanıttaki `usage.prompt_tokens` ve `usage.completion_tokens` analiz izine eklenir. **Hedefte:**
-  aynı ayrıştırma ve onarım; olaya model metni yazılmaz (Requirement 8).
+  yanıttaki `usage.prompt_tokens` ve `usage.completion_tokens` analiz izine eklenir. Sunucunun
+  yanıtın neden bittiğini bildirdiği `choices[0].finish_reason` okunmaz; uzunluk sınırında kesilen
+  yanıt da onarılmak istenir ve aynı sınırla yine kesilip "model geçerli JSON üretmedi" olur.
+  **Hedefte:** aynı ayrıştırma ve onarım; olaya model metni yazılmaz; uzunluk sınırında kesilen
+  geçersiz yanıt için onarım istenmez ve sonuç ayrı sınıftır (Requirement 8, Decision 20).
 - **Süreler ve yeniden deneme** (`_stoppable`, `CONNECT_TIMEOUT`): Bağlanma en çok 10 saniye sürer
   (yanıt vermeyen sunucu soruyu 900 saniye tutmasın diye); okuma süresi bağlantının `timeout`
   değeridir. Zaman aşımı, bağlantı hatası ve 400 dışındaki sunucu hataları yeniden denenmez. `urllib`
@@ -227,7 +234,7 @@ maddede belirtilmiştir.
 - **Eşzamanlılık** (`ThreadingHTTPServer`, `App.lock`): Analizler tek kilitle sırayla yürür, bir
   analizdeki çağrılar ardışıktır; bağlantı testi ve envanter kilide girmez, analizle aynı anda model
   sunucusuna gidebilir; aynı anda kaç sohbet çağrısı yapılacağını sınırlayan kural yoktur.
-  **Hedefte:** analizlerin sırayla yürümesi [question-analysis](../004-question-analysis/PRD.md)
+  **Hedefte:** analizlerin kuyruğu ve eşzamanlılığı [question-analysis](../004-question-analysis/PRD.md)
   PRD'sindedir; bu PRD süreç geneli sohbet çağrısı sınırı koyar (Requirement 17, Decision 11).
 - **Çağrı sayaçları** (`src/vsa/trace.py` `span(…, trace.LLM)`, `count`, `Trace.totals`;
   `App._log_analysis`): Her sohbet çağrısı analiz izinde bir "LLM çağrısı" aralığıdır; başarılı yanıt
@@ -269,7 +276,7 @@ Requirement 1: Tipli ayarlar (`DWHNAVIGATOR_` önekli ortam değişkenleri) üç
   Requirement 7 ve 17).
 - `DWHNAVIGATOR_LLM_CA_BUNDLE`: model sunucusunun sertifikasını doğrulayan güven dosyasının yolu;
   boşsa imajın sistem güven deposu. Dosya okunamıyorsa süreç başlamaz.
-- `DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS`: süreç geneli sohbet çağrısı sınırı; varsayılan 2,
+- `DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS`: süreç geneli sohbet çağrısı sınırı; varsayılan 5,
   aralık 1–8 (Requirement 17).
 
 Şunlar ayar değil, koddaki sabitlerdir: bağlanma 10 sn; sağlık denetimi 5 sn ve 30 sn önbellek;
@@ -366,8 +373,9 @@ sırayla gelir:
 istekte 5. sıraya (`reasoning_effort`'ın yerine) koyduğu `chat_template_kwargs` alanıdır. İlk istek
 bu alanı hiçbir zaman taşımaz. Aynı girdiler ve aynı sunucu yanıtları için sunucunun aldığı gövde
 dizisi, Requirement 7 ve 8'deki uyarlama ve onarım tekrarları dahil, kaynak `76e21a3`
-`OpenAICompatibleClient`'ın gönderdiğiyle bayt bayt aynıdır; fark yalnız bu alandır (Decision 19).
-Başlıklar bu karşılaştırmaya girmez.
+`OpenAICompatibleClient`'ın gönderdiğiyle bayt bayt aynıdır. Beyan edilmiş iki fark vardır: bu alan
+(Decision 19) ve uzunluk sınırında kesilen geçersiz yanıttan sonra kaynağın gönderdiği onarım
+isteğinin gönderilmemesi (Requirement 8, Decision 20). Başlıklar bu karşılaştırmaya girmez.
 
 Requirement 7: Yalnız 400 kodlu yanıtta, yanıt gövdesinin ilk 600 karakteri uygulamanın Türkçe
 katlama yardımcısıyla (`fold`: Türkçe kurallarla küçük harf ve aksansız biçim) çevrilip şu sırayla
@@ -405,12 +413,16 @@ değilse sonuç `invalid_response` olur ve onarım istenmez. Modelin metni
 `_THINK`, `_FENCE` düzenli ifadeleriyle aynıdır: `<think>…</think>` ve `<thought>…</thought>`
 blokları, sonra satır başındaki ve satır sonundaki kod çiti işaretleri (üç ters tırnak, isteğe bağlı
 `json` sözcüğüyle) atılır; metin JSON olarak okunur, okunamazsa ilk `{` ile son `}` arası denenir;
-sonuç JSON nesnesi değilse (dizi, sayı, metin) geçersizdir. İlk yanıt geçersizse bir
-kez onarım istenir: mesajlara `{"role": "assistant", "content": <yanıtın ilk 2000 karakteri>}` ve
-`{"role": "user", "content": "Yanıtın geçerli JSON değil. SADECE şemaya uyan JSON döndür."}`
+sonuç JSON nesnesi değilse (dizi, sayı, metin) geçersizdir. Geçerli bir JSON nesnesi çıkan yanıt,
+`finish_reason` ne olursa olsun kabul edilir. Geçersiz yanıtta `choices[0].finish_reason` tam
+olarak `"length"` ise (sunucu yanıtı çağıranın verdiği `max_tokens` sınırında kesti) onarım
+istenmez ve sonuç `output_truncated`'dır; bu ilk yanıtta da onarım yanıtında da geçerlidir.
+`finish_reason` yoksa, boşsa ya da başka bir değerse kaynaktaki yol izlenir: ilk yanıt geçersizse
+bir kez onarım istenir: mesajlara `{"role": "assistant", "content": <yanıtın ilk 2000 karakteri>}`
+ve `{"role": "user", "content": "Yanıtın geçerli JSON değil. SADECE şemaya uyan JSON döndür."}`
 eklenir. İkinci yanıt da geçersizse sonuç `invalid_json`'dır. Uyarlama tekrarları bu iki yanıt
 sınırına sayılmaz. Her başarılı yanıttaki `usage.prompt_tokens` ve `usage.completion_tokens`
-değerleri (yoksa 0) çağrı özetinde toplanır.
+değerleri (yoksa 0) çağrı özetinde toplanır; kesilen yanıtınkiler de toplanır.
 
 Requirement 9: Bağlantı kurma (ad çözme, bağlanma ve şifreli bağlantı el sıkışması) en çok 10
 saniye ile işlemin süresinin küçüğü kadar sürer. Sonrasında her gönderme ve okuma işlemi en çok şu
@@ -477,6 +489,7 @@ Sunucu gövdesi yalnız Requirement 7 uyarlaması ve `context_exceeded` ayrımı
 | `context_exceeded` | 2xx dışı yanıt gövdesinin ilk 600 karakteri "context" ile birlikte "exceed", "size" ya da "length" içeriyor (400'de önce uyarlama denenir) | modelin bağlam penceresi yetmedi |
 | `upstream_status` | Diğer 2xx dışı yanıtlar (3xx dahil) | Sunucu HTTP {kod} döndürdü |
 | `invalid_response` | Gövde JSON nesnesi değil ya da beklenen alan yok | yoklamada "yanıt JSON değil — adres OpenAI uyumlu API'nin /v1 adresi mi?", sohbette "beklenmeyen yanıt" |
+| `output_truncated` | Yanıttan JSON nesnesi çıkmadı ve `finish_reason` `"length"` (yanıt `max_tokens` sınırında kesildi; Requirement 8) | model cevabı uzunluk sınırında kesildi |
 | `invalid_json` | Onarımdan sonra da JSON nesnesi çıkmadı | model geçerli JSON üretmedi |
 | `response_too_large` | Açılmış yanıt 4 MiB'ı aştı | yanıt izin verilen boyutu aştı |
 | `cancelled` | Analiz durduruldu | durduruldu |
@@ -525,8 +538,8 @@ Requirement 17: Süreçte aynı anda süren `/chat/completions` isteği sayısı
 çağrı geliş sırasıyla bekler; bekleme iptal edilebilir ve iptal edilen bekleme istek göndermez;
 bekleme süresi çağrı özetine `wait_ms` olarak yazılır. `/models` istekleri (sağlık denetimi, model
 listesi, envanter) bu sınıra girmez; envanter kendi içinde en çok 8 paralel istek yapar. Analizlerin
-sırayla yürümesi bu sınırın yerine geçmez ve [question-analysis](../004-question-analysis/PRD.md)
-PRD'sindedir. Backend tek kopya çalıştığı için süreç sınırı aynı zamanda dağıtım geneli sınırdır.
+kuyruğu ve eşzamanlılık sınırı bu sınırın yerine geçmez ve
+[question-analysis](../004-question-analysis/PRD.md) PRD'sindedir. Backend tek kopya çalıştığı için süreç sınırı aynı zamanda dağıtım geneli sınırdır.
 
 Requirement 18: Port her sohbet çağrısı için (uyarlama ve onarım tekrarlarıyla birlikte tek çağrı)
 içerik taşımayan bir çağrı özeti döndürür: `purpose` (`analysis`, `connection_test` ya da
@@ -729,7 +742,7 @@ kalıcı değildir.
     `reasoning_effort`, `seed`, `chat_template_kwargs`)
   - `dwhnavigator_llm_probes_total{operation,outcome}`
 
-  Etiket kümeleri sabittir: `purpose` 3 değer, `outcome` `ok` ve Requirement 13'ün 15 sınıfı,
+  Etiket kümeleri sabittir: `purpose` 3 değer, `outcome` `ok` ve Requirement 13'ün 16 sınıfı,
   `operation` 3, `kind` 2, `feature` 5 değer; kümede olmayan değer `other` yazılır. Model,
   entegrasyon, kullanıcı ve analiz kimliği etikete girmez.
 - **İz (trace):** Her sohbet çağrısı için `llm chat` aralığı (öznitelikler: `purpose`, `outcome`,
@@ -797,7 +810,11 @@ kalıcı değildir.
   `seed` −1 ve boş `reasoning_effort`. Sunucunun aldığı gövde dizisi bayt bayt aynı, dönen JSON
   nesnesi eşit olmalıdır. Tek beyan edilmiş fark, `reasoning_effort: "none"` reddinden sonraki
   isteklerdeki `chat_template_kwargs` alanıdır (Requirement 7 kural 3); kaynak kaydı değişmez, fark
-  testte kaynağın baytlarına bu alan eklenerek karşılaştırılır. Düşünme kapatma yolu (ret, alanın
+  testte kaynağın baytlarına bu alan eklenerek karşılaştırılır. İkinci beyan edilmiş fark uzunluk
+  sınırında kesilen yanıttır (Decision 20): `finish_reason: "length"` taşıyan JSON olmayan yanıtta
+  hedefin sunucusu yalnız ilk isteği alır, kaynağınki onarım isteğini de; karşılaştırma kaynağın
+  ilk isteğiyle yapılır. Kesilmiş ama geçerli JSON yanıtı ve `finish_reason`'sız JSON olmayan yanıt
+  senaryoları kaynakla farksızdır. Düşünme kapatma yolu (ret, alanın
   reddi, hatırlanması, `low`/`medium`/`high`'ın değişmemesi) birim testlerindedir. Analiz sebebi
   metinleri [question-analysis](../004-question-analysis/PRD.md) Requirement 5'in testlerindedir.
 - **Sahte sunucuyla gerçek ağ bağlantısı:** askıda kalan sunucu (zaman aşımı), 4 MiB aşımı, 307
@@ -806,8 +823,8 @@ kalıcı değildir.
   ad çözücü (sunucu gövde almaz), kapalı port (sağlık denetimi 1 sn altı), yanıt vermeyen adres (6 sn
   altı), durdurmada bağlantının 1 sn içinde kapanması, askıda kalan sunucuda model listesinin 10,
   bağlantı testinin 40, envanterin 50 saniyede bitmesi (Requirement 9).
-- **Eşzamanlılık:** 5 eşzamanlı çağıranda sahte sunucunun gördüğü en yüksek eşzamanlı sohbet isteği
-  2'dir; bekleyen çağrı iptal edilince sunucuya istek gitmez; envanterde en çok 8 eşzamanlı `/models`
+- **Eşzamanlılık:** sınır 2 verilip 5 eşzamanlı çağıranda sahte sunucunun gördüğü en yüksek
+  eşzamanlı sohbet isteği 2'dir; ayarsız varsayılan 5'tir; bekleyen çağrı iptal edilince sunucuya istek gitmez; envanterde en çok 8 eşzamanlı `/models`
   isteği görülür.
 - **API ve PostgreSQL tümleşik:** oluşturma, güncelleme, aktif etme, silme, model listesi, envanter ve
   test uçları gerçek uygulama üzerinden; roller (oturumsuz 401, `kullanici` 403, süper yönetici
@@ -846,14 +863,16 @@ Bu yetenek vektör araması ve gömme kullanmaz; kaynak vektör aramasını ADR-
   sütun ve açıklama kapıları; `python3 scripts/check-config-sync.py` geçer.
 - [ ] Acceptance 2: L1 — Otomatik testlerden geçti: Requirement 6, 7, 8 ve 13 fark testleri kaynak
   `76e21a3` paketiyle yan yana geçer: Test stratejisindeki her senaryoda sahte sunucunun aldığı istek
-  gövdeleri, Requirement 7 kural 3'ün beyan edilmiş farkı dışında, bayt bayt aynıdır, dönen JSON
-  nesnesi eşittir, hata sınıfı ve neden metni Requirement 13 tablosundakidir.
+  gövdeleri, Requirement 6'daki iki beyan edilmiş fark dışında, bayt bayt aynıdır, dönen JSON
+  nesnesi eşittir, hata sınıfı ve neden metni Requirement 13 tablosundakidir. `finish_reason:
+  "length"` taşıyan JSON olmayan yanıtta sunucu tek istek alır, sonuç `output_truncated`'dır ve
+  çağrı özetinde `repaired` yanlıştır.
 - [ ] Acceptance 3: L1 — Otomatik testlerden geçti: Requirement 9, 10, 11, 12 ve 17 sahte sunucu
   testleri geçer: özel ağ dışı adreste ve güvenilmeyen sertifikada sunucu istek gövdesi almaz;
   yönlendirme izlenmez; 4 MiB aşımı kesilir; ortam vekili kullanılmaz; sağlık denetimi kapalı portta
   1 saniyenin, yanıt vermeyen adreste 6 saniyenin altında biter ve 30 saniye önbellekten döner;
-  durdurmada bağlantı 1 saniye içinde kapanır; 5 eşzamanlı çağıranda sunucunun gördüğü eşzamanlı
-  sohbet isteği 2'yi aşmaz.
+  durdurmada bağlantı 1 saniye içinde kapanır; sınır 2 iken 5 eşzamanlı çağıranda sunucunun gördüğü
+  eşzamanlı sohbet isteği 2'yi aşmaz; ayarsız sınır 5'tir.
 - [ ] Acceptance 4: L1 — Otomatik testlerden geçti: Requirement 14, 15, 18 ve 22 testleri geçer:
   envanter ve test adımları; işaret dizesi log çıktısında, OpenTelemetry sinyallerinde, API hata
   yanıtlarında ve çağrı özetlerinde bulunmaz; Gözlemlenebilirlik bölümündeki ölçüm adları ve etiket
@@ -922,10 +941,13 @@ Requirement 17); o gelene kadar geliştirici Git'in yok saydığı `app/infra/.e
 Gerekçe: kurum içi sunucuların çoğu (ekibin LM Studio'su, RunAI ucu) anahtar istemez; anahtar
 yokken de anahtarsız bağlantıyla çalışılabilir.
 
-Decision 11: Süreç geneli sohbet çağrısı sınırının varsayılanı 2'dir. Gerekçe: analizler zaten tek
-tek yürür ve bir yer kullanır; ikinci yer, kaynakta olduğu gibi bir bağlantı testinin analizle aynı
-anda yapılmasına yeter; seri çalışan bir LM Studio'ya ya da paylaşılan RunAI ucuna yığılma olmaz.
-`nonprod` değeri RunAI kapasite sahibinin isteğiyle `values-project.yaml`'dan değiştirilebilir.
+Decision 11: Süreç geneli sohbet çağrısı sınırının varsayılanı 5'tir. Gerekçe: farklı soranların
+analizleri paralel yürür ve aynı anda en çok 4 analiz vardır
+([question-analysis](../004-question-analysis/PRD.md) Decision 27); bir analizin çağrıları ardışık
+olduğu için her analiz bir yer kullanır, beşinci yer bir bağlantı testinin analizlerle aynı anda
+yapılmasına yeter. Model sunucusu istekleri kendisi sıraya koyuyorsa (örneğin paralel isteği kapalı
+bir LM Studio) uygulamadaki paralellik sunucuda seri yanıtlanır. `nonprod` değeri RunAI kapasite
+sahibinin isteğiyle `values-project.yaml`'dan değiştirilebilir.
 
 Decision 12: Uyarlama durumu bağlantı alanlarına bağlıdır; sözlük içe aktarma ve arama ayarı
 değişikliği onu sıfırlamaz. Gerekçe: hedefte motor yeniden kurulmaz; kaynaktaki sıfırlanma yalnız
@@ -971,6 +993,14 @@ analizler "model geçerli JSON üretmedi" ile biter. Ek alan yalnız sunucu dü�
 reddettiğinde gider, bu yüzden kaynağın ölçüldüğü sunucularda gövde değişmez. Karar geliştiricinindir
 (2026-10-09).
 
+Decision 20: Uzunluk sınırında kesilen geçersiz yanıt (`finish_reason: "length"`) onarılmak
+istenmez ve `output_truncated` sınıfıyla biter. Gerekçe: onarım isteği aynı `max_tokens` sınırıyla
+gider, bütün istemi (analistin 1. adımında yaklaşık 48 bin token'lık tablo kataloğunu) yeniden
+gönderir ve yine kesilir; kaynakta bu durum giriş token'ını iki katına çıkarıp "model geçerli JSON
+üretmedi" ile bitiyor, gerçek neden (yanıt bütçesinin yetmemesi) görünmüyordu. `max_tokens`
+değerleri ve istemler değişmez; bu yüzden cevap kalitesi ölçümü gerekmez. Kesilmiş ama geçerli JSON
+yanıtı kaynaktaki gibi kabul edilir. Karar proje sahibinindir (2026-11-04).
+
 ## Teslim akışı
 
 Belirtim → Plan → Görevler → Uygulama
@@ -984,7 +1014,8 @@ Belirtim → Plan → Görevler → Uygulama
   yalnız kodun aynı davrandığını kanıtlar, modelin kalitesini değil.
 - **Düşünen model:** RunAI'deki Qwen modeli cevaptan önce gizli akıl yürütme yazan bir modeldir;
   düşünme açık kalırsa 1. adımın 2500 token'lık (modelin metin birimi) ve bağlantı testinin 60
-  token'lık bütçesini tüketir ve sonuç "model geçerli JSON üretmedi" olur. Requirement 7 kural 3
+  token'lık bütçesini tüketir ve sonuç `output_truncated` ("model cevabı uzunluk sınırında
+  kesildi") olur; sunucu `finish_reason` bildirmezse `invalid_json`. Requirement 7 kural 3
   düşünmeyi `chat_template_kwargs` ile kapatır (Decision 19); bağlantıda `low`, `medium` ya da
   `high` seçilirse düşünme açık kalır ve aynı risk sürer. Başka bir sunucu bu alanı reddetmeden yok
   sayarsa da risk sürer.
