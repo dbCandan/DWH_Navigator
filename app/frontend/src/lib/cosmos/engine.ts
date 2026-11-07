@@ -64,7 +64,7 @@ const RADAR_SPEED = 1.2; // rad/s
 const RADAR_TURNS = 1;
 export const RADAR_MS = ((RADAR_TURNS * 2 * Math.PI) / RADAR_SPEED) * 1000;
 // The marks gather into the tables read in step 2, then the purple route starts.
-export const MERGE_MS = 1800;
+export const MERGE_MS = 3000;
 const MERGE_HOLD_MS = 700; // every mark stays visible this long before the merge
 // A mark found by a later stage is not hidden behind the beam for a whole turn.
 const LATE_REVEAL_MS = 1600;
