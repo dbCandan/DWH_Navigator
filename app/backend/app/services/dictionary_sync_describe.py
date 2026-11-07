@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Collection, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -27,6 +27,7 @@ from app.services.dictionary_sync_fill import (
     valid_description,
 )
 from app.services.dictionary_sync_merge import (
+    ORIGIN_ADMIN,
     ORIGIN_EDITED,
     Change,
     MergedColumn,
@@ -273,9 +274,15 @@ def evidence_for(tables: Sequence[MergedTable], code: Mapping[str, str]) -> Evid
 
 
 async def describe_tables(
-    tables: Sequence[MergedTable], chat: Chat, evidence: Evidence | None = None
+    tables: Sequence[MergedTable],
+    chat: Chat,
+    evidence: Evidence | None = None,
+    rows: Collection[tuple[str, str]] = (),
+    objects: Collection[str] = (),
 ) -> DescribeOutcome:
-    """Describe new rows; a row without code insight still gets all its context."""
+    """Describe new rows, the rows in ``rows`` (folded table key, column name) and the objects in
+    ``objects`` (folded keys), such as those whose computation changed. An admin's text stays; a
+    row without code insight still gets all its context."""
 
     known = evidence or {}
     outcome = DescribeOutcome()
@@ -302,10 +309,20 @@ async def describe_tables(
         if value is not None:
             apply_object(table, value, proof, outcome)
 
+    wanted = set(rows)
+    wanted_objects = set(objects)
     work: list[Awaitable[None]] = []
     for table in tables:
-        work.extend(column(table, row) for row in table.columns if row.is_new)
-        if table.is_new:
+        key = fold(table.key)
+        work.extend(
+            column(table, row)
+            for row in table.columns
+            if (row.is_new or (key, fold(row.record["ColumnName"])) in wanted)
+            and row.origins.get("ColumnDescription") != ORIGIN_ADMIN
+        )
+        if (table.is_new or key in wanted_objects) and table.origins.get(
+            "ObjectDescription"
+        ) != ORIGIN_ADMIN:
             work.append(whole(table))
     await asyncio.gather(*work)
     return outcome

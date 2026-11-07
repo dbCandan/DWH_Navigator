@@ -23,7 +23,8 @@ from app.services.analysis.dictionary_workbook import COLUMN_FIELDS, OBJECT_FIEL
 ORIGIN_SOURCE = "kaynak"
 ORIGIN_MODEL = "model"
 ORIGIN_PRIOR = "onceki"
-ORIGIN_EDITED = "duzenleme"
+ORIGIN_EDITED = "duzenleme"  # a text the model revised against the code
+ORIGIN_ADMIN = "yonetici"  # a text an admin wrote: no update and no rule rewrites it
 
 OBJECT_MODEL_FIELDS = ("Grain", "KeyColumns", "TimeColumns", "BusinessDomain")
 COLUMN_MODEL_FIELDS = ("Synonyms", "Role", "Summary")

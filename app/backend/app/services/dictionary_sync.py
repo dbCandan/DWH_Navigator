@@ -442,7 +442,20 @@ class DictionarySync:
                 f"{snapshot.skipped} kaynak satırı bozuk veya yinelenen olduğu için atlandı."
             )
 
-        work = [t for t in plan.tables if t.needs_model]
+        # The rows to describe again: a changed computation, or a description the source rewrote.
+        rows = set(scope.columns)
+        rows.update(
+            (fold(c.table_key), fold(c.column_name))
+            for c in plan.changes
+            if c.kind == "column_changed" and c.field == "ColumnDescription" and c.origin == "kaynak"
+        )
+        objects = {
+            fold(c.table_key)
+            for c in plan.changes
+            if c.kind == "table_changed" and c.field == "ObjectDescription" and c.origin == "kaynak"
+        }
+        scoped = {key for key, _ in rows} | objects
+        work = [t for t in plan.tables if t.needs_model or fold(t.key) in scoped]
         changed = list(work)
         filled = calls = failures = 0
         suggestions: list[Any] = []
@@ -467,7 +480,9 @@ class DictionarySync:
                 outcome = await fill_tables(plan.tables, chat, progress)
                 plan.changes.extend(outcome.changes)
                 warnings.extend(outcome.warnings)
-                described = await describe_tables(plan.tables, chat, evidence)
+                described = await describe_tables(
+                    plan.tables, chat, evidence, rows=rows, objects=objects
+                )
                 plan.changes.extend(described.changes)
                 warnings.extend(described.warnings)
                 filled = outcome.filled + described.changed

@@ -366,9 +366,12 @@ async def test_only_a_changed_computation_comes_into_scope_and_no_change_means_n
     assert (await sync.run())["counts"]["scope_columns"] == 0
     # A changed computation brings that column only, also after a run that wrote no version.
     sync.source.snapshot = with_code(tables("vParty"), 1000)
+    calls = sync.gateway.port.calls
     changed = await sync.run()
     assert changed["counts"]["scope_code_changed"] == 1
     assert changed["counts"]["scope_columns"] == 1
+    # That column is described again (fill and suggestion calls may add at most two more).
+    assert 1 <= sync.gateway.port.calls - calls <= 3
     # A changed filter of the object brings both of its columns.
     sync.source.snapshot = with_code(tables("vParty"), 1000, active=0)
     assert (await sync.run())["counts"]["scope_code_changed"] == 2

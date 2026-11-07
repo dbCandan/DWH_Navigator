@@ -1,4 +1,4 @@
-"""Apply the curation rules to a merge plan; an admin's edit is never touched.
+"""Apply the curation rules to a merge plan; an admin's text (origin ``yonetici``) is never touched.
 
 Runs after the model filled and described the plan, before the version is written. Every field it
 changes becomes a ``*_normalized`` report line, and what a rule removed stays in the record's
@@ -20,7 +20,7 @@ from app.services.dictionary_curation.text_rules import (
     code_literals,
 )
 from app.services.dictionary_sync_merge import (
-    ORIGIN_EDITED,
+    ORIGIN_ADMIN,
     Change,
     MergedColumn,
     MergedTable,
@@ -65,7 +65,7 @@ def _set(
     column: str = "",
 ) -> bool:
     old = record.get(name) or ""
-    if value == old or origins.get(name) == ORIGIN_EDITED:
+    if value == old or origins.get(name) == ORIGIN_ADMIN:
         return False
     record[name] = value
     outcome.changes.append(Change(kind, table.key, column, name, old, value, origins.get(name, "")))
@@ -87,7 +87,7 @@ def normalize_column(
 ) -> bool:
     record = row.record
     changed = False
-    if row.origins.get("ColumnDescription") != ORIGIN_EDITED:
+    if row.origins.get("ColumnDescription") != ORIGIN_ADMIN:
         text, removed = clean_description(record.get("ColumnDescription", ""), support)
         if text:
             changed |= _set(outcome, KIND_COLUMN, table, record, row.origins, "ColumnDescription", text, record["ColumnName"])
@@ -115,7 +115,7 @@ def normalize_tables(
     for table in tables:
         literals = code_literals(bodies.get(fold(table.key), []))
         changed = False
-        if table.origins.get("ObjectDescription") != ORIGIN_EDITED:
+        if table.origins.get("ObjectDescription") != ORIGIN_ADMIN:
             text, removed = clean_description(table.record.get("ObjectDescription", ""), literals)
             if text:
                 changed |= _set(outcome, KIND_TABLE, table, table.record, table.origins, "ObjectDescription", text)

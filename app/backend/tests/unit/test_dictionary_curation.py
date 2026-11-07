@@ -13,7 +13,7 @@ from app.services.dictionary_curation.normalize import (
     object_code,
 )
 from app.services.dictionary_curation.object_rules import align_object, date_key, present_columns
-from app.services.dictionary_sync_merge import ORIGIN_EDITED, ORIGIN_MODEL, MergedColumn, MergedTable
+from app.services.dictionary_sync_merge import ORIGIN_ADMIN, ORIGIN_EDITED, ORIGIN_MODEL, MergedColumn, MergedTable
 
 # --------------------------------------------------------------------------- doubt
 
@@ -269,7 +269,7 @@ def test_normalize_cleans_model_text_and_reports_each_field() -> None:
 def test_normalize_never_touches_an_admin_edit() -> None:
     edited = "Kredinin faiz oranıdır; iş birimi ile doğrulanmalıdır."
     table = _table("Oranlar.", {"ColumnDescription": edited, "Synonyms": "x", "Summary": "y"},
-                   {"ColumnDescription": ORIGIN_EDITED, "Summary": ORIGIN_EDITED})
+                   {"ColumnDescription": ORIGIN_ADMIN, "Summary": ORIGIN_ADMIN})
     normalize_tables([table], {}, load())
     assert table.columns[0].record["ColumnDescription"] == edited
     assert table.columns[0].record["Summary"] == "y"
