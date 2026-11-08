@@ -83,6 +83,7 @@ describe('Analizler page (analysis-records Requirement 16-22)', () => {
       message('records.col.when'),
       message('records.col.question'),
       message('records.col.flow'),
+      message('records.col.asker'),
       message('records.col.duration'),
     ]);
     const [first, second, third] = bodyRows();
@@ -92,7 +93,7 @@ describe('Analizler page (analysis-records Requirement 16-22)', () => {
     expect(within(second).getByTitle(message('records.originTip'))).toHaveTextContent(message('records.origin', {file: 'liste.xlsx', position: 3}));
     expect(second.querySelector('.a')).toHaveTextContent('—Sözlükte yok');
     expect(second.querySelector('.flow')).toHaveClass('flow', 'yapılamadı');
-    expect(second.querySelector('.note')).toHaveTextContent('Ayşe Kaya');
+    expect(second.querySelector('td.asker')).toHaveTextContent('Ayşe Kaya');
     expect(third.querySelector('.a')).toHaveTextContent('—Beklenmeyen hata');
     expect(within(screen.getByRole('combobox', {name: message('records.asker.label')})).getAllByRole('option').map((o) => o.textContent)).toEqual([
       message('records.asker.all'),
@@ -236,6 +237,9 @@ describe('Analizler page (analysis-records Requirement 16-22)', () => {
     await openPage(`/admin/analizler/${row.public_id}`);
     const panel = await screen.findByRole('dialog', {name: 'Şube bazında mevduat'});
     expect(panel.closest('.drawer')).toHaveClass('drawer', 'wide');
+    const calls = within(panel).queryByRole('link', {name: message('records.detail.usageCalls')});
+    if (flow === 'analyst') expect(calls).toHaveAttribute('href', `/admin/llm-kayitlari?analiz=${row.public_id}`);
+    else expect(calls).toBeNull();
     expect(within(panel).getByText(message('records.detail.sub', {at: formatDateTime(row.asked_at), asker: 'Ali Veli', duration: '12 sn'}))).toBeInTheDocument();
     expect(within(panel).getByText(message(`records.flow.${flow}`), {exact: false, selector: '.flow'})).toBeInTheDocument();
     for (const text of texts) expect(panel).toHaveTextContent(text);

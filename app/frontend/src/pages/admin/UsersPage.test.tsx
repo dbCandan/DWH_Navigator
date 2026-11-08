@@ -1,6 +1,7 @@
 import {act, fireEvent, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {ApiError} from '@/lib/apiClient';
+import {setConfirmHandler} from '@/lib/confirm';
 import {clearAuth} from '@/lib/authStorage';
 import {LlmIntegrationService} from '@/services/llmIntegrations';
 import {UserAdminService} from '@/services/userAdmin';
@@ -27,14 +28,15 @@ const ONE_TIME = 'k7m2q9w4x8r3t6y5u2p4';
 
 /** The browser's confirmation dialog, answered by the test. */
 function answerConfirm(...answers: boolean[]) {
-  const confirm = vi.fn(() => answers.length > 1 ? (answers.shift() as boolean) : answers[0]);
+  const confirm = vi.fn<(text: string) => boolean>(() => answers.length > 1 ? (answers.shift() as boolean) : answers[0]);
   Object.defineProperty(window, 'confirm', {value: confirm, configurable: true, writable: true});
+  setConfirmHandler((text) => confirm(text));
   return confirm;
 }
 
 async function openUsers() {
   renderApp('/admin/kullanicilar');
-  return screen.findByRole('table');
+  return screen.findByRole('list', {name: message('users.listLabel')});
 }
 
 describe('Kullanıcılar (user-accounts Requirement 16)', () => {
@@ -49,14 +51,32 @@ describe('Kullanıcılar (user-accounts Requirement 16)', () => {
   });
 
   it('lists the accounts and protects the super admin rows', async () => {
-    const table = await openUsers();
-    const rows = within(table).getAllByRole('row');
-    expect(within(rows[1]).getByRole('combobox', {name: message('users.roleOf', {username: 'ali.kaya'})})).toHaveValue('kullanici');
-    expect(within(rows[1]).getByText(message('users.status.newPassword'))).toBeInTheDocument();
-    expect(within(rows[1]).getByRole('button', {name: message('users.deactivate')})).toBeInTheDocument();
-    expect(within(rows[2]).getByText(message('users.role.superAdmin'))).toBeInTheDocument();
-    expect(within(rows[2]).queryByRole('button')).toBeNull();
-    expect(within(rows[2]).queryByRole('combobox')).toBeNull();
+    const list = await openUsers();
+    const rows = within(list).getAllByRole('listitem');
+    expect(within(rows[0]).getByText('@ali.kaya')).toBeInTheDocument();
+    expect(within(rows[0]).getByRole('combobox', {name: message('users.roleOf', {username: 'ali.kaya'})})).toHaveValue('kullanici');
+    expect(within(rows[0]).getByText(message('users.status.newPassword'))).toBeInTheDocument();
+    expect(within(rows[0]).getByRole('button', {name: message('users.deactivate')})).toBeInTheDocument();
+    expect(rows[0].querySelector('.avatar')?.textContent).toMatch(/^\S{1,2}$/);
+    expect(within(rows[1]).getByText(message('users.role.superAdmin'))).toHaveClass('role-badge');
+    expect(within(rows[1]).queryByRole('button')).toBeNull();
+    expect(within(rows[1]).queryByRole('combobox')).toBeNull();
+    const stats = [...document.querySelectorAll('.hb-stats .st')].map((node) => [node.querySelector('dt')?.textContent, node.querySelector('dd')?.textContent]);
+    expect(stats).toEqual([
+      [message('users.stat.total'), '2'],
+      [message('users.stat.active'), '2'],
+      [message('users.stat.inactive'), '0'],
+      [message('users.stat.waiting'), '1'],
+    ]);
+    expect(screen.getByRole('heading', {level: 2, name: message('users.guide.title')})).toBeInTheDocument();
+  });
+
+  it('narrows the loaded accounts by their state', async () => {
+    vi.mocked(UserAdminService.list).mockResolvedValue(page([ALI, {...SUPER}, {...account('eski.kisi'), active: false}]));
+    const list = await openUsers();
+    const chips = screen.getByRole('group', {name: message('users.filter.label')});
+    fireEvent.click(within(chips).getByRole('button', {name: new RegExp(`^${message('users.filter.inactive')}`)}));
+    expect(within(list).getAllByRole('listitem').map((row) => row.querySelector('.nm')?.textContent)).toEqual(['@eski.kisi']);
   });
 
   it('searches by user name and display name', async () => {

@@ -1,0 +1,26 @@
+/* The Kelimeler page: a list per tab, terms as tiles with their domain, stopword groups as tiles. */
+[data-surface="admin"] #p-kelimeler .w-body { display: flex; flex-direction: column; gap: 12px; }
+[data-surface="admin"] .w-tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+[data-surface="admin"] .w-tools input[type=search] { flex: 0 1 300px; }
+[data-surface="admin"] .w-line { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 10px; }
+[data-surface="admin"] .w-line h2 { margin: 0; font: 700 15px var(--display); }
+[data-surface="admin"] .w-line .note { margin: 0; color: var(--muted); font-size: 12.5px; }
+
+[data-surface="admin"] .term-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; align-content: start; }
+[data-surface="admin"] .term-grid .empty { grid-column: 1 / -1; }
+[data-surface="admin"] .tile.term .th { display: flex; align-items: flex-start; gap: 8px; }
+[data-surface="admin"] .tile.term .nm { flex: 1; min-width: 0; font: 700 15px/1.3 var(--display); overflow-wrap: anywhere; }
+[data-surface="admin"] .tile.term .dom { flex: none; font: 700 10.5px/18px var(--mono); letter-spacing: .6px; text-transform: uppercase; padding: 0 8px; border-radius: 999px; color: var(--lilac); background: var(--lilac-a14); }
+[data-surface="admin"] .tile.term .chips { gap: 4px; }
+[data-surface="admin"] .tile.term .tag { font-weight: 500; color: var(--text-soft); }
+[data-surface="admin"] .tile.term .tag.more { color: var(--accent); background: var(--accent-soft); }
+[data-surface="admin"] .tile.term .tnote { color: var(--muted); font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 8px; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+
+[data-surface="admin"] .sw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-content: start; align-items: start; }
+[data-surface="admin"] .sw-group .sw-h, [data-surface="admin"] .sw-new .sw-h { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 14px; }
+[data-surface="admin"] .sw-group .sw-h b { flex: 1; }
+[data-surface="admin"] .sw-group .sw-h .n { font: 700 11.5px/20px var(--mono); padding: 0 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+[data-surface="admin"] .sw-group input.chip-in { width: 100%; }
+[data-surface="admin"] .tile.sw-new { border-style: dashed; border-color: var(--line-2); background: transparent; }
+[data-surface="admin"] .tile.sw-new .sw-h svg { width: 16px; height: 16px; color: var(--accent); }
+[data-surface="admin"] .tile.sw-new .btn { align-self: flex-start; }

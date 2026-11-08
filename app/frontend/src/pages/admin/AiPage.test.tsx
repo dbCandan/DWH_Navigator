@@ -1,6 +1,7 @@
 import {fireEvent, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {ApiError} from '@/lib/apiClient';
+import {setConfirmHandler} from '@/lib/confirm';
 import {clearAuth} from '@/lib/authStorage';
 import {LlmIntegrationService} from '@/services/llmIntegrations';
 import {integration, llmState} from '@/test/llm';
@@ -29,8 +30,9 @@ const model = (id: string, overrides: Partial<LlmModelRow> = {}): LlmModelRow =>
 
 /** The browser's confirmation dialog, answered by the test. */
 function answerConfirm(...answers: boolean[]) {
-  const confirm = vi.fn(() => (answers.length > 1 ? (answers.shift() as boolean) : answers[0]));
+  const confirm = vi.fn<(text: string) => boolean>(() => (answers.length > 1 ? (answers.shift() as boolean) : answers[0]));
   Object.defineProperty(window, 'confirm', {value: confirm, configurable: true, writable: true});
+  setConfirmHandler((text) => confirm(text));
   return confirm;
 }
 
@@ -64,7 +66,18 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(screen.getByRole('heading', {level: 2, name: 'google/gemma-4-31b'})).toBeInTheDocument();
     expect(screen.getByText(message('ai.hero.ok', {name: 'DGX Spark 1'}))).toBeInTheDocument();
 
+    const stats = [...document.querySelectorAll('.hb-stats .st')].map((node) => [node.querySelector('dt')?.textContent, node.querySelector('dd')?.textContent]);
+    expect(stats.slice(0, 2)).toEqual([
+      [message('ai.stat.model'), message('ai.stat.state.ok')],
+      [message('ai.stat.integrations'), '2'],
+    ]);
+    expect(document.querySelector('.hb-stats .st')).toHaveClass('st', 'ok');
+    const stage = document.querySelector('.ai-stage') as HTMLElement;
+    expect(stage).toHaveClass('ok');
+    expect(within(stage).getByText('DGX Spark 1')).toBeInTheDocument();
+
     const spark = card('DGX Spark 1');
+    expect(spark.querySelector('.led')).toHaveClass('led', 'ok');
     expect(within(spark).getByText(message('ai.card.active'))).toHaveClass('tag', 'on');
     expect(within(spark).getByText(message('ai.card.keySaved'))).toBeInTheDocument();
     const tested = within(spark).getByText(/^✓ Test bugün/);

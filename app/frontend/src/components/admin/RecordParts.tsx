@@ -20,6 +20,19 @@ export function VerdictBadge({verdict, flow}: {verdict: RecordRow['verdict']; fl
   return <span className={'vb ' + verdict.split(' ')[0]}>{verdict}</span>;
 }
 
+/**
+ * A thin bar under a number: its share of the largest value in the list, so the slow or costly
+ * rows stand out before the digits are read. A value of 70 % or more turns warm.
+ */
+export function Meter({value, max}: {value: number; max: number}) {
+  const share = max > 0 ? Math.min(1, Math.max(0, value / max)) : 0;
+  return (
+    <span className={'meter' + (share >= 0.7 ? ' hot' : '')} aria-hidden="true">
+      <i style={{width: `${Math.max(share * 100, value > 0 ? 3 : 0)}%`}} />
+    </span>
+  );
+}
+
 /** The indicators' tiles; each tile's line is also its tooltip. */
 export function KpiTiles({kpis}: {kpis: readonly Kpi[]}) {
   return (

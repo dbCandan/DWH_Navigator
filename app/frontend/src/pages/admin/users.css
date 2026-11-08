@@ -1,5 +1,41 @@
-/* The Kullanıcılar page: the admin screen's table, buttons and drawer, with two small layouts. */
+/* The Kullanıcılar page: people as rows with an avatar, a role pill and their state; a short guide. */
+[data-surface="admin"] .people-tools { gap: 12px; }
+[data-surface="admin"] .people-tools input[type=search] { flex: 0 1 340px; }
+[data-surface="admin"] .people-tools .note { margin-left: auto; white-space: nowrap; color: var(--muted); font-size: 13px; }
+[data-surface="admin"] .people-body { display: flex; flex-direction: column; gap: 14px; }
+[data-surface="admin"] .people { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+[data-surface="admin"] .person { display: grid; grid-template-columns: auto minmax(0, 1.4fr) minmax(130px, .8fr) minmax(0, 1fr) minmax(0, .9fr) auto; gap: 16px; align-items: center; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); transition: border-color .15s; }
+[data-surface="admin"] .person:hover { border-color: var(--line-2); }
+[data-surface="admin"] .person.off { opacity: .7; }
+[data-surface="admin"] .person.busy { opacity: .55; }
+[data-surface="admin"] .avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; font: 700 15px var(--display); color: var(--on-accent); }
+[data-surface="admin"] .avatar.a0 { background: linear-gradient(135deg, var(--cyan), var(--violet)); }
+[data-surface="admin"] .avatar.a1 { background: linear-gradient(135deg, var(--violet), var(--pink)); }
+[data-surface="admin"] .avatar.a2 { background: linear-gradient(135deg, var(--mint), var(--cyan)); }
+[data-surface="admin"] .avatar.a3 { background: linear-gradient(135deg, var(--amber), var(--pink)); }
+[data-surface="admin"] .avatar.a4 { background: linear-gradient(135deg, var(--iris), var(--teal)); }
+[data-surface="admin"] .person .person-who { display: grid; min-width: 0; }
+[data-surface="admin"] .person .person-who b { display: flex; align-items: center; gap: 8px; font-size: 14.5px; overflow-wrap: anywhere; }
+[data-surface="admin"] .person .person-who .nm { font: 12.5px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+[data-surface="admin"] .tag.me { background: var(--accent-soft); color: var(--accent); }
+[data-surface="admin"] .role-select { width: 100%; padding: 6px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+[data-surface="admin"] .role-badge { display: inline-flex; padding: 4px 12px; border-radius: 999px; font: 700 12.5px var(--sans); color: var(--lilac); background: var(--lilac-a14); border: 1px solid var(--lilac-a25); }
+[data-surface="admin"] .person .state { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+[data-surface="admin"] .person .when { display: flex; align-items: center; gap: 6px; color: var(--muted); font: 12.5px var(--mono); }
+[data-surface="admin"] .person .when svg { width: 14px; height: 14px; flex: none; }
 [data-surface="admin"] .acts-row { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+[data-surface="admin"] .acts-row svg { width: 14px; height: 14px; }
 [data-surface="admin"] .secret { font-size: 15px; letter-spacing: .5px; user-select: all; overflow-wrap: anywhere; }
-[data-surface="admin"] .toolbar .note { white-space: nowrap; }
 [data-surface="admin"] .more .note { align-self: center; padding: 0 10px; }
+
+[data-surface="admin"] .people-guide ol { list-style: none; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+[data-surface="admin"] .people-guide li { display: flex; gap: 12px; align-items: flex-start; }
+[data-surface="admin"] .people-guide .n { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font: 700 13px var(--mono); color: var(--accent); background: var(--accent-soft); }
+[data-surface="admin"] .people-guide b { font-size: 13.5px; }
+[data-surface="admin"] .people-guide p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 1100px) {
+  [data-surface="admin"] .person { grid-template-columns: auto minmax(0, 1fr) auto; }
+  [data-surface="admin"] .person .role-cell, [data-surface="admin"] .person .state, [data-surface="admin"] .person .when { grid-column: 2 / -1; }
+  [data-surface="admin"] .person .acts-row { grid-column: 1 / -1; justify-content: flex-start; }
+}

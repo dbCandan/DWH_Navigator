@@ -5,6 +5,9 @@ import {CosmosEngine, type CosmosHooks} from '@/lib/cosmos/engine';
 import type {GalaxyItem, Star} from '@/lib/cosmos/layout';
 import {readCosmosPalette} from '@/lib/cosmos/palette';
 
+/** Counts in Turkish grouping: 12.109. */
+const fmt = (n: number) => n.toLocaleString('tr-TR');
+
 /** Pointer targets that keep the stars from being picked (dictionary-explorer Requirement 6). */
 const BLOCKING = 'header, .answer, .searchbox, button, a, textarea, input, table, details, footer, .dossier';
 
@@ -45,7 +48,8 @@ export default function CosmosMap({galaxy, onEngine, onStarClick, onSkyClick}: P
     const element = canvas.current;
     if (element === null) return;
     const hooks: CosmosHooks = {
-      onCount: (tables, clusters) => setCount(latest.current.t('explorer.hud.count', {tables, clusters})),
+      onCount: (tables, clusters, columns) =>
+        setCount(latest.current.t('explorer.hud.count', {clusters: fmt(clusters), tables: fmt(tables), columns: fmt(columns)})),
       onLog: setLog,
       onHover: (star, x, y) => setTip(star ? {star, x, y} : null),
       onStarClick: (key) => {

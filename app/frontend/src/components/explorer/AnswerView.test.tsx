@@ -1,4 +1,4 @@
-import {fireEvent, render, screen, within} from '@testing-library/react';
+import {fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {AnswerView} from '@/components/explorer/AnswerView';
 import {IntlProvider} from '@/contexts/IntlContext';
@@ -36,7 +36,7 @@ describe('answer view (question-analysis Requirement 21)', () => {
     expect(onReport).toHaveBeenCalledTimes(1);
   });
 
-  it('shows "Bir bakışta": the word, the missing part, the count, the best match and the others', () => {
+  it('shows "Bir bakışta": the word, the missing part, the count and the best match', () => {
     show(answer());
     expect(document.querySelector('.ans-verdict .av-word')).toHaveTextContent(message('answer.verdict.partial'));
     expect(document.querySelector('.ans-verdict .av-icon')).toHaveTextContent('◐');
@@ -46,22 +46,47 @@ describe('answer view (question-analysis Requirement 21)', () => {
     expect(within(best).getByRole('img', {name: message('answer.ring', {score: 80, level: 'Yüksek'})})).toBeInTheDocument();
     expect(best).toHaveTextContent(message('answer.best'));
     expect(best.querySelector('.ab-path')).toHaveTextContent('DWH.Kart · Kartlar');
-    const also = document.querySelector('ol.ans-also') as HTMLElement;
-    expect(also).toHaveAttribute('start', '2');
-    expect(within(also).getByRole('button')).toHaveTextContent('vCardLimit2');
+    expect(document.querySelector('.ans-also')).toBeNull(); // the others are the rows below, once
   });
 
-  it('draws the coverage matrix with named symbols, open, and the guide cards closed with their counts', () => {
+  it('keeps the analyst reading open and lit: the finding, how it understood the request, what it searched', () => {
     show(answer());
-    const matrix = document.querySelector('details.side-card.matrix') as HTMLDetailsElement;
-    expect(matrix.open).toBe(true);
-    expect(within(matrix).getAllByLabelText(message('answer.cell.on')).length).toBeGreaterThan(0);
-    expect(within(matrix).getByLabelText(message('answer.cell.long'))).toHaveTextContent('◐');
-    expect(within(matrix).getAllByLabelText(message('answer.cell.off'))[0]).toHaveTextContent('○');
+    const brief = screen.getByRole('region', {name: message('answer.summary')});
+    expect(brief.querySelector('.ans-title')).toHaveTextContent('Kart limit doluluğu vCardLimit1 tablosunda hesaplanabilir');
+    expect(brief.querySelector('.ans-lead')).toHaveTextContent('Oran hazır bir kolon değildir.');
+    expect(brief.closest('details')).toBeNull(); // nothing to unfold
+    const read = brief.querySelector('.brief-read') as HTMLElement;
+    expect(read).toHaveTextContent(message('answer.understood'));
+    expect(read).toHaveTextContent('Kart başına limit kullanım oranı isteniyor.');
+    const terms = brief.querySelector('.brief-terms') as HTMLElement;
+    expect(terms).toHaveTextContent(message('answer.searchedFor'));
+    expect(terms.querySelectorAll('.chip')).toHaveLength(4); // three concepts and the expansion
+  });
+
+  it('counts the plan, the warnings and the notes beside the best match; a count opens its card', () => {
+    show(answer());
+    const facts = document.querySelector('.ans-find .facts') as HTMLElement;
+    const warn = within(facts).getByRole('button', {name: '1 ' + message('answer.fact.watch')});
+    expect(within(facts).getByRole('button', {name: '2 ' + message('answer.fact.plan')})).toHaveClass('fact', 'plan');
+    expect(within(facts).getByRole('button', {name: '1 ' + message('answer.fact.notes')})).toHaveClass('fact', 'notes');
+    const notes = document.querySelector('details.side-card.notes') as HTMLDetailsElement;
+    expect(notes.open).toBe(false);
+    fireEvent.click(within(facts).getByRole('button', {name: '1 ' + message('answer.fact.notes')}));
+    expect(notes.open).toBe(true);
+    expect(notes).toHaveClass('flash');
+    expect(warn).toHaveClass('warn');
+  });
+
+  it('opens the plan and the warnings, keeps the notes closed and draws no coverage matrix', () => {
+    show(answer());
+    expect(document.querySelector('.side-card.matrix, .ov-mx')).toBeNull();
     const plan = document.querySelector('details.side-card.plan') as HTMLDetailsElement;
-    expect(plan.open).toBe(false);
+    expect(plan.open).toBe(true);
     expect(plan.querySelector('.side-n')).toHaveTextContent('2');
-    expect(document.querySelector('details.side-card.warn .side-n')).toHaveTextContent('1');
+    const warn = document.querySelector('details.side-card.warn') as HTMLDetailsElement;
+    expect(warn.open).toBe(true);
+    expect(warn.querySelector('.side-n')).toHaveTextContent('1');
+    expect((document.querySelector('details.side-card.notes') as HTMLDetailsElement).open).toBe(false);
     expect(document.querySelector('details.side-card.notes li.nt.t-warn')).not.toBeNull();
   });
 
@@ -69,13 +94,13 @@ describe('answer view (question-analysis Requirement 21)', () => {
     show(answer());
     const rows = screen.getAllByRole('button', {expanded: false}).filter((b) => b.classList.contains('pick-row'));
     expect(rows).toHaveLength(2);
-    fireEvent.click(rows[0]);
-    expect(rows[0]).toHaveAttribute('aria-expanded', 'true');
-    expect(rows[0].closest('article')).toHaveClass('pick', 'open');
-    fireEvent.click(document.querySelector('.ans-also .aa-row') as HTMLElement);
-    expect(rows[0]).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(rows[1]);
     expect(rows[1]).toHaveAttribute('aria-expanded', 'true');
-    expect(document.getElementById('res-DWH_Kart_vCardLimit2')).toHaveClass('flash');
+    expect(rows[1].closest('article')).toHaveClass('pick', 'open');
+    fireEvent.click(document.querySelector('.ans-best') as HTMLElement);
+    expect(rows[1]).toHaveAttribute('aria-expanded', 'false');
+    expect(rows[0]).toHaveAttribute('aria-expanded', 'true');
+    expect(document.getElementById('res-DWH_Kart_vCardLimit1')).toHaveClass('flash');
   });
 
   it('shows the first six columns, "+N kolon" and one column detail', () => {
@@ -150,4 +175,42 @@ describe('answer view (question-analysis Requirement 21)', () => {
     expect(within(details).getByText(message('answer.expansion', {count: 2}))).toHaveAttribute('title', 'kredi limiti, limit tutarı');
     expect(details).toHaveTextContent('48.2 sn · sözlük abcdef12-11136 · LLM yerel/fake-analyst');
   });
+
+  it('folds the guide cards, the notes first, while the answer would run past the window', async () => {
+    const height = window.innerHeight;
+    // The board runs 300 px past the window while two guide cards are open.
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const open = document.querySelectorAll('details.side-card[open]').length;
+      const bottom = this.classList.contains('ans') ? height + (open >= 2 ? 300 : -100) : 0;
+      return {bottom, top: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON: () => ({})} as DOMRect;
+    });
+    show(answer());
+    const open = (cls: string) => (document.querySelector('details.side-card.' + cls) as HTMLDetailsElement).open;
+    expect(open('warn')).toBe(true); // measured once the page settled, two frames later
+    await waitFor(() => expect(open('warn')).toBe(false)); // folded first among the open ones
+    expect(open('notes')).toBe(false);
+    expect(open('plan')).toBe(true); // the board fits once the warnings fold
+  });
+
+  it('draws a table the analyst names but did not suggest apart, opening its dictionary file', () => {
+    const openTable = vi.fn();
+    show(answer({attention: ['vUMECustomer tablosundaki CUSRecordingTime ile karıştırılmamalı.']}), {
+      openTable,
+      hasTable: () => true,
+      catalog: [{key: 'EDWDM.DGM.vUMECustomer', name: 'vUMECustomer'}],
+    });
+    const chip = document.querySelector('.watch button.tn.other') as HTMLElement;
+    expect(chip).toHaveTextContent('vUMECustomer');
+    expect(chip.getAttribute('title')).toContain(message('answer.notSuggested'));
+    fireEvent.click(chip);
+    expect(openTable).toHaveBeenCalledWith('EDWDM.DGM.vUMECustomer');
+  });
+
+  it('keeps a table and its column on one line', () => {
+    show(answer({design: ['vCardLimit1.UsedAmount kolonunu alın.']}));
+    const pair = document.querySelector('.steps .tc') as HTMLElement;
+    expect(pair.querySelector('.tn')).toHaveTextContent('vCardLimit1');
+    expect(pair.querySelector('.cn')).toHaveTextContent('.UsedAmount');
+  });
 });
+

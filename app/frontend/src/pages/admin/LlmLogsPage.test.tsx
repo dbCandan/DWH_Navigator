@@ -63,6 +63,42 @@ describe('LLM kayıtları page', () => {
     expect(LlmCallLogService.read).toHaveBeenCalledWith(row.public_id);
   });
 
+  it('names the outcome in words and leads from an analysis call to its analysis', async () => {
+    const analysisId = '7d1c1f0e-5b0a-4e7b-9a55-0c9d2f6b3a10';
+    vi.mocked(LlmCallLogService.list).mockResolvedValue({
+      rows: [row, {...row, public_id: 'f1', outcome: 'timeout', model: 'other-model'}],
+      total: 2,
+      retention_days: 7,
+    });
+    vi.mocked(LlmCallLogService.read).mockResolvedValue({...detail, analysis_public_id: analysisId});
+    renderApp('/admin/llm-kayitlari');
+    await screen.findByText('other-model');
+    const pills = [...document.querySelectorAll('tbody .pill')];
+    expect(pills.map((pill) => pill.textContent)).toEqual([message('llmLogs.outcome.ok'), message('llmLogs.outcome.timeout')]);
+    expect(pills[1]).toHaveClass('pill', 'bad');
+    expect(pills[1]).toHaveAttribute('title', 'timeout');
+    const filter = screen.getByRole('combobox', {name: message('llmLogs.outcomeFilter')});
+    expect(within(filter).getByRole('option', {name: message('llmLogs.outcome.invalid_json')})).toHaveValue('invalid_json');
+    fireEvent.click(screen.getByText('gemma-4-31b'));
+    const drawer = await screen.findByRole('dialog');
+    expect(await within(drawer).findByRole('link', {name: message('llmLogs.detail.openAnalysis')})).toHaveAttribute(
+      'href',
+      `/admin/analizler/${analysisId}`,
+    );
+  });
+
+  it('shows only the calls of one analysis from ?analiz= and lets the filter go', async () => {
+    const analysisId = '7d1c1f0e-5b0a-4e7b-9a55-0c9d2f6b3a10';
+    renderApp(`/admin/llm-kayitlari?analiz=${analysisId}`);
+    await waitFor(() => expect(LlmCallLogService.list).toHaveBeenLastCalledWith(expect.objectContaining({analysis: analysisId})));
+    expect(screen.getByText(message('llmLogs.analysisFilter'))).toBeInTheDocument();
+    const note = screen.getByText(message('llmLogs.analysisFilter')).closest('.msg') as HTMLElement;
+    expect(within(note).getByRole('link', {name: message('llmLogs.detail.openAnalysis')})).toHaveAttribute('href', `/admin/analizler/${analysisId}`);
+    fireEvent.click(within(note).getByRole('button', {name: message('llmLogs.analysisFilterClear')}));
+    await waitFor(() => expect(LlmCallLogService.list).toHaveBeenLastCalledWith(expect.objectContaining({analysis: ''})));
+    expect(screen.queryByText(message('llmLogs.analysisFilter'))).toBeNull();
+  });
+
   it('reads again with the chosen filter', async () => {
     renderApp('/admin/llm-kayitlari');
     fireEvent.change(await screen.findByRole('combobox', {name: message('llmLogs.purposeFilter')}), {target: {value: 'dictionary_sync'}});

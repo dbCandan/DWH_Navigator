@@ -41,19 +41,19 @@ const TERMINAL = new Set(['completed', 'failed', 'cancelled', 'interrupted']);
 
 class Stopped extends Error {}
 
-/** Resolve after `ms` or as soon as the signal aborts ("Durdur" also ends the radar's wait). */
-function radarWait(ms: number, signal: AbortSignal): Promise<void> {
+/**
+ * Resolve after `ms` or as soon as one of the signals aborts ("Durdur" and a saved answer also
+ * end the radar's wait).
+ */
+function radarWait(ms: number, ...signals: AbortSignal[]): Promise<void> {
   return new Promise((resolve) => {
-    if (ms <= 0 || signal.aborted) return resolve();
+    if (ms <= 0 || signals.some((s) => s.aborted)) return resolve();
     const timer = window.setTimeout(resolve, ms);
-    signal.addEventListener(
-      'abort',
-      () => {
-        window.clearTimeout(timer);
-        resolve();
-      },
-      {once: true},
-    );
+    const done = () => {
+      window.clearTimeout(timer);
+      resolve();
+    };
+    for (const s of signals) s.addEventListener('abort', done, {once: true});
   });
 }
 
@@ -66,14 +66,6 @@ function untilStopped<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
-/**
- * The job waits behind others: queued with analyses ahead of it. A job accepted into an idle
- * queue is "queued" with nothing ahead only for the moment before it starts.
- */
-function waits(state: string, ahead: number | null | undefined): boolean {
-  return state === 'queued' && (ahead ?? 0) > 0;
-}
-
 function terminalOf(job: AnalysisJob): Terminal | null {
   if (!TERMINAL.has(job.state)) return null;
   if (job.state === 'failed') return {type: 'failed', code: job.error?.code ?? ''};
@@ -83,7 +75,7 @@ function terminalOf(job: AnalysisJob): Terminal | null {
 /**
  * The page's one question at a time (question-analysis Requirement 19, 20): start the job, follow
  * its live events with reconnection, stop it, read the answer. Progress shows only as the map's
- * voyage; a queued job writes "sırada" in the voyage log.
+ * voyage: the radar turns while the job waits in the queue; the log starts with its first finds.
  */
 export function useAsk({engine, status, onUnavailable}: Options) {
   const {t} = useIntl();
@@ -113,17 +105,17 @@ export function useAsk({engine, status, onUnavailable}: Options) {
    */
   const ask = useCallback(async (text: string, fresh: boolean, resume: AnalysisJob | null = null) => {
     if (current.current) return;
-    const {engine: map, status: readStatus} = latest.current;
+    const {engine: map} = latest.current;
     const job: Job = {ctrl: new AbortController(), stopped: false, id: resume?.analysis_id ?? null, start: null};
     current.current = job;
     setRunning(true);
     setOutcome(null);
     const cosmos = map();
-    const state = readStatus();
     // The radar marks the tables the analysis itself finds: its `tables` events below.
-    if (cosmos?.active) cosmos.begin({columns: state?.columns ?? 0});
-    // A fast answer (a kept one) still lets the radar finish its turn.
-    const radarDone = radarWait(cosmos?.active ? cosmos.radarMs : 0, job.ctrl.signal);
+    if (cosmos?.active) cosmos.begin();
+    // A fast answer still lets the radar finish its turn; a saved one (done at start) does not.
+    const radarSkip = new AbortController();
+    const radarDone = radarWait(cosmos?.active ? cosmos.radarMs : 0, job.ctrl.signal, radarSkip.signal);
     let ended: AskOutcome;
     try {
       let envelope = resume;
@@ -135,8 +127,10 @@ export function useAsk({engine, status, onUnavailable}: Options) {
       rememberTabAnalysis(job.id);
       // Assigned from the stream's callback, so held in an object rather than a narrowed local.
       const got: {terminal: Terminal | null} = {terminal: terminalOf(envelope)};
-      if (got.terminal === null) {
-        if (waits(envelope.state, envelope.ahead)) cosmos?.queued();
+      if (got.terminal !== null) {
+        radarSkip.abort();
+        latest.current.engine()?.skipRadar();
+      } else {
         await AnalysisService.follow(
           job.id,
           (event) => {
@@ -146,10 +140,7 @@ export function useAsk({engine, status, onUnavailable}: Options) {
             } catch {
               return false;
             }
-            if (data.type === 'snapshot' || data.type === 'queued') {
-              if (waits(data.type === 'queued' ? 'queued' : data.state, data.ahead)) latest.current.engine()?.queued();
-              return false;
-            }
+            if (data.type === 'snapshot' || data.type === 'queued') return false;
             if (data.type === 'tables') {
               latest.current.engine()?.found(data.stage, data.tables);
               return false;

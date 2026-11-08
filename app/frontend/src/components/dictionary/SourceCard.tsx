@@ -101,50 +101,54 @@ export function SourceCard({source, focusRequest, onSaved}: Props) {
       <h2>{t('dictionary.source.title')}</h2>
       <p className="intro">{t('dictionary.source.intro')}</p>
       <div className="form">
-        <Field id="ds-host" label={t('dictionary.source.host')}>
-          <input
-            id="ds-host"
-            ref={hostField}
-            type="text"
-            className="mono"
-            autoComplete="off"
-            spellCheck={false}
-            value={host}
-            onChange={(event) => edited(setHost)(event.target.value)}
-          />
-        </Field>
-        <Field id="ds-port" label={t('dictionary.source.port')}>
-          <input
-            id="ds-port"
-            type="number"
-            min={1}
-            max={65535}
-            value={port}
-            onChange={(event) => edited(setPort)(event.target.value)}
-          />
-        </Field>
-        <Field id="ds-database" label={t('dictionary.source.database')}>
-          <input
-            id="ds-database"
-            type="text"
-            className="mono"
-            autoComplete="off"
-            spellCheck={false}
-            value={database}
-            onChange={(event) => edited(setDatabase)(event.target.value)}
-          />
-        </Field>
-        <Field id="ds-username" label={t('dictionary.source.username')}>
-          <input
-            id="ds-username"
-            type="text"
-            className="mono"
-            autoComplete="off"
-            spellCheck={false}
-            value={username}
-            onChange={(event) => edited(setUsername)(event.target.value)}
-          />
-        </Field>
+        <div className="f2 host-port">
+          <Field id="ds-host" label={t('dictionary.source.host')}>
+            <input
+              id="ds-host"
+              ref={hostField}
+              type="text"
+              className="mono"
+              autoComplete="off"
+              spellCheck={false}
+              value={host}
+              onChange={(event) => edited(setHost)(event.target.value)}
+            />
+          </Field>
+          <Field id="ds-port" label={t('dictionary.source.port')}>
+            <input
+              id="ds-port"
+              type="number"
+              min={1}
+              max={65535}
+              value={port}
+              onChange={(event) => edited(setPort)(event.target.value)}
+            />
+          </Field>
+        </div>
+        <div className="f2">
+          <Field id="ds-database" label={t('dictionary.source.database')}>
+            <input
+              id="ds-database"
+              type="text"
+              className="mono"
+              autoComplete="off"
+              spellCheck={false}
+              value={database}
+              onChange={(event) => edited(setDatabase)(event.target.value)}
+            />
+          </Field>
+          <Field id="ds-username" label={t('dictionary.source.username')}>
+            <input
+              id="ds-username"
+              type="text"
+              className="mono"
+              autoComplete="off"
+              spellCheck={false}
+              value={username}
+              onChange={(event) => edited(setUsername)(event.target.value)}
+            />
+          </Field>
+        </div>
         <Field id="ds-password" label={t('dictionary.source.password')} hint={passwordHint}>
           <input
             id="ds-password"

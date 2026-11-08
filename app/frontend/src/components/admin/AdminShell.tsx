@@ -19,6 +19,7 @@ import {changedKeys, settingFields, type SettingField} from '@/lib/settingsDraft
 import {AnalysisRecordsService} from '@/services/analysisRecords';
 import {DictionaryService} from '@/services/dictionary';
 import type {RecordRow} from '@/types/records';
+import {ConfirmHost} from './ConfirmHost';
 import {CommandPalette} from './CommandPalette';
 import {DictionaryStateProvider} from './DictionaryStateProvider';
 import {Icon} from './Icon';
@@ -39,6 +40,7 @@ import {ToastProvider} from './Toasts';
 import {VocabularyDraftProvider} from './VocabularyDraftProvider';
 import './admin.css';
 import './session.css';
+import './workspace.css';
 
 /** The palette's "Son sorular": the newest 200 finished records (search-settings Requirement 22). */
 const PALETTE_RECENT = 200;
@@ -505,6 +507,7 @@ function ShellLayout() {
         </defs>
       </svg>
       <SaveBar />
+      <ConfirmHost />
       {paletteOpen && <CommandPalette entries={entries} onClose={() => setPaletteOpen(false)} />}
     </>
   );

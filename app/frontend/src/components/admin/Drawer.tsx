@@ -34,8 +34,8 @@ export function Drawer({title, sub, children, foot, wide, onClose}: Props) {
       node?.querySelector<HTMLElement>('input, select, textarea') ?? node?.querySelector<HTMLElement>('.drawer-h .btn');
     first?.focus({preventScroll: true});
     const escape = (event: globalThis.KeyboardEvent) => {
-      // Esc closes the command palette first when it is open over the drawer.
-      if (event.key === 'Escape' && !document.querySelector('.palette')) close.current();
+      // Esc closes the command palette or a confirmation first when one is open over the drawer.
+      if (event.key === 'Escape' && !document.querySelector('.palette, .confirm')) close.current();
     };
     document.addEventListener('keydown', escape);
     return () => {

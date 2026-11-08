@@ -3067,6 +3067,8 @@ export interface paths {
                     outcome?: string | null;
                     /** @description İstek ve yanıtta aranan metin */
                     q?: string | null;
+                    /** @description Yalnız bu analizin çağrıları (analizin public_id'si) */
+                    analysis?: string | null;
                     limit?: number;
                 };
                 header?: never;
@@ -3102,7 +3104,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description invalid_filter: amaç, sonuç, metin ya da sayı geçersiz */
+                /** @description invalid_filter: amaç, sonuç, metin, analiz ya da sayı geçersiz */
                 422: {
                     headers: {
                         [name: string]: unknown;

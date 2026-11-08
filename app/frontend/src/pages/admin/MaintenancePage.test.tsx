@@ -32,7 +32,15 @@ describe('Bakım page (search-settings Requirement 14-16, 19)', () => {
     vi.mocked(SavedAnswersService.summary).mockResolvedValue({total: 1200, usable: 800, newest_at: '2026-10-08T09:00:00Z'});
     await openPage();
     expect(screen.getByText(message('admin.page.bakim.description'))).toBeInTheDocument();
-    expect(within(document.querySelector('#p-bakim .ph') as HTMLElement).getByRole('link', {name: message('maintenance.toDictionary')})).toHaveAttribute('href', '/admin/sozluk');
+    expect(within(document.querySelector('#p-bakim .hero-band') as HTMLElement).getByRole('link', {name: message('maintenance.toDictionary')})).toHaveAttribute('href', '/admin/sozluk');
+    const inputs = [...card().querySelectorAll('.mt-inputs li')];
+    expect(inputs.map((item) => [item.className, item.querySelector('b')?.textContent, item.querySelector('a')?.getAttribute('href')])).toEqual([
+      ['ok', message('maintenance.inputTitle.dictionary'), '/admin/sozluk'],
+      ['ok', message('maintenance.inputTitle.terms'), '/admin/kelimeler'],
+      ['ok', message('maintenance.inputTitle.stopwords'), '/admin/kelimeler?liste=durak'],
+      ['ok', message('maintenance.inputTitle.settings'), '/admin/arama'],
+    ]);
+    expect(card().querySelector('.ring')).toHaveClass('ring', 'ok');
     expect(within(card()).getByText(message('maintenance.index.ok'))).toHaveClass('pill', 'ok');
     expect(within(card()).getByText(message('maintenance.index.dictionaryValue', {columns: 130, version: 'abcdef12'}))).toBeInTheDocument();
     expect(within(card()).getByRole('button', {name: message('maintenance.index.rebuild')})).not.toHaveClass('primary');
@@ -50,6 +58,8 @@ describe('Bakım page (search-settings Requirement 14-16, 19)', () => {
     expect(within(card()).getByText(message('maintenance.index.stale'))).toHaveClass('pill', 'warn');
     expect(within(card()).getByText(message('maintenance.index.mismatch', {inputs: 'sözlük, terim sözlüğü'}))).toHaveClass('msg', 'warn');
     expect(within(card()).getByText(/Son kurulum denemesi başarısız oldu/)).toHaveClass('msg', 'bad');
+    expect([...card().querySelectorAll('.mt-inputs li')].map((item) => item.className)).toEqual(['stale', 'stale', 'ok', 'ok']);
+    expect(card().querySelector('.ring')).toHaveClass('ring', 'bad');
     expect(within(card()).getByRole('button', {name: message('maintenance.index.rebuild')})).toHaveClass('btn', 'primary');
     expect(document.querySelector('#nav-bakim .bdg')).toHaveTextContent('!');
     expect(document.querySelector('#nav-bakim .bdg')).toHaveAttribute('title', message('admin.badge.indexStale'));

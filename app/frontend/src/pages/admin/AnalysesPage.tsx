@@ -6,7 +6,7 @@ import {adminPath, analysisPath, type RecordsDrawerRequest} from '@/components/a
 import {PageHead} from '@/components/admin/PageHead';
 import {PerformanceDrawer} from '@/components/admin/PerformanceDrawer';
 import {RecordDetailBody} from '@/components/admin/RecordDetailBody';
-import {FlowChip, KpiTiles, VerdictBadge} from '@/components/admin/RecordParts';
+import {FlowChip, KpiTiles, Meter, VerdictBadge} from '@/components/admin/RecordParts';
 import {Skeleton} from '@/components/admin/Skeleton';
 import {useIntl} from '@/contexts/IntlContext';
 import {useToast} from '@/hooks/useToast';
@@ -16,6 +16,7 @@ import {formatDateTime, formatDuration, formatNumber, formatWhen} from '@/lib/fo
 import {AnalysisRecordsService} from '@/services/analysisRecords';
 import {SavedAnswersService} from '@/services/savedAnswers';
 import type {Asker, Flow, Period, RecordDetail, RecordFilters, RecordRow, RecordSummary} from '@/types/records';
+import {confirmAction} from '@/lib/confirm';
 
 /** The live refresh period (Requirement 17). */
 const LIVE_MS = 15000;
@@ -216,7 +217,7 @@ export default function AnalysesPage() {
           count,
           period: periodName.toLocaleLowerCase('tr-TR'),
         });
-    if (!window.confirm(question)) return;
+    if (!(await confirmAction(question, {action: t('records.clear.confirmAction'), danger: true}))) return;
     setBusy(true);
     try {
       const answer = await AnalysisRecordsService.remove(current.until, all ? {all: true} : {filters});
@@ -224,7 +225,13 @@ export default function AnalysesPage() {
       toast(t('records.clear.done'), [
         t('records.clear.doneLine', {deleted: formatNumber(answer.deleted_count), remaining: formatNumber(answer.remaining_count)}),
       ]);
-      if (window.confirm(t('records.clear.answersConfirm'))) {
+      if (
+        await confirmAction(t('records.clear.answersConfirm'), {
+          action: t('records.clear.answersAction'),
+          cancel: t('records.clear.answersKeep'),
+          danger: true,
+        })
+      ) {
         const removed = await SavedAnswersService.clear();
         toast(t('maintenance.answers.cleared'), [t('maintenance.answers.clearedLine', {count: formatNumber(removed.removed)})]);
       }
@@ -244,6 +251,7 @@ export default function AnalysesPage() {
     if (!loaded.total)
       return <p className="empty">{askers && askers.length === 0 ? t('records.empty.none') : t('records.empty.filter')}</p>;
     const left = loaded.total - loaded.rows.length;
+    const maxDuration = Math.max(...loaded.rows.map((row) => row.duration_ms ?? 0));
     return (
       <>
         <table className="t">
@@ -252,6 +260,7 @@ export default function AnalysesPage() {
               <th>{t('records.col.when')}</th>
               <th>{t('records.col.question')}</th>
               <th>{t('records.col.flow')}</th>
+              <th>{t('records.col.asker')}</th>
               <th className="r">{t('records.col.duration')}</th>
             </tr>
           </thead>
@@ -294,9 +303,14 @@ export default function AnalysesPage() {
                   </td>
                   <td>
                     <FlowChip flow={row.flow} />
-                    <div className="note">{row.asked_by.display_name}</div>
                   </td>
-                  <td className="dur">{formatDuration(row.duration_ms, t)}</td>
+                  <td className="asker" title={row.asked_by.display_name}>
+                    {row.asked_by.display_name}
+                  </td>
+                  <td className="dur metered">
+                    {formatDuration(row.duration_ms, t)}
+                    <Meter value={row.duration_ms ?? 0} max={maxDuration} />
+                  </td>
                 </tr>
               );
             })}

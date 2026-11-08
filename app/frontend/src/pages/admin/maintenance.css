@@ -1,2 +1,29 @@
-/* The Bakım page: "birkaç saniye" sits 10px after the rebuild button (admin.html PAGES.bakim). */
-[data-surface="admin"] #sec-index .note.after-btn { margin-left: 10px; }
+/* The Bakım page: the index console beside the kept answers' panel. */
+[data-surface="admin"] .mt-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+[data-surface="admin"] .mt-side { display: flex; flex-direction: column; gap: 14px; }
+[data-surface="admin"] .mt-state { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
+[data-surface="admin"] .mt-state .ring { width: 72px; height: 72px; }
+[data-surface="admin"] .mt-state .intro { margin: 0; color: var(--muted); font-size: 13px; }
+[data-surface="admin"] .mt-inputs { list-style: none; margin: 4px 0 14px; padding: 0; display: grid; gap: 6px; counter-reset: input; }
+[data-surface="admin"] .mt-inputs li { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+[data-surface="admin"] .mt-inputs li.stale { border-color: var(--amber-a35); background: var(--warn-bg); }
+[data-surface="admin"] .mt-inputs .mark { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; flex: none; background: var(--ok-bg); color: var(--ok); }
+[data-surface="admin"] .mt-inputs li.stale .mark { background: var(--amber-a16); color: var(--warn); }
+[data-surface="admin"] .mt-inputs .mark svg { width: 15px; height: 15px; }
+[data-surface="admin"] .mt-inputs .nm { flex: 1; min-width: 0; display: grid; }
+[data-surface="admin"] .mt-inputs .nm b { font-size: 13.5px; }
+[data-surface="admin"] .mt-inputs .nm small { color: var(--muted); font-size: 12px; }
+[data-surface="admin"] .mt-rebuild { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--line); }
+[data-surface="admin"] .mt-rebuild .note { color: var(--faint); font-size: 12.5px; }
+
+[data-surface="admin"] .kept { margin-top: 12px; padding: 14px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface-2); display: flex; flex-direction: column; gap: 10px; }
+[data-surface="admin"] .kept .sec-t { margin: 0; }
+[data-surface="admin"] .kept-n { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+[data-surface="admin"] .kept-n b { font: 700 34px/1 var(--display); font-variant-numeric: tabular-nums; }
+[data-surface="admin"] .kept-n span { color: var(--muted); font-size: 12.5px; flex: 1 1 200px; }
+[data-surface="admin"] .kept .note { margin: 0; color: var(--muted); font-size: 12.5px; }
+[data-surface="admin"] .kept .btn { align-self: flex-start; }
+
+@media (max-width: 1100px) {
+  [data-surface="admin"] .mt-grid { grid-template-columns: minmax(0, 1fr); }
+}

@@ -1,6 +1,9 @@
 import {useEffect, useState} from 'react';
+import {Link, useSearchParams} from 'react-router';
 import {Drawer} from '@/components/admin/Drawer';
 import {Icon} from '@/components/admin/Icon';
+import {analysisPath} from '@/components/admin/nav';
+import {Meter} from '@/components/admin/RecordParts';
 import {PageHead} from '@/components/admin/PageHead';
 import {Skeleton} from '@/components/admin/Skeleton';
 import {useIntl} from '@/contexts/IntlContext';
@@ -17,6 +20,7 @@ const TYPING_MS = 300;
 const PAGE_SIZE = 50;
 const MAX_ROWS = 500;
 const PURPOSES: readonly LlmCallPurpose[] = ['analysis', 'dictionary_sync', 'connection_test', 'evaluation'];
+const OUTCOMES = ['ok', 'timeout', 'invalid_json', 'output_truncated', 'upstream_status', 'cancelled'] as const;
 
 function Exchange({exchange, index, count}: {exchange: LlmCallExchange; index: number; count: number}) {
   const {t} = useIntl();
@@ -63,6 +67,9 @@ function Exchange({exchange, index, count}: {exchange: LlmCallExchange; index: n
 export default function LlmLogsPage() {
   const {t} = useIntl();
   const {reportUnreachable} = useToast();
+  const [params, setParams] = useSearchParams();
+  /** `?analiz=<id>` from an analysis' "çağrıları gör": only that analysis' calls. */
+  const analysis = params.get('analiz') ?? '';
   const [purpose, setPurpose] = useState('');
   const [outcome, setOutcome] = useState('');
   const [text, setText] = useState('');
@@ -77,10 +84,13 @@ export default function LlmLogsPage() {
   /** Every step reads the list again: the live refresh and "Yenile". */
   const [reads, setReads] = useState(0);
   const label = t('admin.page.llm-kayitlari.label');
+  /** The outcome in words; a code this screen does not know yet stays as it came. */
+  const outcomeName = (code: string) =>
+    (OUTCOMES as readonly string[]).includes(code) ? t(`llmLogs.outcome.${code}`) : code;
 
   useEffect(() => {
     let current = true;
-    LlmCallLogService.list({purpose, outcome, q, limit}).then(
+    LlmCallLogService.list({purpose, outcome, q, analysis, limit}).then(
       (answer) => {
         if (!current) return;
         setPage(answer);
@@ -95,7 +105,7 @@ export default function LlmLogsPage() {
     return () => {
       current = false;
     };
-  }, [purpose, outcome, q, limit, reads, reportUnreachable]);
+  }, [purpose, outcome, q, analysis, limit, reads, reportUnreachable]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQ(text.trim()), TYPING_MS);
@@ -133,9 +143,11 @@ export default function LlmLogsPage() {
     if (failure) return <div className="msg bad">{t('llmLogs.failed', {reason: adminErrorText(failure, t)})}</div>;
     if (!page) return <Skeleton />;
     if (!page.rows.length) {
-      const filtered = Boolean(purpose || outcome || q);
+      const filtered = Boolean(purpose || outcome || q || analysis);
       return <p className="empty">{t(filtered ? 'llmLogs.empty.filter' : 'llmLogs.empty.none')}</p>;
     }
+    const maxTokens = Math.max(...page.rows.map((row) => row.prompt_tokens + row.completion_tokens));
+    const maxDuration = Math.max(...page.rows.map((row) => row.duration_ms));
     return (
       <>
         <table className="t">
@@ -175,15 +187,21 @@ export default function LlmLogsPage() {
                   <td>{t(`llmLogs.purpose.${row.purpose}`)}</td>
                   <td className="mono">{row.model}</td>
                   <td>
-                    <span className={'pill ' + (row.outcome === 'ok' ? 'ok' : 'bad')}>{row.outcome}</span>
+                    <span className={'pill ' + (row.outcome === 'ok' ? 'ok' : 'bad')} title={row.outcome}>
+                      {outcomeName(row.outcome)}
+                    </span>
                     {row.requests > 1 ? (
                       <span className="note"> {t('llmLogs.requests', {count: row.requests})}</span>
                     ) : null}
                   </td>
-                  <td className="r">
+                  <td className="r metered">
                     {formatNumber(row.prompt_tokens)} / {formatNumber(row.completion_tokens)}
+                    <Meter value={row.prompt_tokens + row.completion_tokens} max={maxTokens} />
                   </td>
-                  <td className="dur">{formatDuration(row.duration_ms, t)}</td>
+                  <td className="dur metered">
+                    {formatDuration(row.duration_ms, t)}
+                    <Meter value={row.duration_ms} max={maxDuration} />
+                  </td>
                 </tr>
               );
             })}
@@ -223,12 +241,11 @@ export default function LlmLogsPage() {
         </select>
         <select aria-label={t('llmLogs.outcomeFilter')} value={outcome} onChange={(event) => setOutcome(event.target.value)}>
           <option value="">{t('llmLogs.outcomeAll')}</option>
-          <option value="ok">ok</option>
-          <option value="timeout">timeout</option>
-          <option value="invalid_json">invalid_json</option>
-          <option value="output_truncated">output_truncated</option>
-          <option value="upstream_status">upstream_status</option>
-          <option value="cancelled">cancelled</option>
+          {OUTCOMES.map((value) => (
+            <option value={value} key={value}>
+              {t(`llmLogs.outcome.${value}`)}
+            </option>
+          ))}
         </select>
         <input
           type="search"
@@ -246,6 +263,19 @@ export default function LlmLogsPage() {
           {t('llmLogs.live')}
         </label>
       </div>
+      {analysis ? (
+        <div className="msg info filter-note">
+          <span>{t('llmLogs.analysisFilter')}</span>
+          <Link className="btn sm" to={analysisPath(analysis)}>
+            {t('llmLogs.detail.openAnalysis')}
+            <Icon name="arrow" />
+          </Link>
+          <button className="btn sm ghost" type="button" onClick={() => setParams({}, {replace: true})}>
+            <Icon name="x" />
+            {t('llmLogs.analysisFilterClear')}
+          </button>
+        </div>
+      ) : null}
       {page?.retention_days === 0 ? <div className="msg warn">{t('llmLogs.off')}</div> : null}
       <section className="card grow">
         <div className="card-h">
@@ -265,13 +295,21 @@ export default function LlmLogsPage() {
             detail
               ? t('llmLogs.detail.sub', {
                   at: formatDateTime(detail.started_at),
-                  outcome: detail.outcome,
+                  outcome: outcomeName(detail.outcome),
                   duration: formatDuration(detail.duration_ms, t),
                   wait: formatDuration(detail.wait_ms, t),
                 })
               : undefined
           }
           onClose={() => setOpenId('')}
+          foot={
+            detail?.analysis_public_id ? (
+              <Link className="btn sm" to={analysisPath(detail.analysis_public_id)}>
+                {t('llmLogs.detail.openAnalysis')}
+                <Icon name="arrow" />
+              </Link>
+            ) : undefined
+          }
         >
           {detailFailure ? (
             <div className="msg bad">{t('llmLogs.failed', {reason: adminErrorText(detailFailure, t)})}</div>

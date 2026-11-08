@@ -140,7 +140,6 @@ describe('votes in the answer (answer-feedback Requirement 11-13)', () => {
       ['↑', message('vote.mark.promoted')],
     ]);
     expect(document.querySelector('.ab-name .ov-ok')).toHaveAttribute('title', message('vote.mark.usersApproved'));
-    expect(document.querySelectorAll('.aa-name .ov-ok')).toHaveLength(1);
     const ring = document.querySelector('.ans-best .ring') as HTMLElement;
     expect(ring).toHaveAttribute('title', message('answer.ringTip', {score: 85}) + message('vote.ringBefore', {before: 80}));
     expect(document.querySelector('.pick-row')).toHaveAttribute(

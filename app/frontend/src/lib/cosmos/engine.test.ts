@@ -82,8 +82,8 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
     const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
     engine.start();
     engine.load(ITEMS);
-    engine.begin({columns: 1200});
-    expect(log.at(-1)).toContain('explorer.voyage.scanningColumns');
+    engine.begin();
+    expect(log.at(-1)).toBe(''); // no "kolon taranıyor" line: the log waits for the radar's finds
     engine.focus([{key: 'DWH.Ornek.vA', name: 'vA', score: 0.9}], 'soru');
     expect(log.at(-1)).not.toContain('explorer.voyage.arrived'); // the radar is still turning
     runFrames(Math.ceil(RADAR_MS / 40) + 5);
@@ -92,12 +92,25 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
     engine.destroy();
   });
 
+  it('lands a saved answer at once: the radar does not turn', () => {
+    const log: string[] = [];
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
+    engine.start();
+    engine.load(ITEMS);
+    engine.begin();
+    engine.skipRadar();
+    engine.focus([{key: 'DWH.Ornek.vA', name: 'vA', score: 0.9}], 'soru');
+    runFrames(5);
+    expect(log.at(-1)).toContain('explorer.voyage.arrived');
+    engine.destroy();
+  });
+
   it('marks found tables on the radar, merges them and reads only the final ones (question-analysis)', () => {
     const log: string[] = [];
     const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
     engine.start();
     engine.load(ITEMS);
-    engine.begin({columns: 1200});
+    engine.begin();
     engine.found('prefilter', [
       {key: 'DWH.Ornek.vA', source: 'engine'},
       {key: 'DWH.Ornek.vC', source: 'engine'},
@@ -109,11 +122,13 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
       {key: 'DWH.Ornek.vB', source: 'family', read: true},
       {key: 'DWH.Ornek.vD', source: 'similar', read: false},
     ]);
-    expect(log.at(-1)).toContain('explorer.voyage.toRead {"count":2,"marks":4}');
+    // one line, its count kept current: no second "found" line
+    expect(log.at(-1)).toContain('explorer.voyage.found {"count":4}');
+    expect(log.at(-1)).not.toContain('explorer.voyage.found {"count":2}');
     // one radar turn (the beam passes every mark), the marks' moment in sight, then the merge
     runFrames(Math.ceil((RADAR_MS + 2500 + MERGE_MS) / 40) + 10);
-    expect(log.some((l) => l.includes('explorer.voyage.merging {"count":2}'))).toBe(true);
     expect(log.some((l) => l.includes('explorer.voyage.finalists {"count":2}'))).toBe(true);
+    expect(log.some((l) => l.includes('explorer.voyage.reading'))).toBe(true);
     engine.focus([{key: 'DWH.Ornek.vB', name: 'vB', score: 0.8}], 'soru');
     expect(log.at(-1)).toContain('explorer.voyage.arrived');
     engine.destroy();
@@ -124,23 +139,11 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
     const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
     engine.start();
     engine.load(ITEMS);
-    engine.begin({columns: 1200});
+    engine.begin();
     engine.found('reading', []);
     runFrames(Math.ceil((RADAR_MS + MERGE_MS) / 40) + 40);
-    expect(log.some((l) => l.includes('explorer.voyage.merging'))).toBe(false);
+    expect(log.some((l) => l.includes('explorer.voyage.finalists'))).toBe(false);
     engine.end();
-    engine.destroy();
-  });
-
-  it('writes "sırada" once in the voyage log while the analysis waits, without a count', () => {
-    const log: string[] = [];
-    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
-    engine.start();
-    engine.load(ITEMS);
-    engine.begin({columns: 1200});
-    engine.queued();
-    engine.queued();
-    expect(log.at(-1)).toBe('explorer.voyage.scanningColumns {"columns":"1.200"}explorer.voyage.separatorexplorer.voyage.queued');
     engine.destroy();
   });
 

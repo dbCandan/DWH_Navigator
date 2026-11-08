@@ -12,7 +12,7 @@ import {ANALYSIS_ID, answer, job, serveEvents, serviceStatus} from '@/test/explo
 import {message} from '@/test/render';
 
 function fakeEngine() {
-  return {active: true, radarMs: 0, begin: vi.fn(), queued: vi.fn(), found: vi.fn(), focus: vi.fn(), end: vi.fn()};
+  return {active: true, radarMs: 0, begin: vi.fn(), found: vi.fn(), focus: vi.fn(), end: vi.fn(), skipRadar: vi.fn()};
 }
 
 function setup(engine = fakeEngine(), onUnavailable = vi.fn()) {
@@ -55,9 +55,7 @@ describe('the question flow (question-analysis Requirement 19, 20)', () => {
     expect(start).toHaveBeenCalledWith('kart limit doluluk oranı', false);
     expect(follow).toHaveBeenCalledWith(ANALYSIS_ID, expect.any(Function), expect.any(AbortSignal));
     expect(get).toHaveBeenCalledWith(ANALYSIS_ID, expect.any(AbortSignal));
-    expect(engine.begin).toHaveBeenCalledWith({columns: 11136});
-    // "sırada" is written while analyses are ahead; steps and numbers are never shown.
-    expect(engine.queued).toHaveBeenCalled();
+    expect(engine.begin).toHaveBeenCalledWith();
     expect(engine.focus).toHaveBeenCalledWith(
       [
         {key: 'DWH.Kart.vCardLimit1', name: 'vCardLimit1', score: expect.any(Number)},
@@ -93,19 +91,6 @@ describe('the question flow (question-analysis Requirement 19, 20)', () => {
     expect(search).not.toHaveBeenCalled(); // no separate table search draws a guessed route
   });
 
-  it('does not write "sırada" for a job that starts at once', async () => {
-    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job({ahead: 0}));
-    serveEvents(
-      {type: 'snapshot', analysis_id: ANALYSIS_ID, state: 'queued', ahead: 0, step: null, elapsed_ms: 1},
-      {type: 'started'},
-      {type: 'completed', flow: 'analyst', verdict: 'VAR'},
-    );
-    vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
-    const {hook, engine} = setup();
-    await act(() => hook.result.current.ask('soru', false));
-    expect(engine.queued).not.toHaveBeenCalled();
-  });
-
   it('shows a kept answer without following a stream and sends "fresh" for a new analysis', async () => {
     const start = vi.spyOn(AnalysisService, 'start').mockResolvedValue(job({state: 'completed', flow: 'reused'}));
     const follow = vi.spyOn(AnalysisService, 'follow');
@@ -115,6 +100,30 @@ describe('the question flow (question-analysis Requirement 19, 20)', () => {
     expect(start).toHaveBeenCalledWith('soru', true);
     expect(follow).not.toHaveBeenCalled();
     expect(hook.result.current.outcome?.kind).toBe('answer');
+  });
+
+  it('shows a saved answer at once, without waiting for the radar\'s turn', async () => {
+    vi.useFakeTimers();
+    try {
+      vi.spyOn(AnalysisService, 'start').mockResolvedValue(job({state: 'completed', flow: 'reused'}));
+      vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
+      const engine = {...fakeEngine(), radarMs: 60_000};
+      const {hook} = setup(engine);
+      await act(() => hook.result.current.ask('soru', false)); // no timer advanced
+      expect(engine.skipRadar).toHaveBeenCalled();
+      expect(hook.result.current.outcome?.kind).toBe('answer');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps the radar turning for a new analysis', async () => {
+    vi.spyOn(AnalysisService, 'start').mockResolvedValue(job());
+    serveEvents({type: 'completed', flow: 'analyst', verdict: 'VAR'});
+    vi.spyOn(AnalysisService, 'get').mockResolvedValue({...job({state: 'completed'}), result: answer()});
+    const {hook, engine} = setup();
+    await act(() => hook.result.current.ask('soru', false));
+    expect(engine.skipRadar).not.toHaveBeenCalled();
   });
 
   it('stops before the start answer arrives and then cancels the job at once', async () => {

@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import {cleanup} from '@testing-library/react';
 import {afterEach, beforeEach} from 'vitest';
+import {setConfirmHandler} from '@/lib/confirm';
 import {serveAdminDefaults} from './admin';
 import {serveExplorerDefaults} from './explorer';
 
@@ -12,4 +13,7 @@ beforeEach(() => {
 });
 
 // Vitest globals are off, so Testing Library cannot register its own unmount hook.
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  setConfirmHandler(null);
+});

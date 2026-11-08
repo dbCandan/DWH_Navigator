@@ -17,8 +17,8 @@ export interface ScoredTable {
 }
 
 export interface CosmosHooks {
-  /** "<tables> tablo · <clusters> küme" for the HUD. */
-  onCount: (tables: number, clusters: number) => void;
+  /** The map's size for the HUD: clusters, tables (veri seti) and their columns (terim). */
+  onCount: (tables: number, clusters: number, columns: number) => void;
   /** The voyage log line ("" clears it). */
   onLog: (text: string) => void;
   /** The pointer is over a star (null when not). */
@@ -59,8 +59,8 @@ interface Mark {
 }
 
 // The radar opens every search and turns until the tables to read are known; an answer that
-// arrives earlier (a kept one) still waits for one turn.
-const RADAR_SPEED = 1.2; // rad/s
+// arrives early still waits for one turn. A saved answer skips the radar (`skipRadar`).
+const RADAR_SPEED = 0.6; // rad/s
 const RADAR_TURNS = 1;
 export const RADAR_MS = ((RADAR_TURNS * 2 * Math.PI) / RADAR_SPEED) * 1000;
 // The marks gather into the tables read in step 2, then the purple route starts.
@@ -70,8 +70,6 @@ const MERGE_HOLD_MS = 700; // every mark stays visible this long before the merg
 const LATE_REVEAL_MS = 1600;
 const SHIP_PACE = 0.81; // every route speed below is scaled by this
 const TAU = 6.2832;
-
-const fmt = (n: number) => n.toLocaleString('tr-TR');
 
 export class CosmosEngine {
   private readonly ctx: CanvasRenderingContext2D;
@@ -112,6 +110,8 @@ export class CosmosEngine {
   private landedAt = 0;
   private pendingFocus: [ScoredTable[], string | undefined] | null = null;
   private pendingEnd = false;
+  private quietLabels = false;
+  private readingLine: string | null = null; // the voyage log's "<table> analiz ediliyor" line
   private readonly detach: () => void;
 
   constructor(
@@ -145,6 +145,12 @@ export class CosmosEngine {
     };
   }
 
+  /** An answer covers the map: its stars keep shining, their name labels stay off (they would
+   *  show through the answer's glass panels). */
+  quiet(on: boolean): void {
+    this.quietLabels = on;
+  }
+
   /** True when the map is drawn and has data. */
   get active(): boolean {
     return this.running && this.galaxy !== null;
@@ -174,7 +180,11 @@ export class CosmosEngine {
     this.galaxy = buildGalaxy(items);
     this.selected = selectedKey ? (this.galaxy.byKey.get(selectedKey) ?? null) : null;
     this.hover = null;
-    this.hooks.onCount(this.galaxy.stars.length, this.galaxy.clusters.length);
+    this.hooks.onCount(
+      this.galaxy.stars.length,
+      this.galaxy.clusters.length,
+      items.reduce((sum, item) => sum + item.columns, 0),
+    );
   }
 
   /** The one table matching a typed name (Requirement 9); null without the map. */
@@ -197,7 +207,7 @@ export class CosmosEngine {
   }
 
   /** A search starts: plot a route out of the search field. */
-  begin({columns = 0}: {columns?: number} = {}): void {
+  begin(): void {
     this.origin = this.searchOrigin();
     this.mode = 'plan';
     this.modeAt = this.t;
@@ -209,20 +219,11 @@ export class CosmosEngine {
     this.trail = [];
     this.focusList = [];
     this.reading = null;
+    this.readingLine = null;
     this.hudSteps = [];
     this.pendingFocus = null;
     this.pendingEnd = false;
-    this.log(columns ? this.hooks.text('explorer.voyage.scanningColumns', {columns: fmt(columns)}) : this.hooks.text('explorer.voyage.planning'));
-  }
-
-  /**
-   * The analysis waits in the queue: the voyage log says "sırada" once, without a count or a
-   * time (question-analysis Requirement 20, Decision 22).
-   */
-  queued(): void {
-    const step = this.hooks.text('explorer.voyage.queued');
-    if (this.hudSteps.includes(step)) return;
-    this.log(step);
+    this.log(null); // the voyage log starts empty: the radar's first finds open it
   }
 
   /**
@@ -250,11 +251,11 @@ export class CosmosEngine {
       added++;
     });
     if (stage === 'prefilter') {
-      if (added) this.log(this.hooks.text('explorer.voyage.found', {count: this.marks.size}));
+      if (added) this.logFound();
       return;
     }
     this.finals = [...this.marks.values()].filter((m) => m.read).map((m) => m.star);
-    this.log(this.hooks.text('explorer.voyage.toRead', {count: this.finals.length, marks: this.marks.size}));
+    if (added) this.logFound();
   }
 
   /** Final answer: fly to it, landing on the first; the results stay as a constellation. */
@@ -264,6 +265,11 @@ export class CosmosEngine {
       return;
     }
     this.showFocus(list, query);
+  }
+
+  /** A saved answer came back at once: the radar does not turn, the answer shows directly. */
+  skipRadar(): void {
+    if (this.mode === 'plan' && !this.radarTurned) this.radarDone();
   }
 
   /** Search finished without results, stopped or failed: stand down. */
@@ -276,6 +282,13 @@ export class CosmosEngine {
   }
 
   // --------------------------------------------------------------- internals
+
+  /** "radarda N veri seti bulundu": one line, its count kept current as stages add tables. */
+  private logFound(): void {
+    const line = this.hooks.text('explorer.voyage.found', {count: this.marks.size});
+    const prefix = this.hooks.text('explorer.voyage.found', {count: ''}).split(' ')[0];
+    this.log(line, this.hudSteps.at(-1)?.startsWith(prefix) ?? false);
+  }
 
   private log(step: string | null, replaceLast = false): void {
     if (replaceLast) this.hudSteps.pop();
@@ -439,8 +452,9 @@ export class CosmosEngine {
       const n = 'n' in p ? p.n : null;
       if (n && n !== this.reading) {
         this.reading = n;
-        const prefix = this.hooks.text('explorer.voyage.reading', {name: ''});
-        this.log(this.hooks.text('explorer.voyage.reading', {name: n.name}), this.hudSteps.at(-1)?.startsWith(prefix));
+        const line = this.hooks.text('explorer.voyage.reading', {name: n.name});
+        this.log(line, this.readingLine !== null && this.hudSteps.at(-1) === this.readingLine);
+        this.readingLine = line;
       }
     }
     if (!this.loop && this.dist >= total && this.mode === 'final') {
@@ -507,7 +521,6 @@ export class CosmosEngine {
     }
     this.mode = 'merge';
     this.modeAt = this.t;
-    this.log(this.hooks.text('explorer.voyage.merging', {count: finals.length}));
   }
 
   /** The purple route: a closed loop through every table read in step 2, no cap. */
@@ -520,7 +533,6 @@ export class CosmosEngine {
     this.modeAt = this.t;
     this.reading = null;
     this.log(this.hooks.text('explorer.voyage.finalists', {count: fin.length}));
-    this.log(this.hooks.text('explorer.voyage.modelReading'));
   }
 
   private showFocus(list: ScoredTable[], query?: string): void {
@@ -535,10 +547,8 @@ export class CosmosEngine {
       }
       return;
     }
-    const readingPrefix = this.hooks.text('explorer.voyage.reading', {name: ''});
-    if (this.hudSteps.at(-1)?.startsWith(readingPrefix)) this.hudSteps.pop();
-    const last = this.hudSteps.at(-1);
-    if (last === this.hooks.text('explorer.voyage.modelReading')) this.hudSteps.pop();
+    if (this.readingLine !== null && this.hudSteps.at(-1) === this.readingLine) this.hudSteps.pop();
+    this.readingLine = null;
     if (!this.hudSteps.length && query) this.hudSteps.push(this.hooks.text('explorer.voyage.query', {query}));
     this.log(this.hooks.text('explorer.voyage.arrived', {count: this.focusList.length, name: this.focusList[0].name}));
     const from = this.mode === 'idle' ? this.searchOrigin() : this.shipPos();
@@ -762,7 +772,7 @@ export class CosmosEngine {
       if (mark) this.ring(x, y, 9, rgba(tone, 0.7), 1.6); // who found it
       this.ring(x, y, since >= 0 ? 6 : 4, since >= 0 ? rgba(c.white, 0.85) : rgba(tone, 0.5), 1.2);
       const show = this.mode === 'read' ? p.n === this.reading : since >= 0 && since < 2.2 && this.mode !== 'final';
-      if (show)
+      if (show && !this.quietLabels)
         this.label(
           x,
           y,
@@ -884,7 +894,7 @@ export class CosmosEngine {
       ctx.beginPath();
       ctx.arc(n.sx, n.sy, 2.6 + 2 * s, 0, TAU);
       ctx.fill();
-      if (i < 6)
+      if (i < 6 && !this.quietLabels)
         this.label(
           n.sx,
           n.sy,

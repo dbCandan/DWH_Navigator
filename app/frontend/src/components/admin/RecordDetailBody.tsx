@@ -1,3 +1,4 @@
+import {Link} from 'react-router';
 import {useIntl} from '@/contexts/IntlContext';
 import {
   callNumber,
@@ -10,6 +11,7 @@ import {
 } from '@/lib/analysisRecords';
 import {formatDuration, formatKilo, formatWhen} from '@/lib/format';
 import type {RecordDetail} from '@/types/records';
+import {analysisLlmCallsPath} from './nav';
 import {FlowChip, VerdictBadge} from './RecordParts';
 
 /** The step indent per tree level (admin.html timeline). */
@@ -144,11 +146,16 @@ export function RecordDetailBody({record}: {record: RecordDetail}) {
           <>
             <dt>{t('records.detail.usage')}</dt>
             <dd>
-              {t('records.detail.usageValue', {
-                calls: record.llm_calls,
-                prompt: formatKilo(record.prompt_tokens, t),
-                completion: formatKilo(record.completion_tokens, t),
-              })}
+              <span>
+                {t('records.detail.usageValue', {
+                  calls: record.llm_calls,
+                  prompt: formatKilo(record.prompt_tokens, t),
+                  completion: formatKilo(record.completion_tokens, t),
+                })}
+              </span>{' '}
+              <Link className="inline-link" to={analysisLlmCallsPath(record.public_id)}>
+                {t('records.detail.usageCalls')}
+              </Link>
             </dd>
           </>
         ) : null}

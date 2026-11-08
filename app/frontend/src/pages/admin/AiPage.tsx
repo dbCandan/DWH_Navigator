@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 import {useLocation, useNavigate} from 'react-router';
 import {Icon} from '@/components/admin/Icon';
-import {PageHead} from '@/components/admin/PageHead';
+import {PageHero} from '@/components/admin/PageHero';
 import type {AiDrawerRequest} from '@/components/admin/nav';
 import {Skeleton} from '@/components/admin/Skeleton';
 import {IntegrationCard, type ModelsOutcome} from '@/components/ai/IntegrationCard';
@@ -11,10 +11,12 @@ import {useIntl} from '@/contexts/IntlContext';
 import {useLlmState} from '@/hooks/useLlmState';
 import {useToast} from '@/hooks/useToast';
 import {isRoleTaken, llmErrorText, stepLines} from '@/lib/llmText';
+import {formatWhen} from '@/lib/format';
 import {modelStatus} from '@/lib/modelStatus';
 import {LlmIntegrationService} from '@/services/llmIntegrations';
 import type {LlmIntegrationCreated, LlmIntegrationItem, LlmIntegrationsState, LlmIntegrationUpdated} from '@/types/llm';
 import '@/components/ai/ai.css';
+import {confirmAction} from '@/lib/confirm';
 
 type Open = {kind: 'editor'; item: LlmIntegrationItem | null} | {kind: 'inventory'} | null;
 
@@ -74,7 +76,7 @@ export default function AiPage() {
         adopt(fresh);
         holder = fresh.active?.name ?? '';
       }
-      if (!window.confirm(t('ai.confirm.replace', {name: holder}))) return null;
+      if (!(await confirmAction(t('ai.confirm.replace', {name: holder}), {action: t('ai.confirm.replaceAction')}))) return null;
       return run(true);
     }
   };
@@ -136,7 +138,8 @@ export default function AiPage() {
   }
 
   async function remove(item: LlmIntegrationItem) {
-    if (!window.confirm(t(item.active ? 'ai.confirm.removeActive' : 'ai.confirm.remove', {name: item.name}))) return;
+    if (!(await confirmAction(t(item.active ? 'ai.confirm.removeActive' : 'ai.confirm.remove', {name: item.name}), {action: t('ai.card.remove'), danger: true})))
+      return;
     try {
       const state = await LlmIntegrationService.remove(item);
       toast(t('ai.toast.removed'), [item.name]);
@@ -173,7 +176,7 @@ export default function AiPage() {
   if (llm === null)
     return (
       <section className="page on" id="p-yapay-zeka" aria-label={label}>
-        <PageHead title={label} />
+        <PageHero icon="spark" title={label} />
         {failure ? (
           <div className="msg bad">{t('admin.pageFailed', {reason: llmErrorText(failure, t)})}</div>
         ) : (
@@ -185,34 +188,84 @@ export default function AiPage() {
 
   const status = modelStatus(llm, t);
   const holder = status.active;
+  const held = holder ? (llm.items.find((item) => item.public_id === holder.public_id) ?? null) : null;
+  const tested = held?.last_test ?? null;
+  const tone = status.state === 'ok' ? 'ok' : status.state === 'down' ? 'bad' : 'warn';
+  const activeCount = llm.items.filter((item) => item.active).length;
+  const addButton = (
+    <button className="btn primary" type="button" onClick={() => show({kind: 'editor', item: null})}>
+      <Icon name="plus" />
+      {t('ai.hero.new')}
+    </button>
+  );
   return (
     <section className="page on" id="p-yapay-zeka" aria-label={label}>
-      <PageHead
+      <PageHero
+        icon="spark"
         title={label}
         description={t('admin.page.yapay-zeka.description')}
         actions={
-          <button className="btn" type="button" onClick={() => show({kind: 'inventory'})}>
-            <Icon name="list" />
-            {t('ai.inventory.open')}
-          </button>
+          <>
+            <button className="btn" type="button" onClick={() => show({kind: 'inventory'})}>
+              <Icon name="list" />
+              {t('ai.inventory.open')}
+            </button>
+            {addButton}
+          </>
         }
+        stats={[
+          {label: t('ai.stat.model'), value: t(`ai.stat.state.${status.state}`), tone},
+          {
+            label: t('ai.stat.integrations'),
+            value: llm.items.length,
+            note: t('ai.stat.activeCount', {count: activeCount}),
+          },
+          {
+            label: t('ai.stat.lastTest'),
+            value: tested ? formatWhen(tested.at, t) : t('ai.card.untested'),
+            note: tested ? t(tested.ok ? 'ai.stat.testOk' : 'ai.stat.testFailed') : undefined,
+            tone: tested ? (tested.ok ? 'ok' : 'bad') : undefined,
+          },
+        ]}
       />
-      <section className="card">
-        <div className="hero">
-          <div className={'orb ' + (status.state === 'ok' ? 'ok' : status.state === 'down' ? 'bad' : 'none')}>
-            <Icon name="spark" />
+      <div className="fill scroll ai-body">
+        <section className={'panel ai-stage ' + tone} aria-label={t('ai.hero.role')}>
+          <div className={'ring ' + tone}>
+            <Icon name={status.state === 'ok' ? 'spark' : 'alert'} />
           </div>
-          <div>
-            <div className="note">{t('ai.hero.role')}</div>
+          <div className="ai-who">
+            <div className="ai-role">{t('ai.hero.role')}</div>
             <h2>{holder ? holder.model : t('ai.status.none')}</h2>
-            <div className="muted">
+            <p>
               {status.state === 'ok' && holder
                 ? t('ai.hero.ok', {name: holder.name})
                 : status.state === 'down' && holder
                   ? t('ai.hero.down', {name: holder.name, reason: status.detail})
                   : t('ai.hero.none')}
-            </div>
+            </p>
           </div>
+          {held ? (
+            <dl className="facts">
+              <div>
+                <dt>{t('ai.stage.integration')}</dt>
+                <dd>{held.name}</dd>
+              </div>
+              <div>
+                <dt>{t('ai.stage.endpoint')}</dt>
+                <dd className="mono">{held.endpoint}</dd>
+              </div>
+              <div>
+                <dt>{t('ai.stage.key')}</dt>
+                <dd>{t(held.has_key ? 'ai.card.keySaved' : 'ai.card.noKey')}</dd>
+              </div>
+              <div>
+                <dt>{t('ai.stat.lastTest')}</dt>
+                <dd title={tested?.summary}>
+                  {tested ? t(tested.ok ? 'ai.card.testedOk' : 'ai.card.testedFailed', {when: formatWhen(tested.at, t)}) : t('ai.card.untested')}
+                </dd>
+              </div>
+            </dl>
+          ) : null}
           <div className="acts">
             {holder ? (
               <button className="btn" type="button" disabled={heroTesting} onClick={() => void heroTest(holder)}>
@@ -226,18 +279,13 @@ export default function AiPage() {
                 )}
               </button>
             ) : null}
-            <button className="btn primary" type="button" onClick={() => show({kind: 'editor', item: null})}>
-              <Icon name="plus" />
-              {t('ai.hero.new')}
-            </button>
           </div>
+        </section>
+        <div className="ai-list-head">
+          <h2>{t('ai.list.title', {count: llm.items.length})}</h2>
+          <p className="note">{t('ai.list.intro')}</p>
         </div>
-      </section>
-      <div className="card-h ai-list-head">
-        <h2>{t('ai.list.title', {count: llm.items.length})}</h2>
-      </div>
-      {llm.items.length ? (
-        <div className="fill scroll">
+        {llm.items.length ? (
           <div className="integs" key={version}>
             {llm.items.map((item) => (
               <IntegrationCard
@@ -251,19 +299,22 @@ export default function AiPage() {
                 onActivate={(active) => activate(item, active)}
               />
             ))}
+            <button className="tile add integ-add" type="button" onClick={() => show({kind: 'editor', item: null})}>
+              <Icon name="plus" />
+              {t('ai.list.add')}
+            </button>
           </div>
-        </div>
-      ) : (
-        <section className="card">
-          <p className="empty">{t('ai.list.empty')}</p>
-          <div className="more">
+        ) : (
+          <div className="panel ai-empty">
+            <Icon name="server" />
+            <p>{t('ai.list.empty')}</p>
             <button className="btn primary" type="button" onClick={() => show({kind: 'editor', item: null})}>
               <Icon name="plus" />
               {t('ai.list.add')}
             </button>
           </div>
-        </section>
-      )}
+        )}
+      </div>
       {drawer}
     </section>
   );

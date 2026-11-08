@@ -56,6 +56,10 @@ export type AiDrawerRequest = 'editor' | 'inventory';
 /** An analysis record's deep link: `/admin/analizler/<public_id>` (search-settings Requirement 20). */
 export const analysisPath = (publicId: string) => `${adminPath('analizler')}/${encodeURIComponent(publicId)}`;
 
+/** The LLM log narrowed to one analysis' model calls. */
+export const analysisLlmCallsPath = (publicId: string) =>
+  `${adminPath('llm-kayitlari')}?analiz=${encodeURIComponent(publicId)}`;
+
 /**
  * The drawer the command palette's "Performans ayrıntıları" opens on the Analizler page
  * (analysis-records Requirement 21); it travels in the address's navigation state.

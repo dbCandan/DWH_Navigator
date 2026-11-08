@@ -17,7 +17,7 @@ import {modelStatus} from '@/lib/modelStatus';
 import {AnalysisRecordsService} from '@/services/analysisRecords';
 import {SavedAnswersService} from '@/services/savedAnswers';
 import type {SavedAnswersSummary} from '@/types/analysis';
-import type {DayCount, RecordPage, RecordSummary} from '@/types/records';
+import type {DayCount, RecordPage, RecordRow, RecordSummary} from '@/types/records';
 
 /** A source of the page: read, or unreadable (its card then shows "…"). */
 type Source<T> = {state: 'ok'; value: T} | {state: 'failed'};
@@ -66,6 +66,21 @@ function HealthCard(props: {cls: string; icon: IconName; title: string; value: s
   );
 }
 
+/**
+ * The newest questions with a question asked again right after itself folded into one line: the
+ * newest ask leads (its time, verdict and source), and "×n" says how many times in a row.
+ */
+function groupRepeats(rows: readonly RecordRow[]): {row: RecordRow; times: number}[] {
+  const groups: {row: RecordRow; times: number}[] = [];
+  const same = (a: string, b: string) => a.trim().toLocaleLowerCase('tr-TR') === b.trim().toLocaleLowerCase('tr-TR');
+  for (const row of rows) {
+    const last = groups[groups.length - 1];
+    if (last && same(last.row.query, row.query)) last.times += 1;
+    else groups.push({row, times: 1});
+  }
+  return groups;
+}
+
 /** "dd.mm" of a `YYYY-MM-DD` day. */
 function dayLabel(date: string): string {
   const [year, month, day] = date.split('-').map(Number);
@@ -77,18 +92,31 @@ function DayChart({days}: {days: readonly DayCount[]}) {
   const {t} = useIntl();
   const W = 700;
   const H = 150;
-  const bw = W / Math.max(1, days.length);
-  const max = Math.max(1, ...days.map((day) => day.with_tables + day.without_tables));
+  const AXIS = 28;
+  const bw = (W - AXIS) / Math.max(1, days.length);
+  const top = Math.max(1, ...days.map((day) => day.with_tables + day.without_tables));
+  // A round top line, so the grid reads as numbers (5, 10, 20, 50 …) and not as the day's own count.
+  const max = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000].find((step) => step >= top) ?? top;
+  const y = (value: number) => H - 18 - ((H - 26) * value) / max;
   return (
     <svg className="chart" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t('overview.chart.label')}>
+      {[max, max / 2].filter(Number.isInteger).map((value) => (
+        <g className="grid" key={value}>
+          <line x1={AXIS} x2={W} y1={y(value)} y2={y(value)} />
+          <text className="y" x={AXIS - 6} y={y(value) + 3} textAnchor="end">
+            {formatNumber(value)}
+          </text>
+        </g>
+      ))}
       {days.map((day, i) => {
         const hOk = ((H - 26) * day.with_tables) / max;
         const hNo = ((H - 26) * day.without_tables) / max;
-        const x = i * bw + bw * 0.18;
+        const x = AXIS + i * bw + bw * 0.18;
         const w = bw * 0.64;
         const label = dayLabel(day.date);
+        const empty = day.with_tables + day.without_tables === 0;
         return (
-          <g key={day.date}>
+          <g key={day.date} className={'day' + (i === days.length - 1 ? ' today' : '')}>
             <title>
               {t('overview.chart.tip', {
                 date: label,
@@ -99,15 +127,16 @@ function DayChart({days}: {days: readonly DayCount[]}) {
             </title>
             <rect className="bar-no" x={x} y={H - 18 - hNo} width={w} height={hNo} rx={3} />
             <rect className="bar-ok" x={x} y={H - 18 - hNo - hOk} width={w} height={hOk} rx={3} />
+            {empty ? <circle className="zero" cx={x + w / 2} cy={H - 18} r={2.2} /> : null}
             {i % 2 === 1 ? (
-              <text x={x + w / 2} y={H - 4} textAnchor="middle">
+              <text className="d" x={x + w / 2} y={H - 4} textAnchor="middle">
                 {label}
               </text>
             ) : null}
           </g>
         );
       })}
-      <line className="base" x1={0} x2={W} y1={H - 18} y2={H - 18} />
+      <line className="base" x1={AXIS} x2={W} y1={H - 18} y2={H - 18} />
     </svg>
   );
 }
@@ -291,7 +320,12 @@ export default function OverviewPage() {
                 </>
               )}
             </button>
-          ) : null}
+          ) : (
+            <Link className="btn sm" to={adminPath('bakim')}>
+              {t('overview.index.manage')}
+              <Icon name="arrow" />
+            </Link>
+          )}
         </HealthCard>
         <HealthCard
           cls={answers?.usable ? 'ok' : ''}
@@ -330,8 +364,9 @@ export default function OverviewPage() {
               </div>
             )}
           </div>
-          {days ? <DayChart days={days.days} /> : <p className="empty">{unknown}</p>}
-          <div className="legend">
+          <div className="chart-h">
+            <h3>{t('overview.chart.label')}</h3>
+            <div className="legend">
             <span>
               <i style={{background: 'linear-gradient(0deg, var(--violet), var(--cyan))'}} />
               {t('overview.chart.legendOk')}
@@ -340,8 +375,9 @@ export default function OverviewPage() {
               <i style={{background: 'var(--coral-a55)'}} />
               {t('overview.chart.legendNo')}
             </span>
-            <span>{t('overview.chart.legendSpan')}</span>
+            </div>
           </div>
+          {days ? <DayChart days={days.days} /> : <p className="empty">{unknown}</p>}
         </section>
         <section className="card">
           <div className="card-h">
@@ -351,13 +387,18 @@ export default function OverviewPage() {
             <p className="empty">{unknown}</p>
           ) : recent.items.length ? (
             <ul className="recent scroll">
-              {recent.items.map((row) => (
+              {groupRepeats(recent.items).map(({row, times}) => (
                 <li key={row.public_id}>
                   <Link to={analysisPath(row.public_id)}>
                     <span className="w">{formatWhen(row.asked_at, t).replace(t('common.when.today', {time: ''}), '')}</span>
                     <span className="q" title={row.query}>
                       <VerdictBadge verdict={row.verdict} flow={row.flow} />
                       {row.query}
+                      {times > 1 ? (
+                        <span className="times" title={t('overview.recent.timesTip', {count: times})}>
+                          ×{times}
+                        </span>
+                      ) : null}
                     </span>
                     <FlowChip flow={row.flow} />
                   </Link>

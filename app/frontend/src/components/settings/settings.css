@@ -1,0 +1,46 @@
+/* Settings as panels (Arama ve cevap, Bakım): a section rail, panels, and rows with a clear state. */
+[data-surface="admin"] .set-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; min-height: 0; }
+[data-surface="admin"] .set-nav { align-self: start; position: sticky; top: 0; padding: 12px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); }
+[data-surface="admin"] .set-nav .grp { font: 700 10.5px var(--mono); letter-spacing: 1.1px; text-transform: uppercase; color: var(--faint); padding: 8px 8px 4px; }
+[data-surface="admin"] .set-nav ul { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 2px; }
+[data-surface="admin"] .set-nav button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--muted); font: 600 13px var(--sans); text-align: left; cursor: pointer; }
+[data-surface="admin"] .set-nav button:hover { background: var(--surface-2); color: var(--text); }
+[data-surface="admin"] .set-nav .t { flex: 1; min-width: 0; }
+[data-surface="admin"] .set-nav .n { font: 700 11px/18px var(--mono); padding: 0 7px; border-radius: 999px; background: var(--surface-2); color: var(--faint); }
+[data-surface="admin"] .set-nav .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--cyan-a16); }
+[data-surface="admin"] .set-main { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 2px; }
+[data-surface="admin"] .set-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 14px; align-items: start; }
+
+[data-surface="admin"] .set-panel { scroll-margin-top: 8px; container-type: inline-size; }
+[data-surface="admin"] .set-panel .row { grid-template-columns: minmax(0, 1fr) minmax(200px, 300px); }
+@container (max-width: 560px) {
+  [data-surface="admin"] .set-panel .row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  [data-surface="admin"] .set-panel .row .ctl { justify-content: flex-start; }
+}
+[data-surface="admin"] .set-panel .panel-b { padding: 6px 10px 10px; }
+[data-surface="admin"] .set-panel .row { padding: 12px 10px; border-radius: 12px; border-top: 0; position: relative; }
+[data-surface="admin"] .set-panel .row + .row { margin-top: 2px; }
+[data-surface="admin"] .set-panel .row:hover { background: var(--surface-2); }
+[data-surface="admin"] .set-panel .row.changed { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
+[data-surface="admin"] .set-panel .row.changed .lab::before { display: none; }
+[data-surface="admin"] .set-panel .row .lab { font-size: 14px; }
+[data-surface="admin"] .set-panel .row.nondefault:not(.changed) .lab::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--warn); flex: none; }
+[data-surface="admin"] .set-panel details.fold { margin: 8px 0 2px; }
+
+[data-surface="admin"] .expert { margin: 6px 0 0; display: flex; flex-direction: column; gap: 10px; }
+[data-surface="admin"] .expert-h { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; padding: 10px 2px 2px; border-top: 1px dashed var(--line-2); }
+[data-surface="admin"] .expert-h h3 { margin: 0; font: 700 11px var(--mono); letter-spacing: 1.2px; text-transform: uppercase; color: var(--warn); }
+[data-surface="admin"] .expert-h .note { margin: 0; color: var(--muted); font-size: 12.5px; }
+[data-surface="admin"] details.fold-panel > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 14px 18px; }
+[data-surface="admin"] details.fold-panel > summary::-webkit-details-marker { display: none; }
+[data-surface="admin"] details.fold-panel > summary::before { content: "›"; font-size: 18px; line-height: 1; color: var(--muted); transition: transform .15s; }
+[data-surface="admin"] details.fold-panel[open] > summary::before { transform: rotate(90deg); }
+[data-surface="admin"] details.fold-panel[open] > summary { border-bottom: 1px solid var(--line); }
+[data-surface="admin"] details.fold-panel > summary .t { font: 700 15px var(--display); }
+[data-surface="admin"] details.fold-panel > summary .sub { flex-basis: 100%; padding-left: 20px; color: var(--muted); font-size: 12.5px; }
+
+@media (max-width: 1000px) {
+  [data-surface="admin"] .set-layout { grid-template-columns: minmax(0, 1fr); }
+  [data-surface="admin"] .set-nav { position: static; }
+  [data-surface="admin"] .set-cols { grid-template-columns: minmax(0, 1fr); }
+}

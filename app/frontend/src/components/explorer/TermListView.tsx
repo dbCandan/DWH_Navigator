@@ -28,10 +28,12 @@ interface Handlers {
   onRedo: (query: string) => void;
   openTable?: (key: string) => void;
   hasTable?: (key: string) => boolean;
+  /** Every table of the dictionary, for the names in the answers' prose. */
+  catalog?: readonly {key: string; name: string}[];
 }
 
 /** A term's answer under its row: read once when opened (Requirement 12). */
-function TermDetail({listId, position, onRedo, openTable, hasTable}: Handlers & {listId: string; position: number}) {
+function TermDetail({listId, position, onRedo, openTable, hasTable, catalog}: Handlers & {listId: string; position: number}) {
   const {t} = useIntl();
   const [answer, setAnswer] = useState<AnalysisAnswer | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +65,7 @@ function TermDetail({listId, position, onRedo, openTable, hasTable}: Handlers & 
           onRedo={() => onRedo(answer.query)}
           openTable={openTable}
           hasTable={hasTable}
+          catalog={catalog}
         />
       )}
     </div>
@@ -131,6 +134,7 @@ function sameRow(a: RowProps, b: RowProps): boolean {
     a.onRedo === b.onRedo &&
     a.openTable === b.openTable &&
     a.hasTable === b.hasTable &&
+    a.catalog === b.catalog &&
     x.state === y.state &&
     x.verdict === y.verdict &&
     x.flow === y.flow &&
@@ -151,7 +155,7 @@ interface Props extends Handlers {
 }
 
 /** The whole list view (index.html Bulk.show/render). */
-export function TermListView({list, opened, onToggle: toggle, onStop, onResume, onRedo, openTable, hasTable}: Props) {
+export function TermListView({list, opened, onToggle: toggle, onStop, onResume, onRedo, openTable, hasTable, catalog}: Props) {
   const {t} = useIntl();
   const [stopping, setStopping] = useState(false);
   const [resuming, setResuming] = useState(false);
@@ -239,6 +243,7 @@ export function TermListView({list, opened, onToggle: toggle, onStop, onResume, 
             onRedo={onRedo}
             openTable={openTable}
             hasTable={hasTable}
+            catalog={catalog}
           />
         ))}
       </ol>

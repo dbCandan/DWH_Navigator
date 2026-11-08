@@ -2,7 +2,7 @@ import {useEffect, useState, type FormEvent} from 'react';
 import {Drawer} from '@/components/admin/Drawer';
 import {Field} from '@/components/admin/Field';
 import {Icon} from '@/components/admin/Icon';
-import {PageHead} from '@/components/admin/PageHead';
+import {PageHero} from '@/components/admin/PageHero';
 import {useToast} from '@/hooks/useToast';
 import {useAuth} from '@/contexts/AuthContext';
 import {useIntl} from '@/contexts/IntlContext';
@@ -12,6 +12,7 @@ import {formatDateTime, formatNumber, formatWhen} from '@/lib/format';
 import {UserAdminService} from '@/services/userAdmin';
 import type {ApplicationRole, UserPage, UserSummary} from '@/types/auth';
 import './users.css';
+import {confirmAction} from '@/lib/confirm';
 
 const PAGE_SIZE = 50;
 const SEARCH_DELAY_MS = 250;
@@ -38,6 +39,19 @@ interface Secret {
   expiresAt: string;
 }
 
+/** Up to two letters for the avatar: the first of the first two words. */
+function initials(name: string): string {
+  const words = name.trim().split(/[\s._-]+/).filter(Boolean);
+  return words.slice(0, 2).map((word) => word[0]!.toLocaleUpperCase('tr-TR')).join('') || '?';
+}
+
+/** One of five avatar colours, steady for a user name. */
+function toneOf(username: string): number {
+  let sum = 0;
+  for (const char of username) sum = (sum * 31 + char.charCodeAt(0)) % 9973;
+  return sum % 5;
+}
+
 const roleKey = (role: string | null) =>
   role === ROLE_MANAGER ? 'users.role.manager' : role === ROLE_USER ? 'users.role.user' : 'users.role.superAdmin';
 
@@ -59,6 +73,7 @@ export default function UsersPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [secret, setSecret] = useState<Secret | null>(null);
+  const [show, setShow] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => {
     let active = true;
@@ -96,10 +111,10 @@ export default function UsersPage() {
     }
   }
 
-  function changeRole(target: UserSummary, role: ApplicationRole) {
+  async function changeRole(target: UserSummary, role: ApplicationRole) {
     if (role === target.role) return;
     const roleName = t(roleKey(role));
-    if (!window.confirm(t('users.confirm.role', {username: target.username, role: roleName}))) {
+    if (!(await confirmAction(t('users.confirm.role', {username: target.username, role: roleName}), {action: t('users.confirm.roleAction')}))) {
       setReload((n) => n + 1); // put the select back
       return;
     }
@@ -109,8 +124,15 @@ export default function UsersPage() {
     });
   }
 
-  function changeActive(target: UserSummary, active: boolean) {
-    if (!active && !window.confirm(t('users.confirm.deactivate', {username: target.username}))) return;
+  async function changeActive(target: UserSummary, active: boolean) {
+    if (
+      !active &&
+      !(await confirmAction(t('users.confirm.deactivate', {username: target.username}), {
+        action: t('users.confirm.deactivateAction'),
+        danger: true,
+      }))
+    )
+      return;
     void act(target, async () => {
       await UserAdminService.setActive(target, active);
       return t(active ? 'users.done.activated' : 'users.done.deactivated', {username: target.username});
@@ -118,7 +140,7 @@ export default function UsersPage() {
   }
 
   async function resetPassword(target: UserSummary) {
-    if (!window.confirm(t('users.confirm.reset', {username: target.username}))) return;
+    if (!(await confirmAction(t('users.confirm.reset', {username: target.username}), {action: t('users.reset'), danger: true}))) return;
     setBusy(target.public_id);
     try {
       const issued = await UserAdminService.resetPassword(target);
@@ -137,10 +159,21 @@ export default function UsersPage() {
 
   const data = listing.state === 'ready' ? listing.data : null;
   const pages = data ? Math.max(1, Math.ceil(data.total / data.size)) : 1;
+  const items = data?.items ?? [];
+  // The status chips and the counts read the loaded accounts; with more pages they say so.
+  const whole = data !== null && items.length >= data.total;
+  const counts = {
+    active: items.filter((item) => item.active).length,
+    inactive: items.filter((item) => !item.active).length,
+    waiting: items.filter((item) => item.password_change_required).length,
+  };
+  const shown = items.filter((item) => show === 'all' || (show === 'active' ? item.active : !item.active));
+  const label = t('admin.page.kullanicilar.label');
   return (
-    <section className="page on" id="p-kullanicilar" aria-label={t('admin.page.kullanicilar.label')}>
-      <PageHead
-        title={t('admin.page.kullanicilar.label')}
+    <section className="page on" id="p-kullanicilar" aria-label={label}>
+      <PageHero
+        icon="users"
+        title={label}
         description={t('admin.page.kullanicilar.description')}
         actions={
           <button className="btn primary" type="button" onClick={() => setAdding(true)}>
@@ -148,8 +181,23 @@ export default function UsersPage() {
             {t('users.add')}
           </button>
         }
+        stats={
+          data
+            ? [
+                {label: t('users.stat.total'), value: formatNumber(data.total)},
+                {label: t('users.stat.active'), value: formatNumber(counts.active), tone: 'ok', note: whole ? undefined : t('users.stat.thisPage')},
+                {label: t('users.stat.inactive'), value: formatNumber(counts.inactive), note: whole ? undefined : t('users.stat.thisPage')},
+                {
+                  label: t('users.stat.waiting'),
+                  value: formatNumber(counts.waiting),
+                  tone: counts.waiting ? 'warn' : undefined,
+                  note: t('users.stat.waitingNote'),
+                },
+              ]
+            : undefined
+        }
       />
-      <div className="toolbar">
+      <div className="toolbar people-tools">
         <input
           type="search"
           placeholder={t('users.search.placeholder')}
@@ -160,9 +208,19 @@ export default function UsersPage() {
             setPage(1);
           }}
         />
+        {data && whole && data.total > 1 ? (
+          <div className="fchips" role="group" aria-label={t('users.filter.label')}>
+            {(['all', 'active', 'inactive'] as const).map((value) => (
+              <button className="fchip" type="button" key={value} aria-pressed={show === value} onClick={() => setShow(value)}>
+                {t(`users.filter.${value}`)}
+                <i>{formatNumber(value === 'all' ? items.length : counts[value])}</i>
+              </button>
+            ))}
+          </div>
+        ) : null}
         {data && <span className="note">{t('users.count', {count: formatNumber(data.total)})}</span>}
       </div>
-      <div className="card grow">
+      <div className="fill scroll people-body">
         {listing.state === 'loading' && (
           <div role="status" aria-label={t('users.loading')}>
             <div className="skel" />
@@ -171,92 +229,82 @@ export default function UsersPage() {
           </div>
         )}
         {listing.state === 'error' && <div className="msg bad">{listing.message}</div>}
-        {data && data.items.length === 0 && <p className="empty">{t('users.empty')}</p>}
-        {data && data.items.length > 0 && (
-          <div className="list-box">
-            <table className="t">
-              <thead>
-                <tr>
-                  <th scope="col">{t('users.column.username')}</th>
-                  <th scope="col">{t('users.column.displayName')}</th>
-                  <th scope="col">{t('users.column.role')}</th>
-                  <th scope="col">{t('users.column.status')}</th>
-                  <th scope="col">{t('users.column.lastLogin')}</th>
-                  <th scope="col" className="r">
-                    {t('users.column.actions')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((item) => {
-                  const protectedAccount = item.role === 'super_admin';
-                  const own = item.public_id === current?.public_id;
-                  const working = busy === item.public_id;
-                  return (
-                    <tr key={item.public_id}>
-                      <td className="nm">{item.username}</td>
-                      <td>{item.display_name}</td>
-                      <td>
-                        {protectedAccount ? (
-                          <span className="role">{t('users.role.superAdmin')}</span>
-                        ) : (
-                          <select
-                            aria-label={t('users.roleOf', {username: item.username})}
-                            value={item.role ?? ''}
+        {data && shown.length === 0 && <p className="empty">{t('users.empty')}</p>}
+        {shown.length > 0 && (
+          <ul className="people" aria-label={t('users.listLabel')}>
+            {shown.map((item) => {
+              const protectedAccount = item.role === 'super_admin';
+              const own = item.public_id === current?.public_id;
+              const working = busy === item.public_id;
+              return (
+                <li key={item.public_id} className={'person' + (item.active ? '' : ' off') + (working ? ' busy' : '')}>
+                  <span className={'avatar a' + toneOf(item.username)} aria-hidden="true">
+                    {initials(item.display_name || item.username)}
+                  </span>
+                  <div className="person-who">
+                    <b>
+                      {item.display_name}
+                      {own ? <span className="tag me">{t('users.you')}</span> : null}
+                    </b>
+                    <span className="nm">@{item.username}</span>
+                  </div>
+                  <div className="role-cell">
+                    {protectedAccount ? (
+                      <span className="role-badge">{t('users.role.superAdmin')}</span>
+                    ) : (
+                      <select
+                        className="role-select"
+                        aria-label={t('users.roleOf', {username: item.username})}
+                        value={item.role ?? ''}
+                        disabled={working}
+                        onChange={(event) => void changeRole(item, event.target.value as ApplicationRole)}
+                      >
+                        {APPLICATION_ROLES.map((role) => (
+                          <option key={role} value={role}>
+                            {t(roleKey(role))}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+                  <div className="state">
+                    <span className={'pill' + (item.active ? ' ok' : '')}>
+                      {t(item.active ? 'users.status.active' : 'users.status.inactive')}
+                    </span>
+                    {item.password_change_required && (
+                      <span className="tag warn" title={t('users.status.newPasswordTip')}>
+                        {t('users.status.newPassword')}
+                      </span>
+                    )}
+                  </div>
+                  <div className="when" title={item.last_login_at ? formatDateTime(item.last_login_at) : undefined}>
+                    <Icon name="clock" />
+                    {item.last_login_at ? formatWhen(item.last_login_at, t) : t('users.neverLong')}
+                  </div>
+                  <div className="acts-row">
+                    {!protectedAccount && (
+                      <>
+                        <button className="btn sm" type="button" disabled={working} onClick={() => void resetPassword(item)}>
+                          <Icon name="key" />
+                          {t('users.reset')}
+                        </button>
+                        {!own && (
+                          <button
+                            className={'btn sm' + (item.active ? ' ghost danger' : '')}
+                            type="button"
                             disabled={working}
-                            onChange={(event) => changeRole(item, event.target.value as ApplicationRole)}
+                            onClick={() => void changeActive(item, !item.active)}
                           >
-                            {APPLICATION_ROLES.map((role) => (
-                              <option key={role} value={role}>
-                                {t(roleKey(role))}
-                              </option>
-                            ))}
-                          </select>
+                            {t(item.active ? 'users.deactivate' : 'users.activate')}
+                          </button>
                         )}
-                      </td>
-                      <td>
-                        <span className={'pill' + (item.active ? ' ok' : '')}>
-                          {t(item.active ? 'users.status.active' : 'users.status.inactive')}
-                        </span>{' '}
-                        {item.password_change_required && (
-                          <span className="tag warn" title={t('users.status.newPasswordTip')}>
-                            {t('users.status.newPassword')}
-                          </span>
-                        )}
-                      </td>
-                      <td className="when" title={item.last_login_at ? formatDateTime(item.last_login_at) : undefined}>
-                        {item.last_login_at ? formatWhen(item.last_login_at, t) : t('users.never')}
-                      </td>
-                      <td className="r">
-                        {!protectedAccount && (
-                          <div className="acts-row">
-                            <button
-                              className="btn sm"
-                              type="button"
-                              disabled={working}
-                              onClick={() => void resetPassword(item)}
-                            >
-                              {t('users.reset')}
-                            </button>
-                            {!own && (
-                              <button
-                                className={'btn sm' + (item.active ? ' danger' : '')}
-                                type="button"
-                                disabled={working}
-                                onClick={() => changeActive(item, !item.active)}
-                              >
-                                {t(item.active ? 'users.deactivate' : 'users.activate')}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         )}
         {data && pages > 1 && (
           <div className="more">
@@ -269,6 +317,36 @@ export default function UsersPage() {
             </button>
           </div>
         )}
+        {data && data.total < 4 && !query.trim() ? (
+          <section className="panel people-guide" aria-labelledby="people-guide-title">
+            <div className="panel-h">
+              <h2 id="people-guide-title">{t('users.guide.title')}</h2>
+            </div>
+            <ol className="panel-b">
+              <li>
+                <span className="n">1</span>
+                <div>
+                  <b>{t('users.guide.addTitle')}</b>
+                  <p>{t('users.guide.add')}</p>
+                </div>
+              </li>
+              <li>
+                <span className="n">2</span>
+                <div>
+                  <b>{t('users.guide.firstTitle')}</b>
+                  <p>{t('users.guide.first')}</p>
+                </div>
+              </li>
+              <li>
+                <span className="n">3</span>
+                <div>
+                  <b>{t('users.guide.rolesTitle')}</b>
+                  <p>{t('users.guide.roles')}</p>
+                </div>
+              </li>
+            </ol>
+          </section>
+        ) : null}
       </div>
       {adding && (
         <AddUserDrawer

@@ -12,6 +12,7 @@ import type {SyncCounts, SyncRunDetail, SyncRunSummary} from '@/types/dictionary
 import {Fact} from './Fact';
 import {RunChanges} from './RunChanges';
 import {RunSuggestions} from './RunSuggestions';
+import {confirmAction} from '@/lib/confirm';
 
 /** The report's numbers, in reading order. */
 const COUNTS: readonly (keyof SyncCounts)[] = [
@@ -83,13 +84,13 @@ export function RunReport({runId, onClose, onChanged}: Props) {
     }
   }
 
-  function approve() {
-    if (window.confirm(t('dictionary.report.approveConfirm')))
+  async function approve() {
+    if (await confirmAction(t('dictionary.report.approveConfirm'), {action: t('dictionary.report.approve')}))
       void act(() => DictionarySyncService.approve(runId), 'dictionary.report.actionFailed');
   }
 
-  function reject() {
-    if (window.confirm(t('dictionary.report.rejectConfirm')))
+  async function reject() {
+    if (await confirmAction(t('dictionary.report.rejectConfirm'), {action: t('dictionary.report.reject'), danger: true}))
       void act(() => DictionarySyncService.reject(runId), 'dictionary.report.actionFailed');
   }
 
@@ -104,10 +105,10 @@ export function RunReport({runId, onClose, onChanged}: Props) {
       foot={
         pending ? (
           <>
-            <button className="btn danger" type="button" disabled={busy} onClick={reject}>
+            <button className="btn danger" type="button" disabled={busy} onClick={() => void reject()}>
               {t('dictionary.report.reject')}
             </button>
-            <button className="btn primary" type="button" disabled={busy} onClick={approve}>
+            <button className="btn primary" type="button" disabled={busy} onClick={() => void approve()}>
               {t('dictionary.report.approve')}
             </button>
           </>

@@ -1,5 +1,6 @@
 import {vi} from 'vitest';
 import {ApiError} from '@/lib/apiClient';
+import {setConfirmHandler} from '@/lib/confirm';
 import {AnalysisRecordsService} from '@/services/analysisRecords';
 import {DictionaryService} from '@/services/dictionary';
 import {DictionarySyncService} from '@/services/dictionarySync';
@@ -319,7 +320,9 @@ export function serveAdminDefaults() {
 
 /** The browser's confirmation dialog, answered by the test. */
 export function answerConfirm(...answers: boolean[]) {
-  const confirm = vi.fn(() => (answers.length > 1 ? (answers.shift() as boolean) : answers[0]));
+  const confirm = vi.fn<(text: string) => boolean>(() => (answers.length > 1 ? (answers.shift() as boolean) : answers[0]));
   Object.defineProperty(window, 'confirm', {value: confirm, configurable: true, writable: true});
+  // The admin shell's dialog asks through `confirmAction`; the test answers in its place.
+  setConfirmHandler((text) => confirm(text));
   return confirm;
 }

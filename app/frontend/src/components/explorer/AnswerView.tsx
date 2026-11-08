@@ -14,7 +14,6 @@ import {Breakable} from '@/components/explorer/Breakable';
 import {AnswerVote, ApprovedMark, PickMark, VoteBadge, VoteBar, type SendVote} from '@/components/explorer/Votes';
 import {useIntl} from '@/contexts/IntlContext';
 import {
-  answerConcepts,
   movedBefore,
   cardId,
   conceptParts,
@@ -70,43 +69,74 @@ const VERDICT_WORD: Record<string, [string, string]> = {
 /** Prose with its table and column names made light to read. */
 function Rich({text}: {text: string}) {
   const {t, rich, jumpTo, openTable, hasTable} = useShared();
+  const tokens = rich(text);
+  const joined = new Set<number>(); // tokens drawn together with the table before them
   return (
     <>
-      {rich(text).map((token, i) => {
-        if (token.kind === 'text') return <Fragment key={i}>{token.text}</Fragment>;
-        if (token.kind === 'column')
+      {tokens.map((token, i) => {
+        if (joined.has(i)) return null;
+        // "vCustomerInfo.CustomerPartyId": the table and its column stay on one line.
+        const column = token.kind === 'table' ? columnAfter(tokens, i) : null;
+        if (column !== null) {
+          for (let k = i + 1; k <= column; k++) joined.add(k);
+          const name = tokens[column];
           return (
-            <code key={i} className="cn">
-              {token.text}
-            </code>
+            <span key={i} className="tc">
+              {chip(token, i)}
+              <code className="cn">{'.' + (name.kind === 'column' ? name.text.replace(/^\./, '') : '')}</code>
+            </span>
           );
-        const toCard = token.suggested && token.object !== null;
-        const toFile = !toCard && openTable !== undefined && (hasTable?.(token.key) ?? false);
-        if (toCard || toFile)
-          return (
-            <button
-              key={i}
-              className="tn"
-              type="button"
-              title={t(toCard ? 'answer.openDetail' : 'answer.openDictionary', {key: token.key})}
-              onClick={(event) => {
-                if (toCard && token.object) return jumpTo(token.object);
-                // The map's sky click would close the file this click opens (as "Kolonlar" does).
-                event.stopPropagation();
-                openTable?.(token.key);
-              }}
-            >
-              <Breakable name={token.name} />
-            </button>
-          );
-        return (
-          <span key={i} className="tn" title={token.key}>
-            <Breakable name={token.name} />
-          </span>
-        );
+        }
+        return chip(token, i);
       })}
     </>
   );
+
+  function chip(token: RichToken, i: number) {
+    if (token.kind === 'text') return <Fragment key={i}>{token.text}</Fragment>;
+    if (token.kind === 'column')
+      return (
+        <code key={i} className="cn">
+          {token.text}
+        </code>
+      );
+    const toCard = token.suggested && token.object !== null;
+    const toFile = !toCard && openTable !== undefined && (hasTable?.(token.key) ?? false);
+    // A table named in the prose but not among the suggestions: drawn apart, so a warning
+    // about it does not read as a recommendation.
+    const cls = token.suggested ? 'tn' : 'tn other';
+    const other = token.suggested ? '' : t('answer.notSuggested') + ' · ';
+    if (toCard || toFile)
+      return (
+        <button
+          key={i}
+          className={cls}
+          type="button"
+          title={other + t(toCard ? 'answer.openDetail' : 'answer.openDictionary', {key: token.key})}
+          onClick={(event) => {
+            if (toCard && token.object) return jumpTo(token.object);
+            // The map's sky click would close the file this click opens (as "Kolonlar" does).
+            event.stopPropagation();
+            openTable?.(token.key);
+          }}
+        >
+          <Breakable name={token.name} />
+        </button>
+      );
+    return (
+      <span key={i} className={cls} title={other + token.key}>
+        <Breakable name={token.name} />
+      </span>
+    );
+  }
+}
+
+/** The index of the column right after the table at `i` ("Table.Column"), or null. */
+function columnAfter(tokens: readonly RichToken[], i: number): number | null {
+  const next = tokens[i + 1];
+  if (next?.kind === 'column' && next.text.startsWith('.')) return i + 1;
+  if (next?.kind === 'text' && next.text === '.' && tokens[i + 2]?.kind === 'column') return i + 2;
+  return null;
 }
 
 const RING_R = 22;
@@ -233,34 +263,6 @@ function ColumnChips({m}: {m: AnswerObject}) {
   );
 }
 
-const COMPONENTS = ['best_column', 'coverage', 'time', 'granularity', 'topic'];
-
-/** The score's components and the analyst's confidence as bars. */
-function Bars({m}: {m: AnswerObject}) {
-  const {t} = useShared();
-  const label = (k: string) => (COMPONENTS.includes(k) ? t(`answer.component.${k}`) : k);
-  return (
-    <div className="bars">
-      {Object.entries(m.components).map(([k, v]) => (
-        <div key={k} className="bar">
-          {t('answer.componentBar', {label: label(k), score: pct(v)})}
-          <div className="track">
-            <div className="fill" style={{width: `${pct(v)}%`}} />
-          </div>
-        </div>
-      ))}
-      {m.llm != null ? (
-        <div className="bar llm">
-          {t('answer.llmConfidence', {score: pct(m.llm)})}
-          <div className="track">
-            <div className="fill" style={{width: `${pct(m.llm)}%`}} />
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 /** Opens the table's every column in the table file of the map. */
 function ColumnsButton({m}: {m: AnswerObject}) {
   const {t, openTable} = useShared();
@@ -303,9 +305,6 @@ function ResultCard({m, open, onToggle, aside = false, dim = false}: PickProps) 
   const {t, vote, mine} = useShared();
   const id = aside ? undefined : cardId(m.key);
   const bodyId = aside ? undefined : cardId(m.key) + '-body';
-  const covered = new Set(m.covered);
-  const long = new Set(m.long_format);
-  const concepts = [...m.covered, ...m.missing];
   const score = pct(m.score);
   const before = movedBefore(m);
   return (
@@ -360,9 +359,9 @@ function ResultCard({m, open, onToggle, aside = false, dim = false}: PickProps) 
         ) : null}
         <ColumnChips m={m} />
         <div className="res-foot">
-          <details>
-            <summary>{t('answer.details')}</summary>
-            {m.usage ? (
+          {m.usage ? (
+            <details>
+              <summary>{t('answer.details')}</summary>
               <div className="usage res-usage">
                 <span className="res-use-i" aria-hidden="true">
                   →
@@ -371,28 +370,8 @@ function ResultCard({m, open, onToggle, aside = false, dim = false}: PickProps) 
                   <Rich text={m.usage} />
                 </span>
               </div>
-            ) : null}
-            {concepts.length ? (
-              <div className="chips">
-                {concepts.map((c, i) => (
-                  <span
-                    key={i}
-                    className={'chip ' + (long.has(c) ? 'long' : covered.has(c) ? 'on' : 'off')}
-                    title={
-                      long.has(c)
-                        ? t('answer.concept.long', {dimension: m.dimension})
-                        : covered.has(c)
-                          ? t('answer.concept.covered')
-                          : t('answer.concept.uncovered')
-                    }
-                  >
-                    {c}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            <Bars m={m} />
-          </details>
+            </details>
+          ) : null}
           <VoteBar
             label={t('vote.question')}
             mine={mine[m.key] ?? ''}
@@ -436,10 +415,18 @@ function PickList({
   );
 }
 
-/** A folding guide card: the matrix starts open, the prose ones closed with their count. */
+/** The guide cards that open by themselves: what the request needs to see first. */
+const OPEN_CARDS = new Set(['plan', 'warn']);
+const NO_CATALOG: readonly {key: string; name: string}[] = [];
+/** Which guide card folds first when the answer would not fit the window. */
+const FOLD_ORDER = ['notes', 'warn', 'plan'];
+/** The most page space under the answer counted when fitting it (more is other content). */
+const TRAILING_MAX = 120;
+
+/** A folding guide card: the plan and the warnings start open, the notes closed. */
 function SideCard({title, cls, count, children}: {title: string; cls: string; count?: number; children: ReactNode}) {
   return (
-    <details className={'side-card ' + cls} open={cls === 'matrix'}>
+    <details className={'side-card ' + cls} open={OPEN_CARDS.has(cls)}>
       <summary className="side-h">
         {title}
         {count ? <span className="side-n">{count}</span> : null}
@@ -449,80 +436,12 @@ function SideCard({title, cls, count, children}: {title: string; cls: string; co
   );
 }
 
-const CELL_SYMBOL = {on: '●', long: '◐', off: '○'} as const;
-const SHOWN_CONCEPTS = 8;
-
-/** "Hangi tablo neyi karşılıyor": which table covers which part of the request. */
-function Overview({answer}: {answer: AnalysisAnswer}) {
-  const {t, jumpTo} = useShared();
-  const objects = answer.objects;
-  const concepts = answerConcepts(objects);
-  const cols = concepts.slice(0, SHOWN_CONCEPTS);
-  if (!objects.length || !cols.length) return null;
-  return (
-    <SideCard title={t('answer.matrix')} cls="matrix">
-      <div className="ov-mx-wrap">
-        <table className="ov-mx">
-          <thead>
-            <tr>
-              <th scope="col">
-                <span className="sr">{t('answer.matrixTable')}</span>
-              </th>
-              {cols.map((c, i) => (
-                <th key={i} scope="col" title={c}>
-                  <span>{c}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {objects.map((m) => (
-              <tr key={m.key}>
-                <th scope="row">
-                  <button type="button" onClick={() => jumpTo(m)} title={m.name}>
-                    <span className="ov-n">{m.rank}</span>
-                    {m.name}
-                  </button>
-                </th>
-                {cols.map((c, i) => {
-                  const k = m.long_format.includes(c) ? 'long' : m.covered.includes(c) ? 'on' : 'off';
-                  const state = t(`answer.cell.${k}`);
-                  return (
-                    <td key={i} className={'cv-' + k} title={t('answer.cellTip', {name: m.name, concept: c, state})}>
-                      <span aria-label={state}>{CELL_SYMBOL[k]}</span>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="ov-legend">
-          <span>
-            <i className="cv-on">●</i> {t('answer.legend.on')}
-          </span>
-          <span>
-            <i className="cv-long">◐</i> {t('answer.legend.long')}
-          </span>
-          <span>
-            <i className="cv-off">○</i> {t('answer.legend.off')}
-          </span>
-          {concepts.length > SHOWN_CONCEPTS ? (
-            <span className="faint">{t('answer.moreConcepts', {count: concepts.length - SHOWN_CONCEPTS})}</span>
-          ) : null}
-        </div>
-      </div>
-    </SideCard>
-  );
-}
-
-/** The headline is the find itself: the verdict, the best table large, the others one line each. */
-function FoundBlock({answer}: {answer: AnalysisAnswer}) {
-  const {t, jumpTo} = useShared();
+/** The verdict in one line: the word, what is missing, how many tables were suggested. */
+function Verdict({answer}: {answer: AnalysisAnswer}) {
+  const {t} = useShared();
   const [icon, wordKey] = VERDICT_WORD[answer.verdict] ?? ['', ''];
   const objects = answer.objects;
-  const best = objects[0];
-  const verdict = (
+  return (
     <div className="ans-verdict">
       <span className="av-icon" aria-hidden="true">
         {icon}
@@ -538,10 +457,97 @@ function FoundBlock({answer}: {answer: AnalysisAnswer}) {
       </span>
     </div>
   );
-  if (!best) return verdict;
+}
+
+/**
+ * The analyst's reading, the heart of the answer: what it found in one sentence, the rest of its
+ * summary, how it understood the request and which concepts it searched for. Always open.
+ */
+function AnalystBrief({answer}: {answer: AnalysisAnswer}) {
+  const {t} = useShared();
+  const [title, lead] = splitSummary(answer.summary);
+  if (!title && !answer.interpretation) return null;
+  return (
+    <section className="brief" aria-label={t('answer.summary')}>
+      <div className="brief-k">
+        <span className="brief-ic" aria-hidden="true">
+          ✦
+        </span>
+        {t('answer.summary')}
+      </div>
+      {title ? (
+        <p className="ans-title">
+          <Rich text={title} />
+        </p>
+      ) : null}
+      {lead ? (
+        <Clamp as="p" className="ans-lead">
+          <Rich text={lead} />
+        </Clamp>
+      ) : null}
+      {answer.interpretation ? (
+        <div className="brief-read">
+          <span className="brief-sub">{t('answer.understood')}</span>
+          <p>
+            <Rich text={answer.interpretation} />
+          </p>
+        </div>
+      ) : null}
+      {answer.concepts.length ? (
+        <div className="brief-terms">
+          <span className="brief-sub">{t('answer.searchedFor')}</span>
+          {answer.concepts.map((c, i) => (
+            <ConceptChip key={i} concept={c} />
+          ))}
+          {answer.expansion.length ? (
+            <span className="chip" title={answer.expansion.join(', ')}>
+              {t('answer.expansion', {count: answer.expansion.length})}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+/** Short cards for the guide's plan, warnings and notes: a click opens the card and shows it. */
+function Facts({answer}: {answer: AnalysisAnswer}) {
+  const {t} = useShared();
+  const facts = [
+    {cls: 'plan', count: answer.design.length, label: 'answer.fact.plan'},
+    {cls: 'warn', count: answer.attention.length, label: 'answer.fact.watch'},
+    {cls: 'notes', count: answer.analyst ? answer.notes.length : 0, label: 'answer.fact.notes'},
+  ].filter((f) => f.count > 0);
+  if (!facts.length) return null;
+  const show = (event: MouseEvent<HTMLButtonElement>, cls: string) => {
+    const card = event.currentTarget.closest('.ans')?.querySelector<HTMLDetailsElement>('details.side-card.' + cls);
+    if (!card) return;
+    card.open = true;
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    card.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'nearest'});
+    card.classList.remove('flash');
+    void card.offsetWidth;
+    card.classList.add('flash');
+  };
+  return (
+    <div className="facts">
+      {facts.map((f) => (
+        <button key={f.cls} className={'fact ' + f.cls} type="button" onClick={(event) => show(event, f.cls)}>
+          <b>{f.count}</b>
+          <span>{t(f.label)}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** The best table, large, with its confidence ring. */
+function BestCard({answer}: {answer: AnalysisAnswer}) {
+  const {t, jumpTo} = useShared();
+  const best = answer.objects[0];
+  if (!best) return null;
   return (
     <>
-      {verdict}
       <button
         className={'ans-best lc-' + best.level}
         type="button"
@@ -561,28 +567,6 @@ function FoundBlock({answer}: {answer: AnalysisAnswer}) {
           </span>
         </span>
       </button>
-      {objects.length > 1 ? (
-        <ol className="ans-also" start={2}>
-          {objects.slice(1).map((m) => (
-            <li key={m.key}>
-              <button
-                className={'aa-row lc-' + m.level}
-                type="button"
-                onClick={() => jumpTo(m)}
-                title={t('answer.alsoTip', {key: m.key, score: pct(m.score), level: m.level})}
-              >
-                <span className="aa-n">{m.rank}</span>
-                <span className="aa-name">
-                  {m.name}
-                  <ApprovedMark m={m} />
-                </span>
-                <span className="aa-covers">{m.covers || ''}</span>
-                <span className="aa-pct">{'%' + pct(m.score)}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
-      ) : null}
     </>
   );
 }
@@ -607,16 +591,52 @@ interface Props {
   reportHref: string;
   openTable?: (key: string) => void;
   hasTable?: (key: string) => boolean;
+  /** Every table of the dictionary: names in the prose that are not suggested are marked. */
+  catalog?: readonly {key: string; name: string}[];
 }
 
 /** The whole answer: the head with the find, the suggestions and the guide column. */
-export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, hasTable}: Props) {
+export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, hasTable, catalog = NO_CATALOG}: Props) {
   const {t} = useIntl();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [nearKey, setNearKey] = useState<string | null>(null);
   const [rejectedKey, setRejectedKey] = useState<string | null>(null);
   const [flash, setFlash] = useState<{key: string; at: number} | null>(null);
-  const rich = useMemo(() => richTokenizer(r), [r]);
+  const rich = useMemo(() => richTokenizer(r, catalog), [r, catalog]);
+  const board = useRef<HTMLDivElement>(null);
+
+  // The answer as it first shows fits the window: while it would run past the bottom, the guide
+  // cards fold, the notes first, then the warnings, then the plan (their counts stay in the head).
+  // Measured two frames after it shows, once the question bar has docked and the page settled.
+  useEffect(() => {
+    const el = board.current;
+    if (!el) return;
+    const fit = () => {
+      for (const cls of OPEN_CARDS) {
+        const card = el.querySelector<HTMLDetailsElement>('details.side-card.' + cls);
+        if (card) card.open = true;
+      }
+      // What the page keeps under the answer (its margins), up to a small band.
+      const below = Math.min(
+        TRAILING_MAX,
+        Math.max(0, document.documentElement.scrollHeight - window.scrollY - el.getBoundingClientRect().bottom),
+      );
+      const fits = () => el.getBoundingClientRect().bottom + below <= window.innerHeight;
+      for (const cls of FOLD_ORDER) {
+        if (fits()) break;
+        const card = el.querySelector<HTMLDetailsElement>('details.side-card.' + cls);
+        if (card?.open) card.open = false;
+      }
+    };
+    let second = 0;
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(fit);
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(second);
+    };
+  }, [r]);
 
   // A link to a suggestion opens its row and brings it into view; the rest stays put.
   useEffect(() => {
@@ -665,7 +685,6 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
     [t, rich, openTable, hasTable, r.query, feedback],
   );
 
-  const [title, lead] = splitSummary(r.summary);
   const rejected = r.rejected ?? [];
   const endorsed = r.endorsed ?? [];
   const why = r.fallback ? r.fallback.replace(/\.?$/, '.') : t('answer.unavailableNoModel');
@@ -675,8 +694,6 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
     t('answer.meta', {seconds: (r.elapsed_ms / 1000).toFixed(1), version: r.dictionary_version}) +
     (r.llm_model ? t('answer.metaModel', {model: r.llm_model}) : '');
 
-  const glance = <Overview answer={r} />;
-  const hasGlance = r.objects.length > 0 && answerConcepts(r.objects).length > 0;
   const plan = r.design.length ? (
     <SideCard title={t('answer.plan')} cls="plan" count={r.design.length}>
       <ol className="steps">
@@ -721,7 +738,7 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
         </ul>
       </SideCard>
     ) : null;
-  const hasSide = hasGlance || plan !== null || watch !== null || notes !== null;
+  const hasSide = plan !== null || watch !== null || notes !== null;
 
   const reused = r.reused;
   const reusedTip = reused
@@ -732,7 +749,7 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
 
   return (
     <AnswerContext.Provider value={shared}>
-      <div className={'ans ' + verdictClass(r.verdict)}>
+      <div className={'ans ' + verdictClass(r.verdict)} ref={board}>
         <section className="answer ans-head">
           <div className="answer-top">
             <span className="vbadge">{r.verdict}</span>
@@ -770,31 +787,10 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
               {t('answer.report')}
             </a>
           </div>
-          <div className="ans-hero">
+          <div className={'ans-hero' + (r.objects.length ? '' : ' solo')}>
             <div className="ans-text">
-              <FoundBlock answer={r} />
-              <details className="ans-why">
-                <summary>
-                  <span className="aw-k">{t('answer.summary')}</span>
-                  <span className="aw-peek">{title}</span>
-                </summary>
-                <p className="ans-title">
-                  <Rich text={title} />
-                </p>
-                {lead ? (
-                  <p className="ans-lead">
-                    <Rich text={lead} />
-                  </p>
-                ) : null}
-                {r.interpretation ? (
-                  <p className="ans-read">
-                    <span className="ans-read-k">{t('answer.request')}</span>
-                    <span>
-                      <Rich text={r.interpretation} />
-                    </span>
-                  </p>
-                ) : null}
-              </details>
+              <Verdict answer={r} />
+              <AnalystBrief answer={r} />
               {r.analyst ? null : (
                 <div className="answer-fallback" title={ruleNote}>
                   {ruleShort}
@@ -804,6 +800,12 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
                 <div className="answer-fallback">{t('vote.keptRejected')}</div>
               ) : null}
             </div>
+            {r.objects.length ? (
+              <div className="ans-find">
+                <BestCard answer={r} />
+                <Facts answer={r} />
+              </div>
+            ) : null}
           </div>
         </section>
         <div className={'ans-grid' + (hasSide ? '' : ' solo')}>
@@ -885,14 +887,11 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
           </div>
           {hasSide ? (
             <aside className="ans-side" aria-label={t('answer.side')}>
-              {hasGlance ? <div className="side-glance">{glance}</div> : null}
-              {plan || watch || notes ? (
-                <div className="side-guide">
-                  {plan}
-                  {watch}
-                  {notes}
-                </div>
-              ) : null}
+              <div className="side-guide">
+                {plan}
+                {watch}
+                {notes}
+              </div>
             </aside>
           ) : null}
         </div>

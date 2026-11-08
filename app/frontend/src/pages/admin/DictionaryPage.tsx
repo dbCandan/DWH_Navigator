@@ -1,5 +1,5 @@
 import {useEffect, useState, type ReactNode} from 'react';
-import {useNavigate, useParams} from 'react-router';
+import {useNavigate, useParams, useSearchParams} from 'react-router';
 import {Icon} from '@/components/admin/Icon';
 import {adminPath, dictionaryTablePath} from '@/components/admin/nav';
 import {PageHead} from '@/components/admin/PageHead';
@@ -23,9 +23,13 @@ import {formatDateTime, formatNumber} from '@/lib/format';
 import {DictionaryService} from '@/services/dictionary';
 import {DictionarySyncService} from '@/services/dictionarySync';
 import type {DictionarySource, DictionaryVersion} from '@/types/dictionarySync';
+import {confirmAction} from '@/lib/confirm';
 
 const VIEWS = ['tables', 'runs', 'versions', 'source'] as const;
 type View = (typeof VIEWS)[number];
+/** The view's name in the address (`?gorunum=surumler`), so a reload or a shared link keeps it. */
+const SLUGS: Record<View, string> = {tables: 'tablolar', runs: 'guncellemeler', versions: 'surumler', source: 'kaynak'};
+const viewOfSlug = (slug: string | null): View | null => VIEWS.find((name) => SLUGS[name] === slug) ?? null;
 
 /**
  * The "Sözlük" page (dictionary-management Requirement 13; dictionary-sync Requirement 1, 2, 9, 10,
@@ -43,7 +47,9 @@ export default function DictionaryPage() {
   const download = useDownload();
   const rebuild = useIndexRebuild();
   const [rebuilding, setRebuilding] = useState(false);
-  const [chosenView, setChosenView] = useState<View | null>(null);
+  const [params, setParams] = useSearchParams();
+  const chosenView = viewOfSlug(params.get('gorunum'));
+  const setChosenView = (name: View) => setParams({gorunum: SLUGS[name]}, {replace: true});
   const [source, setSource] = useState<DictionarySource | null>(null);
   const [sourceFailure, setSourceFailure] = useState<unknown>(null);
   const [focusRequest, setFocusRequest] = useState(0);
@@ -81,8 +87,9 @@ export default function DictionaryPage() {
     }
   }
 
-  function restore(version: DictionaryVersion) {
-    if (window.confirm(t('dictionary.versions.restoreConfirm', {version: versionDigits(version.version)}))) void sync.restore(version);
+  async function restore(version: DictionaryVersion) {
+    const question = t('dictionary.versions.restoreConfirm', {version: versionDigits(version.version)});
+    if (await confirmAction(question, {action: t('dictionary.versions.restore')})) void sync.restore(version);
   }
 
   function connectSource() {
@@ -209,7 +216,7 @@ export default function DictionaryPage() {
       ) : null}
       {view === 'versions' ? (
         <div className="fill scroll">
-          <VersionList versions={sync.versions} busy={running !== null} onRestore={restore} onReport={openReport} />
+          <VersionList versions={sync.versions} busy={running !== null} onRestore={(version) => void restore(version)} onReport={openReport} />
         </div>
       ) : null}
       {/* Stays mounted, so a half-typed connection survives a look at another view. */}

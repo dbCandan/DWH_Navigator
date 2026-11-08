@@ -7,18 +7,16 @@ import {formatNumber} from '@/lib/format';
 import type {StopwordItem} from '@/types/vocabulary';
 
 /**
- * The stopwords' card (vocabulary-management Requirement 12; admin.html Words.stopCard): the
- * groups in the order they first appear, each with its count, removable word tags and a
- * "+ kelime" box; a new group at the bottom. A word already listed (Turkish-folded) is not added.
+ * The stopwords as group tiles (vocabulary-management Requirement 12): the groups in the order
+ * they first appear, each with its count, removable word tags and a "+ kelime" box; the last
+ * tile starts a new group. A word already listed (Turkish-folded) is not added.
  */
 export function StopwordCard({
   stops,
-  actions,
   pending,
   onChange,
 }: {
   stops: readonly StopwordItem[];
-  actions: ReactNode;
   pending: ReactNode;
   onChange: (items: StopwordItem[]) => void;
 }) {
@@ -71,26 +69,21 @@ export function StopwordCard({
     members.push([item, at]);
     groups.set(item.group, members);
   });
-  const intro = t('vocabulary.stops.intro');
-
   return (
-    <section className="card grow w-stops" ref={card}>
-      <div className="card-h">
-        <h2>{t('vocabulary.stops.title', {count: formatNumber(stops.length)})}</h2>
-        {actions}
+    <section className="w-stops" ref={card} aria-labelledby="w-stops-title">
+      <div className="w-line">
+        <h2 id="w-stops-title">{t('vocabulary.stops.title', {count: formatNumber(stops.length)})}</h2>
+        <p className="note">{t('vocabulary.stops.intro')}</p>
       </div>
-      <p className="intro" title={intro}>
-        {intro}
-      </p>
       {pending}
-      <div className="w-scroll" id="w-stops">
+      <div className="sw-grid" id="w-stops">
         {[...groups].map(([group, members]) => {
           const name = group || t('vocabulary.stops.ungrouped');
           return (
-            <div className="sw-group" key={group}>
+            <div className="tile sw-group" key={group}>
               <div className="sw-h">
                 <b>{name}</b>
-                <span className="tag">{formatNumber(members.length)}</span>
+                <span className="n">{formatNumber(members.length)}</span>
               </div>
               <div className="chips">
                 {members.map(([item, at]) => (
@@ -107,46 +100,49 @@ export function StopwordCard({
                     </button>
                   </span>
                 ))}
-                <input
-                  type="text"
-                  className="chip-in"
-                  placeholder={t('vocabulary.stops.addPlaceholder')}
-                  aria-label={t('vocabulary.stops.addTo', {group: name})}
-                  data-group={group}
-                  onKeyDown={(event) => {
-                    if (event.key !== 'Enter') return;
-                    event.preventDefault();
-                    const input = event.currentTarget;
-                    if (add(group, input.value)) input.value = '';
-                  }}
-                />
               </div>
+              <input
+                type="text"
+                className="chip-in"
+                placeholder={t('vocabulary.stops.addPlaceholder')}
+                aria-label={t('vocabulary.stops.addTo', {group: name})}
+                data-group={group}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter') return;
+                  event.preventDefault();
+                  const input = event.currentTarget;
+                  if (add(group, input.value)) input.value = '';
+                }}
+              />
             </div>
           );
         })}
-      </div>
-      <div className="sw-new">
-        <input
-          type="text"
-          value={newGroup}
-          placeholder={t('vocabulary.stops.newGroup')}
-          aria-label={t('vocabulary.stops.newGroup')}
-          onChange={(event) => setNewGroup(event.target.value)}
-        />
-        <input
-          type="text"
-          value={newWords}
-          placeholder={t('vocabulary.stops.newWords')}
-          aria-label={t('vocabulary.stops.newWordsLabel')}
-          onChange={(event) => setNewWords(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') addGroup();
-          }}
-        />
-        <button className="btn sm" type="button" onClick={addGroup}>
-          <Icon name="plus" />
-          {t('vocabulary.stops.addGroup')}
-        </button>
+        <div className="tile sw-new">
+          <div className="sw-h">
+            <Icon name="plus" />
+            <b>{t('vocabulary.stops.addGroup')}</b>
+          </div>
+          <input
+            type="text"
+            value={newGroup}
+            placeholder={t('vocabulary.stops.newGroup')}
+            aria-label={t('vocabulary.stops.newGroup')}
+            onChange={(event) => setNewGroup(event.target.value)}
+          />
+          <input
+            type="text"
+            value={newWords}
+            placeholder={t('vocabulary.stops.newWords')}
+            aria-label={t('vocabulary.stops.newWordsLabel')}
+            onChange={(event) => setNewWords(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') addGroup();
+            }}
+          />
+          <button className="btn sm" type="button" onClick={addGroup}>
+            {t('vocabulary.stops.addGroup')}
+          </button>
+        </div>
       </div>
     </section>
   );

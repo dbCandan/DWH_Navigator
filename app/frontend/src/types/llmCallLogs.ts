@@ -43,5 +43,7 @@ export interface LlmCallFilters {
   purpose: string;
   outcome: string;
   q: string;
+  /** Only the calls of this analysis (its public id); empty for all. */
+  analysis?: string;
   limit: number;
 }

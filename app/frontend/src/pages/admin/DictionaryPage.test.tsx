@@ -76,6 +76,15 @@ describe('Sözlük page (dictionary-management Requirement 13-15)', () => {
     await waitFor(() => expect(screen.getByTestId('where').textContent).toBe('/admin/sozluk'));
   });
 
+  it('keeps the chosen view in the address, so a reload or a link opens it', async () => {
+    serve();
+    renderApp('/admin/sozluk?gorunum=surumler');
+    expect(await screen.findByRole('button', {name: message('dictionary.view.versions')})).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', {name: message('dictionary.view.source')}));
+    expect(screen.getByRole('button', {name: message('dictionary.view.source')})).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', {name: message('dictionary.view.versions')})).toHaveAttribute('aria-pressed', 'false');
+  });
+
   it('opens a deep link in its drawer and says when the table is not in the dictionary', async () => {
     serve();
     vi.spyOn(DictionaryService, 'table').mockRejectedValue(new ApiError(404, 'Tablo sözlükte yok.', 'dictionary_table_not_found'));

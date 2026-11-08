@@ -191,11 +191,29 @@ describe('Genel bakış page (analysis-records Requirement 13-15)', () => {
     expect(titles).toHaveLength(14);
     expect(titles[0]).toBe(message('overview.chart.tip', {date: label(25), total: 0, ok: 0, no: 0}));
     expect(titles[13]).toBe(message('overview.chart.tip', {date: label(38), total: 14, ok: 13, no: 1}));
-    expect([...chart.querySelectorAll('text')].map((text) => text.textContent)).toEqual([26, 28, 30, 32, 34, 36, 38].map(label));
+    expect([...chart.querySelectorAll('text.d')].map((text) => text.textContent)).toEqual([26, 28, 30, 32, 34, 36, 38].map(label));
+    // The grid's top line is the round number above the busiest day (14), and its half.
+    expect([...chart.querySelectorAll('text.y')].map((text) => text.textContent)).toEqual(['20', '10']);
+    expect(chart.querySelectorAll('.zero')).toHaveLength(1);
     // Each day's two bars stand on the base line; the taller day reaches the top margin.
-    const last = chart.querySelectorAll('g')[13];
-    expect(Number(last.querySelector('.bar-ok')?.getAttribute('height')) + Number(last.querySelector('.bar-no')?.getAttribute('height'))).toBeCloseTo(124);
+    const last = chart.querySelectorAll('g.day')[13];
+    expect(Number(last.querySelector('.bar-ok')?.getAttribute('height')) + Number(last.querySelector('.bar-no')?.getAttribute('height'))).toBeCloseTo((124 * 14) / 20);
     expect(AnalysisRecordsService.dailyCounts).toHaveBeenCalledWith(14);
+  });
+
+  it('folds a question asked again right after itself into one line with "×n"', async () => {
+    const newest = recordRow('cari hesap bakiyesi', {flow: 'reused'});
+    const again = recordRow('Cari hesap bakiyesi ', {flow: 'reused'});
+    const first = recordRow('cari hesap bakiyesi', {flow: 'analyst'});
+    const other = recordRow('anne adı', {flow: 'analyst'});
+    vi.mocked(AnalysisRecordsService.list).mockResolvedValue(recordPage({items: [newest, again, first, other], total: 4}));
+    await openPage();
+    const recent = screen.getByText(message('overview.recent.title')).closest('section') as HTMLElement;
+    const links = within(recent).getAllByRole('link');
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute('href', `/admin/analizler/${newest.public_id}`);
+    expect(links[0].querySelector('.times')).toHaveTextContent('×3');
+    expect(links[1].querySelector('.times')).toBeNull();
   });
 
   it('lists the newest questions as links to their record', async () => {

@@ -31,7 +31,16 @@ describe('Arama ve cevap page and the unsaved-changes bar (search-settings Requi
     expect(screen.getByText(message('settings.expertFold', {count: 1}))).toBeInTheDocument();
     expect(screen.getByRole('heading', {level: 3, name: message('settings.expert.title')})).toBeInTheDocument();
     expect(screen.getByText(message('settings.expert.note'))).toBeInTheDocument();
-    const fold = screen.getByText('Kelime araması').closest('details') as HTMLElement;
+    const fold = screen.getByText('Kelime araması', {selector: 'summary .t'}).closest('details') as HTMLElement;
+    expect(fold).toHaveClass('panel', 'fold-panel');
+    const rail = screen.getByRole('navigation', {name: message('settings.nav.label')});
+    expect(within(rail).getAllByRole('button').map((item) => item.querySelector('.t')?.textContent)).toEqual([
+      'Analist',
+      'Eş anlamlılar ve terimler',
+      'Kelime araması',
+    ]);
+    fireEvent.click(within(rail).getByRole('button', {name: /Kelime araması/}));
+    expect((fold as HTMLDetailsElement).open).toBe(true);
     expect(within(fold).getByText(message('settings.expert.count', {count: 1}))).toHaveClass('tag');
     expect(row('search.bm25.k1').closest('details')).toBe(fold);
     expect(within(row('search.bm25.k1')).getByText(message('settings.reindex'))).toHaveAttribute('title', message('settings.reindexTip'));
@@ -45,6 +54,11 @@ describe('Arama ve cevap page and the unsaved-changes bar (search-settings Requi
     expect(bar()).not.toHaveClass('on');
     fireEvent.change(within(row('analyst.shortlist')).getByRole('spinbutton'), {target: {value: '20'}});
     expect(row('analyst.shortlist')).toHaveClass('row', 'changed', 'nondefault');
+    const rail = screen.getByRole('navigation', {name: message('settings.nav.label')});
+    expect(within(rail).getByRole('button', {name: /Analist/}).querySelector('.dot')).toHaveAttribute('title', message('settings.nav.unsaved', {count: 1}));
+    const unsaved = [...document.querySelectorAll('.hb-stats .st')].find((node) => node.querySelector('dt')?.textContent === message('settings.stat.unsaved'));
+    expect(unsaved).toHaveClass('st', 'warn');
+    expect(unsaved?.querySelector('dd')).toHaveTextContent('1');
     expect(within(row('analyst.shortlist')).getByRole('slider')).toHaveValue('20');
     fireEvent.change(within(row('analyst.min_confidence')).getByRole('slider'), {target: {value: '0.75'}});
     expect(within(row('analyst.min_confidence')).getByText('%75')).toBeInTheDocument();

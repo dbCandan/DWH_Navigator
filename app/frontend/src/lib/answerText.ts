@@ -66,13 +66,6 @@ export const NOTE_TONE: Record<string, string> = {
   'Yakın aday': 't-near',
 };
 
-/** The concepts of the answer's tables, in first-seen order. */
-export function answerConcepts(objects: readonly AnswerObject[]): string[] {
-  const concepts: string[] = [];
-  for (const m of objects) for (const c of [...m.covered, ...m.missing]) if (!concepts.includes(c)) concepts.push(c);
-  return concepts;
-}
-
 export type RichToken =
   | {kind: 'text'; text: string}
   /** A CamelCase column name, set in mono. */
@@ -88,13 +81,24 @@ const reEsc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
  */
 export function richTokenizer(
   answer: Pick<AnalysisAnswer, 'objects' | 'near' | 'rejected'>,
+  catalog: readonly {key: string; name: string}[] = [],
 ): (text: string) => RichToken[] {
   const known = new Map<string, AnswerObject>();
   for (const m of [...answer.objects, ...answer.near, ...(answer.rejected ?? [])]) {
     if (!known.has(m.key)) known.set(m.key, m);
     if (!known.has(m.name)) known.set(m.name, m);
   }
-  const names = [...new Set([...known.keys()].filter((k) => !k.includes('.')))]
+  // Every other table of the dictionary, by its full key and, when no other table shares it, by
+  // its short name: the analyst also names tables it read and did not suggest (a warning).
+  const others = new Map<string, string>();
+  const nameCount = new Map<string, number>();
+  for (const c of catalog) nameCount.set(c.name, (nameCount.get(c.name) ?? 0) + 1);
+  for (const c of catalog) {
+    if (known.has(c.key)) continue;
+    others.set(c.key, c.key);
+    if (nameCount.get(c.name) === 1 && !known.has(c.name)) others.set(c.name, c.key);
+  }
+  const names = [...new Set([...known.keys(), ...others.keys()].filter((k) => !k.includes('.')))]
     .sort((a, b) => b.length - a.length)
     .map(reEsc);
   const re = new RegExp(
@@ -115,6 +119,11 @@ export function richTokenizer(
       at = index + word.length;
       const full = word.split('.').length === 3;
       const m = known.get(word) ?? null;
+      const other = m ? undefined : others.get(word);
+      if (other !== undefined) {
+        out.push({kind: 'table', key: other, name: other.split('.').pop() ?? other, object: null, suggested: false});
+        continue;
+      }
       if (!full && !m) {
         out.push({kind: 'column', text: word});
         continue;
@@ -128,6 +137,24 @@ export function richTokenizer(
       });
     }
     if (at < text.length) out.push({kind: 'text', text: text.slice(at)});
-    return out;
+    return unquoted(out);
   };
+}
+
+const QUOTES: Record<string, string> = {"'": "'", '"': '"', '‘': '’', '“': '”', '`': '`'};
+
+/** A name the analyst put in quotes ('RecordingTime') is already set apart as a chip: the
+ *  quotes around it go. */
+function unquoted(tokens: RichToken[]): RichToken[] {
+  for (let i = 1; i < tokens.length - 1; i++) {
+    const before = tokens[i - 1];
+    const after = tokens[i + 1];
+    if (tokens[i].kind === 'text' || before.kind !== 'text' || after.kind !== 'text') continue;
+    const open = before.text.at(-1) ?? '';
+    const close = QUOTES[open];
+    if (close === undefined || !after.text.startsWith(close)) continue;
+    tokens[i - 1] = {kind: 'text', text: before.text.slice(0, -1)};
+    tokens[i + 1] = {kind: 'text', text: after.text.slice(1)};
+  }
+  return tokens.filter((tk) => tk.kind !== 'text' || tk.text !== '');
 }

@@ -36,6 +36,13 @@ async function openExplorer() {
 
 const field = () => screen.getByRole('textbox', {name: message('explorer.search.label')});
 const hudCount = () => document.getElementById('hud-count');
+/** "3 küme · N veri seti · M terim" for these tables (the galaxy by default). */
+const counts = (items: readonly {columns: number}[] = GALAXY) =>
+  message('explorer.hud.count', {
+    clusters: '3',
+    tables: String(items.length),
+    columns: items.reduce((sum, item) => sum + item.columns, 0).toLocaleString('tr-TR'),
+  });
 
 describe('map data and table file on the main screen (dictionary-explorer Requirement 3, 9, 14, 16, 19)', () => {
   beforeEach(drawNothing);
@@ -51,7 +58,7 @@ describe('map data and table file on the main screen (dictionary-explorer Requir
 
   it('draws the galaxy endpoint\'s tables and clusters', async () => {
     await openExplorer();
-    await waitFor(() => expect(hudCount()).toHaveTextContent(message('explorer.hud.count', {tables: 7, clusters: 3})));
+    await waitFor(() => expect(hudCount()).toHaveTextContent(counts()));
     expect(ExplorerService.galaxy).toHaveBeenCalledTimes(1);
   });
 
@@ -64,7 +71,7 @@ describe('map data and table file on the main screen (dictionary-explorer Requir
     await waitFor(() => expect(ExplorerService.galaxy).toHaveBeenCalledTimes(1));
     expect(hudCount()).toBeEmptyDOMElement();
     await act(async () => vi.advanceTimersByTime(60000));
-    await waitFor(() => expect(hudCount()).toHaveTextContent(message('explorer.hud.count', {tables: 7, clusters: 3})));
+    await waitFor(() => expect(hudCount()).toHaveTextContent(counts()));
     expect(ExplorerService.galaxy).toHaveBeenCalledTimes(2);
   });
 
@@ -81,7 +88,7 @@ describe('map data and table file on the main screen (dictionary-explorer Requir
     vi.mocked(AnalysisService.status).mockResolvedValue(serviceStatus({dictionary_version: 'fedcba98-11200'}));
     vi.mocked(ExplorerService.galaxy).mockResolvedValue({items: [...GALAXY, {...GALAXY[0], key: 'DWH.Kart.vYeni', name: 'vYeni'}], total: 8});
     await act(async () => vi.advanceTimersByTime(60000));
-    await waitFor(() => expect(hudCount()).toHaveTextContent(message('explorer.hud.count', {tables: 8, clusters: 3})));
+    await waitFor(() => expect(hudCount()).toHaveTextContent(counts([...GALAXY, GALAXY[0]])));
     expect(document.getElementById('dossier')).toHaveClass('on');
   });
 
@@ -141,7 +148,11 @@ describe('map data and table file on the main screen (dictionary-explorer Requir
     expect(ExplorerService.table).toHaveBeenLastCalledWith('DWH.Kart.vCardLimit1');
     fireEvent.keyDown(document, {key: 'Escape'});
     expect(document.activeElement).toBe(columns);
-    const prose = screen.getByTitle(message('answer.openDictionary', {key: 'DWH.Musteri.vCustomerInfo'}));
+    // Named in the prose, not suggested: marked apart and opening the dictionary file.
+    const prose = screen.getByTitle(
+      message('answer.notSuggested') + ' · ' + message('answer.openDictionary', {key: 'DWH.Musteri.vCustomerInfo'}),
+    );
+    expect(prose).toHaveClass('tn', 'other');
     fireEvent.click(prose);
     expect(ExplorerService.table).toHaveBeenLastCalledWith('DWH.Musteri.vCustomerInfo');
     fireEvent.keyDown(document, {key: 'Escape'});
@@ -204,7 +215,7 @@ describe('the main screen moves whatever the system\'s "reduce motion" says (dic
     expect(screen.queryByText(message('answer.verdict.partial'))).toBeNull(); // still on the radar's turn
     expect(document.documentElement).toHaveClass('busy');
     await fly(RADAR_MS / 2 + 400);
-    expect(voyageLog()).toContain(message('explorer.voyage.toRead', {count: 2, marks: 3}));
+    expect(voyageLog()).toContain(message('explorer.voyage.found', {count: 3}));
     await screen.findByText(message('answer.verdict.partial'));
     expect(frames.length).toBe(1);
   });

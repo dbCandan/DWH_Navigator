@@ -144,7 +144,10 @@ export default function ExplorerPage() {
     pillGone === null || lists.polls !== pillGone.polls || (outcome !== pillGone.outcome && outcome?.kind === 'answer');
   useRootClass('docked', docked);
   useRootClass('busy', running);
-  useRootClass('has-results', pane.kind === 'list' || (pane.kind === 'ask' && outcome?.kind === 'answer'));
+  const hasResults = pane.kind === 'list' || (pane.kind === 'ask' && outcome?.kind === 'answer');
+  useRootClass('has-results', hasResults);
+  // The answer's panels sit over the map: its star labels would show through them.
+  useEffect(() => engine.current?.quiet(hasResults), [hasResults]);
 
   // The table file: one shared opening for every place that offers a table (Requirement 14).
   const [table, setTable] = useState<OpenTable | null>(null);
@@ -460,6 +463,7 @@ export default function ExplorerPage() {
                 onRedo={redo}
                 openTable={openTable}
                 hasTable={hasTable}
+                catalog={galaxy ?? undefined}
               />
             ) : pane.kind === 'reading' ? (
               <div className="stopped" role="status">
@@ -475,6 +479,7 @@ export default function ExplorerPage() {
                 onRedo={() => redo(outcome.answer.query)}
                 openTable={openTable}
                 hasTable={hasTable}
+                catalog={galaxy ?? undefined}
               />
             ) : outcome?.kind === 'stopped' ? (
               <div className="stopped" role="status">
