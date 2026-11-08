@@ -710,3 +710,18 @@ async def test_an_ignored_column_is_left_out_of_every_object(
     source = SqlServerDictionarySource(driver, ignored_columns=("fullname",))
     snapshot = await source.read(CONNECTION)
     assert [column.name for column in snapshot.columns] == ["CustomerId"]
+
+
+async def test_a_spelling_the_catalog_corrects_to_an_ignored_name_is_left_out(
+    driver: FakeDriver,
+) -> None:
+    """Regression: EDWUTIL's 'FulName' became the catalog's 'FullName' after the ignore filter ran."""
+
+    driver.details = [
+        ("EDWDM", "dbo", "Customer", "CustomerId", "", ""),
+        ("EDWDM", "dbo", "Customer", "FulName", "", ""),
+    ]
+    source = SqlServerDictionarySource(driver, ignored_columns=("FullName",))
+    snapshot = await source.read(CONNECTION)
+    assert [column.name for column in snapshot.columns] == ["CustomerId"]
+    assert snapshot.corrected_columns == ()
