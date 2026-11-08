@@ -74,9 +74,12 @@ class FakeKeys:
 class FakePort:
     calls: int = 0
     down: bool = False  # every call fails, as when the model server is unreachable
+    seen: list[tuple[str, str, str]] = field(default_factory=list)  # (model, reasoning, system)
+    extra: dict[str, Any] = field(default_factory=dict)  # more fields in every answer
 
-    async def chat(self, _connection: Any, request: Any) -> Any:
+    async def chat(self, connection: Any, request: Any) -> Any:
         self.calls += 1
+        self.seen.append((connection.chat_model, connection.reasoning_effort, request.system[:40]))
         if self.down:
             return SimpleNamespace(ok=False, value=None)
         return SimpleNamespace(
@@ -86,6 +89,7 @@ class FakePort:
                 "columns": [{"name": "Kolon0", "Role": "Anahtar"}],
                 "terms": [],
                 "stopwords": [],
+                **self.extra,
             },
         )
 
@@ -521,3 +525,18 @@ async def test_a_rejected_versions_digests_are_not_kept(sync: Harness) -> None:
     assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{again['public_id']}/approve")).status_code == 200
     sync.source.snapshot = with_code(tables("vParty", "vOther"), 1000)
     assert (await sync.run())["counts"]["scope_code_changed"] == 0
+
+
+async def test_the_update_writes_with_the_dictionary_model_and_its_reasoning(sync: Harness) -> None:
+    service = app.state.dictionary_sync
+    service.chat_model, service.reasoning_effort, service.judge_reasoning_effort = "qwen-test", "none", "low"
+    # The describer rewrites the new columns, so the verifier has texts of this run to score.
+    sync.gateway.port.extra = {"karar": "eklendi", "ColumnDescription": "Müşteri kaydının kolonudur.", "aciklama": "dogru", "neden": ""}
+    await sync.run()
+    seen = sync.gateway.port.seen
+    assert seen and all(model == "qwen-test" for model, _, _ in seen)
+    judge = "Bir katılım bankası veri sözlüğünün"
+    verifier = [effort for _, effort, system in seen if system.startswith(judge)]
+    describer = [effort for _, effort, system in seen if not system.startswith(judge)]
+    assert verifier and set(verifier) == {"low"}
+    assert describer and set(describer) == {"none"}

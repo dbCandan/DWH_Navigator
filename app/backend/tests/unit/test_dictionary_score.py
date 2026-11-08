@@ -174,6 +174,7 @@ def test_judge_request_carries_the_trail_and_says_it_did_not_write_the_text() ->
     table = _table()
     request = judge_request(table, table.columns[0], ["SUM(Amount)"])
     assert "Sözlüğü sen yazmadın" in request.system and "SUM(Amount)" in request.user
+    assert "örnekler" in request.system
 
 
 def test_the_card_follows_an_admin_fix() -> None:
@@ -187,3 +188,12 @@ def test_the_card_follows_an_admin_fix() -> None:
     assert fixed["failed_checks"] == [] and fixed["score"] == 100 and fixed["verdict"] == APPROVE
     assert fixed["judge"] == flagged["judge"]
 
+
+
+def test_the_verifier_prompt_carries_scored_gold_examples() -> None:
+    from app.services.dictionary_curation.judge import JUDGE_PROMPT
+
+    assert "Altın setten puanlanmış örnekler" in JUDGE_PROMPT
+    for verdict in ('"puan": "hatali"', '"puan": "kucuk"', '"puan": "dogru"'):
+        assert verdict in JUDGE_PROMPT
+    assert "SUM" in JUDGE_PROMPT and "1/0" in JUDGE_PROMPT

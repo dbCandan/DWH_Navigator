@@ -12,7 +12,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -272,12 +272,19 @@ class DictionarySync:
         decisions: Decisions | None = None,
         requires_approval: bool = False,
         judge_sample: int = 40,
+        chat_model: str = "",
+        reasoning_effort: str | None = None,
+        judge_reasoning_effort: str | None = None,
     ) -> None:
         self.kept_databases = tuple(kept_databases)
         self.decisions = decisions or load_decisions()
         # Every update with changes waits for an admin's approval, the score card beside it.
         self.requires_approval = requires_approval
         self.judge_sample = judge_sample
+        # The dictionary's own model and reasoning (empty / None: the integration's own).
+        self.chat_model = chat_model
+        self.reasoning_effort = reasoning_effort
+        self.judge_reasoning_effort = judge_reasoning_effort
         self.index = index
         self.models = models
         self.source = source
@@ -469,6 +476,15 @@ class DictionarySync:
                 run.status = "rejected"
                 run.finished_at = now
 
+    def connection_for(self, target: LlmConnection, effort: str | None) -> LlmConnection:
+        """The integration's connection with the dictionary's own model and reasoning."""
+
+        return replace(
+            target,
+            chat_model=self.chat_model or target.chat_model,
+            reasoning_effort=target.reasoning_effort if effort is None else effort,
+        )
+
     async def preview(self, tenant_id: int, tenant_public_id: str) -> dict[str, Any]:
         """What an update would look at and how long its model work would take; writes nothing.
 
@@ -583,12 +599,17 @@ class DictionarySync:
                 tenant_id=tenant_id, tenant_public_id=tenant_public_id
             )
             if isinstance(target, LlmConnection):
-                model = target.chat_model
+                describer = self.connection_for(target, self.reasoning_effort)
+                verifier = self.connection_for(target, self.judge_reasoning_effort)
+                model = describer.chat_model
 
                 async def chat(request: LlmChatRequest) -> LlmChatResult:
-                    return await self.models.port.chat(target, request)
+                    return await self.models.port.chat(describer, request)
 
-                chat_with = chat
+                async def verify(request: LlmChatRequest) -> LlmChatResult:
+                    return await self.models.port.chat(verifier, request)
+
+                chat_with = verify
 
                 async def progress(done: int, total: int) -> None:
                     await self._set(run_id, progress_done=done, progress_total=total)

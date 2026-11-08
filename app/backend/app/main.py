@@ -157,6 +157,9 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         decisions=load_decisions(settings.dictionary_decisions_path or None),
         requires_approval=settings.dictionary_sync_requires_approval,
         judge_sample=settings.dictionary_judge_sample,
+        chat_model=settings.dictionary_llm_model,
+        reasoning_effort=settings.dictionary_llm_reasoning_effort or None,
+        judge_reasoning_effort=settings.dictionary_judge_reasoning_effort or None,
     )
     # Starlette makes the middleware added last the outermost. From the outside in: security
     # headers and the 500 envelope, request logging and tracing, CORS, the cross-site guard (before

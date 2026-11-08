@@ -12,6 +12,7 @@ import json
 import random
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from app.domain.llm import LlmChatRequest, LlmChatResult, LlmPurpose
@@ -22,6 +23,7 @@ VERDICT_MINOR = "kucuk"
 VERDICT_WRONG = "hatali"
 PARALLEL_CALLS = 2
 MAX_TOKENS = 1500
+EXAMPLES = Path(__file__).with_name("judge_examples.json")
 
 Chat = Callable[[LlmChatRequest], Awaitable[LlmChatResult]]
 
@@ -33,7 +35,26 @@ Puan:
 - hatali: kullanan kişiyi yanıltır (yanlış anlam, kodla çelişki, uydurma kural, kritik bilgi kaybı).
 Kurallar: açıklamada "faiz" yerine "kar payı" kullanılır; AccountNumber ile CustomerId aynı değeri taşır; tırnak içi
 değerler kodun yazdığı veridir. Komşu kolonun ifadesini bu kolona atfetme; kırpılmış koddan kesin sonuç çıkarma.
+Kod açıklamadaki bir iddiayı açıkça yalanlıyorsa puan hatali olur, metin akıcı ve makul görünse bile: kod SUM veya
+COUNT ile adet üretirken açıklama 1/0 bayrak diyorsa; koddaki zaman penceresi, filtre veya kapsam açıklamadakinden
+başkaysa; değer açıklamanın söylediği kaynaktan değil başka bir alandan geliyorsa; açıklama başka bir kavramı
+anlatıyorsa. Kodla çelişmeyen ama bir koşulu söylemeyen açıklama kucuk olur.
 SADECE şemaya uyan JSON döndür."""
+
+
+def _examples() -> str:
+    """Scored examples from the gold set (judge_examples.json), shown before each row."""
+
+    items = (
+        json.loads(EXAMPLES.read_text(encoding="utf-8")) if EXAMPLES.exists() else []
+    )
+    lines = ["Altın setten puanlanmış örnekler (bunlar puanlanacak satır değildir):"]
+    for item in items:
+        lines.append(json.dumps(item, ensure_ascii=False))
+    return "\n".join(lines) if items else ""
+
+
+JUDGE_PROMPT = "\n\n".join(part for part in (JUDGE_SYSTEM, _examples()) if part)
 JUDGE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -78,7 +99,7 @@ def judge_request(
         "kanit": list(evidence),
     }
     return LlmChatRequest(
-        system=JUDGE_SYSTEM,
+        system=JUDGE_PROMPT,
         user=json.dumps(payload, ensure_ascii=False),
         schema=JUDGE_SCHEMA,
         max_tokens=MAX_TOKENS,
