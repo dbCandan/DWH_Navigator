@@ -1,18 +1,18 @@
 # Runtime dependency authority. Recompile requirements.txt after changing this file.
 cffi==2.1.1
-fastapi==0.141.1
-uvicorn[standard]==0.52.4
-pydantic==2.13.5
+fastapi==0.143.0
+uvicorn[standard]==0.54.0
+pydantic==2.14.0
 pydantic-settings==2.15.0
-python-dotenv==1.2.3
-sqlalchemy[asyncio]==2.0.52
-asyncpg==0.31.0
-alembic==1.19.2
-PyJWT[crypto]==2.15.0
+python-dotenv==1.2.4
+sqlalchemy[asyncio]==2.1.4
+asyncpg==0.32.0
+alembic==1.20.0
+PyJWT[crypto]==2.15.1
 # The model server adapter (data-dictionary/PRDs/003-llm-connection Decision 5) and the AES-256-GCM
 # settings cipher (Requirement 20); both are used directly.
 httpx==0.28.1
-cryptography==50.0.0
+cryptography==50.0.2
 pwdlib[argon2]==0.3.1
 PyYAML==6.0.3
 # OpenTelemetry traces and metrics exported over OTLP/gRPC to the optional local collector
@@ -24,9 +24,9 @@ opentelemetry-sdk==1.44.0
 opentelemetry-exporter-otlp-proto-grpc==1.44.0
 # Transitive dependencies of the OTLP/gRPC exporter held at their newest release that is at least
 # 30 days old (rules/54); remove a line once the resolver's own choice is past that window.
-grpcio==1.83.1
-protobuf==7.36.1
-googleapis-common-protos==1.75.3
+grpcio==1.84.0
+protobuf==7.36.2
+googleapis-common-protos==1.75.5
 # The dictionary workbook reader and the single-question Excel report
 # (data-dictionary/PRDs/001-dictionary-management Decision 1); openpyxl parses workbook XML with
 # defusedxml when it is installed.
