@@ -147,6 +147,27 @@ describe('map drawing loop (dictionary-explorer Requirement 5 and 8)', () => {
     engine.destroy();
   });
 
+  it('lets a finished search end its radar turn but clears a stopped one at once', () => {
+    const log: string[] = [];
+    const engine = new CosmosEngine(fakeCanvas(), palette, hooks(log));
+    engine.start();
+    engine.load(ITEMS);
+    const mark = [{key: 'DWH.Ornek.vA', source: 'engine' as const}];
+    engine.begin();
+    engine.end();
+    engine.found('prefilter', mark); // the radar still turns: a late find is still marked
+    expect(log.some((l) => l.includes('explorer.voyage.found'))).toBe(true);
+    log.length = 0;
+    engine.begin();
+    engine.found('prefilter', mark);
+    engine.end(true);
+    expect(log.at(-1)).toBe(''); // the voyage log is cleared with the radar
+    log.length = 0;
+    engine.found('prefilter', mark); // stopped: the radar is gone
+    expect(log.some((l) => l.includes('explorer.voyage.found'))).toBe(false);
+    engine.destroy();
+  });
+
   it('finds a table by its typed name only once the map has data', () => {
     const engine = new CosmosEngine(fakeCanvas(), palette, hooks([]));
     expect(engine.find('vA')).toBeNull();

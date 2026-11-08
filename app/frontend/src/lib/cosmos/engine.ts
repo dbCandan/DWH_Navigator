@@ -272,11 +272,20 @@ export class CosmosEngine {
     if (this.mode === 'plan' && !this.radarTurned) this.radarDone();
   }
 
-  /** Search finished without results, stopped or failed: stand down. */
-  end(): void {
-    if (this.mode === 'plan' && !this.radarTurned) {
+  /**
+   * Search finished without results, stopped or failed: stand down. A finished search lets the
+   * radar end its turn; a stopped one (`now`) clears the map at once.
+   */
+  end(now = false): void {
+    if (this.mode === 'plan' && !this.radarTurned && !now) {
       this.pendingEnd = true;
       return;
+    }
+    if (now) {
+      this.pendingEnd = false;
+      this.pendingFocus = null;
+      this.hudSteps = [];
+      this.log(null); // the voyage log goes with the radar
     }
     if (['plan', 'merge', 'read'].includes(this.mode)) this.standDown();
   }

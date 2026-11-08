@@ -185,7 +185,8 @@ export function useAsk({engine, status, onUnavailable}: Options) {
     }
     setOutcome(ended);
     setRunning(false);
-    latest.current.engine()?.end();
+    // "Durdur" clears the radar at once; any other end lets it finish its turn.
+    latest.current.engine()?.end(ended.kind === 'stopped');
   }, []);
 
   /** "Durdur" or Esc: stop the job; before the start answer, stop it as soon as it arrives. */
