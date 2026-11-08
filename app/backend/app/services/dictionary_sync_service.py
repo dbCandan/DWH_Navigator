@@ -45,11 +45,13 @@ from app.schemas.dictionary.sync import (
     VersionsPage,
 )
 from app.services.analysis.dictionary_workbook import records_digest
+from app.services.dictionary_curation.score import rescored, tables_of
 from app.services.dictionary_sync import (
     SOURCE_INVALID_MESSAGE,
     SOURCE_UNAVAILABLE_MESSAGE,
     DictionarySync,
     connection_of,
+    remember,
     run_in_progress,
     source_not_configured,
 )
@@ -385,6 +387,12 @@ class DictionarySyncService:
             stored = await DictionarySyncRepository(session).run_by_id(run_id)
             stored.status = "completed"
             stored.finished_at = now
+            # The trail digests waited with the version: from now on the next update compares
+            # against them.
+            waiting = {(t, c): d for t, c, d in stored.pending_digests or []}
+            if waiting:
+                await remember(session, tenant.tenant_id, waiting, None)
+            stored.pending_digests = []
 
         await self.sync.swap(objects, columns, number, digest, write)
         await self.session.refresh(run)
@@ -418,7 +426,9 @@ class DictionarySyncService:
         version.content_digest = digest
         version.version = f"{digest}-{len(columns)}"
         run.new_version = version.version
-        run.score = {**(run.score or {}), "admin_edits": int((run.score or {}).get("admin_edits", 0)) + 1}
+        # The checks follow the edit: a fixed row no longer counts against the version.
+        card = rescored(run.score or {}, tables_of(objects, columns), self.sync.decisions)
+        run.score = {**card, "admin_edits": int((run.score or {}).get("admin_edits", 0)) + 1}
         await self.runs.append_change(
             run.dictionary_sync_run_id,
             SyncChange(

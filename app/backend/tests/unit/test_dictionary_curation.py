@@ -127,6 +127,9 @@ def test_usage_boilerplate_goes() -> None:
         ("Leasing fon ödemesinin tarihidir.", "İcare fon ödemesinin tarihidir."),
         ("Kredi kartı limitidir.", "Kredi kartı limitidir."),
         ("Faizsiz finansman tutarıdır.", "Faizsiz finansman tutarıdır."),
+        ("Mevduat faizidir.", "Katılma hesabı kar payıdır."),
+        ("Projenin faizinin toplamıdır.", "Projenin kar payının toplamıdır."),
+        ("Faize esas tutardır.", "Kar payına esas tutardır."),
         ("Kod 'Bireysel Krediler' yazar.", "Kod 'Bireysel Krediler' yazar."),
     ],
 )
@@ -379,3 +382,49 @@ def test_the_plain_part_of_a_hedged_clause_stays() -> None:
         "Müşterinin şubesinin adıdır; müşteri kaydındaki şubeden alınır ve hesabın şubesinden farklı olabilir."
     )
     assert text == "Müşterinin şubesinin adıdır; müşteri kaydındaki şubeden alınır."
+
+
+def test_a_suffix_apostrophe_is_not_a_quoted_value() -> None:
+    """Review: the text between "TCMB'nin" and "Banka'nın" counted as one quoted value."""
+
+    assert rules.participation_wording("TCMB'nin faiz oranı ve Banka'nın kredisi.") == (
+        "TCMB'nin kar payı oranı ve Banka'nın fon kullandırımı."
+    )
+    assert rules.participation_wording("Kod 'Faiz Geliri' yazar; faiz tutarıdır.") == (
+        "Kod 'Faiz Geliri' yazar; kar payı tutarıdır."
+    )
+
+
+def test_a_cleaned_source_text_remembers_the_raw_one() -> None:
+    from app.services.dictionary_sync_merge import (
+        ORIGIN_SOURCE,
+        SOURCE_TEXT,
+        pick_source,
+    )
+
+    table = _table("Oranlar.", {"ColumnDescription": "Kredinin faiz oranıdır.", "Synonyms": "x", "Summary": "y"},
+                   {"ColumnDescription": ORIGIN_SOURCE})
+    normalize_tables([table], {}, load())
+    row = table.columns[0]
+    assert row.kept[SOURCE_TEXT] == "Kredinin faiz oranıdır."
+    cleaned = row.record["ColumnDescription"]
+    assert pick_source(cleaned, ORIGIN_SOURCE, "Kredinin faiz oranıdır.", row.kept[SOURCE_TEXT]) == (cleaned, ORIGIN_SOURCE)
+    assert pick_source(cleaned, ORIGIN_SOURCE, "Yeni metin.", row.kept[SOURCE_TEXT]) == ("Yeni metin.", ORIGIN_SOURCE)
+
+
+def test_the_describer_never_replaces_an_admin_summary_and_fill_never_fills_an_admin_field() -> None:
+    """Review: a re-description replaced the admin's Summary; an emptied admin field was filled."""
+
+    from app.services.dictionary_sync_describe import DescribeOutcome, apply_column
+    from app.services.dictionary_sync_fill import column_wanted
+
+    table = _table("Oranlar.", {"ColumnDescription": "Eski.", "Synonyms": "", "Summary": "Yöneticinin özeti"},
+                   {"Summary": ORIGIN_ADMIN, "Synonyms": ORIGIN_ADMIN})
+    row = table.columns[0]
+    value = {"karar": "eklendi", "ColumnDescription": "Oran kolonu, yüzde olarak tutulan oran değeridir.",
+             "Summary": "Modelin özeti"}
+    apply_column(table, row, value, ["Rate * 100 AS Rate"], DescribeOutcome())
+    assert row.record["Summary"] == "Yöneticinin özeti"
+    assert not column_wanted(MergedColumn({"ColumnName": "X", "ColumnDescription": "a", "Summary": "b",
+                                           "Role": "Kod", "Synonyms": ""}, {"Synonyms": ORIGIN_ADMIN}))
+

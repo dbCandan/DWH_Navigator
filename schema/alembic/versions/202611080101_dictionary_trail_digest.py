@@ -28,6 +28,16 @@ def upgrade() -> None:
             comment="The update's score card: mechanical checks, the verifier's sample, the verdict.",
         ),
     )
+    op.add_column(
+        "dictionary_sync_run",
+        sa.Column(
+            "pending_digests",
+            postgresql.JSONB(),
+            nullable=False,
+            server_default=sa.text("'[]'::jsonb"),
+            comment="Trail digests of a version waiting for approval; stored when it is approved.",
+        ),
+    )
     op.create_table(
         "dictionary_trail_digest",
         sa.Column(
@@ -55,4 +65,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("dictionary_trail_digest")
+    op.drop_column("dictionary_sync_run", "pending_digests")
     op.drop_column("dictionary_sync_run", "score")

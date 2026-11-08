@@ -73,9 +73,12 @@ class FakeKeys:
 @dataclass
 class FakePort:
     calls: int = 0
+    down: bool = False  # every call fails, as when the model server is unreachable
 
     async def chat(self, _connection: Any, request: Any) -> Any:
         self.calls += 1
+        if self.down:
+            return SimpleNamespace(ok=False, value=None)
         return SimpleNamespace(
             ok=True,
             value={
@@ -469,3 +472,52 @@ async def test_approved_admin_corrections_become_gold_set_rows(sync: Harness) ->
         ("EDWDM.CUS.vOther", "Kolon1", "Summary", "Son")
     ]
     assert rows[0]["model_text"] != "İlk"  # the model's own text, not the admin's first try
+
+
+async def test_a_text_the_rules_cleaned_does_not_come_back_from_the_same_source(sync: Harness) -> None:
+    """Review: a cleaned source text bounced back on every run and made a version each time."""
+
+    sync.source.snapshot = tables("vParty", description="Kredinin faiz oranıdır.")
+    await sync.run()
+    table = (await sync.dd.get("/dictionary/tables/EDWDM.CUS.vParty")).json()
+    assert table["columns"][0]["ColumnDescription"] == "Fon kullandırımının kar payı oranıdır."
+    again = await sync.run()
+    assert again["status"] == "no_change", again
+    # A new source text is taken, and cleaned in turn.
+    sync.source.snapshot = tables("vParty", description="Mevduat faizidir.")
+    changed = await sync.run()
+    assert changed["status"] == "completed", changed
+    table = (await sync.dd.get("/dictionary/tables/EDWDM.CUS.vParty")).json()
+    assert table["columns"][0]["ColumnDescription"] == "Katılma hesabı kar payıdır."
+
+
+async def test_a_changed_computation_the_model_did_not_answer_is_looked_at_again(sync: Harness) -> None:
+    """Review: the trail digest was stored even when no row was described again."""
+
+    sync.source.snapshot = with_code(tables("vParty"), 100)
+    await sync.run()
+    sync.source.snapshot = with_code(tables("vParty"), 1000)
+    sync.gateway.port.down = True
+    failed = await sync.run()
+    assert failed["counts"]["scope_code_changed"] == 1
+    sync.gateway.port.down = False
+    again = await sync.run()
+    assert again["counts"]["scope_code_changed"] == 1  # not lost
+    assert (await sync.run())["counts"]["scope_code_changed"] == 0  # answered: settled
+
+
+async def test_a_rejected_versions_digests_are_not_kept(sync: Harness) -> None:
+    """Review: the digests of a rejected version made its code change look settled."""
+
+    sync.source.snapshot = with_code(tables("vParty"), 100)
+    await sync.run()
+    app.state.dictionary_sync.requires_approval = True
+    sync.source.snapshot = with_code(tables("vParty", "vOther"), 1000)
+    waiting = await sync.run()
+    assert waiting["status"] == "pending_approval" and waiting["counts"]["scope_code_changed"] == 1
+    assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{waiting['public_id']}/reject")).status_code == 200
+    again = await sync.run()
+    assert again["counts"]["scope_code_changed"] == 1
+    assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{again['public_id']}/approve")).status_code == 200
+    sync.source.snapshot = with_code(tables("vParty", "vOther"), 1000)
+    assert (await sync.run())["counts"]["scope_code_changed"] == 0

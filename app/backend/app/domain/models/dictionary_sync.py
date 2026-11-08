@@ -104,6 +104,13 @@ class DictionarySyncRun(AuditSoftDeleteMixin, Base):
         server_default=text("'{}'::jsonb"),
         comment="The update's score card: mechanical checks, the verifier's sample, the verdict.",
     )
+    pending_digests: Mapped[list[Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+        comment="Trail digests of a version waiting for approval; stored when it is approved.",
+    )
     warnings: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, default=list, server_default=text("'{}'::text[]")
     )

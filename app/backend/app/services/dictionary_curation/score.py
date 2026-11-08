@@ -13,7 +13,7 @@ mechanical check that failed. The verdict is a recommendation; the admin approve
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from app.services.dictionary_curation.decisions import Decisions
@@ -25,7 +25,7 @@ from app.services.dictionary_curation.judge import (
 )
 from app.services.dictionary_curation.object_rules import present_columns
 from app.services.dictionary_curation.text_rules import DOUBT, HEDGE, split_terms
-from app.services.dictionary_sync_merge import MergedTable
+from app.services.dictionary_sync_merge import MergedColumn, MergedTable, fold
 
 APPROVE = "onaylanabilir"
 REVIEW = "incelenmeli"
@@ -119,14 +119,7 @@ def score_card(
     score = round(
         max(0.0, 100 * usable * (1 - failure_rate) - CHECK_PENALTY * len(failed))
     )
-    if failed or score < REVIEW_AT:
-        verdict = REJECT if score < REVIEW_AT else REVIEW
-    else:
-        verdict = (
-            APPROVE
-            if score >= APPROVE_AT and (sample or not scope.get("scope_columns"))
-            else REVIEW
-        )
+    verdict = _verdict(score, failed, sample, scope.get("scope_columns", 0))
     return {
         "score": score,
         "verdict": verdict,
@@ -155,4 +148,55 @@ def score_card(
         },
         "rules": {"normalized_fields": normalized},
         "scope": scope,
+    }
+
+
+def _verdict(score: int, failed: Sequence[str], sample: int, scope_columns: int) -> str:
+    if failed or score < REVIEW_AT:
+        return REJECT if score < REVIEW_AT else REVIEW
+    return APPROVE if score >= APPROVE_AT and (sample or not scope_columns) else REVIEW
+
+
+def tables_of(
+    objects: Sequence[Mapping[str, str]], columns: Sequence[Mapping[str, str]]
+) -> list[MergedTable]:
+    """A version's records as tables, for the mechanical checks."""
+
+    tables: dict[str, MergedTable] = {}
+    for record in objects:
+        key = fold(
+            f"{record.get('DatabaseName', '')}.{record.get('SchemaName', '')}.{record.get('ObjectName', '')}"
+        )
+        tables[key] = MergedTable(key, dict(record), {}, [], "", False, False)
+    for record in columns:
+        key = fold(
+            f"{record.get('DatabaseName', '')}.{record.get('SchemaName', '')}.{record.get('ObjectName', '')}"
+        )
+        if key in tables:
+            tables[key].columns.append(MergedColumn(dict(record), {}))
+    return list(tables.values())
+
+
+def rescored(
+    card: Mapping[str, Any], tables: Sequence[MergedTable], decisions: Decisions
+) -> dict[str, Any]:
+    """The card again after an admin's edit: new mechanical checks, the same verifier sample."""
+
+    if "score" not in card:
+        return dict(card)
+    checks = mechanical_checks(tables, decisions)
+    failed = [name for name, item in checks.items() if item["count"]]
+    before = int(card["score"]) + CHECK_PENALTY * len(card.get("failed_checks", []))
+    score = max(0, before - CHECK_PENALTY * len(failed))
+    judge = card.get("judge") or {}
+    scope = card.get("scope") or {}
+    verdict = _verdict(
+        score, failed, int(judge.get("sample", 0)), int(scope.get("scope_columns", 0))
+    )
+    return {
+        **card,
+        "score": score,
+        "verdict": verdict,
+        "checks": checks,
+        "failed_checks": failed,
     }

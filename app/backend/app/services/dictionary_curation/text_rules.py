@@ -57,6 +57,16 @@ _SENTENCE_END = re.compile(
 
 _FAIZ = (
     (re.compile(r"\bfaiz\s+oranı", re.IGNORECASE), "kar payı oranı"),
+    # Inflected forms: the suffix moves to "pay" (faizidir -> kar payıdır, faizin -> kar payının).
+    (re.compile(r"\bfaizidir\b", re.IGNORECASE), "kar payıdır"),
+    (re.compile(r"\bfaizinin\b", re.IGNORECASE), "kar payının"),
+    (re.compile(r"\bfaizini\b", re.IGNORECASE), "kar payını"),
+    (re.compile(r"\bfaizine\b", re.IGNORECASE), "kar payına"),
+    (re.compile(r"\bfaizinden\b", re.IGNORECASE), "kar payından"),
+    (re.compile(r"\bfaizin\b", re.IGNORECASE), "kar payının"),
+    (re.compile(r"\bfaize\b", re.IGNORECASE), "kar payına"),
+    (re.compile(r"\bfaizden\b", re.IGNORECASE), "kar payından"),
+    (re.compile(r"\bfaizler(?:i|in)?\b", re.IGNORECASE), "kar payları"),
     (re.compile(r"\bfaizi\b", re.IGNORECASE), "kar payı"),
     (re.compile(r"\bfaiz(?!siz)\b", re.IGNORECASE), "kar payı"),
 )
@@ -103,7 +113,9 @@ _GENERAL_TERMS = (
     (re.compile(r"\bicare", re.IGNORECASE), "leasing"),
     (re.compile(r"\bicare", re.IGNORECASE), "finansal kiralama"),
 )
-_QUOTED = re.compile(r"('[^']*')")
+# A quoted value starts and ends away from letters: the apostrophe in "TCMB'nin" is a suffix.
+_LETTER = r"[\wçğıöşüÇĞİÖŞÜ]"
+_QUOTED = re.compile(rf"((?<!{_LETTER})'[^']*'(?!{_LETTER}))")
 _ITEM = r"[^/·:(),]{1,30}"
 _BRACKET = re.compile(r"\s*\(([^()]*)\)")
 _LITERAL = re.compile(r"'([^'\n]{2,60})'")
@@ -209,7 +221,9 @@ def remove_hedges(text: str, sources: str = "") -> tuple[str, list[str]]:
     text = re.sub(r",?\s*\bgenellikle\s+", " ", text, flags=re.IGNORECASE)
     kept: list[str] = []
     for sentence in sentences(text):
-        usage = USAGE.search(sentence) and not re.search(r"\d|'[^']+'", sentence)
+        usage = USAGE.search(sentence) and not (
+            re.search(r"\d", sentence) or _QUOTED.search(sentence)
+        )
         if not usage and not HEDGE.search(sentence):
             kept.append(sentence)
             continue

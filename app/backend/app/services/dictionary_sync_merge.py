@@ -158,6 +158,19 @@ def pick(prior: str, prior_origin: str, source: str) -> tuple[str, str]:
     return prior, prior_origin or ORIGIN_PRIOR
 
 
+SOURCE_TEXT = "source_text"  # the raw source text the curation rules cleaned
+
+
+def pick_source(
+    prior: str, prior_origin: str, source: str, cleaned_from: object
+) -> tuple[str, str]:
+    """Like ``pick``; a source text the rules cleaned stays cleaned while the source keeps it."""
+
+    if prior and prior_origin == ORIGIN_SOURCE and cleaned_from and source == cleaned_from:
+        return prior, prior_origin
+    return pick(prior, prior_origin, source)
+
+
 def without_marking(text: str) -> str:
     """The text without the marking sentence; a text that is nothing else stays as it is."""
 
@@ -175,7 +188,12 @@ def _unmark_column(record: Record) -> None:
 def _kept(
     prior: Mapping[str, str], origins: Mapping[str, str], fields: Sequence[str]
 ) -> dict[str, str]:
-    return {f: origins.get(f) or ORIGIN_PRIOR for f in fields if prior.get(f)}
+    # A field an admin left empty on purpose keeps the admin's origin, so no fill writes it.
+    return {
+        f: origins.get(f) or ORIGIN_PRIOR
+        for f in fields
+        if prior.get(f) or origins.get(f) == ORIGIN_ADMIN
+    }
 
 
 def _carried(meta: Mapping[str, Any]) -> dict[str, Any]:
@@ -185,12 +203,16 @@ def _carried(meta: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _column_record(
-    source: SourceColumn, prior: Mapping[str, str], prior_origins: Mapping[str, str]
+    source: SourceColumn,
+    prior: Mapping[str, str],
+    prior_origins: Mapping[str, str],
+    prior_kept: Mapping[str, Any] | None = None,
 ) -> MergedColumn:
-    description, origin = pick(
+    description, origin = pick_source(
         prior.get("ColumnDescription", ""),
         prior_origins.get("ColumnDescription", ""),
         source.description,
+        (prior_kept or {}).get(SOURCE_TEXT),
     )
     record: Record = {**{f: "" for f in COLUMN_FIELDS}, **prior}
     record.update(
@@ -345,10 +367,11 @@ def merge(
 
         prior_origins = prior_meta.get("origins", {})
         group = table_group(columns)
-        description, description_origin = pick(
+        description, description_origin = pick_source(
             prior.get("ObjectDescription", ""),
             prior_origins.get("ObjectDescription", ""),
             table.description,
+            prior_meta.get(SOURCE_TEXT),
         )
         group_value, group_origin = pick(
             prior.get("DatasetGroup", ""), prior_origins.get("DatasetGroup", ""), group
@@ -403,7 +426,7 @@ def merge(
             hit = prior_cols.get(name) or (prior_cols.get(wrong) if wrong else None)
             used_columns.update(n for n in (name, wrong) if n)
             old, old_meta = hit if hit else ({}, {})
-            merged = _column_record(column, old, old_meta.get("origins", {}))
+            merged = _column_record(column, old, old_meta.get("origins", {}), old_meta)
             merged.is_new = not hit
             merged.kept = _carried(old_meta)
             merged_columns.append(merged)

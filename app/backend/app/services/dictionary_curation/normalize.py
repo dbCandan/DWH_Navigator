@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Any
 
 from app.services.dictionary_curation.decisions import Decisions
 from app.services.dictionary_curation.object_rules import align_object
@@ -21,6 +22,8 @@ from app.services.dictionary_curation.text_rules import (
 )
 from app.services.dictionary_sync_merge import (
     ORIGIN_ADMIN,
+    ORIGIN_SOURCE,
+    SOURCE_TEXT,
     Change,
     MergedColumn,
     MergedTable,
@@ -63,10 +66,14 @@ def _set(
     name: str,
     value: str,
     column: str = "",
+    kept: dict[str, Any] | None = None,
 ) -> bool:
     old = record.get(name) or ""
     if value == old or origins.get(name) == ORIGIN_ADMIN:
         return False
+    if kept is not None and origins.get(name) == ORIGIN_SOURCE:
+        # The raw source text: the next merge keeps the cleaned text while the source keeps it.
+        kept[SOURCE_TEXT] = old
     record[name] = value
     outcome.changes.append(
         Change(kind, table.key, column, name, old, value, origins.get(name, ""))
@@ -106,6 +113,7 @@ def normalize_column(
                 "ColumnDescription",
                 text,
                 record["ColumnName"],
+                kept=row.kept,
             )
         _keep_removed(row.kept, removed)
     synonyms = clean_synonyms(
@@ -166,6 +174,7 @@ def normalize_tables(
                     table.origins,
                     "ObjectDescription",
                     text,
+                    kept=table.kept,
                 )
             _keep_removed(table.kept, removed)
         names = [c.record["ColumnName"] for c in table.columns]

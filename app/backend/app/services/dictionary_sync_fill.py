@@ -20,6 +20,7 @@ from app.domain.llm import LlmChatRequest, LlmChatResult, LlmPurpose
 from app.services.dictionary_sync_merge import (
     COLUMN_MODEL_FIELDS,
     OBJECT_MODEL_FIELDS,
+    ORIGIN_ADMIN,
     ORIGIN_EDITED,
     ORIGIN_MODEL,
     Change,
@@ -191,11 +192,11 @@ def _column_empty(column: MergedColumn) -> list[str]:
 
 
 def _table_wanted(table: MergedTable) -> list[str]:
-    return _table_empty(table)
+    return [f for f in _table_empty(table) if table.origins.get(f) != ORIGIN_ADMIN]
 
 
 def _column_wanted(column: MergedColumn) -> list[str]:
-    return _column_empty(column)
+    return [f for f in _column_empty(column) if column.origins.get(f) != ORIGIN_ADMIN]
 
 
 def table_wanted(table: MergedTable) -> bool:

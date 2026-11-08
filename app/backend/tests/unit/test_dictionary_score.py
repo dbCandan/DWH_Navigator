@@ -174,3 +174,16 @@ def test_judge_request_carries_the_trail_and_says_it_did_not_write_the_text() ->
     table = _table()
     request = judge_request(table, table.columns[0], ["SUM(Amount)"])
     assert "Sözlüğü sen yazmadın" in request.system and "SUM(Amount)" in request.user
+
+
+def test_the_card_follows_an_admin_fix() -> None:
+    """Review: an admin's fix left the failed check and the verdict on the card."""
+
+    from app.services.dictionary_curation.score import rescored
+
+    flagged = _card(_judged(40, 0), tables=[_table(ColumnDescription="Tutar olabilir.")])
+    assert flagged["failed_checks"] == ["belirsizlik"] and flagged["score"] == 90
+    fixed = rescored(flagged, [_table(ColumnDescription="Tutardır.")], load())
+    assert fixed["failed_checks"] == [] and fixed["score"] == 100 and fixed["verdict"] == APPROVE
+    assert fixed["judge"] == flagged["judge"]
+

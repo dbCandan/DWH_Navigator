@@ -99,6 +99,8 @@ class DescribeOutcome:
     changed: int = 0
     changes: list[Change] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    # (folded table key, folded column name) of the rows the model answered, same or changed.
+    answered: set[tuple[str, str]] = field(default_factory=set)
 
 
 def object_context(table: MergedTable) -> dict[str, Any]:
@@ -207,7 +209,12 @@ def apply_column(
     )
     summary = _text(value.get("Summary"))
     old_summary = record.get("Summary", "")
-    if summary and summary != old_summary and len(summary) <= SUMMARY_MAX_CHARS:
+    if (
+        summary
+        and summary != old_summary
+        and len(summary) <= SUMMARY_MAX_CHARS
+        and column.origins.get("Summary") != ORIGIN_ADMIN
+    ):
         record["Summary"] = summary
         column.origins["Summary"] = ORIGIN_EDITED
         outcome.changes.append(
@@ -301,6 +308,7 @@ async def describe_tables(
         proof = known.get((fold(table.key), fold(row.record["ColumnName"])), ())
         value = await call(column_request(table, row, proof))
         if value is not None:
+            outcome.answered.add((fold(table.key), fold(row.record["ColumnName"])))
             apply_column(table, row, value, proof, outcome)
 
     async def whole(table: MergedTable) -> None:

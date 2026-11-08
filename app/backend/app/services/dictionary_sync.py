@@ -54,7 +54,7 @@ from app.services.dictionary_curation.decisions import Decisions
 from app.services.dictionary_curation.decisions import load as load_decisions
 from app.services.dictionary_curation.judge import JudgeOutcome, judge_rows, sample_rows
 from app.services.dictionary_curation.normalize import normalize_tables
-from app.services.dictionary_curation.scope import Scope, plan_scope
+from app.services.dictionary_curation.scope import GATE, REASON_CODE, Scope, plan_scope
 from app.services.dictionary_curation.score import score_card
 from app.services.dictionary_reading import dictionary_identity
 from app.services.dictionary_service import write_dictionary_version
@@ -199,6 +199,34 @@ def with_extra_headers(records: list[dict[str, str]], headers: list[str]) -> Non
     for record in records:
         for header in headers:
             record.setdefault(header, "")
+
+
+def kept_digests(scope: Scope, answered: set[tuple[str, str]]) -> dict[tuple[str, str], str]:
+    """The digests to store: a row whose computation changed but which the model did not answer
+    keeps its old digest (and its object its old gate), so the next update looks at it again."""
+
+    held = {row for row, reason in scope.columns.items() if reason == REASON_CODE and row not in answered}
+    objects = {table for table, _ in held}
+    return {
+        key: value
+        for key, value in scope.digests.items()
+        if key not in held and not (key[1] == GATE and key[0] in objects)
+    }
+
+
+async def remember(
+    session: AsyncSession, tenant_id: int, digests: dict[tuple[str, str], str], plan: MergePlan | None
+) -> None:
+    """Store the trail digests for the next update; without a plan, nothing is dropped."""
+
+    repository = DictionarySyncRepository(session)
+    await repository.save_trail_digests(tenant_id, digests, datetime.now(UTC))
+    if plan is not None:
+        await repository.drop_trail_digests(
+            tenant_id,
+            [(fold(t.key), fold(c.record["ColumnName"])) for t in plan.tables for c in t.columns]
+            + [(fold(t.key), GATE) for t in plan.tables],
+        )
 
 
 def described_again(plan: MergePlan, scope: Scope) -> tuple[set[tuple[str, str]], set[str]]:
@@ -544,6 +572,7 @@ class DictionarySync:
         filled = calls = failures = 0
         suggestions: list[Any] = []
         model = ""
+        described_rows: set[tuple[str, str]] = set()
         evidence: dict[Any, Any] = dict(scope.evidence)
         chat_with: Any = None
         if work:
@@ -572,6 +601,7 @@ class DictionarySync:
                 )
                 plan.changes.extend(described.changes)
                 warnings.extend(described.warnings)
+                described_rows = described.answered
                 filled = outcome.filled + described.changed
                 calls = outcome.calls + described.calls
                 failures = outcome.failures + described.failures
@@ -598,8 +628,12 @@ class DictionarySync:
         model_rows = {
             (fold(c.table_key), fold(c.column_name))
             for c in plan.changes
-            if c.column_name and c.field == "ColumnDescription" and c.origin in ("model", "duzenleme")
+            if c.kind == "column_changed"
+            and c.column_name
+            and c.field == "ColumnDescription"
+            and c.origin in ("model", "duzenleme")
         }
+        digests = kept_digests(scope, described_rows)
         judged: JudgeOutcome | None = None
         if chat_with is not None and model_rows and self.judge_sample:
             chosen = sample_rows(plan.tables, sorted(model_rows), self.judge_sample, seed=str(run_id))
@@ -624,7 +658,7 @@ class DictionarySync:
             "model_failures": failures,
             "warnings": len(warnings),
         }
-        report = {
+        report: dict[str, Any] = {
             "score": score,
             "counts": counts,
             "warnings": warnings[:MAX_STORED_WARNINGS],
@@ -633,7 +667,7 @@ class DictionarySync:
         }
         if not plan.has_changes:
             async with self.session_factory() as session, session.begin():
-                await self._remember(session, tenant_id, scope, plan)
+                await remember(session, tenant_id, digests, plan)
                 await self._record(
                     session,
                     run_id,
@@ -684,7 +718,8 @@ class DictionarySync:
                     now=now,
                     status=DictionaryStatus.PENDING,
                 )
-                await self._remember(session, tenant_id, scope, plan)
+                # The digests wait with the version: they are stored when it is approved.
+                report["pending_digests"] = [[t, c, d] for (t, c), d in sorted(digests.items())]
                 await self._record(
                     session,
                     run_id,
@@ -709,7 +744,7 @@ class DictionarySync:
                 session, tenant_id, version, user_id=user_id, now=now
             )
             await self._prune(session, tenant_id, now)
-            await self._remember(session, tenant_id, scope, plan)
+            await remember(session, tenant_id, digests, plan)
             await self._record(
                 session,
                 run_id,
@@ -733,20 +768,6 @@ class DictionarySync:
             column_count=len(rows),
             model_calls=calls,
             model_failures=failures,
-        )
-
-    @staticmethod
-    async def _remember(
-        session: AsyncSession, tenant_id: int, scope: Scope, plan: MergePlan
-    ) -> None:
-        """The trail digests of this run, for the next run's change detection."""
-
-        repository = DictionarySyncRepository(session)
-        await repository.save_trail_digests(tenant_id, scope.digests, datetime.now(UTC))
-        await repository.drop_trail_digests(
-            tenant_id,
-            [(fold(t.key), fold(c.record["ColumnName"])) for t in plan.tables for c in t.columns]
-            + [(fold(t.key), "") for t in plan.tables],
         )
 
     async def swap(
