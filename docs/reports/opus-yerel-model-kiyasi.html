@@ -1,0 +1,125 @@
+<title>Opus ve Yerel Model Kıyası</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap">
+<style>
+/* Layout: one reading column; a wide comparison table scrolls inside its own box. */
+:root {
+  --bg: #f5f6f8; --surface: #ffffff; --ink: #18202b; --muted: #5b6676; --line: #d9dee6;
+  --accent: #0f6b74; --accent-soft: #e2f0f1;
+  --good: #1f7a3f; --good-soft: #e3f3e8; --warn: #9a5b00; --warn-soft: #fbf0dc; --bad: #a3322a; --bad-soft: #f8e4e2;
+  --display: "Source Serif 4", Georgia, serif;
+  --body: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11161d; --surface: #18202a; --ink: #e6ebf1; --muted: #9aa6b5; --line: #2b3542;
+  --accent: #5cc2cb; --accent-soft: #163338;
+  --good: #6fd08f; --good-soft: #17301f; --warn: #f0b860; --warn-soft: #33270f; --bad: #f08a80; --bad-soft: #3a1c1a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #11161d; --surface: #18202a; --ink: #e6ebf1; --muted: #9aa6b5; --line: #2b3542;
+  --accent: #5cc2cb; --accent-soft: #163338;
+  --good: #6fd08f; --good-soft: #17301f; --warn: #f0b860; --warn-soft: #33270f; --bad: #f08a80; --bad-soft: #3a1c1a; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 36px; }
+h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 34px; }
+h2 { font-size: 23px; }
+h3 { font-size: 16px; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.lead { color: var(--muted); font-size: 16px; }
+header { display: grid; gap: 10px; }
+section { display: grid; gap: 14px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+.kpi b { font-family: var(--mono); font-size: 26px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.kpi span { color: var(--muted); font-size: 13px; }
+.box { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; min-width: 860px; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: .03em; }
+tr:last-child td { border-bottom: 0; }
+td.q { min-width: 200px; }
+code, .t { font-family: var(--mono); font-size: 12.5px; }
+.pill { display: inline-block; font-family: var(--mono); font-size: 11.5px; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+.var { background: var(--good-soft); color: var(--good); }
+.kis { background: var(--warn-soft); color: var(--warn); }
+.same { color: var(--good); }
+.diff { color: var(--bad); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.bar { display: inline-block; vertical-align: middle; width: 56px; height: 6px; border-radius: 3px; background: var(--line); margin-right: 6px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.find { display: grid; gap: 12px; }
+.f { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; }
+.f p { color: var(--ink); }
+.f .who { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; max-width: 72ch; }
+.note { color: var(--muted); font-size: 13.5px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">DWH Navigator · model kıyası · 8 Kasım 2026</div>
+    <h1>Opus ve yerel model aynı analizde ne kadar ayrışıyor?</h1>
+    <p class="lead">Aynı 10 soru, aynı analiz hattı, aynı istemler. Tek fark iki model çağrısına kimin cevap verdiği: yerel model <code>gemma-4-26b-a4b-qat</code> (DGX Spark, LM Studio) mı, yoksa simülasyonla Claude Opus 5.5 mi.</p>
+  </header>
+
+  <section>
+    <h2>Özet</h2>
+    <div class="kpis">
+      <div class="kpi"><b>7 / 10</b><span>soruda hüküm aynı (VAR / KISMEN VAR)</span></div>
+      <div class="kpi"><b>7 / 10</b><span>soruda 1. önerilen tablo aynı</span></div>
+      <div class="kpi"><b>0,45</b><span>önerilen tablo kümelerinin ortalama örtüşmesi (Jaccard)</span></div>
+      <div class="kpi"><b>1 · 4</b><span>sözlükte olmayan ad yüzünden silinen ifade (Opus · yerel)</span></div>
+      <div class="kpi"><b>597 · 265</b><span>özetin ortalama karakter sayısı (Opus · yerel)</span></div>
+    </div>
+    <p>İki model ana kaynağı çoğunlukla aynı buluyor. Asıl fark yardımcı tablolarda ve açıklamanın derinliğinde. Opus filtre koşullarını ve kolon adlarını açıkça yazıyor, eksikleri dürüstçe listeliyor ve güven puanlarını kademeli veriyor. Yerel model aynı soruya bile tekrarda farklı cevap verebiliyor. Bu soruların hiçbirinde yerel model tamamen yanlış bir ana kaynak göstermedi; ama birkaç soruda ikincil önerilerden biri soruyla ilgisizdi.</p>
+  </section>
+
+  <section>
+    <h2>Soru soru sonuçlar</h2>
+    <div class="box">
+      <table>
+        <thead><tr><th>Soru</th><th>Hüküm (Opus · yerel)</th><th>1. tablo (Opus · yerel)</th><th>Örtüşme</th><th>Yalnız Opus</th><th>Yalnız yerel</th></tr></thead>
+        <tbody>
+          <tr><td class="q">Kredi kartı limit doluluk oranı</td><td><span class="pill var">VAR</span> <span class="pill kis">KISMEN</span></td><td class="t diff">vCardLimitFullness · vPRCCard</td><td class="num"><span class="bar"><i style="width:67%"></i></span>0,67</td><td class="t">vCreditCardBalanceSummary</td><td class="t">vCreditCardFPD</td></tr>
+          <tr><td class="q">Son 12 ayda vadeli hesap açanlar, şube bazlı</td><td><span class="pill var">VAR</span> <span class="pill var">VAR</span></td><td class="t same">vAccountInfo</td><td class="num"><span class="bar"><i style="width:40%"></i></span>0,40</td><td class="t">vCustomerProfitabilityAccountCounts, vPRCArrayAccountActivity, vCustomerDetail</td><td class="t">—</td></tr>
+          <tr><td class="q">Bireysel kredide gecikme, aylık takip bakiyesi</td><td><span class="pill kis">KISMEN</span> <span class="pill kis">KISMEN</span></td><td class="t diff">vDRDReport · vCustomerRiskInfoMonthly</td><td class="num"><span class="bar"><i style="width:33%"></i></span>0,33</td><td class="t">vDRDReport, vIFRSLedgerBalance, vFinanceProjectRisk</td><td class="t">vProductRiskInfo</td></tr>
+          <tr><td class="q">POS işyeri bazında günlük adet ve ciro</td><td><span class="pill var">VAR</span> <span class="pill kis">KISMEN</span></td><td class="t same">rpt_EDWMerchantTransactionReport</td><td class="num"><span class="bar"><i style="width:50%"></i></span>0,50</td><td class="t">rpt_EDWMerchantPOSSetupOrderReport, vPRCArrayPOS</td><td class="t">vDailyCreditCardTransactionPool</td></tr>
+          <tr><td class="q">Leasing ödeme planı ve kalan anapara</td><td><span class="pill kis">KISMEN</span> <span class="pill kis">KISMEN</span></td><td class="t same">vLeasingFutureCollection</td><td class="num"><span class="bar"><i style="width:29%"></i></span>0,29</td><td class="t">vProductRiskInfo, vProjectPaybackPlanInstallment, vLeasingFundPayment</td><td class="t">vProposalPaybackPlanInstallment, vInstallmentCrossSellingDiscountTask</td></tr>
+          <tr><td class="q">Kurumsal teminat mektubu riski ve komisyonu</td><td><span class="pill kis">KISMEN</span> <span class="pill kis">KISMEN</span></td><td class="t same">vValueChainTracking</td><td class="num"><span class="bar"><i style="width:12%"></i></span>0,12</td><td class="t">vPRCArrayDomesticLetterOfGuarantee, vPRCArrayCommission, vSMEDailyCustomerInfo, vCustomerDetail</td><td class="t">vPRCCreditLimitRisk, vPRCCustomerCorporateInfo, vCustomerGeneralInfo</td></tr>
+          <tr><td class="q">Katılma hesabı kâr payı oranı ve tutarı</td><td><span class="pill kis">KISMEN</span> <span class="pill kis">KISMEN</span></td><td class="t same">vCorporateParticipationDeposit</td><td class="num"><span class="bar"><i style="width:50%"></i></span>0,50</td><td class="t">vAccountBalanceSummary</td><td class="t">vItemAccount</td></tr>
+          <tr><td class="q">ATM para çekme, lokasyon bazında</td><td><span class="pill kis">KISMEN</span> <span class="pill kis">KISMEN</span></td><td class="t same">vDailyDebitCardTransactionPool</td><td class="num"><span class="bar"><i style="width:17%"></i></span>0,17</td><td class="t">vDailyCreditCardTransactionPool, vCardTransaction, vIndividualDebitCardTransactionSummary</td><td class="t">vSmartTargetingLocation, vIndividualDebitCardPortfolioSummary</td></tr>
+          <tr><td class="q">Mobil bankacılığa son 30 günde giren müşteri</td><td><span class="pill var">VAR</span> <span class="pill var">VAR</span></td><td class="t same">vBranchandMobileActivity</td><td class="num"><span class="bar"><i style="width:50%"></i></span>0,50</td><td class="t">vAccountLastTransaction, vMobileBranchLoginLogoutData</td><td class="t">vCustomerRetentionTrend</td></tr>
+          <tr><td class="q">Segment bilgisi ve değişim tarihleri</td><td><span class="pill var">VAR</span> <span class="pill kis">KISMEN</span></td><td class="t diff">vCustomerDetail · rpt_EDWValueSegmentHistory</td><td class="num"><span class="bar"><i style="width:100%"></i></span>1,00</td><td class="t">—</td><td class="t">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Örtüşme: iki modelin önerdiği tablo kümelerinin kesişimi bölü birleşimi. Yerel sütunu her sorunun en son yeni analizinden alındı.</p>
+  </section>
+
+  <section>
+    <h2>Nitel farklar</h2>
+    <div class="find">
+      <div class="f"><h3>Hüküm farkları aynı kurala dayanıyor</h3><p>POS, segment ve kart limiti sorularında yerel model KISMEN VAR dedi; çünkü adet veya oran için bir sayım ya da toplama gerekiyor. Opus aynı sorulara VAR dedi; bütün alanlar tek tabloda hazırsa sayım "türetme" sayılmaz diye yorumladı. Opus ajanları da bunun bir yorum meselesi olduğunu kendileri not etti. İstemdeki VAR / KISMEN VAR kuralı "satır sayımı ve gruplama türetme sayılmaz" gibi bir cümleyle netleşirse bu fark büyük ölçüde kapanır.</p></div>
+      <div class="f"><h3>Yerel model bazı ikincil önerilerde konudan sapıyor</h3><ul>
+        <li><b>ATM:</b> yerel model, müşteri lokasyonu tutan <code>vSmartTargetingLocation</code> tablosunu ATM lokasyonu için önerdi. Opus ATM kanalını <code>ChannelName</code> ve nakit çekim kodu (<code>TrnCode</code>) ile süzüp <code>MerchantCity</code> kırılımında saymayı yazdı.</li>
+        <li><b>Kart limiti:</b> yerel model 3 koşunun 2'sinde ilk ödeme temerrüdü veri setini (<code>vCreditCardFPD</code>) önerdi. Bu tablo başvuru riski içindir.</li>
+        <li><b>Leasing:</b> yerel model kalan anapara için <code>vProposalPaybackPlanInstallment</code> tablosunu ana kaynak saydı. Opus bu tabloyu sözleşme değil teklif planı diye karıştırılabilir olarak işaretledi ve kalan anaparayı gelecek taksitlerin anapara bileşeninden türetmeyi önerdi. Bu ayrımı veri sahibiyle doğrulamak gerekir.</li>
+      </ul></div>
+      <div class="f"><h3>Opus daha açık ve daha dürüst yazıyor</h3><p>Opus'un özetleri ortalama 2,3 kat uzun ve somut: hangi kolonla hangi filtre uygulanacağını yazıyor (ör. <code>MobileVisitFlagLast30Day = 1</code>, <code>LetterOfGuaranteeRisk</code> ile <code>LetterOfGuaranteeCommission</code> aynı satırda). Her cevapta 4 dikkat noktası veriyor (yerel ortalama 2,3), "eksik" listesini 5 soruda dolduruyor (yerel 4 soruda). Yerel model kart limiti sorusunda tabloların satır düzeyini karıştırdı: kart bazlı <code>vCardLimitFullness</code> tablosunu "müşteri bazlı eğilim" diye anlattı.</p></div>
+      <div class="f"><h3>Güven puanları</h3><p>Yerel model puanları 0,95'te topluyor ve sık sık eşit veriyor (leasing'de iki tablo 0,95). Opus 0,92 ile 0,50 arasında kademeli puanlıyor. Arayüzdeki sıralama ve "Yüksek / Orta" etiketleri bu yüzden Opus'ta daha bilgilendirici.</p></div>
+      <div class="f"><h3>Yerel modelin kendi tutarlılığı</h3><p>Aynı soru tekrar sorulduğunda yerel model ayrıştı: kart limiti sorusunun 3 koşusunda 1. tablo bir kez değişti, tablo kümesi örtüşmesi 0,60 ile 0,80 arasında kaldı. Vadeli hesap, takip bakiyesi ve teminat mektubu sorularının ikişer koşusunda tablo kümeleri aynıydı. Model sunucusuna giden istek iki koşuda bayt bayt aynıydı (sıcaklık 0, seed 42). Fark sunucu tarafında oluşuyor; LM Studio'da paralel yuva sayısını 1'e indirmek denenebilir.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Nasıl ölçüldü</h2>
+    <ul>
+      <li>Analiz hattı arka ucun kendi kodu: kural motoru ipuçları, 1. adım (katalogdan aday seçimi), aile araması, 2. adım (kolon okuma ve rapor), sözlüğe karşı doğrulama ve puanlama. Yalnız iki model çağrısı değiştirildi.</li>
+      <li>Opus tarafında her çağrının sistem istemi, kullanıcı istemi ve JSON şeması dosyaya yazıldı. Claude Opus 5.5 ajanları istemi okuyup şemaya uygun cevabı yazdı. Opus'un 1. adım cevabı hattın içine geri verildi, 2. adım malzemesi de bu cevaptan üretildi. Yani Opus kendi aday listesiyle uçtan uca ilerledi.</li>
+      <li>Yerel taraf aynı gün, aynı sözlük sürümüyle (<code>88831e15b347-12109</code>) arayüzden sorulan yeni analizler. Kayıtlı cevaplar hariç tutuldu.</li>
+      <li>Sınırlar: Opus API üzerinden değil, dosya okuyabilen ajanlar olarak çalıştı ve her soru bir kez soruldu. Bir ajan birden fazla soruyu sırayla cevapladı (1. adımda 5, 2. adımda 2). Süreler karşılaştırılabilir değil; yerel model soru başına 42–60 sn sürdü.</li>
+    </ul>
+  </section>
+</div>
