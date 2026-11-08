@@ -47,7 +47,7 @@ async function openPage(state: LlmIntegrationsState = BOTH, path = '/admin/yapay
   await screen.findByRole('heading', {level: 2, name: message('ai.list.title', {count: state.items.length})}, {timeout: 5000});
 }
 
-const card = (name: string) => screen.getByText(name, {selector: '.integ b'}).closest('section') as HTMLElement;
+const card = (name: string) => screen.getByText(name, {selector: '.ai-name'}).closest('section') as HTMLElement;
 const dialog = (name: string) => screen.findByRole('dialog', {name});
 
 describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
@@ -74,7 +74,14 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(document.querySelector('.hb-stats .st')).toHaveClass('st', 'ok');
     expect(screen.getByText(message('ai.card.generationSame'), {selector: '.hb-stats *'})).toBeInTheDocument();
     // The active integration comes first.
-    expect([...document.querySelectorAll('.integ')].map((node) => node.getAttribute('aria-label'))).toEqual(['DGX Spark 1', 'LM Studio']);
+    // One list with aligned columns; the head names them.
+    expect([...document.querySelectorAll('.ai-list-head span')].map((node) => node.textContent)).toEqual([
+      message('ai.list.integration'),
+      message('ai.card.chatModel'),
+      message('ai.card.generationModel'),
+      '',
+    ]);
+    expect([...document.querySelectorAll('.ai-integ')].map((node) => node.getAttribute('aria-label'))).toEqual(['DGX Spark 1', 'LM Studio']);
 
     const spark = card('DGX Spark 1');
     expect(spark.querySelector('.led')).toHaveClass('led', 'ok');
@@ -85,7 +92,7 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(within(spark).getByRole('checkbox', {name: message('ai.card.deactivate')})).toBeChecked();
 
     const studio = card('LM Studio');
-    expect(studio).toHaveClass('integ', 'off');
+    expect(studio).toHaveClass('ai-integ', 'off');
     expect(within(studio).getByText(message('ai.card.inactive'))).toBeInTheDocument();
     expect(within(studio).getByText(message('ai.card.noKey'))).toBeInTheDocument();
     // The chat and the generation model each show their own test.
@@ -436,7 +443,7 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(confirm).toHaveBeenCalledWith(message('ai.confirm.removeActive', {name: 'DGX Spark 1'}));
     expect(await screen.findByText(message('ai.toast.removed'))).toBeInTheDocument();
     expect(remove).toHaveBeenCalledWith(SPARK);
-    expect(screen.queryByText('DGX Spark 1', {selector: '.integ b'})).toBeNull();
+    expect(screen.queryByText('DGX Spark 1', {selector: '.ai-name'})).toBeNull();
     expect(message('ai.confirm.remove', {name: 'LM Studio'})).toBe('“LM Studio” entegrasyonu silinsin mi?');
   });
 

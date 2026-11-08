@@ -368,6 +368,7 @@
   "ai.list.title": "Entegrasyonlar · {count}",
   "ai.list.empty": "Henüz entegrasyon yok; OpenAI uyumlu bir model sunucusu ekleyin (vLLM, Ollama, LM Studio, llama.cpp…).",
   "ai.list.add": "Entegrasyon ekle",
+  "ai.list.integration": "Entegrasyon",
   "ai.card.activate": "Aktif et",
   "ai.card.deactivate": "Pasif yap",
   "ai.card.active": "Aktif",

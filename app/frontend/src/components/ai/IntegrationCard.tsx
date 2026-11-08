@@ -27,9 +27,8 @@ interface Props {
   onActivate: (active: boolean) => Promise<void>;
 }
 
-/** One role of an integration: its model, its reasoning, its last test and its own "Test et". */
+/** One role of an integration: its model, its reasoning and last test, and its own "Test et" at the right. */
 function Role({
-  kind,
   label,
   model,
   empty,
@@ -41,7 +40,6 @@ function Role({
   disabled,
   onTest,
 }: {
-  kind: 'chat' | 'generation';
   label: string;
   model: string;
   empty: ReactNode;
@@ -55,34 +53,37 @@ function Role({
 }) {
   const {t} = useIntl();
   return (
-    <div className={'role ' + kind} role="group" aria-label={label}>
-      <span className="k">{label}</span>
-      {model ? <b>{model}</b> : empty}
-      <div className="role-meta">
-        <span className="note">{detail}</span>
+    <div className="ai-cell ai-role-cell" role="group" aria-label={label}>
+      <span className="ai-cell-k">{label}</span>
+      <div className="ai-cell-main">{model ? <b className="ai-model">{model}</b> : empty}</div>
+      <div className="ai-cell-sub" title={detail}>
+        {detail}
+      </div>
+      <div className="ai-cell-sub">
         {tested ? (
-          <span className={'tst ' + (tested.ok ? 'ok' : 'bad')} title={tested.summary}>
+          <span className={'ai-tst ' + (tested.ok ? 'ok' : 'bad')} title={tested.summary}>
             {t(tested.ok ? 'ai.card.testedOk' : 'ai.card.testedFailed', {when: formatWhen(tested.at, t)})}
           </span>
         ) : (
-          <span className="tst" title={untestedTitle}>
+          <span className="ai-tst" title={untestedTitle}>
             {t('ai.card.untested')}
           </span>
         )}
-        <button className="btn sm" type="button" aria-label={testLabel} disabled={testing || disabled} onClick={onTest}>
-          <Icon name="bolt" />
-          {testing ? t('ai.testing') : t('ai.test')}
-        </button>
       </div>
+      <button className="btn sm ai-cell-test" type="button" aria-label={testLabel} disabled={testing || disabled} onClick={onTest}>
+        <Icon name="bolt" />
+        {testing ? t('ai.testing') : t('ai.test')}
+      </button>
     </div>
   );
 }
 
 /**
- * An integration as one compact row (llm-connection Requirement 19): a light for its health,
- * name, address and key; the chat model and the generation model (the dictionary update's) side
- * by side, each with its reasoning, last test and own "Test et"; then "Modeller" (the server's
- * models open below), "Düzenle", "Sil" and the active switch.
+ * An integration as one row of the list (llm-connection Requirement 19), in the columns the list's
+ * head names: a light for its health, name, address and key; the chat model and the generation
+ * model (the dictionary update's), each with its reasoning, last test and own "Test et"; then
+ * "Modeller" (the server's models open below), "Düzenle", "Sil" and the active switch. Each cell
+ * is three short lines, so the columns line up; the cells carry their own label for narrow screens.
  */
 export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPick, onEdit, onRemove, onActivate}: Props) {
   const {t} = useIntl();
@@ -140,23 +141,25 @@ export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPic
   };
   const generation = generationRole(item);
   const health = !item.active ? 'off' : lastTest ? (lastTest.ok ? 'ok' : 'bad') : 'idle';
+  const led = health === 'idle' ? 'warn' : health;
   return (
-    <section className={'integ ' + health} aria-label={item.name}>
-      <div className="ir">
-        <span className={'led ' + health} aria-hidden="true" />
-        <div className="nm">
-          <div className="nm-t">
-            <b>{item.name}</b>
+    <section className={'ai-integ ' + health} aria-label={item.name}>
+      <div className="ai-integ-row">
+        <div className="ai-cell ai-name-cell">
+          <div className="ai-cell-main">
+            <span className={'led ' + led} aria-hidden="true" />
+            <b className="ai-name">{item.name}</b>
             <span className={'tag' + (item.active ? ' on' : '')}>{t(item.active ? 'ai.card.active' : 'ai.card.inactive')}</span>
           </div>
-          <div className="url">{item.endpoint}</div>
-          <div className="key">{t(item.has_key ? 'ai.card.keySaved' : 'ai.card.noKey')}</div>
+          <div className="ai-cell-sub ai-url" title={item.endpoint}>
+            {item.endpoint}
+          </div>
+          <div className="ai-cell-sub">{t(item.has_key ? 'ai.card.keySaved' : 'ai.card.noKey')}</div>
         </div>
         <Role
-          kind="chat"
           label={t('ai.card.chatModel')}
           model={item.chat_model}
-          empty={<span className="none">{t('ai.card.noModelShort')}</span>}
+          empty={<span className="ai-none">{t('ai.card.noModelShort')}</span>}
           detail={t('ai.card.effort', {effort: effort(item.reasoning_effort)})}
           tested={lastTest}
           testLabel={t('ai.card.testChat')}
@@ -165,10 +168,9 @@ export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPic
           onTest={() => void test()}
         />
         <Role
-          kind="generation"
           label={t('ai.card.generationModel')}
           model={item.generation_model}
-          empty={<span className="same">{t('ai.card.generationSame')}</span>}
+          empty={<span className="ai-same">{t('ai.card.generationSame')}</span>}
           detail={t('ai.card.generationEfforts', {
             effort: effort(item.generation_reasoning_effort),
             judge: effort(item.judge_reasoning_effort),
@@ -180,7 +182,7 @@ export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPic
           disabled={!generation.chat_model}
           onTest={() => void testGeneration()}
         />
-        <div className="acts">
+        <div className="ai-integ-acts">
           <button className="btn sm" type="button" aria-expanded={models !== null && models !== 'loading'} disabled={models === 'loading'} onClick={() => void toggleModels()}>
             <Icon name="list" />
             {t('ai.card.models')}
@@ -205,7 +207,7 @@ export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPic
       </div>
       {item.chat_model ? null : <div className="msg warn">{t('ai.card.noModel')}</div>}
       {models !== null && models !== 'loading' ? (
-        <div className="models">
+        <div className="ai-integ-models">
           {models.ok ? (
             <ModelTable
               rows={models.rows}
