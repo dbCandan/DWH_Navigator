@@ -1140,11 +1140,27 @@
             "default": 0,
             "type": "integer"
           },
+          "fields_normalized": {
+            "default": 0,
+            "type": "integer"
+          },
           "model_calls": {
             "default": 0,
             "type": "integer"
           },
           "model_failures": {
+            "default": 0,
+            "type": "integer"
+          },
+          "scope_code_changed": {
+            "default": 0,
+            "type": "integer"
+          },
+          "scope_columns": {
+            "default": 0,
+            "type": "integer"
+          },
+          "scope_tables": {
             "default": 0,
             "type": "integer"
           },
@@ -3383,6 +3399,45 @@
         ],
         "type": "object"
       },
+      "RecordEdit": {
+        "description": "An admin's text for one field of a version waiting for approval.",
+        "properties": {
+          "column_name": {
+            "default": "",
+            "maxLength": 256,
+            "type": "string"
+          },
+          "field": {
+            "enum": [
+              "ColumnDescription",
+              "Synonyms",
+              "Summary",
+              "Role",
+              "ObjectDescription",
+              "Grain",
+              "KeyColumns",
+              "TimeColumns",
+              "BusinessDomain"
+            ],
+            "type": "string"
+          },
+          "table_key": {
+            "maxLength": 400,
+            "minLength": 3,
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 4000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "table_key",
+          "field",
+          "value"
+        ],
+        "type": "object"
+      },
       "RecordError": {
         "properties": {
           "code": {
@@ -3901,6 +3956,10 @@
           "public_id": {
             "type": "string"
           },
+          "score": {
+            "additionalProperties": true,
+            "type": "object"
+          },
           "started_at": {
             "format": "date-time",
             "type": "string"
@@ -4017,6 +4076,10 @@
           },
           "public_id": {
             "type": "string"
+          },
+          "score": {
+            "additionalProperties": true,
+            "type": "object"
           },
           "started_at": {
             "format": "date-time",
@@ -5842,7 +5905,7 @@
   },
   "info": {
     "description": "Platform API for dwhnavigator",
-    "title": "DWH Navigator",
+    "title": "dwhnavigator",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",
@@ -8545,6 +8608,83 @@
           }
         ],
         "summary": "Read Changes",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/records": {
+      "patch": {
+        "description": "An admin's text for one field of the version waiting for approval.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordEdit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Edit Record",
         "tags": [
           "dictionary"
         ]

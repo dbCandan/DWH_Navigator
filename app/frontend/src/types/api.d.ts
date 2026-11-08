@@ -2322,6 +2322,78 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Record
+         * @description An admin's text for one field of the version waiting for approval.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RecordEdit"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/reject": {
         parameters: {
             query?: never;
@@ -5716,9 +5788,17 @@ export interface components {
             /** @default 0 */
             fields_filled: number;
             /** @default 0 */
+            fields_normalized: number;
+            /** @default 0 */
             model_calls: number;
             /** @default 0 */
             model_failures: number;
+            /** @default 0 */
+            scope_code_changed: number;
+            /** @default 0 */
+            scope_columns: number;
+            /** @default 0 */
+            scope_tables: number;
             /** @default 0 */
             tables_added: number;
             /** @default 0 */
@@ -6175,6 +6255,15 @@ export interface components {
             unavailable_reason: string;
             verdict: ("VAR" | "KISMEN VAR" | "BULUNAMADI") | null;
         };
+        /** @description An admin's text for one field of a version waiting for approval. */
+        RecordEdit: {
+            /** @default  */
+            column_name: string;
+            /** @enum {string} */
+            field: "ColumnDescription" | "Synonyms" | "Summary" | "Role" | "ObjectDescription" | "Grain" | "KeyColumns" | "TimeColumns" | "BusinessDomain";
+            table_key: string;
+            value: string;
+        };
         RecordError: {
             code: string;
             message: string;
@@ -6277,6 +6366,9 @@ export interface components {
             progress_done: number;
             progress_total: number;
             public_id: string;
+            score?: {
+                [key: string]: unknown;
+            };
             /** Format: date-time */
             started_at: string;
             started_by: components["schemas"]["Person"] | null;
@@ -6300,6 +6392,9 @@ export interface components {
             progress_done: number;
             progress_total: number;
             public_id: string;
+            score?: {
+                [key: string]: unknown;
+            };
             /** Format: date-time */
             started_at: string;
             started_by: components["schemas"]["Person"] | null;
