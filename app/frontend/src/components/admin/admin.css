@@ -417,3 +417,19 @@ html[data-surface="admin"] { background: radial-gradient(1200px 700px at 85% -15
 [data-surface="admin"] .record-editor label { display: grid; gap: 6px; font-weight: 600; }
 [data-surface="admin"] .record-editor textarea { width: 100%; resize: vertical; font: inherit; }
 [data-surface="admin"] .record-editor .row-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* The dictionary update window: its steps, each done, running, waiting or stopped. */
+[data-surface="admin"] .update-steps { list-style: none; margin: 14px 0; padding: 0; display: grid; gap: 8px; }
+[data-surface="admin"] .update-steps .step { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+[data-surface="admin"] .update-steps .step .mark { font-weight: 800; text-align: center; color: var(--faint); }
+[data-surface="admin"] .update-steps .step .what { display: grid; gap: 2px; min-width: 0; }
+[data-surface="admin"] .update-steps .step.done .mark { color: var(--ok); }
+[data-surface="admin"] .update-steps .step.current { border-color: var(--accent); background: var(--accent-soft); }
+[data-surface="admin"] .update-steps .step.current .mark { color: var(--accent); animation: update-pulse 1.2s ease-in-out infinite; }
+[data-surface="admin"] .update-steps .step.waiting { opacity: .6; }
+[data-surface="admin"] .update-steps .step.failed { border-color: var(--rose-a30); background: var(--bad-bg); }
+[data-surface="admin"] .update-steps .step.failed .mark { color: var(--bad); }
+@keyframes update-pulse { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { [data-surface="admin"] .update-steps .step.current .mark { animation: none; } }
+
+[data-surface="admin"] .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

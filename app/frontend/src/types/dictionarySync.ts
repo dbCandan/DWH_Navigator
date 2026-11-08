@@ -40,7 +40,15 @@ export interface DictionarySourceTest {
 
 export type SyncRunKind = 'guncelleme' | 'geri_donus';
 export type SyncRunStatus = 'running' | 'completed' | 'no_change' | 'pending_approval' | 'rejected' | 'failed' | 'interrupted';
-export type SyncRunPhase = 'reading' | 'comparing' | 'filling' | 'indexing' | 'done';
+export type SyncRunPhase =
+  | 'reading'
+  | 'comparing'
+  | 'filling'
+  | 'describing'
+  | 'verifying'
+  | 'scoring'
+  | 'indexing'
+  | 'done';
 
 export interface SyncCounts {
   tables_added: number;

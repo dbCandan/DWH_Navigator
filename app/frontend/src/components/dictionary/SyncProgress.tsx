@@ -4,7 +4,7 @@ import {formatNumber} from '@/lib/format';
 import type {SyncRunSummary} from '@/types/dictionarySync';
 
 /** The running run's phase and work done (dictionary-sync Requirement 2). */
-export function SyncProgress({run}: {run: SyncRunSummary}) {
+export function SyncProgress({run, onDetails}: {run: SyncRunSummary; onDetails?: () => void}) {
   const {t} = useIntl();
   const percent = runPercent(run);
   const phase = t(`dictionary.sync.phase.${run.phase}`);
@@ -13,6 +13,11 @@ export function SyncProgress({run}: {run: SyncRunSummary}) {
       <div className="card-h">
         <h2>{t(run.kind === 'geri_donus' ? 'dictionary.sync.runningRestore' : 'dictionary.sync.running')}</h2>
         <span className="pill acc">{phase}</span>
+        {onDetails ? (
+          <button className="btn sm" type="button" onClick={onDetails}>
+            {t('dictionary.update.details')}
+          </button>
+        ) : null}
         {percent === null ? null : (
           <span className="note">
             {t('dictionary.sync.progress', {done: formatNumber(run.progress_done), total: formatNumber(run.progress_total)})}

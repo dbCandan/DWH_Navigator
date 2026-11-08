@@ -129,6 +129,7 @@ async def judge_rows(
     chat: Chat,
     evidence: Mapping[tuple[str, str], Sequence[str]],
     population: int,
+    progress: Callable[[int, int], Awaitable[None]] | None = None,
 ) -> JudgeOutcome:
     outcome = JudgeOutcome(population=population)
     gate = asyncio.Semaphore(PARALLEL_CALLS)
@@ -138,6 +139,8 @@ async def judge_rows(
         async with gate:
             outcome.calls += 1
             result = await chat(judge_request(table, row, proof))
+        if progress is not None:
+            await progress(outcome.calls, len(chosen))
         verdict = (result.value or {}).get("aciklama") if result.ok else None
         if verdict not in (VERDICT_RIGHT, VERDICT_MINOR, VERDICT_WRONG):
             outcome.failures += 1

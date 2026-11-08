@@ -625,8 +625,19 @@ class DictionarySync:
                 outcome = await fill_tables(plan.tables, chat, progress)
                 plan.changes.extend(outcome.changes)
                 warnings.extend(outcome.warnings)
+                async def describing(done: int, total: int) -> None:
+                    await self._set(
+                        run_id, phase="describing", progress_done=done, progress_total=total
+                    )
+
+                await describing(0, 0)
                 described = await describe_tables(
-                    plan.tables, chat, evidence, rows=again_rows, objects=again_objects
+                    plan.tables,
+                    chat,
+                    evidence,
+                    rows=again_rows,
+                    objects=again_objects,
+                    progress=describing,
                 )
                 plan.changes.extend(described.changes)
                 warnings.extend(described.warnings)
@@ -666,7 +677,13 @@ class DictionarySync:
         judged: JudgeOutcome | None = None
         if chat_with is not None and model_rows and self.judge_sample:
             chosen = sample_rows(plan.tables, sorted(model_rows), self.judge_sample, seed=str(run_id))
-            judged = await judge_rows(chosen, chat_with, evidence, len(model_rows))
+
+            async def verifying(done: int, total: int) -> None:
+                await self._set(run_id, phase="verifying", progress_done=done, progress_total=total)
+
+            await verifying(0, len(chosen))
+            judged = await judge_rows(chosen, chat_with, evidence, len(model_rows), progress=verifying)
+        await self._set(run_id, phase="scoring", progress_done=0, progress_total=0)
         score = score_card(
             plan.tables,
             self.decisions,

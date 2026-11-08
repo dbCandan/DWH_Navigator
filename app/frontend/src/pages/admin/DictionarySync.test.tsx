@@ -123,9 +123,14 @@ describe('dictionary sync on the Sözlük page (dictionary-sync Requirement 1, 2
     const update = await button('dictionary.sync.button');
     await waitFor(() => expect(update).toBeEnabled());
     await startFromPreview(update);
+    // The window follows the run; hidden, the run goes on and the page card shows it.
+    const steps = await screen.findByRole('list', {name: message('dictionary.update.steps')});
+    expect(within(steps).getByText(message('dictionary.sync.phase.reading')).closest('li')).toHaveAttribute('aria-current', 'step');
+    fireEvent.click(screen.getByRole('button', {name: message('dictionary.update.hide')}));
+    expect(screen.queryByRole('dialog', {name: message('dictionary.update.title')})).toBeNull();
     expect(await screen.findByRole('heading', {level: 2, name: message('dictionary.sync.running')})).toBeInTheDocument();
     expect(start).toHaveBeenCalledTimes(1);
-    expect(update).toBeDisabled();
+    expect(update).toBeEnabled();
     expect(screen.getByText(message('dictionary.sync.phase.reading'))).toBeInTheDocument();
 
     await act(async () => {
@@ -158,7 +163,7 @@ describe('dictionary sync on the Sözlük page (dictionary-sync Requirement 1, 2
     const panel = await screen.findByRole('region', {name: message('dictionary.preview.title')});
     expect(within(panel).getByText(message('dictionary.preview.calls'), {selector: '.k'}).closest('.it')).toHaveTextContent('9');
     expect(within(panel).getByText(message('dictionary.preview.approval'))).toBeInTheDocument();
-    fireEvent.click(within(panel).getByRole('button', {name: message('dictionary.edit.cancel')}));
+    fireEvent.click(screen.getByRole('button', {name: message('dictionary.edit.cancel')}));
     expect(screen.queryByRole('region', {name: message('dictionary.preview.title')})).toBeNull();
     vi.mocked(DictionarySyncService.preview).mockResolvedValue({...PREVIEW, has_changes: false, model_calls: 0, estimated_seconds: 0});
     fireEvent.click(update);
@@ -205,7 +210,49 @@ describe('dictionary sync on the Sözlük page (dictionary-sync Requirement 1, 2
     });
     await startFromPreview(update);
     expect(await screen.findByText(message('admin.error.dictionary_sync_in_progress'))).toBeInTheDocument();
-    expect(await screen.findByText(message('dictionary.sync.phase.reading'))).toBeInTheDocument();
+    expect((await screen.findAllByText(message('dictionary.sync.phase.reading'))).length).toBeGreaterThan(0);
+  });
+
+  it('opens the update window at once, keeps the run going when it closes and opens it again from the page', async () => {
+    vi.useFakeTimers({shouldAdvanceTime: true});
+    serve();
+    let answer: (value: typeof PREVIEW) => void = () => undefined;
+    vi.mocked(DictionarySyncService.preview).mockReturnValue(new Promise((resolve) => (answer = resolve)));
+    const running = syncRun({status: 'running', phase: 'describing', finished_at: null, progress_done: 2, progress_total: 9});
+    vi.spyOn(DictionarySyncService, 'start').mockResolvedValue(running);
+    const read = vi.spyOn(DictionarySyncService, 'run').mockResolvedValue(syncDetail(running));
+    renderApp('/admin/sozluk');
+    const update = await button('dictionary.sync.button');
+    await waitFor(() => expect(update).toBeEnabled());
+    fireEvent.click(update);
+    const window = screen.getByRole('dialog', {name: message('dictionary.update.title')});
+    expect(within(window).getByText(message('dictionary.update.preparing'))).toBeInTheDocument();
+    expect(within(window).getByText(message('dictionary.update.previewStep.read'))).toBeInTheDocument();
+    await act(async () => answer(PREVIEW));
+    fireEvent.click(await button('dictionary.preview.start'));
+    const steps = await screen.findByRole('list', {name: message('dictionary.update.steps')});
+    const current = within(steps).getByText(message('dictionary.sync.phase.describing')).closest('li');
+    expect(current).toHaveAttribute('aria-current', 'step');
+    expect(current).toHaveTextContent(message('dictionary.sync.progress', {done: 2, total: 9}));
+    expect(within(steps).getByText(message('dictionary.sync.phase.comparing')).closest('li')).toHaveClass('done');
+    expect(within(steps).getByText(message('dictionary.sync.phase.verifying')).closest('li')).toHaveClass('waiting');
+
+    fireEvent.click(screen.getByRole('button', {name: message('admin.drawer.close')}));
+    expect(screen.queryByRole('dialog', {name: message('dictionary.update.title')})).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(read).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', {name: message('dictionary.update.details')}));
+    expect(await screen.findByRole('list', {name: message('dictionary.update.steps')})).toBeInTheDocument();
+
+    // The run ends while the window is open: the window says so and offers the report.
+    read.mockResolvedValue(syncDetail({counts: {tables_added: 2}}));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    fireEvent.click(await button('dictionary.sync.openReport'));
+    expect(await screen.findByRole('dialog', {name: message('dictionary.report.title')})).toBeInTheDocument();
   });
 
   it('reports the counts with "Ambarda bulunmayan" and "Yazımı düzeltilen", the versions, the model and the warnings', async () => {

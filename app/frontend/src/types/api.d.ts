@@ -6432,7 +6432,7 @@ export interface components {
             model: string;
             new_version: string;
             /** @enum {string} */
-            phase: "reading" | "comparing" | "filling" | "indexing" | "done";
+            phase: "reading" | "comparing" | "filling" | "describing" | "verifying" | "scoring" | "indexing" | "done";
             previous_version: string;
             progress_done: number;
             progress_total: number;
@@ -6458,7 +6458,7 @@ export interface components {
             model: string;
             new_version: string;
             /** @enum {string} */
-            phase: "reading" | "comparing" | "filling" | "indexing" | "done";
+            phase: "reading" | "comparing" | "filling" | "describing" | "verifying" | "scoring" | "indexing" | "done";
             previous_version: string;
             progress_done: number;
             progress_total: number;

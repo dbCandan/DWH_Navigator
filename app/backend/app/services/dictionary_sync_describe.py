@@ -286,6 +286,7 @@ async def describe_tables(
     evidence: Evidence | None = None,
     rows: Collection[tuple[str, str]] = (),
     objects: Collection[str] = (),
+    progress: Callable[[int, int], Awaitable[None]] | None = None,
 ) -> DescribeOutcome:
     """Describe new rows, the rows in ``rows`` (folded table key, column name) and the objects in
     ``objects`` (folded keys), such as those whose computation changed. An admin's text stays; a
@@ -293,12 +294,15 @@ async def describe_tables(
 
     known = evidence or {}
     outcome = DescribeOutcome()
+    total = 0
     gate = asyncio.Semaphore(PARALLEL_CALLS)
 
     async def call(request: LlmChatRequest) -> Mapping[str, Any] | None:
         async with gate:
             outcome.calls += 1
             result = await chat(request)
+        if progress is not None:
+            await progress(outcome.calls, total)
         if not result.ok or result.value is None:
             outcome.failures += 1
             return None
@@ -332,5 +336,8 @@ async def describe_tables(
             "ObjectDescription"
         ) != ORIGIN_ADMIN:
             work.append(whole(table))
+    total = len(work)
+    if progress is not None:
+        await progress(0, total)
     await asyncio.gather(*work)
     return outcome

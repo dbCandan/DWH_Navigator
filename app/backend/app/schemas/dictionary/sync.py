@@ -68,7 +68,16 @@ class RunSummary(BaseModel):
     status: Literal[
         "running", "completed", "no_change", "pending_approval", "rejected", "failed", "interrupted"
     ]
-    phase: Literal["reading", "comparing", "filling", "indexing", "done"]
+    phase: Literal[
+        "reading",
+        "comparing",
+        "filling",
+        "describing",
+        "verifying",
+        "scoring",
+        "indexing",
+        "done",
+    ]
     progress_done: int
     progress_total: int
     started_at: datetime

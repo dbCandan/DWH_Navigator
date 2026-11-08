@@ -4011,6 +4011,9 @@
               "reading",
               "comparing",
               "filling",
+              "describing",
+              "verifying",
+              "scoring",
               "indexing",
               "done"
             ],
@@ -4132,6 +4135,9 @@
               "reading",
               "comparing",
               "filling",
+              "describing",
+              "verifying",
+              "scoring",
               "indexing",
               "done"
             ],
@@ -6024,7 +6030,7 @@
   },
   "info": {
     "description": "Platform API for dwhnavigator",
-    "title": "dwhnavigator",
+    "title": "DWH Navigator",
     "version": "0.1.0"
   },
   "openapi": "3.1.0",

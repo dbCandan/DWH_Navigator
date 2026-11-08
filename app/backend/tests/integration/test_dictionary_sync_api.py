@@ -563,3 +563,22 @@ async def test_the_ai_pages_generation_model_comes_before_the_environment(sync: 
     assert {effort for _, effort, system in seen if not system.startswith(judge)} == {"none"}
     # The verifier inherits on the AI page, so the environment's default applies.
     assert {effort for _, effort, system in seen if system.startswith(judge)} == {"low"}
+
+
+async def test_the_run_passes_through_its_detailed_phases(sync: Harness) -> None:
+    """The update window shows each step: describing and verifying with their counts."""
+
+    seen: list[str] = []
+    service = app.state.dictionary_sync
+    original = service._set
+
+    async def spy(run_id: int, **values: Any) -> None:
+        if "phase" in values and (not seen or seen[-1] != values["phase"]):
+            seen.append(values["phase"])
+        await original(run_id, **values)
+
+    service._set = spy
+    sync.gateway.port.extra = {"karar": "eklendi", "ColumnDescription": "Müşteri kaydının kolonudur.", "aciklama": "dogru", "neden": ""}
+    await sync.run()
+    # "reading" is the phase the run opens with; the later ones follow in order.
+    assert seen == ["comparing", "filling", "describing", "verifying", "scoring", "indexing"], seen
