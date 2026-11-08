@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import AsyncIterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
@@ -73,9 +73,15 @@ class FakeKeys:
 @dataclass
 class FakePort:
     calls: int = 0
+    down: bool = False  # every call fails, as when the model server is unreachable
+    seen: list[tuple[str, str, str]] = field(default_factory=list)  # (model, reasoning, system)
+    extra: dict[str, Any] = field(default_factory=dict)  # more fields in every answer
 
-    async def chat(self, _connection: Any, request: Any) -> Any:
+    async def chat(self, connection: Any, request: Any) -> Any:
         self.calls += 1
+        self.seen.append((connection.chat_model, connection.reasoning_effort, request.system[:40]))
+        if self.down:
+            return SimpleNamespace(ok=False, value=None)
         return SimpleNamespace(
             ok=True,
             value={
@@ -83,6 +89,7 @@ class FakePort:
                 "columns": [{"name": "Kolon0", "Role": "Anahtar"}],
                 "terms": [],
                 "stopwords": [],
+                **self.extra,
             },
         )
 
@@ -90,9 +97,12 @@ class FakePort:
 @dataclass
 class FakeGateway:
     port: FakePort = field(default_factory=FakePort)
+    connection: LlmConnection = field(
+        default_factory=lambda: LlmConnection(endpoint="http://model.test/v1", chat_model="test-model")
+    )
 
     async def snapshot(self, **_: Any) -> LlmConnection:
-        return LlmConnection(endpoint="http://model.test/v1", chat_model="test-model")
+        return self.connection
 
 
 @dataclass
@@ -338,3 +348,218 @@ async def test_a_user_without_the_manager_role_cannot_start(sync: Harness) -> No
     user = await sync.dd.auth.account(sync.dd.admin, "kullanici")
     response = await sync.dd.request("POST", "/dictionary/sync", user)
     assert response.status_code == 403
+
+
+def with_code(snapshot: SourceSnapshot, factor: int, active: int = 1) -> SourceSnapshot:
+    view = (
+        "CREATE VIEW CUS.vParty AS SELECT P.Kolon0, P.Amount * {f} AS Kolon1 "
+        "FROM EDW.CUS.Party P WHERE P.Active = {a}"
+    )
+    return replace(snapshot, code={"EDWDM.CUS.vParty": view.format(f=factor, a=active)})
+
+
+async def test_only_a_changed_computation_comes_into_scope_and_no_change_means_no_model_call(
+    sync: Harness,
+) -> None:
+    sync.source.snapshot = with_code(tables("vParty"), 100)
+    await sync.run()
+    calls = sync.gateway.port.calls
+    same = await sync.run()
+    assert same["status"] == "no_change"
+    assert same["counts"]["scope_columns"] == 0
+    assert sync.gateway.port.calls == calls
+    # Reformatted code is the same computation.
+    sync.source.snapshot = replace(
+        sync.source.snapshot,
+        code={k: v.replace(" SELECT ", "\n  SELECT\n    ") for k, v in sync.source.snapshot.code.items()},
+    )
+    assert (await sync.run())["counts"]["scope_columns"] == 0
+    # The table came in new, so its trails were stored: a changed computation brings that column
+    # only, also after runs that wrote no version, and it is described again.
+    sync.source.snapshot = with_code(tables("vParty"), 1000)
+    calls = sync.gateway.port.calls
+    first = await sync.run()
+    assert first["counts"]["scope_code_changed"] == 1
+    assert sync.gateway.port.calls - calls >= 1
+    sync.source.snapshot = with_code(tables("vParty"), 10000)
+    calls = sync.gateway.port.calls
+    changed = await sync.run()
+    assert changed["counts"]["scope_code_changed"] == 1
+    assert changed["counts"]["scope_columns"] == 1
+    assert 1 <= sync.gateway.port.calls - calls <= 3
+    # A changed filter of the object brings both of its columns.
+    sync.source.snapshot = with_code(tables("vParty"), 10000, active=0)
+    assert (await sync.run())["counts"]["scope_code_changed"] == 2
+
+
+async def test_with_approval_an_update_waits_with_its_score_and_the_admin_text_survives(
+    sync: Harness,
+) -> None:
+    await sync.run()  # the first dictionary goes live: there is nothing to compare it with
+    app.state.dictionary_sync.requires_approval = True
+    sync.source.snapshot = tables("vParty", "vOther")
+    run = await sync.run()
+    assert run["status"] == "pending_approval", run
+    assert run["score"]["verdict"] in ("onaylanabilir", "incelenmeli", "reddedilmeli")
+    assert "checks" in run["score"] and run["score"]["failed_checks"] == []
+    path = f"/dictionary/sync/runs/{run['public_id']}/records"
+    refused = await sync.dd.request(
+        "PATCH", path, json={"table_key": "EDWDM.CUS.vOther", "column_name": "Kolon0", "field": "Role", "value": "Yok"}
+    )
+    assert refused.status_code == 422
+    edited = await sync.dd.request(
+        "PATCH",
+        path,
+        json={"table_key": "EDWDM.CUS.vOther", "column_name": "Kolon0", "field": "ColumnDescription",
+              "value": "Yöneticinin yazdığı açıklama; iş birimi ile doğrulanmalıdır."},
+    )
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["score"]["admin_edits"] == 1
+    changes = (await sync.dd.get(f"/dictionary/sync/runs/{run['public_id']}/changes?kind=column_admin_edited")).json()
+    assert changes["total"] == 1
+    approved = await sync.dd.request("POST", f"/dictionary/sync/runs/{run['public_id']}/approve")
+    assert approved.status_code == 200, approved.text
+    version, _ = await sync.active()
+    assert version == approved.json()["new_version"]
+
+    def admin_text(table: dict[str, Any]) -> str:
+        return next(c["ColumnDescription"] for c in table["columns"] if c["ColumnName"] == "Kolon0")
+
+    text = "Yöneticinin yazdığı açıklama; iş birimi ile doğrulanmalıdır."
+    assert admin_text((await sync.dd.get("/dictionary/tables/EDWDM.CUS.vOther")).json()) == text
+    # A later update with a new source text neither overwrites nor cleans the admin's text.
+    sync.source.snapshot = tables("vParty", "vOther", description="Yeni kaynak metni")
+    later = await sync.run()
+    assert later["status"] == "pending_approval"
+    assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{later['public_id']}/approve")).status_code == 200
+    assert admin_text((await sync.dd.get("/dictionary/tables/EDWDM.CUS.vOther")).json()) == text
+
+
+async def test_only_a_waiting_version_can_be_edited(sync: Harness) -> None:
+    run = await sync.run()
+    response = await sync.dd.request(
+        "PATCH",
+        f"/dictionary/sync/runs/{run['public_id']}/records",
+        json={"table_key": "EDWDM.CUS.vParty", "column_name": "Kolon0", "field": "Summary", "value": "x"},
+    )
+    assert response.status_code == 409
+
+
+async def test_the_preview_counts_the_model_work_and_writes_nothing(sync: Harness) -> None:
+    first = await sync.run()
+    calls = sync.gateway.port.calls
+    unchanged = (await sync.dd.get("/dictionary/sync/preview")).json()
+    assert unchanged["has_changes"] is False and unchanged["model_calls"] == 0
+    assert unchanged["estimated_seconds"] == 0
+    sync.source.snapshot = tables("vParty", "vOther")
+    grown = (await sync.dd.get("/dictionary/sync/preview")).json()
+    assert grown["has_changes"] is True
+    assert grown["rows_to_describe"] == 2 and grown["objects_to_describe"] == 1
+    assert grown["model_calls"] >= 4 and grown["estimated_seconds"] > 0
+    # Nothing was written and no model was called.
+    assert sync.gateway.port.calls == calls
+    assert (await sync.active())[0] == first["new_version"]
+
+
+async def test_approved_admin_corrections_become_gold_set_rows(sync: Harness) -> None:
+    from app.scripts.curation_feedback import collect
+
+    await sync.run()
+    app.state.dictionary_sync.requires_approval = True
+    sync.source.snapshot = tables("vParty", "vOther")
+    run = await sync.run()
+    path = f"/dictionary/sync/runs/{run['public_id']}/records"
+    body = {"table_key": "EDWDM.CUS.vOther", "column_name": "Kolon1", "field": "Summary"}
+    assert (await sync.dd.request("PATCH", path, json={**body, "value": "İlk"})).status_code == 200
+    assert (await sync.dd.request("PATCH", path, json={**body, "value": "Son"})).status_code == 200
+    assert await collect(None) == []  # not approved yet
+    assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{run['public_id']}/approve")).status_code == 200
+    rows = await collect(None)
+    assert [(r["obj"], r["col"], r["field"], r["gold_text"]) for r in rows] == [
+        ("EDWDM.CUS.vOther", "Kolon1", "Summary", "Son")
+    ]
+    assert rows[0]["model_text"] != "İlk"  # the model's own text, not the admin's first try
+
+
+async def test_a_text_the_rules_cleaned_does_not_come_back_from_the_same_source(sync: Harness) -> None:
+    """Review: a cleaned source text bounced back on every run and made a version each time."""
+
+    sync.source.snapshot = tables("vParty", description="Kredinin faiz oranıdır.")
+    await sync.run()
+    table = (await sync.dd.get("/dictionary/tables/EDWDM.CUS.vParty")).json()
+    assert table["columns"][0]["ColumnDescription"] == "Fon kullandırımının kar payı oranıdır."
+    again = await sync.run()
+    assert again["status"] == "no_change", again
+    # A new source text is taken, and cleaned in turn.
+    sync.source.snapshot = tables("vParty", description="Mevduat faizidir.")
+    changed = await sync.run()
+    assert changed["status"] == "completed", changed
+    table = (await sync.dd.get("/dictionary/tables/EDWDM.CUS.vParty")).json()
+    assert table["columns"][0]["ColumnDescription"] == "Katılma hesabı kar payıdır."
+
+
+async def test_a_changed_computation_the_model_did_not_answer_is_looked_at_again(sync: Harness) -> None:
+    """Review: the trail digest was stored even when no row was described again."""
+
+    sync.source.snapshot = with_code(tables("vParty"), 100)
+    await sync.run()
+    sync.source.snapshot = with_code(tables("vParty"), 1000)
+    sync.gateway.port.down = True
+    failed = await sync.run()
+    assert failed["counts"]["scope_code_changed"] == 1
+    sync.gateway.port.down = False
+    again = await sync.run()
+    assert again["counts"]["scope_code_changed"] == 1  # not lost
+    assert (await sync.run())["counts"]["scope_code_changed"] == 0  # answered: settled
+
+
+async def test_a_rejected_versions_digests_are_not_kept(sync: Harness) -> None:
+    """Review: the digests of a rejected version made its code change look settled."""
+
+    sync.source.snapshot = with_code(tables("vParty"), 100)
+    await sync.run()
+    app.state.dictionary_sync.requires_approval = True
+    sync.source.snapshot = with_code(tables("vParty", "vOther"), 1000)
+    waiting = await sync.run()
+    assert waiting["status"] == "pending_approval" and waiting["counts"]["scope_code_changed"] == 1
+    assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{waiting['public_id']}/reject")).status_code == 200
+    again = await sync.run()
+    assert again["counts"]["scope_code_changed"] == 1
+    assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{again['public_id']}/approve")).status_code == 200
+    sync.source.snapshot = with_code(tables("vParty", "vOther"), 1000)
+    assert (await sync.run())["counts"]["scope_code_changed"] == 0
+
+
+async def test_the_update_writes_with_the_dictionary_model_and_its_reasoning(sync: Harness) -> None:
+    service = app.state.dictionary_sync
+    service.chat_model, service.reasoning_effort, service.judge_reasoning_effort = "qwen-test", "none", "low"
+    # The describer rewrites the new columns, so the verifier has texts of this run to score.
+    sync.gateway.port.extra = {"karar": "eklendi", "ColumnDescription": "Müşteri kaydının kolonudur.", "aciklama": "dogru", "neden": ""}
+    await sync.run()
+    seen = sync.gateway.port.seen
+    assert seen and all(model == "qwen-test" for model, _, _ in seen)
+    judge = "Bir katılım bankası veri sözlüğünün"
+    verifier = [effort for _, effort, system in seen if system.startswith(judge)]
+    describer = [effort for _, effort, system in seen if not system.startswith(judge)]
+    assert verifier and set(verifier) == {"low"}
+    assert describer and set(describer) == {"none"}
+
+
+async def test_the_ai_pages_generation_model_comes_before_the_environment(sync: Harness) -> None:
+    service = app.state.dictionary_sync
+    service.chat_model, service.reasoning_effort = "env-model", "medium"
+    sync.gateway.connection = replace(
+        sync.gateway.connection,
+        generation_model="ai-page-model",
+        generation_reasoning_effort="none",
+        judge_reasoning_effort="inherit",
+    )
+    sync.gateway.port.extra = {"karar": "eklendi", "ColumnDescription": "Müşteri kaydının kolonudur.", "aciklama": "dogru", "neden": ""}
+    service.judge_reasoning_effort = "low"
+    await sync.run()
+    seen = sync.gateway.port.seen
+    assert {model for model, _, _ in seen} == {"ai-page-model"}
+    judge = "Bir katılım bankası veri sözlüğünün"
+    assert {effort for _, effort, system in seen if not system.startswith(judge)} == {"none"}
+    # The verifier inherits on the AI page, so the environment's default applies.
+    assert {effort for _, effort, system in seen if system.startswith(judge)} == {"low"}

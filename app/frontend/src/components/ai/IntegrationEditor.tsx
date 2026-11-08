@@ -39,6 +39,9 @@ const EFFORTS = [
   ['', 'ai.editor.effort.omit'],
 ] as const;
 
+/** The generation role's reasoning: 'inherit' uses the chat model's own setting. */
+const GENERATION_EFFORTS = [['inherit', 'ai.editor.effort.inherit'], ...EFFORTS] as const;
+
 type Fetch =
   | {state: 'idle'}
   | {state: 'busy'}
@@ -69,6 +72,9 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
   const [timeout, setTimeoutSeconds] = useState(String(item?.timeout_seconds ?? 900));
   const [effort, setEffort] = useState(item?.reasoning_effort ?? 'none');
   const [seed, setSeed] = useState(String(item?.seed ?? 42));
+  const [generationModel, setGenerationModel] = useState(item?.generation_model ?? '');
+  const [generationEffort, setGenerationEffort] = useState(item?.generation_reasoning_effort ?? 'inherit');
+  const [judgeEffort, setJudgeEffort] = useState(item?.judge_reasoning_effort ?? 'inherit');
   const [activate, setActivate] = useState(item ? item.active : true);
   const [offered, setOffered] = useState<LlmModelRow[]>([]);
   const [fetched, setFetched] = useState<Fetch>({state: 'idle'});
@@ -134,7 +140,13 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
   }
 
   async function save() {
-    const values = {name: name.trim(), ...connection()};
+    const values = {
+      name: name.trim(),
+      ...connection(),
+      generation_model: generationModel.trim(),
+      generation_reasoning_effort: generationEffort,
+      judge_reasoning_effort: judgeEffort,
+    };
     if (!values.name || !values.endpoint) {
       toast(t('ai.toast.missing'), [t('ai.toast.missingLine')], true);
       return;
@@ -265,6 +277,51 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
             onChange={setChatModel}
           />
         </Field>
+        <Field id="ai-generation-model" label={t('ai.editor.generationModel')} hint={t('ai.editor.generationModelHint')}>
+          <SuggestCombobox
+            id="ai-generation-model"
+            mono
+            value={generationModel}
+            options={offered.map((row) => ({
+              value: row.id,
+              note: row.context ? t('ai.editor.context', {context: formatNumber(row.context)}) : '',
+            }))}
+            listLabel={t('ai.editor.chatModelList')}
+            placeholder={t('ai.editor.generationModelPlaceholder')}
+            describedBy="ai-generation-model-hint"
+            onChange={setGenerationModel}
+          />
+        </Field>
+        <div className="f2">
+          <Field id="ai-generation-effort" label={t('ai.editor.generationEffort')} hint={t('ai.editor.generationEffortHint')}>
+            <select
+              id="ai-generation-effort"
+              aria-describedby="ai-generation-effort-hint"
+              value={generationEffort}
+              onChange={(event) => setGenerationEffort(event.target.value)}
+            >
+              {GENERATION_EFFORTS.map(([value, key]) => (
+                <option key={value} value={value}>
+                  {t(key)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field id="ai-judge-effort" label={t('ai.editor.judgeEffort')} hint={t('ai.editor.judgeEffortHint')}>
+            <select
+              id="ai-judge-effort"
+              aria-describedby="ai-judge-effort-hint"
+              value={judgeEffort}
+              onChange={(event) => setJudgeEffort(event.target.value)}
+            >
+              {GENERATION_EFFORTS.map(([value, key]) => (
+                <option key={value} value={value}>
+                  {t(key)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <details className="fold">
           <summary>{t('ai.editor.advanced')}</summary>
           <div className="f2">

@@ -12,7 +12,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -50,11 +50,31 @@ from app.infrastructure.repositories.dictionary_sync_repository import (
 )
 from app.infrastructure.repositories.vocabulary_repository import VocabularyRepository
 from app.services.analysis.dictionary_workbook import load_dictionary, records_digest
+from app.services.dictionary_curation.decisions import Decisions
+from app.services.dictionary_curation.decisions import load as load_decisions
+from app.services.dictionary_curation.judge import JudgeOutcome, judge_rows, sample_rows
+from app.services.dictionary_curation.normalize import normalize_tables
+from app.services.dictionary_curation.scope import GATE, REASON_CODE, Scope, plan_scope
+from app.services.dictionary_curation.score import score_card
 from app.services.dictionary_reading import dictionary_identity
 from app.services.dictionary_service import write_dictionary_version
-from app.services.dictionary_sync_describe import describe_tables, evidence_for
-from app.services.dictionary_sync_fill import count_empty, fill_tables, suggest
-from app.services.dictionary_sync_merge import Change, MergePlan, fold, merge
+from app.services.dictionary_sync_describe import describe_tables
+from app.services.dictionary_sync_fill import (
+    CHUNK_COLUMNS,
+    PARALLEL_CALLS,
+    column_wanted,
+    count_empty,
+    fill_tables,
+    suggest,
+    table_wanted,
+)
+from app.services.dictionary_sync_merge import (
+    ORIGIN_ADMIN,
+    Change,
+    MergePlan,
+    fold,
+    merge,
+)
 from app.services.llm_connections import LlmGateway
 from app.services.search_index import (
     ChangePlan,
@@ -67,6 +87,7 @@ from app.services.search_inputs import SearchInputs
 logger = logging.getLogger("app.dictionary")
 
 REMOVAL_LIMIT = 0.10
+DEFAULT_CALL_MS = 30_000  # a dictionary call's duration before any was logged
 MAX_STORED_WARNINGS = 200
 KIND_UPDATE = "guncelleme"
 KIND_ROLLBACK = "geri_donus"
@@ -180,6 +201,51 @@ def with_extra_headers(records: list[dict[str, str]], headers: list[str]) -> Non
             record.setdefault(header, "")
 
 
+def kept_digests(scope: Scope, answered: set[tuple[str, str]]) -> dict[tuple[str, str], str]:
+    """The digests to store: a row whose computation changed but which the model did not answer
+    keeps its old digest (and its object its old gate), so the next update looks at it again."""
+
+    held = {row for row, reason in scope.columns.items() if reason == REASON_CODE and row not in answered}
+    objects = {table for table, _ in held}
+    return {
+        key: value
+        for key, value in scope.digests.items()
+        if key not in held and not (key[1] == GATE and key[0] in objects)
+    }
+
+
+async def remember(
+    session: AsyncSession, tenant_id: int, digests: dict[tuple[str, str], str], plan: MergePlan | None
+) -> None:
+    """Store the trail digests for the next update; without a plan, nothing is dropped."""
+
+    repository = DictionarySyncRepository(session)
+    await repository.save_trail_digests(tenant_id, digests, datetime.now(UTC))
+    if plan is not None:
+        await repository.drop_trail_digests(
+            tenant_id,
+            [(fold(t.key), fold(c.record["ColumnName"])) for t in plan.tables for c in t.columns]
+            + [(fold(t.key), GATE) for t in plan.tables],
+        )
+
+
+def described_again(plan: MergePlan, scope: Scope) -> tuple[set[tuple[str, str]], set[str]]:
+    """The rows and objects to describe again: a changed computation, or a text the source rewrote."""
+
+    rows = set(scope.columns)
+    rows.update(
+        (fold(c.table_key), fold(c.column_name))
+        for c in plan.changes
+        if c.kind == "column_changed" and c.field == "ColumnDescription" and c.origin == "kaynak"
+    )
+    objects = {
+        fold(c.table_key)
+        for c in plan.changes
+        if c.kind == "table_changed" and c.field == "ObjectDescription" and c.origin == "kaynak"
+    }
+    return rows, objects
+
+
 @dataclass(frozen=True, slots=True)
 class Started:
     run_id: int
@@ -203,8 +269,22 @@ class DictionarySync:
         keys: Callable[[], SourceKeys],
         session_factory: async_sessionmaker[AsyncSession],
         kept_databases: Sequence[str] = (),
+        decisions: Decisions | None = None,
+        requires_approval: bool = False,
+        judge_sample: int = 40,
+        chat_model: str = "",
+        reasoning_effort: str | None = None,
+        judge_reasoning_effort: str | None = None,
     ) -> None:
         self.kept_databases = tuple(kept_databases)
+        self.decisions = decisions or load_decisions()
+        # Every update with changes waits for an admin's approval, the score card beside it.
+        self.requires_approval = requires_approval
+        self.judge_sample = judge_sample
+        # The dictionary's own model and reasoning (empty / None: the integration's own).
+        self.chat_model = chat_model
+        self.reasoning_effort = reasoning_effort
+        self.judge_reasoning_effort = judge_reasoning_effort
         self.index = index
         self.models = models
         self.source = source
@@ -396,6 +476,77 @@ class DictionarySync:
                 run.status = "rejected"
                 run.finished_at = now
 
+    def connection_for(
+        self, target: LlmConnection, effort: str | None, *, judge: bool = False
+    ) -> LlmConnection:
+        """The connection a dictionary call uses: the AI page's generation model and reasoning,
+        else the environment's defaults, else the chat model's own."""
+
+        chosen = target.judge_reasoning_effort if judge else target.generation_reasoning_effort
+        if chosen != "inherit":
+            reasoning = chosen
+        else:
+            reasoning = target.reasoning_effort if effort is None else effort
+        return replace(
+            target,
+            chat_model=target.generation_model or self.chat_model or target.chat_model,
+            reasoning_effort=reasoning,
+        )
+
+    async def preview(self, tenant_id: int, tenant_public_id: str) -> dict[str, Any]:
+        """What an update would look at and how long its model work would take; writes nothing.
+
+        Reads the source as an update does, plans the scope against the stored digests and counts
+        the model calls: fill chunks of tables with empty fields, descriptions of rows and objects
+        in scope, the verifier's sample and the suggestion call. The duration uses the average of
+        recent dictionary calls (analysis calls before the first update), two calls at a time.
+        """
+
+        async with self.session_factory() as session:
+            connection = await self._connection(session, tenant_id, tenant_public_id)
+        snapshot = await self._read(connection)
+        async with self.session_factory() as session:
+            repository = DictionaryRepository(session)
+            active = await repository.version(tenant_id, DictionaryStatus.ACTIVE)
+            objects = await repository.objects(active) if active else []
+            columns = await repository.columns(active) if active else []
+            object_meta = await repository.object_meta(active) if active else []
+            column_meta = await repository.column_meta(active) if active else []
+            stored = await DictionarySyncRepository(session).trail_digests(tenant_id)
+            average_ms = await DictionarySyncRepository(session).average_call_ms(tenant_id)
+        plan = merge(snapshot, objects, object_meta, columns, column_meta, self.kept_databases)
+        scope = await asyncio.to_thread(plan_scope, plan.tables, snapshot.code, stored)
+        again_rows, again_objects = described_again(plan, scope)
+        fill = 0
+        for table in plan.tables:
+            if not table.needs_model:
+                continue
+            empty = sum(1 for c in table.columns if column_wanted(c))
+            fill += max(1 if table_wanted(table) else 0, -(-empty // CHUNK_COLUMNS))
+        describe_rows = {
+            (fold(t.key), fold(c.record["ColumnName"]))
+            for t in plan.tables
+            for c in t.columns
+            if (c.is_new or (fold(t.key), fold(c.record["ColumnName"])) in again_rows)
+            and c.origins.get("ColumnDescription") != ORIGIN_ADMIN
+        }
+        describe_objects = {fold(t.key) for t in plan.tables if t.is_new} | again_objects
+        needs_model = any(t.needs_model for t in plan.tables) or bool(describe_rows)
+        judge = min(self.judge_sample, len(describe_rows)) if self.judge_sample else 0
+        calls = fill + len(describe_rows) + len(describe_objects) + judge + (1 if needs_model else 0)
+        seconds = round(calls * (average_ms or DEFAULT_CALL_MS) / 1000 / PARALLEL_CALLS)
+        return {
+            "has_changes": plan.has_changes,
+            "scope": scope.counts(),
+            "tables_needing_model": sum(1 for t in plan.tables if t.needs_model),
+            "rows_to_describe": len(describe_rows),
+            "objects_to_describe": len(describe_objects),
+            "model_calls": calls,
+            "average_call_seconds": round((average_ms or DEFAULT_CALL_MS) / 1000, 1),
+            "estimated_seconds": seconds,
+            "requires_approval": self.requires_approval,
+        }
+
     async def _update(
         self, run_id: int, tenant_id: int, tenant_public_id: str, user_id: int
     ) -> None:
@@ -418,9 +569,12 @@ class DictionarySync:
             stopwords = await VocabularyRepository(session).items(
                 tenant_id, VocabularyList.STOPWORDS
             )
+            stored_digests = await DictionarySyncRepository(session).trail_digests(tenant_id)
         plan = merge(
             snapshot, objects, object_meta, columns, column_meta, self.kept_databases
         )
+        # Only what changed is looked at: new rows, a changed source text, a changed computation.
+        scope = await asyncio.to_thread(plan_scope, plan.tables, snapshot.code, stored_digests)
         previous = active.version if active else ""
         object_headers = list(active.object_extra_headers) if active else []
         column_headers = list(active.column_extra_headers) if active else []
@@ -433,11 +587,18 @@ class DictionarySync:
                 f"{snapshot.skipped} kaynak satırı bozuk veya yinelenen olduğu için atlandı."
             )
 
-        work = [t for t in plan.tables if t.needs_model]
+        again_rows, again_objects = described_again(plan, scope)
+        scoped = {key for key, _ in again_rows} | again_objects
+        # The rows the model will describe get their code trail (a changed source text too).
+        await asyncio.to_thread(scope.ensure_evidence, plan.tables, again_rows)
+        work = [t for t in plan.tables if t.needs_model or fold(t.key) in scoped]
         changed = list(work)
         filled = calls = failures = 0
         suggestions: list[Any] = []
         model = ""
+        described_rows: set[tuple[str, str]] = set()
+        evidence: dict[Any, Any] = dict(scope.evidence)
+        chat_with: Any = None
         if work:
             await self._set(
                 run_id, phase="filling", progress_total=len(work), progress_done=0
@@ -446,10 +607,17 @@ class DictionarySync:
                 tenant_id=tenant_id, tenant_public_id=tenant_public_id
             )
             if isinstance(target, LlmConnection):
-                model = target.chat_model
+                describer = self.connection_for(target, self.reasoning_effort)
+                verifier = self.connection_for(target, self.judge_reasoning_effort, judge=True)
+                model = describer.chat_model
 
                 async def chat(request: LlmChatRequest) -> LlmChatResult:
-                    return await self.models.port.chat(target, request)
+                    return await self.models.port.chat(describer, request)
+
+                async def verify(request: LlmChatRequest) -> LlmChatResult:
+                    return await self.models.port.chat(verifier, request)
+
+                chat_with = verify
 
                 async def progress(done: int, total: int) -> None:
                     await self._set(run_id, progress_done=done, progress_total=total)
@@ -457,12 +625,12 @@ class DictionarySync:
                 outcome = await fill_tables(plan.tables, chat, progress)
                 plan.changes.extend(outcome.changes)
                 warnings.extend(outcome.warnings)
-                evidence = await asyncio.to_thread(
-                    evidence_for, plan.tables, snapshot.code
+                described = await describe_tables(
+                    plan.tables, chat, evidence, rows=again_rows, objects=again_objects
                 )
-                described = await describe_tables(plan.tables, chat, evidence)
                 plan.changes.extend(described.changes)
                 warnings.extend(described.warnings)
+                described_rows = described.answered
                 filled = outcome.filled + described.changed
                 calls = outcome.calls + described.calls
                 failures = outcome.failures + described.failures
@@ -479,15 +647,48 @@ class DictionarySync:
                     "Model bağlantısı kullanılamadı; boş alanlar sonraki güncellemede doldurulacak."
                 )
 
+        # The owner's rules on every text, model-written or not; an admin's edit is left alone.
+        normalized = await asyncio.to_thread(
+            normalize_tables, plan.tables, snapshot.code, self.decisions, evidence
+        )
+        plan.changes.extend(normalized.changes)
+
+        # The verifier: a second prompt scores a sample of the texts this run wrote.
+        model_rows = {
+            (fold(c.table_key), fold(c.column_name))
+            for c in plan.changes
+            if c.kind == "column_changed"
+            and c.column_name
+            and c.field == "ColumnDescription"
+            and c.origin in ("model", "duzenleme")
+        }
+        digests = kept_digests(scope, described_rows)
+        judged: JudgeOutcome | None = None
+        if chat_with is not None and model_rows and self.judge_sample:
+            chosen = sample_rows(plan.tables, sorted(model_rows), self.judge_sample, seed=str(run_id))
+            judged = await judge_rows(chosen, chat_with, evidence, len(model_rows))
+        score = score_card(
+            plan.tables,
+            self.decisions,
+            judged,
+            model_calls=calls + (judged.calls if judged else 0),
+            model_failures=failures + (judged.failures if judged else 0),
+            normalized=len(normalized.changes),
+            scope={**scope.counts(), "written_rows": len(model_rows)},
+        )
+
         counts = {
             **counts_of(plan),
             "fields_filled": filled,
+            "fields_normalized": len(normalized.changes),
+            **scope.counts(),
             "fields_empty": count_empty(plan.tables),
             "model_calls": calls,
             "model_failures": failures,
             "warnings": len(warnings),
         }
-        report = {
+        report: dict[str, Any] = {
+            "score": score,
             "counts": counts,
             "warnings": warnings[:MAX_STORED_WARNINGS],
             "previous_version": previous,
@@ -495,6 +696,7 @@ class DictionarySync:
         }
         if not plan.has_changes:
             async with self.session_factory() as session, session.begin():
+                await remember(session, tenant_id, digests, plan)
                 await self._record(
                     session,
                     run_id,
@@ -534,7 +736,9 @@ class DictionarySync:
             column_meta=plan.column_meta(),
         )
 
-        if active is not None and plan.removal_share() > REMOVAL_LIMIT:
+        if active is not None and (
+            self.requires_approval or plan.removal_share() > REMOVAL_LIMIT
+        ):
             async with self.session_factory() as session, session.begin():
                 written, _pruned = await DictionaryRepository(session).write_version(
                     tenant_id,
@@ -543,6 +747,8 @@ class DictionarySync:
                     now=now,
                     status=DictionaryStatus.PENDING,
                 )
+                # The digests wait with the version: they are stored when it is approved.
+                report["pending_digests"] = [[t, c, d] for (t, c), d in sorted(digests.items())]
                 await self._record(
                     session,
                     run_id,
@@ -567,6 +773,7 @@ class DictionarySync:
                 session, tenant_id, version, user_id=user_id, now=now
             )
             await self._prune(session, tenant_id, now)
+            await remember(session, tenant_id, digests, plan)
             await self._record(
                 session,
                 run_id,

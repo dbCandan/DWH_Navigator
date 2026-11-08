@@ -1,7 +1,7 @@
 """Bodies of the dictionary update endpoints (011-dictionary-sync plan.md)."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -52,6 +52,10 @@ class Counts(BaseModel):
     columns_excluded: int = 0
     columns_corrected: int = 0
     fields_filled: int = 0
+    fields_normalized: int = 0
+    scope_tables: int = 0
+    scope_columns: int = 0
+    scope_code_changed: int = 0
     fields_empty: int = 0
     model_calls: int = 0
     model_failures: int = 0
@@ -74,6 +78,8 @@ class RunSummary(BaseModel):
     new_version: str
     model: str
     counts: Counts
+    # The score card an admin decides on (dictionary_curation.score): checks, sample, verdict.
+    score: dict[str, Any] = Field(default_factory=dict)
     error_code: str
     error_message: str
 
@@ -120,6 +126,18 @@ class ApplySuggestions(BaseModel):
     suggestion_ids: list[str] = Field(min_length=1, max_length=500)
 
 
+class RecordEdit(BaseModel):
+    """An admin's text for one field of a version waiting for approval."""
+
+    table_key: str = Field(min_length=3, max_length=400)
+    column_name: str = Field(default="", max_length=256)  # empty: the object record
+    field: Literal[
+        "ColumnDescription", "Synonyms", "Summary", "Role",
+        "ObjectDescription", "Grain", "KeyColumns", "TimeColumns", "BusinessDomain",
+    ]
+    value: str = Field(max_length=4000)
+
+
 class Version(BaseModel):
     public_id: str
     version: str
@@ -136,3 +154,17 @@ class Version(BaseModel):
 
 class VersionsPage(BaseModel):
     items: list[Version]
+
+
+class SyncPreview(BaseModel):
+    """What an update would look at and how long its model work would take."""
+
+    has_changes: bool
+    scope: dict[str, int]
+    tables_needing_model: int
+    rows_to_describe: int
+    objects_to_describe: int
+    model_calls: int
+    average_call_seconds: float
+    estimated_seconds: int
+    requires_approval: bool

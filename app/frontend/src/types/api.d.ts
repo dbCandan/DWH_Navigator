@@ -2056,6 +2056,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/dictionary/sync/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Sync
+         * @description What an update would look at and how long it would take; nothing is written.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SyncPreview"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/dictionary/sync/runs": {
         parameters: {
             query?: never;
@@ -2320,6 +2377,78 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit Record
+         * @description An admin's text for one field of the version waiting for approval.
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    run_id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RecordEdit"];
+                };
+            };
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RunDetail"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description Validation Error */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/dwhnavigator/v1/dictionary/sync/runs/{run_id}/reject": {
@@ -5718,9 +5847,17 @@ export interface components {
             /** @default 0 */
             fields_filled: number;
             /** @default 0 */
+            fields_normalized: number;
+            /** @default 0 */
             model_calls: number;
             /** @default 0 */
             model_failures: number;
+            /** @default 0 */
+            scope_code_changed: number;
+            /** @default 0 */
+            scope_columns: number;
+            /** @default 0 */
+            scope_tables: number;
             /** @default 0 */
             tables_added: number;
             /** @default 0 */
@@ -5927,6 +6064,9 @@ export interface components {
             api_key?: string | null;
             chat_model?: string | null;
             endpoint: string;
+            generation_model?: string | null;
+            generation_reasoning_effort?: string | null;
+            judge_reasoning_effort?: string | null;
             name: string;
             reasoning_effort?: string | null;
             /** @default false */
@@ -5952,7 +6092,13 @@ export interface components {
             /** Format: date-time */
             created_at: string;
             endpoint: string;
+            /** @default  */
+            generation_model: string;
+            /** @default inherit */
+            generation_reasoning_effort: string;
             has_key: boolean;
+            /** @default inherit */
+            judge_reasoning_effort: string;
             last_test: components["schemas"]["LlmLastTest"] | null;
             name: string;
             /** Format: uuid */
@@ -5970,6 +6116,9 @@ export interface components {
             api_key?: string | null;
             chat_model?: string | null;
             endpoint?: string | null;
+            generation_model?: string | null;
+            generation_reasoning_effort?: string | null;
+            judge_reasoning_effort?: string | null;
             name?: string | null;
             reasoning_effort?: string | null;
             /** @default false */
@@ -6177,6 +6326,15 @@ export interface components {
             unavailable_reason: string;
             verdict: ("VAR" | "KISMEN VAR" | "BULUNAMADI") | null;
         };
+        /** @description An admin's text for one field of a version waiting for approval. */
+        RecordEdit: {
+            /** @default  */
+            column_name: string;
+            /** @enum {string} */
+            field: "ColumnDescription" | "Synonyms" | "Summary" | "Role" | "ObjectDescription" | "Grain" | "KeyColumns" | "TimeColumns" | "BusinessDomain";
+            table_key: string;
+            value: string;
+        };
         RecordError: {
             code: string;
             message: string;
@@ -6279,6 +6437,9 @@ export interface components {
             progress_done: number;
             progress_total: number;
             public_id: string;
+            score?: {
+                [key: string]: unknown;
+            };
             /** Format: date-time */
             started_at: string;
             started_by: components["schemas"]["Person"] | null;
@@ -6302,6 +6463,9 @@ export interface components {
             progress_done: number;
             progress_total: number;
             public_id: string;
+            score?: {
+                [key: string]: unknown;
+            };
             /** Format: date-time */
             started_at: string;
             started_by: components["schemas"]["Person"] | null;
@@ -6477,6 +6641,20 @@ export interface components {
             /** @enum {string} */
             status: "pending" | "applied";
             value: string;
+        };
+        /** @description What an update would look at and how long its model work would take. */
+        SyncPreview: {
+            average_call_seconds: number;
+            estimated_seconds: number;
+            has_changes: boolean;
+            model_calls: number;
+            objects_to_describe: number;
+            requires_approval: boolean;
+            rows_to_describe: number;
+            scope: {
+                [key: string]: number;
+            };
+            tables_needing_model: number;
         };
         TableColumn: {
             column: string;

@@ -370,3 +370,53 @@ class DictionaryRepository:
             .order_by(model.position)
         )
         return [{k: v for k, v in (p or {}).items() if k != _EXTRA_CELLS} for (p,) in rows.all()]
+
+    async def edit_record(
+        self,
+        version: DictionaryVersion,
+        table_key: str,
+        column_name: str,
+        field: str,
+        value: str,
+        origin: str,
+    ) -> str | None:
+        """One field of one record of ``version``; the old value, or None when nothing matched.
+
+        ``column_name`` empty edits the object record. The field's origin in the record's
+        bookkeeping becomes ``origin``.
+        """
+
+        if column_name:
+            model: Any = DictionaryColumnRecord
+            attribute = COLUMN_FIELD_COLUMNS.get(field)
+        else:
+            model = DictionaryObjectRecord
+            attribute = OBJECT_FIELD_COLUMNS.get(field)
+        if attribute is None:
+            return None
+        table = model.database_name + "." + model.schema_name + "." + model.object_name
+        conditions = [
+            model.dictionary_version_id == version.dictionary_version_id,
+            func.lower(table) == table_key.casefold(),
+        ]
+        if column_name:
+            conditions.append(func.lower(model.column_name) == column_name.casefold())
+        found = (
+            await self.session.execute(
+                select(model.position, getattr(model, attribute), model.props).where(*conditions)
+            )
+        ).first()
+        if found is None:
+            return None
+        position, old, props = found
+        props = dict(props or {})
+        props["origins"] = {**dict(props.get("origins") or {}), field: origin}
+        await self.session.execute(
+            update(model)
+            .where(
+                model.dictionary_version_id == version.dictionary_version_id,
+                model.position == position,
+            )
+            .values({attribute: value, "props": props})
+        )
+        return str(old)

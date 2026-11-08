@@ -35,6 +35,8 @@ from app.domain.llm import (
 )
 from app.domain.models.mixins import AuditSoftDeleteMixin, new_public_id
 
+INHERIT = "inherit"  # a generation setting that uses the chat model's own
+
 
 class LlmIntegration(AuditSoftDeleteMixin, Base):
     __tablename__ = "llm_integration"
@@ -59,23 +61,45 @@ class LlmIntegration(AuditSoftDeleteMixin, Base):
             unique=True,
             postgresql_where=text("active AND is_deleted = false"),
         ),
-        CheckConstraint(f"char_length(name) BETWEEN 1 AND {NAME_MAX_LENGTH}", name="name_length"),
         CheckConstraint(
-            f"char_length(endpoint) BETWEEN 1 AND {ENDPOINT_MAX_LENGTH}", name="endpoint_length"
+            f"char_length(name) BETWEEN 1 AND {NAME_MAX_LENGTH}", name="name_length"
         ),
         CheckConstraint(
-            f"char_length(chat_model) <= {CHAT_MODEL_MAX_LENGTH}", name="chat_model_length"
+            f"char_length(endpoint) BETWEEN 1 AND {ENDPOINT_MAX_LENGTH}",
+            name="endpoint_length",
         ),
-        CheckConstraint("NOT active OR chat_model <> ''", name="active_needs_chat_model"),
+        CheckConstraint(
+            f"char_length(chat_model) <= {CHAT_MODEL_MAX_LENGTH}",
+            name="chat_model_length",
+        ),
+        CheckConstraint(
+            "NOT active OR chat_model <> ''", name="active_needs_chat_model"
+        ),
         CheckConstraint("NOT (active AND is_deleted)", name="deleted_is_inactive"),
-        CheckConstraint("NOT is_deleted OR api_key_ciphertext IS NULL", name="deleted_has_no_key"),
+        CheckConstraint(
+            "NOT is_deleted OR api_key_ciphertext IS NULL", name="deleted_has_no_key"
+        ),
         CheckConstraint("temperature BETWEEN 0 AND 2", name="temperature_range"),
-        CheckConstraint("timeout_seconds BETWEEN 5 AND 3600", name="timeout_seconds_range"),
+        CheckConstraint(
+            "timeout_seconds BETWEEN 5 AND 3600", name="timeout_seconds_range"
+        ),
         CheckConstraint(
             "reasoning_effort IN ('none', 'low', 'medium', 'high', '')",
             name="reasoning_effort_allowed",
         ),
         CheckConstraint("seed BETWEEN -1 AND 2147483647", name="seed_range"),
+        CheckConstraint(
+            f"char_length(generation_model) <= {CHAT_MODEL_MAX_LENGTH}",
+            name="generation_model_length",
+        ),
+        CheckConstraint(
+            "generation_reasoning_effort IN ('inherit', 'none', 'low', 'medium', 'high', '')",
+            name="generation_reasoning_effort_allowed",
+        ),
+        CheckConstraint(
+            "judge_reasoning_effort IN ('inherit', 'none', 'low', 'medium', 'high', '')",
+            name="judge_reasoning_effort_allowed",
+        ),
         CheckConstraint(
             "(last_test_at IS NULL) = (last_test_ok IS NULL) "
             "AND (last_test_at IS NULL) = (last_test_summary IS NULL)",
@@ -94,7 +118,9 @@ class LlmIntegration(AuditSoftDeleteMixin, Base):
         },
     )
 
-    llm_integration_id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
+    llm_integration_id: Mapped[int] = mapped_column(
+        BigInteger, Identity(), primary_key=True
+    )
     public_id: Mapped[str] = mapped_column(
         Text,
         default=new_public_id,
@@ -180,6 +206,27 @@ class LlmIntegration(AuditSoftDeleteMixin, Base):
             "Thinking mode sent as 'reasoning_effort'; code reflection app.domain.llm."
             "REASONING_EFFORTS: 'none', 'low', 'medium', 'high', or '' = the field is not sent."
         ),
+    )
+    generation_model: Mapped[str] = mapped_column(
+        String(CHAT_MODEL_MAX_LENGTH),
+        nullable=False,
+        default="",
+        server_default="",
+        comment="The generation model: the dictionary update describes with it; empty uses chat_model.",
+    )
+    generation_reasoning_effort: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default=INHERIT,
+        server_default=INHERIT,
+        comment="Reasoning of the generation model's describing calls; 'inherit' uses reasoning_effort.",
+    )
+    judge_reasoning_effort: Mapped[str] = mapped_column(
+        String(16),
+        nullable=False,
+        default=INHERIT,
+        server_default=INHERIT,
+        comment="Reasoning of the dictionary update's verifier calls; 'inherit' uses reasoning_effort.",
     )
     seed: Mapped[int] = mapped_column(
         Integer,

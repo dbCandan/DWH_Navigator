@@ -411,3 +411,9 @@ html[data-surface="admin"] { background: radial-gradient(1200px 700px at 85% -15
   [data-surface="admin"] .ph p, [data-surface="admin"] .card > .intro, [data-surface="admin"] .row .help, [data-surface="admin"] .card > .note, [data-surface="admin"] .fold > .note { white-space: normal; display: block; -webkit-line-clamp: unset; line-clamp: none; }
 }
 @media (prefers-reduced-motion: reduce) { [data-surface="admin"] *, [data-surface="admin"] *::before, [data-surface="admin"] *::after { animation: none !important; transition: none !important; } }
+
+/* Dictionary curation: an admin's text for one field of a version waiting for approval. */
+[data-surface="admin"] .record-editor { display: grid; gap: 10px; margin: 12px 0; padding: 14px; border: 1px solid var(--line); border-radius: 12px; }
+[data-surface="admin"] .record-editor label { display: grid; gap: 6px; font-weight: 600; }
+[data-surface="admin"] .record-editor textarea { width: 100%; resize: vertical; font: inherit; }
+[data-surface="admin"] .record-editor .row-actions { display: flex; gap: 8px; justify-content: flex-end; }

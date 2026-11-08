@@ -12,12 +12,14 @@ from app.domain.accounts import ROLE_MANAGER
 from app.schemas.dictionary.sync import (
     ApplySuggestions,
     ChangesPage,
+    RecordEdit,
     RunDetail,
     RunsPage,
     RunSummary,
     Source,
     SourceInput,
     SourceTest,
+    SyncPreview,
     VersionsPage,
 )
 from app.schemas.errors import error_responses
@@ -65,6 +67,13 @@ async def test_source(context: CurrentContext, service: Service, body: SourceInp
     return await service.test_source(context, body)
 
 
+@router.get("/sync/preview", response_model=SyncPreview)
+async def preview_sync(context: CurrentContext, service: Service) -> SyncPreview:
+    """What an update would look at and how long it would take; nothing is written."""
+
+    return await service.preview(context)
+
+
 @router.post("/sync", response_model=RunSummary, status_code=status.HTTP_202_ACCEPTED)
 async def start_sync(context: CurrentContext, service: Service) -> RunSummary:
     return await service.start(context)
@@ -98,6 +107,15 @@ async def read_changes(
 @router.post("/sync/runs/{run_id}/approve", response_model=RunDetail)
 async def approve_run(context: CurrentContext, service: Service, run_id: str) -> RunDetail:
     return await service.approve(context, run_id)
+
+
+@router.patch("/sync/runs/{run_id}/records", response_model=RunDetail)
+async def edit_record(
+    context: CurrentContext, service: Service, run_id: str, body: RecordEdit
+) -> RunDetail:
+    """An admin's text for one field of the version waiting for approval."""
+
+    return await service.edit_record(context, run_id, body)
 
 
 @router.post("/sync/runs/{run_id}/reject", response_model=RunDetail)

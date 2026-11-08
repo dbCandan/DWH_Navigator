@@ -8,6 +8,7 @@ import {Fact} from '@/components/dictionary/Fact';
 import {RunHistory} from '@/components/dictionary/RunHistory';
 import {RunReport} from '@/components/dictionary/RunReport';
 import {SourceCard} from '@/components/dictionary/SourceCard';
+import {SyncPreviewPanel} from '@/components/dictionary/SyncPreviewPanel';
 import {SyncProgress} from '@/components/dictionary/SyncProgress';
 import {TableDrawer} from '@/components/dictionary/TableDrawer';
 import {TableList} from '@/components/dictionary/TableList';
@@ -22,7 +23,7 @@ import {dictionaryStatus, versionDigits} from '@/lib/adminStatus';
 import {formatDateTime, formatNumber} from '@/lib/format';
 import {DictionaryService} from '@/services/dictionary';
 import {DictionarySyncService} from '@/services/dictionarySync';
-import type {DictionarySource, DictionaryVersion} from '@/types/dictionarySync';
+import type {DictionarySource, DictionaryVersion, SyncPreview} from '@/types/dictionarySync';
 import {confirmAction} from '@/lib/confirm';
 
 const VIEWS = ['tables', 'runs', 'versions', 'source'] as const;
@@ -43,7 +44,7 @@ export default function DictionaryPage() {
   const navigate = useNavigate();
   const tableKey = useParams()['*'] ?? '';
   const {dictionary, tables, failure} = useDictionaryState();
-  const {reportUnreachable} = useToast();
+  const {toast, reportUnreachable} = useToast();
   const download = useDownload();
   const rebuild = useIndexRebuild();
   const [rebuilding, setRebuilding] = useState(false);
@@ -54,6 +55,8 @@ export default function DictionaryPage() {
   const [sourceFailure, setSourceFailure] = useState<unknown>(null);
   const [focusRequest, setFocusRequest] = useState(0);
   const [report, setReport] = useState<{id: string; opened: number} | null>(null);
+  const [preview, setPreview] = useState<SyncPreview | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   const openReport = (id: string) => setReport((current) => ({id, opened: (current?.opened ?? 0) + 1}));
   const sync = useDictionarySync((run) => {
     if (!tableKey) openReport(run.public_id);
@@ -116,6 +119,18 @@ export default function DictionaryPage() {
     );
 
   const running = sync.running;
+
+  async function openPreview() {
+    setPreviewing(true);
+    try {
+      setPreview(await DictionarySyncService.preview());
+    } catch (error) {
+      reportUnreachable(error);
+      toast(t('dictionary.preview.failed'), [adminErrorText(error, t)], true);
+    } finally {
+      setPreviewing(false);
+    }
+  }
   const waiting = sync.runs?.find((run) => run.status === 'pending_approval');
   const views = VIEWS.filter((name) => name !== 'tables' || active);
   const view = chosenView && views.includes(chosenView) ? chosenView : views[0];
@@ -133,7 +148,7 @@ export default function DictionaryPage() {
               type="button"
               disabled={!configured || running !== null}
               title={source && !configured ? t('dictionary.sync.needsSource') : undefined}
-              onClick={() => void sync.start()}
+              onClick={() => void openPreview()}
             >
               <Icon name="refresh" />
               {t('dictionary.sync.button')}
@@ -147,6 +162,17 @@ export default function DictionaryPage() {
           </>
         }
       />
+      {preview && running === null ? (
+        <SyncPreviewPanel
+          preview={preview}
+          busy={previewing}
+          onStart={() => {
+            setPreview(null);
+            void sync.start();
+          }}
+          onCancel={() => setPreview(null)}
+        />
+      ) : null}
       {running ? <SyncProgress run={running} /> : null}
       {waiting ? (
         <div className="msg warn" id="d-waiting">

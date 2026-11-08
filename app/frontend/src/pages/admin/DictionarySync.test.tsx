@@ -15,6 +15,25 @@ function serve({runs = [] as SyncRunSummary[], source = CONFIGURED, state = dict
   vi.mocked(DictionaryService.tables).mockResolvedValue([table('EDWDM.DBO.vMusteri')]);
   vi.mocked(DictionarySyncService.source).mockResolvedValue(source);
   vi.mocked(DictionarySyncService.runs).mockResolvedValue({items: runs, total: runs.length, page: 1, page_size: 20});
+  vi.spyOn(DictionarySyncService, 'preview').mockResolvedValue(PREVIEW);
+}
+
+const PREVIEW = {
+  has_changes: true,
+  scope: {scope_tables: 1, scope_columns: 3, scope_code_changed: 2},
+  tables_needing_model: 1,
+  rows_to_describe: 3,
+  objects_to_describe: 1,
+  model_calls: 9,
+  average_call_seconds: 20,
+  estimated_seconds: 90,
+  requires_approval: true,
+};
+
+/** The update button opens the preview; its start button starts the run. */
+async function startFromPreview(update: HTMLElement) {
+  fireEvent.click(update);
+  fireEvent.click(await button('dictionary.preview.start'));
 }
 
 /** The first look waits for the page's lazy chunk, which a busy test run can hold up. */
@@ -103,7 +122,7 @@ describe('dictionary sync on the Sözlük page (dictionary-sync Requirement 1, 2
     renderApp('/admin/sozluk');
     const update = await button('dictionary.sync.button');
     await waitFor(() => expect(update).toBeEnabled());
-    fireEvent.click(update);
+    await startFromPreview(update);
     expect(await screen.findByRole('heading', {level: 2, name: message('dictionary.sync.running')})).toBeInTheDocument();
     expect(start).toHaveBeenCalledTimes(1);
     expect(update).toBeDisabled();
@@ -127,6 +146,25 @@ describe('dictionary sync on the Sözlük page (dictionary-sync Requirement 1, 2
       await vi.advanceTimersByTimeAsync(6000);
     });
     expect(read.mock.calls.length).toBe(reads);
+  });
+
+  it('shows what an update would look at before it starts, and starts nothing without changes', async () => {
+    serve();
+    const start = vi.spyOn(DictionarySyncService, 'start');
+    renderApp('/admin/sozluk');
+    const update = await button('dictionary.sync.button');
+    await waitFor(() => expect(update).toBeEnabled());
+    fireEvent.click(update);
+    const panel = await screen.findByRole('region', {name: message('dictionary.preview.title')});
+    expect(within(panel).getByText(message('dictionary.preview.calls'), {selector: '.k'}).closest('.it')).toHaveTextContent('9');
+    expect(within(panel).getByText(message('dictionary.preview.approval'))).toBeInTheDocument();
+    fireEvent.click(within(panel).getByRole('button', {name: message('dictionary.edit.cancel')}));
+    expect(screen.queryByRole('region', {name: message('dictionary.preview.title')})).toBeNull();
+    vi.mocked(DictionarySyncService.preview).mockResolvedValue({...PREVIEW, has_changes: false, model_calls: 0, estimated_seconds: 0});
+    fireEvent.click(update);
+    expect(await screen.findByText(message('dictionary.preview.noChange'))).toBeInTheDocument();
+    expect(screen.getByRole('button', {name: message('dictionary.preview.start')})).toBeDisabled();
+    expect(start).not.toHaveBeenCalled();
   });
 
   it('finds a running run on load, survives a failed read and stops reading after leaving the page', async () => {
@@ -165,7 +203,7 @@ describe('dictionary sync on the Sözlük page (dictionary-sync Requirement 1, 2
       page: 1,
       page_size: 20,
     });
-    fireEvent.click(update);
+    await startFromPreview(update);
     expect(await screen.findByText(message('admin.error.dictionary_sync_in_progress'))).toBeInTheDocument();
     expect(await screen.findByText(message('dictionary.sync.phase.reading'))).toBeInTheDocument();
   });

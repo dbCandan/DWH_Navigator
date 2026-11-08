@@ -301,7 +301,21 @@ class SqlServerDictionarySource:
             targets.catalogs,
             self._aliases,
         )
-        return replace(snapshot, skipped=snapshot.skipped + definitions.skipped)
+        # A source spelling the catalog corrects to an ignored name ('PersonelFlag') leaves too.
+        columns = tuple(
+            c for c in snapshot.columns if c.name.casefold() not in self._ignored_columns
+        )
+        corrected = tuple(
+            item
+            for item in snapshot.corrected_columns
+            if item[2].casefold() not in self._ignored_columns
+        )
+        return replace(
+            snapshot,
+            columns=columns,
+            corrected_columns=corrected,
+            skipped=snapshot.skipped + definitions.skipped,
+        )
 
     @staticmethod
     def _definitions(cursor: Any) -> _Definitions:

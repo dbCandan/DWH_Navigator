@@ -1,0 +1,51 @@
+[
+ {
+  "kolon": "LimitChangeBehavior",
+  "aciklama": "Belirlenen çeyrek içinde müşterinin limit artışı talebiyle ilgili limit etkileşimi. Limit artışı talebiyle ilgili etkileşimi olan müşteriler 1, olmayanlar 0 olarak değer alır.",
+  "kanit": "SUM(CONVERT(int,T.LimitChangeBehavior)) AS LimitChangeBehavior | CASE WHEN LB.MainCustomerPartyId IS NULL THEN 0 ELSE 1 END AS LimitChangeBehavior | LEFT JOIN #Lcb LB ON LB.MainCustomerPartyId=B.MainCustomerPartyId",
+  "puan": "hatali",
+  "neden": "Görünüm bayrağı SUM ile topluyor, değer müşteri adedi olduğu halde açıklama 1/0 değer anlatıyor."
+ },
+ {
+  "kolon": "NumberOfEstateProjectPerMonth",
+  "aciklama": "Müşterinin son 36 ay içerisinde gayrimenkul amaçlı taksitli ticari fon kullandırımı (TTK, murabaha akdi altında) kapsamında kullandığı kart, hesap ve ürün sayısının aylık bazda adedidir.",
+  "kanit": "CAST(COUNT(p.ProjectId) AS SMALLINT) AS NumberOfEstateProjectPerMonth | WHERE(@DataDateDT BETWEEN P.EdwValidFrom AND P.EdwValidUntil) AND P.ProjectDate>= @FirstDayOfMonth AND P.ProjectDate < @FirstDayOfDataDate",
+  "puan": "hatali",
+  "neden": "Kod yalnız Period ayı içinde (@FirstDayOfMonth–@FirstDayOfDataDate) proje tarihi düşen projeleri COUNT(ProjectId) ile sayar; 'son 36 ay' kapsamı ve 'kart, hesap ve ürün' ifadesi kodla çelişir, summary de 'son 36 ay' der."
+ },
+ {
+  "kolon": "ParticipationPoints",
+  "aciklama": "Müşterinin banka ile olan genel etkileşim ve katılım (sadakat programı, kampanya vb.) davranışına dayalı ana banka puanlama modeli katkı puanıdır. Katılım oranı (ParticipationRatio) değerine göre 0 ile 7 arasında puanlanır.",
+  "kanit": "h.ParticipationPoint AS ParticipationPoints | CASE WHEN a.ParticipationRatio<=0 THEN 0 WHEN a.ParticipationRatio<=5 THEN 1 WHEN a.ParticipationRatio<=10 THEN 2 WHEN a.ParticipationRatio<=15 THEN 3 WHEN a.ParticipationRatio<=20 THEN 4 WHEN a.ParticipationRatio<=25 THEN 5 WHEN a.ParticipationRatio<=50 THEN 6 WHEN a.Parti",
+  "puan": "hatali",
+  "neden": "Puan sadakat programı/kampanya etkileşimi değil, katılma hesabı oranına (ParticipationRatio) dayanıyor; synonyms ve summary doğru, açıklama yanıltıcı."
+ },
+ {
+  "kolon": "ProjectPaymentType",
+  "aciklama": "SECPaymentType parametresiyle tanımlanan, menkul kıymet ödeme tipini gösteren koddur (kuponlu veya iskontolu).",
+  "kanit": "payt.PaymentTypeNk AS ProjectPaymentType | PTK.PaymentTypeId AS PaymentTypeId | JOIN EDWSKEY.CON.PaymentTypeKey AS PTK ON PTK.PaymentTypeNk = STG2.PaymentTypeSTG LEFT OUTER | Kaynak: edwstg.boa.cor_parameter.paramcode | ParamCode AS NK",
+  "puan": "hatali",
+  "neden": "Menkul kıymet kuponlu/iskontolu ödeme tipi tanımı kaynaktan kopyalanmış; alan fon kullandırım projesinin ödeme türü kodudur (payt.PaymentTypeNk) ve summary açıklamayla çelişiyor."
+ },
+ {
+  "kolon": "CustomerClassName",
+  "aciklama": "Müşterinin ait olduğu segment sınıfının okunabilir adıdır. Şube içinde fon kullandırım müşteri sayı ve tutarlarının kırıldığı müşteri sınıfının adıdır.",
+  "kanit": "Kaynak: edwstg.boa.cus_customerclass.customerclassname",
+  "puan": "kucuk",
+  "neden": "EKSIK: Yordamdaki CC.CustomerClassNk IN('3','8') kapsamı açıklamada yok, yalnız summary'de var."
+ },
+ {
+  "kolon": "RESTRUCTURE_FLAG",
+  "aciklama": "Hesabın daha önce yeniden yapılandırılmış olup olmadığını gösteren bayraktır (1: yapılandırılmış, 0: değil).",
+  "kanit": "[RestructureFlag] AS RESTRUCTURE_FLAG | CASE WHEN R.AccountNumber IS NOT NULL THEN 1 ELSE 0 END AS RestructureFlag | LEFT JOIN #AllRestructure R ON A.AccountNumber = R.AccountNumber AND A.AccountSuffix = R.AccountSuffix",
+  "puan": "dogru",
+  "neden": "Açıklama kodun yaptığını doğru anlatıyor."
+ },
+ {
+  "kolon": "OtherTotalAmountYP",
+  "aciklama": "Müşterinin yukarıdaki kategorilerin dışında kalan diğer fon kullandırım/proje türlerini kapsayan ürün grubu kapsamında yabancı para (YP) cinsinden sahip olduğu toplam proje (fon kullandırım) tutarıdır.",
+  "kanit": "SUM(\"Diğer YP Kullandırım1\" ) AS OtherTotalAmountYP",
+  "puan": "dogru",
+  "neden": "Açıklama kodun yaptığını doğru anlatıyor."
+ }
+]

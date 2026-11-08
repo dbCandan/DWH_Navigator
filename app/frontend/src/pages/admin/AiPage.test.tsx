@@ -236,6 +236,9 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
       timeout_seconds: 900,
       reasoning_effort: 'none',
       seed: 42,
+      generation_model: '',
+      generation_reasoning_effort: 'inherit',
+      judge_reasoning_effort: 'inherit',
       activate: true,
       replace: false,
     });
@@ -268,6 +271,37 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(within(editor).getByRole('button', {name: message('ai.editor.add')})).toBeEnabled();
   });
 
+  it('keeps a generation model beside the chat model and shows both on the card', async () => {
+    vi.spyOn(LlmIntegrationService, 'models').mockResolvedValue({ok: true, code: null, message: '', ms: 3, models: []});
+    const update = vi
+      .spyOn(LlmIntegrationService, 'update')
+      .mockImplementation(async (_item, body) => ({...BOTH, item: {...SPARK, ...body} as LlmIntegrationItem, key_cleared: false}));
+    await openPage();
+    expect(within(card('DGX Spark 1')).getByText(message('ai.card.generationSame'))).toBeInTheDocument();
+    fireEvent.click(within(card('DGX Spark 1')).getByRole('button', {name: message('ai.card.edit')}));
+    const editor = await dialog(message('ai.editor.editTitle', {name: 'DGX Spark 1'}));
+    fireEvent.change(within(editor).getByLabelText(message('ai.editor.generationModel')), {target: {value: 'qwen/qwen3.8-27b'}});
+    fireEvent.change(within(editor).getByLabelText(message('ai.editor.generationEffort')), {target: {value: 'none'}});
+    fireEvent.change(within(editor).getByLabelText(message('ai.editor.judgeEffort')), {target: {value: 'low'}});
+    fireEvent.click(within(editor).getByRole('button', {name: message('ai.editor.save')}));
+    expect(await screen.findByText(message('ai.toast.updated'))).toBeInTheDocument();
+    expect(update).toHaveBeenCalledWith(
+      SPARK,
+      expect.objectContaining({
+        chat_model: SPARK.chat_model,
+        generation_model: 'qwen/qwen3.8-27b',
+        generation_reasoning_effort: 'none',
+        judge_reasoning_effort: 'low',
+      }),
+    );
+  });
+
+  it('shows the generation model on the card when one is set', async () => {
+    await openPage(llmState([{...SPARK, generation_model: 'qwen/qwen3.8-27b'}]));
+    expect(within(card('DGX Spark 1')).getByText('qwen/qwen3.8-27b')).toBeInTheDocument();
+    expect(within(card('DGX Spark 1')).getByText(message('ai.card.generationModel'))).toBeInTheDocument();
+  });
+
   it('edits with the saved key masked, fetches the models at once, deletes the key and reports a cleared key', async () => {
     const models = vi
       .spyOn(LlmIntegrationService, 'models')
@@ -296,6 +330,9 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
       timeout_seconds: 900,
       reasoning_effort: 'none',
       seed: 42,
+      generation_model: '',
+      generation_reasoning_effort: 'inherit',
+      judge_reasoning_effort: 'inherit',
       api_key: '',
       activate: true,
       replace: false,

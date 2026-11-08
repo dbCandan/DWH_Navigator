@@ -78,6 +78,10 @@ services:
       # ERPDM is not among the local backups; an update leaves it out and keeps its records.
       DWHNAVIGATOR_DICTIONARY_IGNORED_DATABASES: "ERPDM"
       DWHNAVIGATOR_DICTIONARY_IGNORED_COLUMNS: "PersonnelFlag"
+      # The dictionary update writes with the model the gold set measured best (2026-11-08).
+      DWHNAVIGATOR_DICTIONARY_LLM_MODEL: "qwen/qwen3.8-27b"
+      DWHNAVIGATOR_DICTIONARY_LLM_REASONING_EFFORT: "none"
+      DWHNAVIGATOR_DICTIONARY_JUDGE_REASONING_EFFORT: "low"
       # Confirmed by the owner: the dictionary row names this procedure without its EDW prefix.
       # Question analysis jobs: up to 4 owners in parallel, one job per owner, at most 20 waiting
       # (004-question-analysis Decision 27).

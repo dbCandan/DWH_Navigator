@@ -24,6 +24,7 @@ from app.core.request_context import RequestContext
 from app.core.secret_cipher import SecretUnreadable
 from app.domain.accounts import ROLE_MANAGER
 from app.domain.llm import (
+    CHAT_MODEL_MAX_LENGTH,
     CHAT_STEP,
     DEFAULT_REASONING_EFFORT,
     DEFAULT_SEED,
@@ -52,7 +53,7 @@ from app.domain.llm import (
     probe_message,
     short_reason,
 )
-from app.domain.models.llm_integration import LlmIntegration
+from app.domain.models.llm_integration import INHERIT, LlmIntegration
 from app.domain.models.mixins import new_public_id
 from app.domain.models.tenant import Tenant
 from app.domain.models.user import User
@@ -114,7 +115,9 @@ def _invalid(error: LlmIntegrationInvalid) -> ApplicationError:
 
 def integration_not_found() -> ApplicationError:
     return ApplicationError(
-        status.HTTP_404_NOT_FOUND, "llm_integration_not_found", "Entegrasyon bulunamadı."
+        status.HTTP_404_NOT_FOUND,
+        "llm_integration_not_found",
+        "Entegrasyon bulunamadı.",
     )
 
 
@@ -190,6 +193,42 @@ def _origin(endpoint: str) -> str | None:
         return None
 
 
+GENERATION_EFFORTS = (INHERIT, "none", "low", "medium", "high", "")
+
+
+def _generation(
+    model: str | None,
+    describe: str | None,
+    judge: str | None,
+    row: LlmIntegration | None,
+) -> tuple[str, str, str]:
+    """The generation role's three values; an absent one keeps the row's (or the default)."""
+
+    values = (
+        (model if model is not None else (row.generation_model if row else "")).strip(),
+        describe
+        if describe is not None
+        else (row.generation_reasoning_effort if row else INHERIT),
+        judge
+        if judge is not None
+        else (row.judge_reasoning_effort if row else INHERIT),
+    )
+    if len(values[0]) > CHAT_MODEL_MAX_LENGTH:
+        raise _invalid(
+            LlmIntegrationInvalid(
+                f"Üretim modeli en çok {CHAT_MODEL_MAX_LENGTH} karakter olabilir."
+            )
+        )
+    for value in values[1:]:
+        if value not in GENERATION_EFFORTS:
+            raise _invalid(
+                LlmIntegrationInvalid(
+                    "Düşünme modu: inherit, none, low, medium, high ya da boş."
+                )
+            )
+    return values
+
+
 def _given(value: object, default: object) -> object:
     return default if value is None else value
 
@@ -198,7 +237,9 @@ def _item(row: LlmIntegration) -> LlmIntegrationItem:
     last_test = None
     if row.last_test_at is not None and row.last_test_ok is not None:
         last_test = LlmLastTest(
-            at=row.last_test_at, ok=row.last_test_ok, summary=row.last_test_summary or ""
+            at=row.last_test_at,
+            ok=row.last_test_ok,
+            summary=row.last_test_summary or "",
         )
     return LlmIntegrationItem(
         public_id=UUID(row.public_id),
@@ -211,6 +252,9 @@ def _item(row: LlmIntegration) -> LlmIntegrationItem:
         timeout_seconds=row.timeout_seconds,
         reasoning_effort=row.reasoning_effort,
         seed=row.seed,
+        generation_model=row.generation_model,
+        generation_reasoning_effort=row.generation_reasoning_effort,
+        judge_reasoning_effort=row.judge_reasoning_effort,
         last_test=last_test,
         created_at=row.created_at,
         updated_at=row.updated_at,
@@ -246,7 +290,11 @@ class _Scope:
 
 class LlmIntegrationService:
     def __init__(
-        self, session: AsyncSession, *, settings: Settings, adapter: OpenAICompatibleAdapter
+        self,
+        session: AsyncSession,
+        *,
+        settings: Settings,
+        adapter: OpenAICompatibleAdapter,
     ) -> None:
         self.session = session
         self.settings = settings
@@ -295,7 +343,8 @@ class LlmIntegrationService:
             active = ActiveConnection(active_row, LlmOutcome.NOT_CONFIGURED)
         else:
             active = ActiveConnection(
-                active_row, self.keys.connection(active_row, tenant_public_id=tenant.public_id)
+                active_row,
+                self.keys.connection(active_row, tenant_public_id=tenant.public_id),
             )
         state = await model_state(self.adapter, active)
         environment = self.settings.runtime_environment
@@ -400,6 +449,12 @@ class LlmIntegrationService:
             seed=_given(body.seed, DEFAULT_SEED),
             api_key=body.api_key,
         )
+        generation = _generation(
+            body.generation_model,
+            body.generation_reasoning_effort,
+            body.judge_reasoning_effort,
+            None,
+        )
         api_key = body.api_key or None
         if api_key is not None and not self.keys.available:
             raise _key_storage_unavailable()
@@ -411,7 +466,9 @@ class LlmIntegrationService:
         if await self.integrations.count_live(tenant.tenant_id) >= MAX_INTEGRATIONS:
             raise _limit_reached()
         name_key = fold(fields.name)
-        if await self.integrations.name_key_taken(tenant.tenant_id, name_key, except_id=None):
+        if await self.integrations.name_key_taken(
+            tenant.tenant_id, name_key, except_id=None
+        ):
             raise _name_taken(fields.name)
         await self._require_private(fields.endpoint)
         row = LlmIntegration(
@@ -425,6 +482,9 @@ class LlmIntegrationService:
             timeout_seconds=fields.timeout_seconds,
             reasoning_effort=fields.reasoning_effort,
             seed=fields.seed,
+            generation_model=generation[0],
+            generation_reasoning_effort=generation[1],
+            judge_reasoning_effort=generation[2],
             active=False,
             created_by=scope.actor.user_id,
             updated_by=scope.actor.user_id,
@@ -463,14 +523,24 @@ class LlmIntegrationService:
         fields = self._fields(
             name=body.name if body.name is not None else row.name,
             endpoint=body.endpoint if body.endpoint is not None else row.endpoint,
-            chat_model=body.chat_model if body.chat_model is not None else row.chat_model,
+            chat_model=body.chat_model
+            if body.chat_model is not None
+            else row.chat_model,
             temperature=_given(body.temperature, row.temperature),
             timeout_seconds=_given(body.timeout_seconds, row.timeout_seconds),
             reasoning_effort=(
-                body.reasoning_effort if body.reasoning_effort is not None else row.reasoning_effort
+                body.reasoning_effort
+                if body.reasoning_effort is not None
+                else row.reasoning_effort
             ),
             seed=_given(body.seed, row.seed),
             api_key=body.api_key,
+        )
+        generation = _generation(
+            body.generation_model,
+            body.generation_reasoning_effort,
+            body.judge_reasoning_effort,
+            row,
         )
         new_key = body.api_key or None
         if new_key is not None and not self.keys.available:
@@ -489,6 +559,13 @@ class LlmIntegrationService:
                 ("timeout_seconds", row.timeout_seconds, fields.timeout_seconds),
                 ("reasoning_effort", row.reasoning_effort, fields.reasoning_effort),
                 ("seed", row.seed, fields.seed),
+                ("generation_model", row.generation_model, generation[0]),
+                (
+                    "generation_reasoning_effort",
+                    row.generation_reasoning_effort,
+                    generation[1],
+                ),
+                ("judge_reasoning_effort", row.judge_reasoning_effort, generation[2]),
             )
             if old != new
         ]
@@ -525,7 +602,9 @@ class LlmIntegrationService:
         deactivating = row.active and not target_active
         if not changed and not activating and not deactivating:
             state = await self._state(tenant)
-            return LlmIntegrationUpdated(item=_item(row), key_cleared=False, **state.model_dump())
+            return LlmIntegrationUpdated(
+                item=_item(row), key_cleared=False, **state.model_dump()
+            )
 
         replaced: list[LlmIntegration] = []
         if activating:
@@ -543,6 +622,11 @@ class LlmIntegrationService:
         row.timeout_seconds = fields.timeout_seconds
         row.reasoning_effort = fields.reasoning_effort
         row.seed = fields.seed
+        (
+            row.generation_model,
+            row.generation_reasoning_effort,
+            row.judge_reasoning_effort,
+        ) = generation
         if key_action == "seal" and new_key is not None:
             row.api_key_ciphertext = self.keys.seal(
                 new_key, tenant_public_id=tenant.public_id, row=row
@@ -592,10 +676,14 @@ class LlmIntegrationService:
                 raise _role_taken(await self._holder_name(tenant)) from None
             for other in replaced:
                 self._changed(scope, other, "deactivated", ["active"])
-            self._changed(scope, row, "activated" if body.active else "deactivated", ["active"])
+            self._changed(
+                scope, row, "activated" if body.active else "deactivated", ["active"]
+            )
         return await self._state(tenant)
 
-    async def delete(self, context: RequestContext, public_id: UUID) -> LlmIntegrationsState:
+    async def delete(
+        self, context: RequestContext, public_id: UUID
+    ) -> LlmIntegrationsState:
         scope = await self._scope(context)
         tenant = scope.tenant
         row = await self._row(tenant, public_id)
@@ -612,7 +700,11 @@ class LlmIntegrationService:
     # --- servers -----------------------------------------------------------------------------
 
     def _form_key(
-        self, tenant: Tenant, row: LlmIntegration | None, endpoint: str, form_key: str | None
+        self,
+        tenant: Tenant,
+        row: LlmIntegration | None,
+        endpoint: str,
+        form_key: str | None,
     ) -> str | None | LlmOutcome:
         """Requirement 16: the form's key, or the saved key only for the address it was saved for."""
 
@@ -628,10 +720,14 @@ class LlmIntegrationService:
             report_key_unreadable(row)
             return LlmOutcome.KEY_UNREADABLE
 
-    async def models(self, context: RequestContext, body: LlmModelsRequest) -> LlmModelsResult:
+    async def models(
+        self, context: RequestContext, body: LlmModelsRequest
+    ) -> LlmModelsResult:
         scope = await self._scope(context)
         row = await self._row(scope.tenant, body.public_id) if body.public_id else None
-        endpoint = normalize_endpoint(body.endpoint) if body.endpoint is not None else ""
+        endpoint = (
+            normalize_endpoint(body.endpoint) if body.endpoint is not None else ""
+        )
         if body.endpoint is None and row is not None:
             endpoint = row.endpoint
         if not endpoint:
@@ -641,8 +737,12 @@ class LlmIntegrationService:
             endpoint=endpoint,
             chat_model=row.chat_model if row is not None else "",
             temperature=row.temperature if row is not None else DEFAULT_TEMPERATURE,
-            timeout_seconds=row.timeout_seconds if row is not None else DEFAULT_TIMEOUT_SECONDS,
-            reasoning_effort=row.reasoning_effort if row is not None else DEFAULT_REASONING_EFFORT,
+            timeout_seconds=row.timeout_seconds
+            if row is not None
+            else DEFAULT_TIMEOUT_SECONDS,
+            reasoning_effort=row.reasoning_effort
+            if row is not None
+            else DEFAULT_REASONING_EFFORT,
             seed=row.seed if row is not None else DEFAULT_SEED,
             api_key=body.api_key,
             check_name=False,
@@ -653,7 +753,9 @@ class LlmIntegrationService:
                 ok=False, code=_code(key), message=probe_message(key), models=[], ms=0
             )
         connection = self._connection(fields, key, row, scope.tenant.tenant_id)
-        listing = await self.adapter.list_models(connection, operation=ProbeOperation.MODELS)
+        listing = await self.adapter.list_models(
+            connection, operation=ProbeOperation.MODELS
+        )
         probe = listing.probe
         in_use = row.chat_model if row is not None and row.active else None
         return LlmModelsResult(
@@ -687,7 +789,8 @@ class LlmIntegrationService:
         scope = await self._scope(context)
         rows = await self.integrations.list_live(scope.tenant.tenant_id)
         prepared = [
-            self.keys.connection(row, tenant_public_id=scope.tenant.public_id) for row in rows
+            self.keys.connection(row, tenant_public_id=scope.tenant.public_id)
+            for row in rows
         ]
         usable = [item for item in prepared if isinstance(item, LlmConnection)]
         listings = iter(await self.adapter.list_models_of(usable))
@@ -721,13 +824,17 @@ class LlmIntegrationService:
             )
         return LlmInventory(servers=servers)
 
-    async def test(self, context: RequestContext, body: LlmTestRequest) -> LlmTestResult:
+    async def test(
+        self, context: RequestContext, body: LlmTestRequest
+    ) -> LlmTestResult:
         scope = await self._scope(context)
         given = body.model_fields_set
         if body.record and (body.public_id is None or given & set(_CONNECTION_FIELDS)):
             raise _record_with_fields()
         row = await self._row(scope.tenant, body.public_id) if body.public_id else None
-        endpoint = normalize_endpoint(body.endpoint) if body.endpoint is not None else ""
+        endpoint = (
+            normalize_endpoint(body.endpoint) if body.endpoint is not None else ""
+        )
         if body.endpoint is None and row is not None:
             endpoint = row.endpoint
         if not endpoint:
@@ -738,10 +845,13 @@ class LlmIntegrationService:
             chat_model=(
                 body.chat_model
                 if body.chat_model is not None
-                else row.chat_model if row is not None else ""
+                else row.chat_model
+                if row is not None
+                else ""
             ),
             temperature=_given(
-                body.temperature, row.temperature if row is not None else DEFAULT_TEMPERATURE
+                body.temperature,
+                row.temperature if row is not None else DEFAULT_TEMPERATURE,
             ),
             timeout_seconds=_given(
                 body.timeout_seconds,
@@ -750,7 +860,9 @@ class LlmIntegrationService:
             reasoning_effort=(
                 body.reasoning_effort
                 if body.reasoning_effort is not None
-                else row.reasoning_effort if row is not None else DEFAULT_REASONING_EFFORT
+                else row.reasoning_effort
+                if row is not None
+                else DEFAULT_REASONING_EFFORT
             ),
             seed=_given(body.seed, row.seed if row is not None else DEFAULT_SEED),
             api_key=body.api_key,
@@ -773,7 +885,9 @@ class LlmIntegrationService:
             steps.extend(await self._test_steps(connection))
         ok = all(step.ok for step in steps)
         if body.record and row is not None:
-            summary = "; ".join(f"{step.name}: {'✓' if step.ok else '✗'}" for step in steps)
+            summary = "; ".join(
+                f"{step.name}: {'✓' if step.ok else '✗'}" for step in steps
+            )
             await self.integrations.record_test(
                 row.llm_integration_id, at=datetime.now(UTC), ok=ok, summary=summary
             )

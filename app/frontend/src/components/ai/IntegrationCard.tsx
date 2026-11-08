@@ -74,6 +74,10 @@ export function IntegrationCard({item, onTest, onModels, onPick, onEdit, onRemov
           <span className="note">{t('ai.card.chatModel')}</span>
           {item.chat_model ? <b>{item.chat_model}</b> : <span className="none">{t('ai.card.noModelShort')}</span>}
         </div>
+        <div className="model">
+          <span className="note">{t('ai.card.generationModel')}</span>
+          {item.generation_model ? <b>{item.generation_model}</b> : <span className="none">{t('ai.card.generationSame')}</span>}
+        </div>
         <div className="tags">
           <span className={'tag' + (item.active ? ' on' : '')}>{t(item.active ? 'ai.card.active' : 'ai.card.inactive')}</span>
           <span className="tag">{t(item.has_key ? 'ai.card.keySaved' : 'ai.card.noKey')}</span>

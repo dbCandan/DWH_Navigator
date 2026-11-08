@@ -24,7 +24,7 @@ function Value({text}: {text: string}) {
  * kind and text and paged on the server. The old and the new value sit side by side, which for a
  * corrected name are the source's and the catalog's spelling.
  */
-export function RunChanges({runId}: {runId: string}) {
+export function RunChanges({runId, onEdit}: {runId: string; onEdit?: (change: SyncChange) => void}) {
   const {t} = useIntl();
   const {reportUnreachable} = useToast();
   const [kind, setKind] = useState<SyncChangeKind | ''>('');
@@ -101,6 +101,7 @@ export function RunChanges({runId}: {runId: string}) {
                 <th>{t('dictionary.changes.old')}</th>
                 <th>{t('dictionary.changes.new')}</th>
                 <th>{t('dictionary.changes.origin')}</th>
+                {onEdit ? <th /> : null}
               </tr>
             </thead>
             <tbody>
@@ -115,6 +116,15 @@ export function RunChanges({runId}: {runId: string}) {
                   <Value text={change.old_value} />
                   <Value text={change.new_value} />
                   <td>{change.origin ? t(`dictionary.changes.origin.${change.origin}`) : '—'}</td>
+                  {onEdit ? (
+                    <td>
+                      {change.table_key && !change.kind.endsWith('_removed') ? (
+                        <button className="btn" type="button" onClick={() => onEdit(change)}>
+                          {t('dictionary.edit.open')}
+                        </button>
+                      ) : null}
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>

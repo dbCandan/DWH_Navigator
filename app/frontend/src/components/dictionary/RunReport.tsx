@@ -8,11 +8,21 @@ import {versionDigits} from '@/lib/adminStatus';
 import {runFailureText, runPill} from '@/lib/dictionarySync';
 import {formatDateTime, formatNumber} from '@/lib/format';
 import {DictionarySyncService} from '@/services/dictionarySync';
-import type {SyncCounts, SyncRunDetail, SyncRunSummary} from '@/types/dictionarySync';
+import {
+  COLUMN_EDIT_FIELDS,
+  OBJECT_EDIT_FIELDS,
+  type SyncCounts,
+  type SyncEditField,
+  type SyncRecordEdit,
+  type SyncRunDetail,
+  type SyncRunSummary,
+} from '@/types/dictionarySync';
 import {Fact} from './Fact';
+import {RecordEditor} from './RecordEditor';
 import {RunChanges} from './RunChanges';
 import {RunSuggestions} from './RunSuggestions';
 import {confirmAction} from '@/lib/confirm';
+import {ScoreCard} from './ScoreCard';
 
 /** The report's numbers, in reading order. */
 const COUNTS: readonly (keyof SyncCounts)[] = [
@@ -27,6 +37,9 @@ const COUNTS: readonly (keyof SyncCounts)[] = [
   'columns_excluded',
   'columns_corrected',
   'fields_filled',
+  'fields_normalized',
+  'scope_columns',
+  'scope_code_changed',
   'fields_empty',
   'model_calls',
   'model_failures',
@@ -53,6 +66,7 @@ export function RunReport({runId, onClose, onChanged}: Props) {
   const [run, setRun] = useState<SyncRunDetail | null>(null);
   const [failure, setFailure] = useState('');
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<{tableKey: string; columnName: string; field?: SyncEditField; value?: string} | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -70,15 +84,17 @@ export function RunReport({runId, onClose, onChanged}: Props) {
     };
   }, [runId, t, reportUnreachable]);
 
-  async function act(request: () => Promise<SyncRunDetail>, failedTitle: string) {
+  async function act(request: () => Promise<SyncRunDetail>, failedTitle: string): Promise<boolean> {
     setBusy(true);
     try {
       const answer = await request();
       setRun(answer);
       onChanged(answer);
+      return true;
     } catch (error) {
       reportUnreachable(error);
       toast(t(failedTitle), [adminErrorText(error, t)], true);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -87,6 +103,11 @@ export function RunReport({runId, onClose, onChanged}: Props) {
   async function approve() {
     if (await confirmAction(t('dictionary.report.approveConfirm'), {action: t('dictionary.report.approve')}))
       void act(() => DictionarySyncService.approve(runId), 'dictionary.report.actionFailed');
+  }
+
+  async function save(edit: SyncRecordEdit) {
+    // A refused text stays in the editor, so the admin can correct it.
+    if (await act(() => DictionarySyncService.editRecord(runId, edit), 'dictionary.edit.failed')) setEditing(null);
   }
 
   async function reject() {
@@ -138,10 +159,29 @@ export function RunReport({runId, onClose, onChanged}: Props) {
             </div>
           ) : null}
           {pending ? <div className="msg warn">{t('dictionary.report.pendingNotice')}</div> : null}
+          {run.score ? (
+            <ScoreCard
+              score={run.score}
+              editable={pending}
+              onFix={(row) => setEditing({tableKey: row.table, columnName: row.column, field: 'ColumnDescription'})}
+            />
+          ) : null}
+          {editing && pending ? (
+            <RecordEditor
+              key={`${editing.tableKey}.${editing.columnName}.${editing.field ?? ''}`}
+              tableKey={editing.tableKey}
+              columnName={editing.columnName}
+              field={editing.field}
+              value={editing.value}
+              busy={busy}
+              onSave={(edit) => void save(edit)}
+              onCancel={() => setEditing(null)}
+            />
+          ) : null}
           <h3>{t('dictionary.report.counts')}</h3>
           <div className="info" id="d-counts">
             {COUNTS.map((name) => (
-              <Fact key={name} label={t(`dictionary.report.count.${name}`)} value={formatNumber(run.counts[name])} />
+              <Fact key={name} label={t(`dictionary.report.count.${name}`)} value={formatNumber(run.counts[name] ?? 0)} />
             ))}
           </div>
           {run.warnings.length ? (
@@ -159,7 +199,25 @@ export function RunReport({runId, onClose, onChanged}: Props) {
             busy={busy}
             onApply={(ids) => void act(() => DictionarySyncService.applySuggestions(runId, ids), 'dictionary.suggestions.failed')}
           />
-          <RunChanges runId={runId} />
+          <RunChanges
+            key={run.new_version}
+            runId={runId}
+            onEdit={
+              pending
+                ? (change) => {
+                    // Only an editable field starts from the line's value; any other starts empty.
+                    const fields: readonly string[] = change.column_name ? COLUMN_EDIT_FIELDS : OBJECT_EDIT_FIELDS;
+                    const editable = fields.includes(change.field);
+                    setEditing({
+                      tableKey: change.table_key,
+                      columnName: change.column_name,
+                      field: editable ? (change.field as SyncEditField) : undefined,
+                      value: editable ? change.new_value : '',
+                    });
+                  }
+                : undefined
+            }
+          />
         </>
       ) : null}
     </Drawer>

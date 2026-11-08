@@ -54,6 +54,12 @@ export interface SyncCounts {
   columns_excluded: number;
   columns_corrected: number;
   fields_filled: number;
+  /** Fields the owner's rules cleaned (doubt, wording, value lists, key columns). */
+  fields_normalized?: number;
+  /** Rows the update looked at: new, source text changed, computation changed. */
+  scope_tables?: number;
+  scope_columns?: number;
+  scope_code_changed?: number;
   fields_empty: number;
   model_calls: number;
   model_failures: number;
@@ -74,6 +80,8 @@ export interface SyncRunSummary {
   new_version: string;
   model: string;
   counts: SyncCounts;
+  /** The score card an admin decides on; empty for runs before it existed. */
+  score?: SyncScore;
   error_code: string;
   error_message: string;
 }
@@ -103,6 +111,10 @@ export const SYNC_CHANGE_KINDS = [
   'column_changed',
   'column_excluded',
   'column_corrected',
+  'table_normalized',
+  'column_normalized',
+  'table_admin_edited',
+  'column_admin_edited',
 ] as const;
 
 export type SyncChangeKind = (typeof SYNC_CHANGE_KINDS)[number];
@@ -115,7 +127,7 @@ export interface SyncChange {
   field: string;
   old_value: string;
   new_value: string;
-  origin: 'kaynak' | 'model' | 'onceki' | '';
+  origin: 'kaynak' | 'model' | 'onceki' | 'duzenleme' | 'yonetici' | '';
 }
 
 export interface SyncPage<T> {
@@ -137,4 +149,65 @@ export interface DictionaryVersion {
   run_public_id: string | null;
   expires_at: string | null;
   can_restore: boolean;
+}
+
+export type SyncScoreVerdict = 'onaylanabilir' | 'incelenmeli' | 'reddedilmeli';
+
+export interface SyncScoreCheck {
+  count: number;
+  examples: string[];
+}
+
+export interface SyncJudgedRow {
+  table: string;
+  column: string;
+  verdict: 'dogru' | 'kucuk' | 'hatali';
+  reason: string;
+}
+
+/** dictionary_curation.score: every check of an update, and its recommendation. */
+export interface SyncScore {
+  score?: number;
+  verdict?: SyncScoreVerdict;
+  checks?: Record<string, SyncScoreCheck>;
+  failed_checks?: string[];
+  judge?: {
+    sample: number;
+    population: number;
+    right: number;
+    minor: number;
+    wrong: number;
+    wrong_interval: [number, number];
+    failures: number;
+    wrong_rows: SyncJudgedRow[];
+  };
+  model?: {calls: number; failures: number; failure_rate: number};
+  rules?: {normalized_fields: number};
+  scope?: Record<string, number>;
+  admin_edits?: number;
+}
+
+/** The fields an admin may write in a version waiting for approval. */
+export const COLUMN_EDIT_FIELDS = ['ColumnDescription', 'Synonyms', 'Summary', 'Role'] as const;
+export const OBJECT_EDIT_FIELDS = ['ObjectDescription', 'Grain', 'KeyColumns', 'TimeColumns', 'BusinessDomain'] as const;
+export type SyncEditField = (typeof COLUMN_EDIT_FIELDS)[number] | (typeof OBJECT_EDIT_FIELDS)[number];
+
+export interface SyncRecordEdit {
+  table_key: string;
+  column_name: string;
+  field: SyncEditField;
+  value: string;
+}
+
+/** GET /dictionary/sync/preview: what an update would look at, before it starts. */
+export interface SyncPreview {
+  has_changes: boolean;
+  scope: Record<string, number>;
+  tables_needing_model: number;
+  rows_to_describe: number;
+  objects_to_describe: number;
+  model_calls: number;
+  average_call_seconds: number;
+  estimated_seconds: number;
+  requires_approval: boolean;
 }

@@ -97,6 +97,20 @@ class DictionarySyncRun(AuditSoftDeleteMixin, Base):
     counts: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    score: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        comment="The update's score card: mechanical checks, the verifier's sample, the verdict.",
+    )
+    pending_digests: Mapped[list[Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+        comment="Trail digests of a version waiting for approval; stored when it is approved.",
+    )
     warnings: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, default=list, server_default=text("'{}'::text[]")
     )
@@ -155,3 +169,32 @@ class DictionarySyncSuggestion(Base):
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="pending", server_default="pending"
     )
+
+
+class DictionaryTrailDigest(Base):
+    __tablename__ = "dictionary_trail_digest"
+    __table_args__ = (
+        {
+            "comment": (
+                "Each dictionary column's code trail digest at the last update, kept apart from the "
+                "versions so a run that writes no version still remembers it (011-dictionary-sync)."
+            )
+        },
+    )
+
+    tenant_id: Mapped[int] = mapped_column(
+        BigInteger,
+        ForeignKey("tenant.tenant_id", ondelete="CASCADE"),
+        primary_key=True,
+        comment="Tenant whose dictionary the digest belongs to; references tenant.tenant_id.",
+    )
+    table_key: Mapped[str] = mapped_column(
+        Text, primary_key=True, comment="Folded DB.Schema.Object key."
+    )
+    column_name: Mapped[str] = mapped_column(Text, primary_key=True, comment="Folded column name.")
+    digest: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        comment="Digest of the column's lineage steps and its object's filters; no code text.",
+    )
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

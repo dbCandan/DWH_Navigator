@@ -1,9 +1,11 @@
 """Persistence of the source connection, update runs and their reports (011-dictionary-sync)."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, insert, or_, select, update
+from sqlalchemy import delete, func, insert, or_, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models.dictionary_sync import (
@@ -11,7 +13,9 @@ from app.domain.models.dictionary_sync import (
     DictionarySyncChange,
     DictionarySyncRun,
     DictionarySyncSuggestion,
+    DictionaryTrailDigest,
 )
+from app.domain.models.llm_call_log import LlmCallLog
 
 RUNNING = "running"
 INSERT_BATCH = 2000
@@ -150,3 +154,92 @@ class DictionarySyncRepository:
             .order_by(DictionarySyncSuggestion.dictionary_sync_suggestion_id)
         )
         return list(rows.scalars())
+
+    async def trail_digests(self, tenant_id: int) -> dict[tuple[str, str], str]:
+        rows = await self.session.execute(
+            select(
+                DictionaryTrailDigest.table_key,
+                DictionaryTrailDigest.column_name,
+                DictionaryTrailDigest.digest,
+            ).where(DictionaryTrailDigest.tenant_id == tenant_id)
+        )
+        return {(table, column): digest for table, column, digest in rows}
+
+    async def save_trail_digests(
+        self, tenant_id: int, digests: Mapping[tuple[str, str], str], now: datetime
+    ) -> None:
+        """Upsert the given digests; rows of columns that left the dictionary go."""
+
+        items = [
+            {"tenant_id": tenant_id, "table_key": t, "column_name": c, "digest": d, "updated_at": now}
+            for (t, c), d in digests.items()
+        ]
+        for start in range(0, len(items), INSERT_BATCH):
+            batch = items[start : start + INSERT_BATCH]
+            statement = pg_insert(DictionaryTrailDigest).values(batch)
+            await self.session.execute(
+                statement.on_conflict_do_update(
+                    index_elements=["tenant_id", "table_key", "column_name"],
+                    set_={"digest": statement.excluded.digest, "updated_at": now},
+                )
+            )
+
+    async def drop_trail_digests(
+        self, tenant_id: int, keep: Sequence[tuple[str, str]]
+    ) -> None:
+        """Rows of columns no longer in the dictionary go."""
+
+        kept = set(keep)
+        stored = await self.trail_digests(tenant_id)
+        gone = [key for key in stored if key not in kept]
+        for start in range(0, len(gone), INSERT_BATCH):
+            for table, column in gone[start : start + INSERT_BATCH]:
+                await self.session.execute(
+                    delete(DictionaryTrailDigest).where(
+                        DictionaryTrailDigest.tenant_id == tenant_id,
+                        DictionaryTrailDigest.table_key == table,
+                        DictionaryTrailDigest.column_name == column,
+                    )
+                )
+
+    async def append_change(self, run_id: int, change: Any) -> None:
+        """One more report line after the run, such as an admin's edit."""
+
+        last = await self.session.scalar(
+            select(func.max(DictionarySyncChange.position)).where(
+                DictionarySyncChange.dictionary_sync_run_id == run_id
+            )
+        )
+        await self.session.execute(
+            insert(DictionarySyncChange).values(
+                dictionary_sync_run_id=run_id,
+                position=(last + 1) if last is not None else 0,
+                kind=change.kind,
+                table_key=change.table_key,
+                column_name=change.column_name,
+                field=change.field,
+                old_value=change.old_value,
+                new_value=change.new_value,
+                origin=change.origin,
+            )
+        )
+
+    async def average_call_ms(self, tenant_id: int, sample: int = 200) -> float | None:
+        """The average duration of recent successful dictionary calls; analysis calls before any."""
+
+        for purpose in ("dictionary_sync", "analysis"):
+            recent = (
+                select(LlmCallLog.duration_ms)
+                .where(
+                    LlmCallLog.tenant_id == tenant_id,
+                    LlmCallLog.purpose == purpose,
+                    LlmCallLog.outcome == "ok",
+                )
+                .order_by(LlmCallLog.started_at.desc())
+                .limit(sample)
+                .subquery()
+            )
+            value = await self.session.scalar(select(func.avg(recent.c.duration_ms)))
+            if value:
+                return float(value)
+        return None
