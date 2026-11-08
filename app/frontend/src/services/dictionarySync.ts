@@ -8,6 +8,7 @@ import type {
   SyncChangeKind,
   SyncPage,
   SyncRunDetail,
+  SyncPreview,
   SyncRecordEdit,
   SyncRunSummary,
 } from '@/types/dictionarySync';
@@ -27,6 +28,9 @@ export const DictionarySyncService = {
     return apiRequest<DictionarySourceTest>(`${BASE}/source/test`, {method: 'POST', body: JSON.stringify(body)});
   },
   /** Starts a run in the background and answers at once with its summary (202). */
+  preview(): Promise<SyncPreview> {
+    return apiRequest<SyncPreview>(`${BASE}/sync/preview`);
+  },
   start(): Promise<SyncRunSummary> {
     return apiRequest<SyncRunSummary>(`${BASE}/sync`, {method: 'POST'});
   },

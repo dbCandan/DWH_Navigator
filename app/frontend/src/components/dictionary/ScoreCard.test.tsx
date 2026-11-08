@@ -95,3 +95,18 @@ describe('record editor (dictionary curation)', () => {
     expect(options).toEqual(['ObjectDescription', 'Grain', 'KeyColumns', 'TimeColumns', 'BusinessDomain']);
   });
 });
+
+describe('record editor roles', () => {
+  it('starts a role from a fixed name, never from an empty choice', () => {
+    const onSave = vi.fn();
+    render(
+      <IntlProvider>
+        <RecordEditor tableKey="EDWDM.CRP.vRate" columnName="Amount" field="Role" value="" busy={false} onSave={onSave} onCancel={vi.fn()} />
+      </IntlProvider>,
+    );
+    const role = screen.getAllByRole('combobox')[1] as HTMLSelectElement;
+    expect(Array.from(role.querySelectorAll('option')).map((o) => o.value)).not.toContain('');
+    fireEvent.click(screen.getByRole('button', {name: message('dictionary.edit.save')}));
+    expect(onSave).toHaveBeenCalledWith({table_key: 'EDWDM.CRP.vRate', column_name: 'Amount', field: 'Role', value: 'Anahtar'});
+  });
+});

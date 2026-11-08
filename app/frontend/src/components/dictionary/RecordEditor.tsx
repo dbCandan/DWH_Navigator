@@ -28,8 +28,10 @@ interface Props {
 export function RecordEditor({tableKey, columnName, field, value, busy, onSave, onCancel}: Props) {
   const {t} = useIntl();
   const fields: readonly SyncEditField[] = columnName ? COLUMN_EDIT_FIELDS : OBJECT_EDIT_FIELDS;
-  const [chosen, setChosen] = useState<SyncEditField>(field && fields.includes(field) ? field : fields[0]);
-  const [text, setText] = useState(value ?? '');
+  const start = field && fields.includes(field) ? field : fields[0];
+  const [chosen, setChosen] = useState<SyncEditField>(start);
+  // A role is one of the fixed names: an empty or unknown one starts from the first.
+  const [text, setText] = useState(start === 'Role' && !ROLES.includes(value as (typeof ROLES)[number]) ? ROLES[0] : (value ?? ''));
   const tooLong = chosen === 'Summary' && text.trim().length > SUMMARY_MAX;
   const empty = (chosen === 'ColumnDescription' || chosen === 'ObjectDescription') && !text.trim();
 
@@ -47,7 +49,14 @@ export function RecordEditor({tableKey, columnName, field, value, busy, onSave, 
       </div>
       <label>
         {t('dictionary.edit.field')}
-        <select value={chosen} onChange={(event) => setChosen(event.target.value as SyncEditField)}>
+        <select
+          value={chosen}
+          onChange={(event) => {
+            const next = event.target.value as SyncEditField;
+            setChosen(next);
+            if (next === 'Role' && !ROLES.includes(text as (typeof ROLES)[number])) setText(ROLES[0]);
+          }}
+        >
           {fields.map((name) => (
             <option key={name} value={name}>
               {name}
@@ -59,7 +68,6 @@ export function RecordEditor({tableKey, columnName, field, value, busy, onSave, 
         <label>
           {t('dictionary.edit.value')}
           <select value={text} onChange={(event) => setText(event.target.value)}>
-            <option value="">—</option>
             {ROLES.map((role) => (
               <option key={role} value={role}>
                 {role}

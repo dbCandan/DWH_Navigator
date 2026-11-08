@@ -8,7 +8,15 @@ import {versionDigits} from '@/lib/adminStatus';
 import {runFailureText, runPill} from '@/lib/dictionarySync';
 import {formatDateTime, formatNumber} from '@/lib/format';
 import {DictionarySyncService} from '@/services/dictionarySync';
-import type {SyncCounts, SyncEditField, SyncRecordEdit, SyncRunDetail, SyncRunSummary} from '@/types/dictionarySync';
+import {
+  COLUMN_EDIT_FIELDS,
+  OBJECT_EDIT_FIELDS,
+  type SyncCounts,
+  type SyncEditField,
+  type SyncRecordEdit,
+  type SyncRunDetail,
+  type SyncRunSummary,
+} from '@/types/dictionarySync';
 import {Fact} from './Fact';
 import {RecordEditor} from './RecordEditor';
 import {RunChanges} from './RunChanges';
@@ -75,15 +83,17 @@ export function RunReport({runId, onClose, onChanged}: Props) {
     };
   }, [runId, t, reportUnreachable]);
 
-  async function act(request: () => Promise<SyncRunDetail>, failedTitle: string) {
+  async function act(request: () => Promise<SyncRunDetail>, failedTitle: string): Promise<boolean> {
     setBusy(true);
     try {
       const answer = await request();
       setRun(answer);
       onChanged(answer);
+      return true;
     } catch (error) {
       reportUnreachable(error);
       toast(t(failedTitle), [adminErrorText(error, t)], true);
+      return false;
     } finally {
       setBusy(false);
     }
@@ -95,8 +105,8 @@ export function RunReport({runId, onClose, onChanged}: Props) {
   }
 
   async function save(edit: SyncRecordEdit) {
-    await act(() => DictionarySyncService.editRecord(runId, edit), 'dictionary.edit.failed');
-    setEditing(null);
+    // A refused text stays in the editor, so the admin can correct it.
+    if (await act(() => DictionarySyncService.editRecord(runId, edit), 'dictionary.edit.failed')) setEditing(null);
   }
 
   function reject() {
@@ -193,13 +203,17 @@ export function RunReport({runId, onClose, onChanged}: Props) {
             runId={runId}
             onEdit={
               pending
-                ? (change) =>
+                ? (change) => {
+                    // Only an editable field starts from the line's value; any other starts empty.
+                    const fields: readonly string[] = change.column_name ? COLUMN_EDIT_FIELDS : OBJECT_EDIT_FIELDS;
+                    const editable = fields.includes(change.field);
                     setEditing({
                       tableKey: change.table_key,
                       columnName: change.column_name,
-                      field: (change.field || undefined) as SyncEditField | undefined,
-                      value: change.new_value,
-                    })
+                      field: editable ? (change.field as SyncEditField) : undefined,
+                      value: editable ? change.new_value : '',
+                    });
+                  }
                 : undefined
             }
           />

@@ -198,3 +198,16 @@ export interface SyncRecordEdit {
   field: SyncEditField;
   value: string;
 }
+
+/** GET /dictionary/sync/preview: what an update would look at, before it starts. */
+export interface SyncPreview {
+  has_changes: boolean;
+  scope: Record<string, number>;
+  tables_needing_model: number;
+  rows_to_describe: number;
+  objects_to_describe: number;
+  model_calls: number;
+  average_call_seconds: number;
+  estimated_seconds: number;
+  requires_approval: boolean;
+}
