@@ -90,10 +90,16 @@ export function IntegrationCard({item, onTest, onModels, onPick, onEdit, onRemov
         )}
       </div>
       {item.chat_model ? (
-        <div className="model">
-          <span className="note">{t('ai.card.chatModel')}</span>
-          <b>{item.chat_model}</b>
-        </div>
+        <>
+          <div className="model">
+            <span className="note">{t('ai.card.chatModel')}</span>
+            <b>{item.chat_model}</b>
+          </div>
+          <div className="model">
+            <span className="note">{t('ai.card.generationModel')}</span>
+            {item.generation_model ? <b>{item.generation_model}</b> : <span className="note">{t('ai.card.generationSame')}</span>}
+          </div>
+        </>
       ) : (
         <div className="msg warn">{t('ai.card.noModel')}</div>
       )}
