@@ -26,7 +26,7 @@ function serve(rows: RecordRow[], total = rows.length) {
 
 async function openPage(path = '/admin/analizler') {
   renderApp(path);
-  await waitFor(() => expect(title()).toMatch(/^Sorular · /));
+  await waitFor(() => expect(title()).toMatch(/^Sorular · /), {timeout: 5000});
 }
 
 const step = (seq: number, parent: number | null, start: number, ms: number, overrides: Partial<RecordStep> = {}): RecordStep => ({

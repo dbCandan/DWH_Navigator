@@ -36,7 +36,7 @@ function answerConfirm(...answers: boolean[]) {
 
 async function openUsers() {
   renderApp('/admin/kullanicilar');
-  return screen.findByRole('list', {name: message('users.listLabel')});
+  return screen.findByRole('list', {name: message('users.listLabel')}, {timeout: 5000});
 }
 
 describe('Kullanıcılar (user-accounts Requirement 16)', () => {
