@@ -7,6 +7,7 @@ import {Skeleton} from '@/components/admin/Skeleton';
 import {IntegrationCard, type ModelsOutcome} from '@/components/ai/IntegrationCard';
 import {IntegrationEditor, type WithConflict} from '@/components/ai/IntegrationEditor';
 import {ModelInventory} from '@/components/ai/ModelInventory';
+import {generationRole} from '@/components/ai/roles';
 import {useIntl} from '@/contexts/IntlContext';
 import {useLlmState} from '@/hooks/useLlmState';
 import {useToast} from '@/hooks/useToast';
@@ -89,6 +90,23 @@ export default function AiPage() {
     } catch (error) {
       reportUnreachable(error);
       toast(t('ai.toast.testError'), [llmErrorText(error, t)], true);
+    }
+  }
+
+  /** The generation model with the saved connection; not recorded, the saved test is the chat model's. */
+  async function testGeneration(item: LlmIntegrationItem) {
+    try {
+      const answer = await LlmIntegrationService.test({public_id: item.public_id, ...generationRole(item)});
+      toast(
+        t(answer.ok ? 'ai.toast.generationTestOk' : 'ai.toast.generationTestFailed'),
+        stepLines(answer.steps, t),
+        !answer.ok,
+      );
+      return answer;
+    } catch (error) {
+      reportUnreachable(error);
+      toast(t('ai.toast.testError'), [llmErrorText(error, t)], true);
+      return null;
     }
   }
 
@@ -292,6 +310,7 @@ export default function AiPage() {
                 key={item.public_id}
                 item={item}
                 onTest={() => testSaved(item)}
+                onTestGeneration={() => testGeneration(item)}
                 onModels={() => models(item)}
                 onPick={(model) => void pick(item, model)}
                 onEdit={() => show({kind: 'editor', item})}

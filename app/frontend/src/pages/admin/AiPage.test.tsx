@@ -43,7 +43,8 @@ function serve(state: LlmIntegrationsState) {
 async function openPage(state: LlmIntegrationsState = BOTH, path = '/admin/yapay-zeka') {
   serve(state);
   renderApp(path);
-  await screen.findByRole('heading', {level: 2, name: message('ai.list.title', {count: state.items.length})});
+  // The first render loads the admin shell's modules, which takes longer than a second in a cold container.
+  await screen.findByRole('heading', {level: 2, name: message('ai.list.title', {count: state.items.length})}, {timeout: 5000});
 }
 
 const card = (name: string) => screen.getByText(name, {selector: '.integ b'}).closest('section') as HTMLElement;
@@ -88,7 +89,8 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(studio).toHaveClass('integ', 'off');
     expect(within(studio).getByText(message('ai.card.inactive'))).toBeInTheDocument();
     expect(within(studio).getByText(message('ai.card.noKey'))).toBeInTheDocument();
-    expect(within(studio).getByText(message('ai.card.untested'))).toBeInTheDocument();
+    // The chat and the generation model each show their own test.
+    expect(within(studio).getAllByText(message('ai.card.untested'))).toHaveLength(2);
     expect(within(studio).getByText(message('ai.card.noModel'))).toHaveClass('msg', 'warn');
 
     const nav = screen.getByRole('navigation', {name: message('admin.nav.label')});
@@ -302,6 +304,64 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     expect(within(card('DGX Spark 1')).getByText(message('ai.card.generationModel'))).toBeInTheDocument();
   });
 
+  it('tests the generation model from its card with its own reasoning and records nothing', async () => {
+    const test = vi.spyOn(LlmIntegrationService, 'test').mockResolvedValue({
+      ok: true,
+      steps: [{name: 'Sohbet modeli', ok: true, code: null, detail: 'Cevap verdi', ms: 1800}],
+    });
+    await openPage(llmState([{...SPARK, generation_model: 'qwen/qwen3.8-27b', generation_reasoning_effort: 'low', judge_reasoning_effort: 'high'}]));
+    const list = vi.mocked(LlmIntegrationService.list);
+    const reads = list.mock.calls.length;
+    const spark = card('DGX Spark 1');
+    expect(within(spark).getByText('Düşünme: Düşük · Doğrulayıcı: Yüksek')).toBeInTheDocument();
+    expect(within(spark).getAllByText(message('ai.card.untested'))).toHaveLength(1);
+    fireEvent.click(within(spark).getByRole('button', {name: message('ai.card.testGeneration')}));
+    expect(await screen.findByText(message('ai.toast.generationTestOk'))).toBeInTheDocument();
+    expect(test).toHaveBeenCalledWith({public_id: SPARK.public_id, chat_model: 'qwen/qwen3.8-27b', reasoning_effort: 'low'});
+    expect(within(spark).queryByText(message('ai.card.untested'))).toBeNull();
+    expect(within(spark).getAllByText(/^✓ Test /)).toHaveLength(2);
+    expect(list.mock.calls.length).toBe(reads);
+  });
+
+  it('tests the chat model as the generation model when none is set, with the chat reasoning when it inherits', async () => {
+    const test = vi.spyOn(LlmIntegrationService, 'test').mockResolvedValue({
+      ok: false,
+      steps: [{name: 'Sohbet modeli', ok: false, code: 'timeout', detail: 'Zaman aşımı', ms: 900000}],
+    });
+    await openPage(llmState([{...SPARK, reasoning_effort: 'medium'}]));
+    fireEvent.click(within(card('DGX Spark 1')).getByRole('button', {name: message('ai.card.testGeneration')}));
+    expect(await screen.findByText(message('ai.toast.generationTestFailed'))).toBeInTheDocument();
+    expect(test).toHaveBeenCalledWith({public_id: SPARK.public_id, chat_model: SPARK.chat_model, reasoning_effort: 'medium'});
+    expect(within(card('DGX Spark 1')).getAllByText(/^✗ Test /)).toHaveLength(1);
+  });
+
+  it('tests the chat and the generation model apart in the editor with the form values', async () => {
+    vi.spyOn(LlmIntegrationService, 'models').mockResolvedValue({ok: true, code: null, message: '', ms: 3, models: []});
+    const test = vi
+      .spyOn(LlmIntegrationService, 'test')
+      .mockResolvedValueOnce({ok: true, steps: [{name: 'Sohbet modeli', ok: true, code: null, detail: 'Sohbet cevabı', ms: 1000}]})
+      .mockResolvedValueOnce({ok: true, steps: [{name: 'Sohbet modeli', ok: true, code: null, detail: 'Üretim cevabı', ms: 2000}]});
+    await openPage();
+    fireEvent.click(within(card('DGX Spark 1')).getByRole('button', {name: message('ai.card.edit')}));
+    const editor = await dialog(message('ai.editor.editTitle', {name: 'DGX Spark 1'}));
+    fireEvent.change(within(editor).getByLabelText(message('ai.editor.generationModel')), {target: {value: 'qwen/qwen3.8-27b'}});
+    fireEvent.change(within(editor).getByLabelText(message('ai.editor.generationEffort')), {target: {value: 'high'}});
+    fireEvent.click(within(editor).getByRole('button', {name: message('ai.editor.test')}));
+    expect(await within(editor).findByText('Sohbet cevabı')).toBeInTheDocument();
+    fireEvent.click(within(editor).getByRole('button', {name: message('ai.editor.testGeneration')}));
+    expect(await within(editor).findByText('Üretim cevabı')).toBeInTheDocument();
+    const connection = {
+      public_id: SPARK.public_id,
+      endpoint: SPARK.endpoint,
+      temperature: 0,
+      timeout_seconds: 900,
+      seed: 42,
+    };
+    expect(test).toHaveBeenNthCalledWith(1, {...connection, chat_model: SPARK.chat_model, reasoning_effort: 'none'});
+    expect(test).toHaveBeenNthCalledWith(2, {...connection, chat_model: 'qwen/qwen3.8-27b', reasoning_effort: 'high'});
+    expect(within(editor).getByRole('heading', {level: 4, name: message('ai.editor.generationModel')})).toBeInTheDocument();
+  });
+
   it('edits with the saved key masked, fetches the models at once, deletes the key and reports a cleared key', async () => {
     const models = vi
       .spyOn(LlmIntegrationService, 'models')
@@ -391,7 +451,7 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     await openPage();
     const list = vi.mocked(LlmIntegrationService.list);
     const reads = list.mock.calls.length;
-    fireEvent.click(within(card('LM Studio')).getByRole('button', {name: message('ai.test')}));
+    fireEvent.click(within(card('LM Studio')).getByRole('button', {name: message('ai.card.testChat')}));
     expect(await screen.findByText(message('ai.toast.testFailed'))).toBeInTheDocument();
     expect(screen.getByText(/^✗ Sunucu: Model sunucusuna ulaşılamadı/)).toBeInTheDocument();
     expect(test).toHaveBeenCalledWith({public_id: STUDIO.public_id, record: true});

@@ -2,16 +2,22 @@ import {useState} from 'react';
 import {Icon} from '@/components/admin/Icon';
 import {useIntl} from '@/contexts/IntlContext';
 import {formatWhen} from '@/lib/format';
-import type {LlmIntegrationItem, LlmModelRow} from '@/types/llm';
+import type {LlmIntegrationItem, LlmModelRow, LlmTestResult} from '@/types/llm';
 import {ModelTable} from './ModelTable';
+import {effortKey, generationRole} from './roles';
 
 /** A server's model list as the card shows it: the rows, or the failure's text. */
 export type ModelsOutcome = {ok: true; rows: LlmModelRow[]} | {ok: false; message: string};
+
+/** The generation model's test as the card keeps it while the page is open; not recorded. */
+type GenerationTest = {at: string; ok: boolean; summary: string};
 
 interface Props {
   item: LlmIntegrationItem;
   /** "Test et" with the saved values; the result is recorded (Requirement 15). */
   onTest: () => Promise<void>;
+  /** "Test et" on the generation model with the saved values; nothing is recorded (null: no answer). */
+  onTestGeneration: () => Promise<LlmTestResult | null>;
   onModels: () => Promise<ModelsOutcome>;
   /** "Sohbet modeli yap" in the model list. */
   onPick: (model: string) => void;
@@ -23,12 +29,16 @@ interface Props {
 
 /**
  * An integration as a row (llm-connection Requirement 19): a light for its health, name and
- * address, the chat model, Aktif/Pasif, Anahtar kayıtlı/Anahtarsız and the last test, the active
- * switch; "Test et", "Modeller" (opens the server's models below), "Düzenle", "Sil".
+ * address, Aktif/Pasif, Anahtar kayıtlı/Anahtarsız, the active switch; then its two roles side
+ * by side — the chat model with its reasoning and recorded last test, the generation model
+ * (the dictionary update's) with its reasoning and this page's test — each with its own
+ * "Test et"; then "Modeller" (opens the server's models below), "Düzenle", "Sil".
  */
-export function IntegrationCard({item, onTest, onModels, onPick, onEdit, onRemove, onActivate}: Props) {
+export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPick, onEdit, onRemove, onActivate}: Props) {
   const {t} = useIntl();
   const [testing, setTesting] = useState(false);
+  const [generationTesting, setGenerationTesting] = useState(false);
+  const [generationTest, setGenerationTest] = useState<GenerationTest | null>(null);
   const [models, setModels] = useState<ModelsOutcome | 'loading' | null>(null);
   const [switching, setSwitching] = useState<boolean | null>(null);
   const switchLabel = t(item.active ? 'ai.card.deactivate' : 'ai.card.activate');
@@ -40,6 +50,19 @@ export function IntegrationCard({item, onTest, onModels, onPick, onEdit, onRemov
       await onTest();
     } finally {
       setTesting(false);
+    }
+  }
+
+  async function testGeneration() {
+    setGenerationTesting(true);
+    try {
+      const answer = await onTestGeneration();
+      if (answer) {
+        const summary = answer.steps.map((step) => `${step.name}: ${step.ok ? '✓' : '✗'}`).join('; ');
+        setGenerationTest({at: new Date().toISOString(), ok: answer.ok, summary});
+      }
+    } finally {
+      setGenerationTesting(false);
     }
   }
 
@@ -61,6 +84,11 @@ export function IntegrationCard({item, onTest, onModels, onPick, onEdit, onRemov
     }
   }
 
+  const effort = (value: string) => {
+    const key = effortKey(value);
+    return key ? t(key) : value;
+  };
+  const generation = generationRole(item);
   const health = !item.active ? 'off' : lastTest ? (lastTest.ok ? 'ok' : 'bad') : 'idle';
   return (
     <section className={'integ ' + health} aria-label={item.name}>
@@ -70,24 +98,9 @@ export function IntegrationCard({item, onTest, onModels, onPick, onEdit, onRemov
           <b>{item.name}</b>
           <div className="url">{item.endpoint}</div>
         </div>
-        <div className="model">
-          <span className="note">{t('ai.card.chatModel')}</span>
-          {item.chat_model ? <b>{item.chat_model}</b> : <span className="none">{t('ai.card.noModelShort')}</span>}
-        </div>
-        <div className="model">
-          <span className="note">{t('ai.card.generationModel')}</span>
-          {item.generation_model ? <b>{item.generation_model}</b> : <span className="none">{t('ai.card.generationSame')}</span>}
-        </div>
         <div className="tags">
           <span className={'tag' + (item.active ? ' on' : '')}>{t(item.active ? 'ai.card.active' : 'ai.card.inactive')}</span>
           <span className="tag">{t(item.has_key ? 'ai.card.keySaved' : 'ai.card.noKey')}</span>
-          {lastTest ? (
-            <span className={'tag ' + (lastTest.ok ? 'on' : 'bad')} title={lastTest.summary}>
-              {t(lastTest.ok ? 'ai.card.testedOk' : 'ai.card.testedFailed', {when: formatWhen(lastTest.at, t)})}
-            </span>
-          ) : (
-            <span className="tag">{t('ai.card.untested')}</span>
-          )}
         </div>
         <label className="switch" title={switchLabel}>
           <input
@@ -100,12 +113,66 @@ export function IntegrationCard({item, onTest, onModels, onPick, onEdit, onRemov
           <span />
         </label>
       </div>
+      <div className="roles">
+        <div className="role">
+          <div className="model">
+            <span className="note">{t('ai.card.chatModel')}</span>
+            {item.chat_model ? <b>{item.chat_model}</b> : <span className="none">{t('ai.card.noModelShort')}</span>}
+            <span className="note">{t('ai.card.effort', {effort: effort(item.reasoning_effort)})}</span>
+          </div>
+          <div className="role-test">
+            {lastTest ? (
+              <span className={'tag ' + (lastTest.ok ? 'on' : 'bad')} title={lastTest.summary}>
+                {t(lastTest.ok ? 'ai.card.testedOk' : 'ai.card.testedFailed', {when: formatWhen(lastTest.at, t)})}
+              </span>
+            ) : (
+              <span className="tag">{t('ai.card.untested')}</span>
+            )}
+            <button className="btn sm" type="button" aria-label={t('ai.card.testChat')} disabled={testing} onClick={() => void test()}>
+              <Icon name="bolt" />
+              {testing ? t('ai.testing') : t('ai.test')}
+            </button>
+          </div>
+        </div>
+        <div className="role">
+          <div className="model">
+            <span className="note">{t('ai.card.generationModel')}</span>
+            {item.generation_model ? <b>{item.generation_model}</b> : <span className="same">{t('ai.card.generationSame')}</span>}
+            <span className="note">
+              {t('ai.card.generationEfforts', {
+                effort: effort(item.generation_reasoning_effort),
+                judge: effort(item.judge_reasoning_effort),
+              })}
+            </span>
+          </div>
+          <div className="role-test">
+            {generationTest ? (
+              <span
+                className={'tag ' + (generationTest.ok ? 'on' : 'bad')}
+                title={generationTest.summary + ' — ' + t('ai.card.generationTestNote')}
+              >
+                {t(generationTest.ok ? 'ai.card.testedOk' : 'ai.card.testedFailed', {when: formatWhen(generationTest.at, t)})}
+              </span>
+            ) : (
+              <span className="tag" title={t('ai.card.generationTestNote')}>
+                {t('ai.card.untested')}
+              </span>
+            )}
+            <button
+              className="btn sm"
+              type="button"
+              aria-label={t('ai.card.testGeneration')}
+              disabled={generationTesting || !generation.chat_model}
+              onClick={() => void testGeneration()}
+            >
+              <Icon name="bolt" />
+              {generationTesting ? t('ai.testing') : t('ai.test')}
+            </button>
+          </div>
+        </div>
+      </div>
       {item.chat_model ? null : <div className="msg warn">{t('ai.card.noModel')}</div>}
       <div className="acts">
-        <button className="btn sm" type="button" disabled={testing} onClick={() => void test()}>
-          <Icon name="bolt" />
-          {testing ? t('ai.testing') : t('ai.test')}
-        </button>
         <button className="btn sm" type="button" disabled={models === 'loading'} onClick={() => void toggleModels()}>
           <Icon name="list" />
           {t('ai.card.models')}
