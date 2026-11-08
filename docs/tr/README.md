@@ -17,4 +17,4 @@ bilgi, altyapı adresi, ajan oturumu dökümü ve kabul edilmemiş yol haritası
 Ürün dokümantasyonunu bu Türkçe ağaçta tek dil olarak yayımlayın.
 
 Depo çalışma akışı: [belirtimler](../../specs/README.md). Platform ilk çalıştırma:
-[kök README](../../README.md).
+[kök README](../../README.md) · [teknik rehber](../teknik-rehber.md).
