@@ -66,6 +66,24 @@ class LlmCallLogRepository:
         result = await self.session.execute(delete(LlmCallLog).where(LlmCallLog.started_at < before))
         return int(result.rowcount) if isinstance(result, CursorResult) else 0
 
+    async def delete_matching(
+        self, tenant_id: int, filters: CallLogFilters, until: datetime
+    ) -> int:
+        """Remove for good the tenant's calls that match ``filters`` and started before ``until``."""
+
+        result = await self.session.execute(
+            delete(LlmCallLog).where(
+                *_conditions(tenant_id, filters), LlmCallLog.started_at < until
+            )
+        )
+        return int(result.rowcount) if isinstance(result, CursorResult) else 0
+
+    async def count(self, tenant_id: int) -> int:
+        total = await self.session.scalar(
+            select(func.count()).select_from(LlmCallLog).where(LlmCallLog.tenant_id == tenant_id)
+        )
+        return int(total or 0)
+
     async def page(
         self, tenant_id: int, filters: CallLogFilters, limit: int
     ) -> tuple[list[LlmCallLog], int]:

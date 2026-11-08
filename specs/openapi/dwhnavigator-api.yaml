@@ -1911,12 +1911,18 @@
           },
           "total": {
             "type": "integer"
+          },
+          "until": {
+            "description": "When the server read the list; a delete with this until spares later calls.",
+            "format": "date-time",
+            "type": "string"
           }
         },
         "required": [
           "rows",
           "total",
-          "retention_days"
+          "retention_days",
+          "until"
         ],
         "type": "object"
       },
@@ -2003,6 +2009,22 @@
           "repaired",
           "prompt_tokens",
           "completion_tokens"
+        ],
+        "type": "object"
+      },
+      "LlmCallLogsDeleted": {
+        "description": "How many calls a delete removed and how many of the tenant's calls are left.",
+        "properties": {
+          "deleted_count": {
+            "type": "integer"
+          },
+          "remaining_count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted_count",
+          "remaining_count"
         ],
         "type": "object"
       },
@@ -9606,6 +9628,165 @@
       }
     },
     "/api/dwhnavigator/v1/llm-call-logs": {
+      "delete": {
+        "description": "Delete for good the tenant's calls that match the filters, or all of them with all=true.",
+        "parameters": [
+          {
+            "description": "ISO 8601, saat dilimli; bundan sonra gelen \u00e7a\u011fr\u0131lar kal\u0131r",
+            "in": "query",
+            "name": "until",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "ISO 8601, saat dilimli; bundan sonra gelen \u00e7a\u011fr\u0131lar kal\u0131r"
+            }
+          },
+          {
+            "description": "\u00c7a\u011fr\u0131n\u0131n amac\u0131",
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "\u00c7a\u011fr\u0131n\u0131n amac\u0131"
+            }
+          },
+          {
+            "description": "\u00c7a\u011fr\u0131n\u0131n sonucu",
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "\u00c7a\u011fr\u0131n\u0131n sonucu"
+            }
+          },
+          {
+            "description": "\u0130stek ve yan\u0131tta aranan metin",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "\u0130stek ve yan\u0131tta aranan metin"
+            }
+          },
+          {
+            "description": "Yaln\u0131z bu analizin \u00e7a\u011fr\u0131lar\u0131 (analizin public_id'si)",
+            "in": "query",
+            "name": "analysis",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Yaln\u0131z bu analizin \u00e7a\u011fr\u0131lar\u0131 (analizin public_id'si)"
+            }
+          },
+          {
+            "description": "true: until'den \u00f6nceki b\u00fct\u00fcn \u00e7a\u011fr\u0131lar",
+            "in": "query",
+            "name": "all",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: until'den \u00f6nceki b\u00fct\u00fcn \u00e7a\u011fr\u0131lar"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmCallLogsDeleted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "llm_call_log_delete_scope_missing: until ya da s\u00fczge\u00e7 veya all=true yok; invalid_filter: ama\u00e7, sonu\u00e7, metin, analiz ya da zaman ge\u00e7ersiz"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Delete Logs",
+        "tags": [
+          "llm-call-logs"
+        ]
+      },
       "get": {
         "description": "The newest calls without their bodies, and how many match the filters.",
         "parameters": [

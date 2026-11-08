@@ -1,12 +1,16 @@
 import {fireEvent, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {ApiError} from '@/lib/apiClient';
 import {clearAuth} from '@/lib/authStorage';
+import {setConfirmHandler} from '@/lib/confirm';
 import {prettyJson, replyText, requestMessages} from '@/lib/llmCallBody';
 import {DictionaryService} from '@/services/dictionary';
 import {LlmCallLogService} from '@/services/llmCallLogs';
-import {dictionaryState} from '@/test/admin';
+import {answerConfirm, dictionaryState} from '@/test/admin';
 import {message, renderApp, signedIn} from '@/test/render';
 import type {LlmCallDetail, LlmCallRow} from '@/types/llmCallLogs';
+
+const UNTIL = '2026-11-07T09:05:00Z';
 
 const row: LlmCallRow = {
   public_id: '0b6f6f3e-3e0a-4c58-9a3a-8a2f9c1e2d11',
@@ -45,10 +49,11 @@ describe('LLM kayıtları page', () => {
     signedIn('manager');
     vi.mocked(DictionaryService.state).mockResolvedValue(dictionaryState());
     vi.mocked(DictionaryService.tables).mockResolvedValue([]);
-    vi.spyOn(LlmCallLogService, 'list').mockResolvedValue({rows: [row], total: 1, retention_days: 7});
+    vi.spyOn(LlmCallLogService, 'list').mockResolvedValue({rows: [row], total: 1, retention_days: 7, until: UNTIL});
     vi.spyOn(LlmCallLogService, 'read').mockResolvedValue(detail);
   });
   afterEach(() => {
+    setConfirmHandler(null);
     vi.restoreAllMocks();
     clearAuth();
   });
@@ -69,6 +74,7 @@ describe('LLM kayıtları page', () => {
       rows: [row, {...row, public_id: 'f1', outcome: 'timeout', model: 'other-model'}],
       total: 2,
       retention_days: 7,
+      until: UNTIL,
     });
     vi.mocked(LlmCallLogService.read).mockResolvedValue({...detail, analysis_public_id: analysisId});
     renderApp('/admin/llm-kayitlari');
@@ -106,9 +112,96 @@ describe('LLM kayıtları page', () => {
   });
 
   it('says so when nothing was called yet', async () => {
-    vi.mocked(LlmCallLogService.list).mockResolvedValue({rows: [], total: 0, retention_days: 7});
+    vi.mocked(LlmCallLogService.list).mockResolvedValue({rows: [], total: 0, retention_days: 7, until: UNTIL});
     renderApp('/admin/llm-kayitlari');
     expect(await screen.findByText(message('llmLogs.empty.none'))).toBeInTheDocument();
+  });
+});
+
+describe('deleting LLM kayıtları', () => {
+  const page = {rows: [row, {...row, public_id: 'f1', model: 'other-model'}], total: 2, retention_days: 7, until: UNTIL};
+
+  beforeEach(() => {
+    signedIn('manager');
+    vi.mocked(DictionaryService.state).mockResolvedValue(dictionaryState());
+    vi.mocked(DictionaryService.tables).mockResolvedValue([]);
+    vi.spyOn(LlmCallLogService, 'list').mockResolvedValue(page);
+  });
+  afterEach(() => {
+    setConfirmHandler(null);
+    vi.restoreAllMocks();
+    clearAuth();
+  });
+
+  it('asks on the page how many calls go, deletes them all on yes, reads again and tells', async () => {
+    const remove = vi.spyOn(LlmCallLogService, 'remove').mockResolvedValue({deleted_count: 2, remaining_count: 0});
+    const confirm = vi.fn(() => true);
+    Object.defineProperty(window, 'confirm', {value: confirm, configurable: true, writable: true});
+    renderApp('/admin/llm-kayitlari');
+    await screen.findByText('other-model');
+
+    fireEvent.click(screen.getByRole('button', {name: message('llmLogs.clear')}));
+    const dialog = await screen.findByRole('alertdialog');
+    const [question, , warning] = message('llmLogs.clear.confirmAll', {count: 2}).split('\n');
+    expect(within(dialog).getByRole('heading', {name: question})).toBeInTheDocument();
+    expect(within(dialog).getByText(warning!)).toBeInTheDocument();
+    expect(warning).toContain('geri alınamaz');
+    expect(within(dialog).getByRole('button', {name: message('admin.confirm.cancel')})).toHaveFocus();
+    fireEvent.click(within(dialog).getByRole('button', {name: message('admin.confirm.cancel')}));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(remove).not.toHaveBeenCalled();
+
+    vi.mocked(LlmCallLogService.list).mockClear();
+    vi.mocked(LlmCallLogService.list).mockResolvedValue({rows: [], total: 0, retention_days: 7, until: UNTIL});
+    fireEvent.click(screen.getByRole('button', {name: message('llmLogs.clear')}));
+    fireEvent.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', {name: message('llmLogs.clear.confirmAction')}),
+    );
+    expect(await screen.findByText(message('llmLogs.clear.done'))).toBeInTheDocument();
+    expect(screen.getByText(message('llmLogs.clear.doneLine', {deleted: 2, remaining: 0}))).toBeInTheDocument();
+    expect(remove).toHaveBeenCalledWith(UNTIL, {all: true});
+    expect(await screen.findByText(message('llmLogs.empty.none'))).toBeInTheDocument();
+    expect(LlmCallLogService.list).toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
+  });
+
+  it('deletes only what the filter shows', async () => {
+    const remove = vi.spyOn(LlmCallLogService, 'remove').mockResolvedValue({deleted_count: 2, remaining_count: 5});
+    const confirm = answerConfirm(true);
+    renderApp('/admin/llm-kayitlari');
+    fireEvent.change(await screen.findByRole('combobox', {name: message('llmLogs.outcomeFilter')}), {
+      target: {value: 'timeout'},
+    });
+    await waitFor(() =>
+      expect(LlmCallLogService.list).toHaveBeenLastCalledWith(expect.objectContaining({outcome: 'timeout'})),
+    );
+    await screen.findByText('other-model');
+    fireEvent.click(screen.getByRole('button', {name: message('llmLogs.clear')}));
+    expect(await screen.findByText(message('llmLogs.clear.done'))).toBeInTheDocument();
+    expect(confirm).toHaveBeenCalledWith(message('llmLogs.clear.confirmFiltered', {count: 2}));
+    expect(remove).toHaveBeenCalledWith(UNTIL, {filters: {purpose: '', outcome: 'timeout', q: '', analysis: ''}});
+  });
+
+  it('tells there is nothing to delete for an empty list', async () => {
+    vi.mocked(LlmCallLogService.list).mockResolvedValue({rows: [], total: 0, retention_days: 7, until: UNTIL});
+    const remove = vi.spyOn(LlmCallLogService, 'remove');
+    const confirm = answerConfirm(true);
+    renderApp('/admin/llm-kayitlari');
+    await screen.findByText(message('llmLogs.empty.none'));
+    fireEvent.click(screen.getByRole('button', {name: message('llmLogs.clear')}));
+    expect(await screen.findByText(message('llmLogs.clear.nothing'))).toBeInTheDocument();
+    expect(confirm).not.toHaveBeenCalled();
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('reports a refused deletion and keeps the list', async () => {
+    vi.spyOn(LlmCallLogService, 'remove').mockRejectedValue(new ApiError(403, 'x', 'forbidden'));
+    answerConfirm(true);
+    renderApp('/admin/llm-kayitlari');
+    await screen.findByText('other-model');
+    fireEvent.click(screen.getByRole('button', {name: message('llmLogs.clear')}));
+    expect(await screen.findByText(message('llmLogs.clear.failed'))).toBeInTheDocument();
+    expect(screen.getByText('other-model')).toBeInTheDocument();
   });
 });
 

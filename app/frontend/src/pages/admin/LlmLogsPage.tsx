@@ -9,6 +9,7 @@ import {Skeleton} from '@/components/admin/Skeleton';
 import {useIntl} from '@/contexts/IntlContext';
 import {useToast} from '@/hooks/useToast';
 import {adminErrorText} from '@/lib/adminErrors';
+import {confirmAction} from '@/lib/confirm';
 import {formatDateTime, formatDuration, formatNumber, formatWhen} from '@/lib/format';
 import {prettyJson, replyText, requestMessages} from '@/lib/llmCallBody';
 import {LlmCallLogService} from '@/services/llmCallLogs';
@@ -66,7 +67,7 @@ function Exchange({exchange, index, count}: {exchange: LlmCallExchange; index: n
 /** The "LLM kayıtları" page: chat calls newest first; a row opens what was sent and what came back. */
 export default function LlmLogsPage() {
   const {t} = useIntl();
-  const {reportUnreachable} = useToast();
+  const {toast, reportUnreachable} = useToast();
   const [params, setParams] = useSearchParams();
   /** `?analiz=<id>` from an analysis' "çağrıları gör": only that analysis' calls. */
   const analysis = params.get('analiz') ?? '';
@@ -81,6 +82,7 @@ export default function LlmLogsPage() {
   const [openId, setOpenId] = useState('');
   const [detail, setDetail] = useState<LlmCallDetail | null>(null);
   const [detailFailure, setDetailFailure] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
   /** Every step reads the list again: the live refresh and "Yenile". */
   const [reads, setReads] = useState(0);
   const label = t('admin.page.llm-kayitlari.label');
@@ -138,6 +140,40 @@ export default function LlmLogsPage() {
       current = false;
     };
   }, [openId, reportUnreachable]);
+
+  /** Deletes what the list counts: every call, or those matching the filters, up to the read time. */
+  async function clear() {
+    const current = page;
+    if (!current) return;
+    if (!current.total) {
+      toast(t('llmLogs.clear.nothing'), [t('llmLogs.clear.nothingLine')]);
+      return;
+    }
+    const filtered = Boolean(purpose || outcome || q || analysis);
+    const count = formatNumber(current.total);
+    const question = t(filtered ? 'llmLogs.clear.confirmFiltered' : 'llmLogs.clear.confirmAll', {count});
+    if (!(await confirmAction(question, {action: t('llmLogs.clear.confirmAction'), danger: true}))) return;
+    setBusy(true);
+    try {
+      const answer = await LlmCallLogService.remove(
+        current.until,
+        filtered ? {filters: {purpose, outcome, q, analysis}} : {all: true},
+      );
+      setOpenId('');
+      toast(t('llmLogs.clear.done'), [
+        t('llmLogs.clear.doneLine', {
+          deleted: formatNumber(answer.deleted_count),
+          remaining: formatNumber(answer.remaining_count),
+        }),
+      ]);
+    } catch (error) {
+      reportUnreachable(error);
+      toast(t('llmLogs.clear.failed'), [adminErrorText(error, t)], true);
+    } finally {
+      setReads((count) => count + 1);
+      setBusy(false);
+    }
+  }
 
   const listBox = (() => {
     if (failure) return <div className="msg bad">{t('llmLogs.failed', {reason: adminErrorText(failure, t)})}</div>;
@@ -224,10 +260,15 @@ export default function LlmLogsPage() {
         title={label}
         description={t('admin.page.llm-kayitlari.description')}
         actions={
-          <button className="btn" type="button" onClick={() => setReads((count) => count + 1)}>
-            <Icon name="refresh" />
-            {t('llmLogs.refresh')}
-          </button>
+          <>
+            <button className="btn" type="button" onClick={() => setReads((count) => count + 1)}>
+              <Icon name="refresh" />
+              {t('llmLogs.refresh')}
+            </button>
+            <button className="btn danger" type="button" disabled={busy || !page} onClick={() => void clear()}>
+              {t('llmLogs.clear')}
+            </button>
+          </>
         }
       />
       <div className="toolbar">

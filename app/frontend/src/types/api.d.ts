@@ -3246,7 +3246,70 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete Logs
+         * @description Delete for good the tenant's calls that match the filters, or all of them with all=true.
+         */
+        delete: {
+            parameters: {
+                query?: {
+                    /** @description ISO 8601, saat dilimli; bundan sonra gelen çağrılar kalır */
+                    until?: string | null;
+                    /** @description Çağrının amacı */
+                    purpose?: string | null;
+                    /** @description Çağrının sonucu */
+                    outcome?: string | null;
+                    /** @description İstek ve yanıtta aranan metin */
+                    q?: string | null;
+                    /** @description Yalnız bu analizin çağrıları (analizin public_id'si) */
+                    analysis?: string | null;
+                    /** @description true: until'den önceki bütün çağrılar */
+                    all?: string | null;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LlmCallLogsDeleted"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description llm_call_log_delete_scope_missing: until ya da süzgeç veya all=true yok; invalid_filter: amaç, sonuç, metin, analiz ya da zaman geçersiz */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
         patch?: never;
@@ -6039,6 +6102,11 @@ export interface components {
             retention_days: number;
             rows: components["schemas"]["LlmCallLogRow"][];
             total: number;
+            /**
+             * Format: date-time
+             * @description When the server read the list; a delete with this until spares later calls.
+             */
+            until: string;
         };
         /** @description One chat call in the list, without its bodies. */
         LlmCallLogRow: {
@@ -6057,6 +6125,11 @@ export interface components {
             /** Format: date-time */
             started_at: string;
             wait_ms: number;
+        };
+        /** @description How many calls a delete removed and how many of the tenant's calls are left. */
+        LlmCallLogsDeleted: {
+            deleted_count: number;
+            remaining_count: number;
         };
         /** @description A new integration: name and address; every other field takes its default. */
         LlmIntegrationCreate: {

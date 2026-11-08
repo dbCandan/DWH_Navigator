@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class LlmCallLogRow(BaseModel):
@@ -24,10 +24,20 @@ class LlmCallLogRow(BaseModel):
     completion_tokens: int
 
 
+class LlmCallLogsDeleted(BaseModel):
+    """How many calls a delete removed and how many of the tenant's calls are left."""
+
+    deleted_count: int
+    remaining_count: int
+
+
 class LlmCallLogPage(BaseModel):
     rows: list[LlmCallLogRow]
     total: int
     retention_days: int
+    until: datetime = Field(
+        description="When the server read the list; a delete with this until spares later calls."
+    )
 
 
 class LlmCallExchange(BaseModel):

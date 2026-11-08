@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -57,6 +57,11 @@ class Log:
     async def get(self, path: str = "", who: SignedIn | None = None, **params: Any) -> Any:
         return await self.auth.client.get(
             self.url + path, params=params, headers=self.auth.headers(who or self.manager)
+        )
+
+    async def delete(self, who: SignedIn | None = None, **params: Any) -> Any:
+        return await self.auth.client.request(
+            "DELETE", self.url, params=params, headers=self.auth.headers(who or self.manager)
         )
 
     async def chat(
@@ -268,3 +273,123 @@ async def test_without_a_sink_nothing_is_kept(log: Log) -> None:
     log.adapter.set_call_log(None)
     assert (await log.chat()).ok
     assert (await log.get()).json()["total"] == 0
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+@pytest.fixture
+def llm_events(recorded_logs: RecordingHandler) -> Iterator[RecordingHandler]:
+    """``recorded_logs`` with the LLM logger's events at INFO as well."""
+
+    logger = logging.getLogger("app.llm")
+    level = logger.level
+    logger.setLevel(logging.INFO)
+    try:
+        yield recorded_logs
+    finally:
+        logger.setLevel(level)
+
+
+async def test_a_manager_deletes_the_matching_calls(
+    log: Log, llm_events: RecordingHandler
+) -> None:
+    analysis = "7d1c1f0e-5b0a-4e7b-9a55-0c9d2f6b3a10"
+    await log.chat(analysis=analysis)
+    await log.chat("Başka bir soru")
+
+    for params in ({}, {"until": _now()}, {"all": "true"}, {"purpose": "analysis"}):
+        response = await log.delete(**params)
+        assert (response.status_code, response.json()["detail"]["code"]) == (
+            422,
+            "llm_call_log_delete_scope_missing",
+        ), params
+    for params in (
+        {"until": "dun", "all": "true"},
+        {"until": "2026-11-09T10:00:00", "all": "true"},
+        {"until": _now(), "all": "evet"},
+        {"until": _now(), "purpose": "yok"},
+    ):
+        response = await log.delete(**params)
+        assert (response.status_code, response.json()["detail"]["code"]) == (
+            422,
+            "invalid_filter",
+        ), params
+    assert (await log.get()).json()["total"] == 2
+
+    until = (await log.get()).json()["until"]
+    filtered = await log.delete(until=until, analysis=analysis)
+    assert filtered.json() == {"deleted_count": 1, "remaining_count": 1}
+    assert (await log.get(analysis=analysis)).json()["total"] == 0
+    assert (await log.delete(until=until, analysis=analysis)).json() == {
+        "deleted_count": 0,
+        "remaining_count": 1,
+    }
+    events = llm_events.events("llm_call_log.deleted")
+    assert events[0] == {
+        "event": "llm_call_log.deleted",
+        "count": 1,
+        "scope": "filter",
+        "user_public_id": log.manager.public_id,
+    }
+
+    await log.chat("Silmeden sonra gelen soru")
+    everything = await log.delete(until=until, all="true")
+    assert everything.json() == {"deleted_count": 1, "remaining_count": 1}
+    left = (await log.get()).json()["rows"]
+    detail = (await log.get(f"/{left[0]['public_id']}")).json()
+    assert "Silmeden sonra" in detail["exchanges"][0]["request"]
+    assert (await log.delete(until=_now(), all="true")).json() == {
+        "deleted_count": 1,
+        "remaining_count": 0,
+    }
+
+
+async def test_the_search_text_stays_out_of_the_delete_log(
+    log: Log, llm_events: RecordingHandler
+) -> None:
+    await log.chat()
+    response = await log.delete(until=_now(), q=MARKER)
+    assert response.json() == {"deleted_count": 1, "remaining_count": 0}
+    assert llm_events.events("llm_call_log.deleted")
+    assert MARKER not in " ".join(str(vars(record)) for record in llm_events.records)
+
+
+async def test_only_managers_can_delete_and_only_their_tenant(log: Log) -> None:
+    await log.chat()
+    row = (await log.get()).json()["rows"][0]
+
+    refused = await log.delete(who=log.user, until=_now(), all="true")
+    assert (refused.status_code, refused.json()["detail"]["code"]) == (403, "forbidden")
+    anonymous = await log.auth.client.request(
+        "DELETE", log.url, params={"until": _now(), "all": "true"}
+    )
+    assert anonymous.status_code == 401
+    assert (await log.get()).json()["total"] == 1
+
+    other = await _sql(
+        "INSERT INTO tenant (public_id, code, name) "
+        "VALUES (gen_random_uuid()::text, :code, :name) RETURNING tenant_id",
+        code="diger-kiraci",
+        name=f"Diğer {MARKER}",
+    )
+    try:
+        await _sql(
+            "UPDATE llm_call_log SET tenant_id = :id WHERE public_id = :row",
+            id=other[0][0],
+            row=row["public_id"],
+        )
+        response = await log.delete(until=_now(), all="true")
+        assert response.json() == {"deleted_count": 0, "remaining_count": 0}
+        assert (await _sql("SELECT count(*) FROM llm_call_log"))[0][0] == 1
+    finally:
+        await _sql("DELETE FROM llm_call_log")
+        await _sql("DELETE FROM tenant WHERE tenant_id = :id", id=other[0][0])
+
+
+async def test_a_super_admin_can_delete(log: Log) -> None:
+    await log.chat()
+    admin = await log.auth.super_admin()
+    response = await log.delete(who=admin, until=_now(), all="true")
+    assert response.status_code == 200, response.text

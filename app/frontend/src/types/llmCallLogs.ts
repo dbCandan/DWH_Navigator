@@ -22,6 +22,20 @@ export interface LlmCallPage {
   total: number;
   /** 0 means the log is turned off. */
   retention_days: number;
+  /** When the server read the list; deleting with it spares the calls that came later. */
+  until: string;
+}
+
+export interface LlmCallFiltersToDelete {
+  purpose: string;
+  outcome: string;
+  q: string;
+  analysis: string;
+}
+
+export interface LlmCallsDeleted {
+  deleted_count: number;
+  remaining_count: number;
 }
 
 export interface LlmCallExchange {

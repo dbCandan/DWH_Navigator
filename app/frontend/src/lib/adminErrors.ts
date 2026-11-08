@@ -27,6 +27,7 @@ const CATALOGUED = new Set([
   'settings_encryption_unavailable',
   'analysis_record_not_found',
   'llm_call_log_not_found',
+  'llm_call_log_delete_scope_missing',
   'analysis_delete_scope_missing',
   'invalid_filter',
 ]);

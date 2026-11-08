@@ -1,5 +1,11 @@
 import {apiRequest} from '@/lib/apiClient';
-import type {LlmCallDetail, LlmCallFilters, LlmCallPage} from '@/types/llmCallLogs';
+import type {
+  LlmCallDetail,
+  LlmCallFilters,
+  LlmCallFiltersToDelete,
+  LlmCallPage,
+  LlmCallsDeleted,
+} from '@/types/llmCallLogs';
 
 const BASE = '/llm-call-logs';
 
@@ -15,5 +21,15 @@ export const LlmCallLogService = {
   },
   read(publicId: string): Promise<LlmCallDetail> {
     return apiRequest<LlmCallDetail>(`${BASE}/${encodeURIComponent(publicId)}`);
+  },
+  /** Deletes for good the calls before `until`: all of them, or those matching the filters. */
+  remove(until: string, scope: {all: true} | {filters: LlmCallFiltersToDelete}): Promise<LlmCallsDeleted> {
+    const query = new URLSearchParams({until});
+    if ('all' in scope) query.set('all', 'true');
+    else
+      for (const [key, value] of Object.entries(scope.filters)) {
+        if (value) query.set(key, value);
+      }
+    return apiRequest<LlmCallsDeleted>(`${BASE}?${query}`, {method: 'DELETE'});
   },
 };
