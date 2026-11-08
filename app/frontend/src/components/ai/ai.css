@@ -49,3 +49,29 @@
   [data-surface="admin"] .integ .ir { grid-template-columns: auto minmax(0, 1fr) auto; }
   [data-surface="admin"] .integ .model, [data-surface="admin"] .integ .tags { grid-column: 2 / -1; }
 }
+
+/* The integration editor (IntegrationEditor): three numbered steps; step 2 holds one group per role. */
+[data-surface="admin"] .ai-editor { gap: 16px; }
+[data-surface="admin"] .ai-editor h3.stepno { margin: 10px 0 -2px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--text); }
+[data-surface="admin"] .ai-editor h3.stepno:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+[data-surface="admin"] .ai-act { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+[data-surface="admin"] .ai-act > .btn { flex: none; }
+[data-surface="admin"] .ai-act-state { flex: 1 1 220px; min-width: 0; color: var(--muted); font-size: 12.5px; }
+[data-surface="admin"] .ai-act-state:empty { display: none; }
+[data-surface="admin"] .ai-act-state .msg { margin: 0; }
+[data-surface="admin"] .ai-role { border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+[data-surface="admin"] .ai-role > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+[data-surface="admin"] .ai-role h4 { margin: 0; font: 700 12px var(--mono); letter-spacing: .8px; text-transform: uppercase; color: var(--accent); }
+[data-surface="admin"] .ai-role > header p { margin: 0; color: var(--muted); font-size: 12.5px; }
+[data-surface="admin"] .ai-role-b { display: grid; gap: 14px; padding: 14px; }
+[data-surface="admin"] .ai-editor details.fold { margin: 0; }
+[data-surface="admin"] .ai-editor details.fold > summary small { font-weight: 400; font-size: 12px; color: var(--faint); }
+[data-surface="admin"] .ai-editor .ai-advanced { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+[data-surface="admin"] .ai-editor .f2 > .fld { min-width: 0; align-content: start; }
+[data-surface="admin"] .ai-editor .fld small { line-height: 1.45; }
+
+@media (max-width: 760px) {
+  [data-surface="admin"] .ai-editor .f2, [data-surface="admin"] .ai-editor .ai-advanced { grid-template-columns: 1fr; }
+}
+/* A narrow drawer lets "Aktif kalsın" take its own line above the buttons. */
+[data-surface="admin"] .drawer-panel:has(.ai-editor) .drawer-f { flex-wrap: wrap; }

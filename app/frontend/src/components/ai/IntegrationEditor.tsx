@@ -56,9 +56,10 @@ type Test =
 
 /**
  * The integration editor (llm-connection Requirement 19; admin.html AI.editor): 1 Bağlantı (name,
- * address, the masked key and "Kayıtlı anahtarı sil", "Bağlan ve modelleri getir"), 2 Model (the
- * chat model with the server's models as suggestions, "Gelişmiş"), 3 Test (the form's values,
- * nothing saved). Editing fetches the models at once; a server offering one model fills it in.
+ * address, the masked key and "Kayıtlı anahtarı sil", "Bağlan ve modelleri getir"), 2 Model (two
+ * groups: "Sohbet" — the chat model with the server's models as suggestions and its reasoning;
+ * "Üretim" — the dictionary update's model and its two reasoning modes; then "Gelişmiş"), 3 Test
+ * (the form's values, nothing saved). Editing fetches the models at once; a server offering one model fills it in.
  */
 export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: Props) {
   const {t} = useIntl();
@@ -198,11 +199,11 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
         </>
       }
     >
-      <div className="form">
-        <div className="stepno">
-          <i>1</i>
+      <div className="form ai-editor">
+        <h3 className="stepno" id="ai-step-connection">
+          <i aria-hidden="true">1</i>
           {t('ai.editor.stepConnection')}
-        </div>
+        </h3>
         <Field id="ai-name" label={t('ai.editor.name')} hint={t('ai.editor.nameHint')}>
           <input
             id="ai-name"
@@ -246,85 +247,113 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
             {t('ai.editor.clearKey')}
           </label>
         )}
-        <div>
+        <div className="ai-act">
           <button className="btn sm" type="button" disabled={fetched.state === 'busy'} onClick={() => void fetchModels()}>
             <Icon name="refresh" />
             {t('ai.editor.fetch')}
           </button>
+          <div className="note ai-act-state" aria-live="polite">
+            {fetched.state === 'idle' && (item?.endpoint ? '' : t('ai.editor.fetchFirst'))}
+            {fetched.state === 'busy' && t('ai.editor.connecting')}
+            {fetched.state === 'ok' && <div className="msg ok">{t('ai.editor.fetched', {count: fetched.count})}</div>}
+            {fetched.state === 'bad' && <div className="msg bad">{fetched.message}</div>}
+          </div>
         </div>
-        <div className="note" aria-live="polite">
-          {fetched.state === 'idle' && (item?.endpoint ? '' : t('ai.editor.fetchFirst'))}
-          {fetched.state === 'busy' && t('ai.editor.connecting')}
-          {fetched.state === 'ok' && <div className="msg ok">{t('ai.editor.fetched', {count: fetched.count})}</div>}
-          {fetched.state === 'bad' && <div className="msg bad">{fetched.message}</div>}
-        </div>
-        <div className="stepno">
-          <i>2</i>
+        <h3 className="stepno" id="ai-step-model">
+          <i aria-hidden="true">2</i>
           {t('ai.editor.stepModel')}
-        </div>
-        <Field id="ai-chat-model" label={t('ai.editor.chatModel')} hint={t('ai.editor.chatModelHint')}>
-          <SuggestCombobox
-            id="ai-chat-model"
-            mono
-            value={chatModel}
-            options={offered.map((row) => ({
-              value: row.id,
-              note: row.context ? t('ai.editor.context', {context: formatNumber(row.context)}) : '',
-            }))}
-            listLabel={t('ai.editor.chatModelList')}
-            placeholder={t('ai.editor.chatModelPlaceholder')}
-            describedBy="ai-chat-model-hint"
-            onChange={setChatModel}
-          />
-        </Field>
-        <Field id="ai-generation-model" label={t('ai.editor.generationModel')} hint={t('ai.editor.generationModelHint')}>
-          <SuggestCombobox
-            id="ai-generation-model"
-            mono
-            value={generationModel}
-            options={offered.map((row) => ({
-              value: row.id,
-              note: row.context ? t('ai.editor.context', {context: formatNumber(row.context)}) : '',
-            }))}
-            listLabel={t('ai.editor.chatModelList')}
-            placeholder={t('ai.editor.generationModelPlaceholder')}
-            describedBy="ai-generation-model-hint"
-            onChange={setGenerationModel}
-          />
-        </Field>
-        <div className="f2">
-          <Field id="ai-generation-effort" label={t('ai.editor.generationEffort')} hint={t('ai.editor.generationEffortHint')}>
-            <select
-              id="ai-generation-effort"
-              aria-describedby="ai-generation-effort-hint"
-              value={generationEffort}
-              onChange={(event) => setGenerationEffort(event.target.value)}
-            >
-              {GENERATION_EFFORTS.map(([value, key]) => (
-                <option key={value} value={value}>
-                  {t(key)}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field id="ai-judge-effort" label={t('ai.editor.judgeEffort')} hint={t('ai.editor.judgeEffortHint')}>
-            <select
-              id="ai-judge-effort"
-              aria-describedby="ai-judge-effort-hint"
-              value={judgeEffort}
-              onChange={(event) => setJudgeEffort(event.target.value)}
-            >
-              {GENERATION_EFFORTS.map(([value, key]) => (
-                <option key={value} value={value}>
-                  {t(key)}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
+        </h3>
+        <section className="ai-role" aria-labelledby="ai-role-chat">
+          <header>
+            <h4 id="ai-role-chat">{t('ai.editor.roleChat')}</h4>
+            <p>{t('ai.editor.roleChatSub')}</p>
+          </header>
+          <div className="ai-role-b">
+            <Field id="ai-chat-model" label={t('ai.editor.chatModel')} hint={t('ai.editor.chatModelHint')}>
+              <SuggestCombobox
+                id="ai-chat-model"
+                mono
+                value={chatModel}
+                options={offered.map((row) => ({
+                  value: row.id,
+                  note: row.context ? t('ai.editor.context', {context: formatNumber(row.context)}) : '',
+                }))}
+                listLabel={t('ai.editor.chatModelList')}
+                placeholder={t('ai.editor.chatModelPlaceholder')}
+                describedBy="ai-chat-model-hint"
+                onChange={setChatModel}
+              />
+            </Field>
+            <Field id="ai-effort" label={t('ai.editor.effort')} hint={t('ai.editor.effortHint')}>
+              <select id="ai-effort" aria-describedby="ai-effort-hint" value={effort} onChange={(event) => setEffort(event.target.value)}>
+                {EFFORTS.map(([value, key]) => (
+                  <option key={value} value={value}>
+                    {t(key)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+        </section>
+        <section className="ai-role" aria-labelledby="ai-role-generation">
+          <header>
+            <h4 id="ai-role-generation">{t('ai.editor.roleGeneration')}</h4>
+            <p>{t('ai.editor.roleGenerationSub')}</p>
+          </header>
+          <div className="ai-role-b">
+            <Field id="ai-generation-model" label={t('ai.editor.generationModel')} hint={t('ai.editor.generationModelHint')}>
+              <SuggestCombobox
+                id="ai-generation-model"
+                mono
+                value={generationModel}
+                options={offered.map((row) => ({
+                  value: row.id,
+                  note: row.context ? t('ai.editor.context', {context: formatNumber(row.context)}) : '',
+                }))}
+                listLabel={t('ai.editor.chatModelList')}
+                placeholder={t('ai.editor.generationModelPlaceholder')}
+                describedBy="ai-generation-model-hint"
+                onChange={setGenerationModel}
+              />
+            </Field>
+            <div className="f2">
+              <Field id="ai-generation-effort" label={t('ai.editor.generationEffort')} hint={t('ai.editor.generationEffortHint')}>
+                <select
+                  id="ai-generation-effort"
+                  aria-describedby="ai-generation-effort-hint"
+                  value={generationEffort}
+                  onChange={(event) => setGenerationEffort(event.target.value)}
+                >
+                  {GENERATION_EFFORTS.map(([value, key]) => (
+                    <option key={value} value={value}>
+                      {t(key)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="ai-judge-effort" label={t('ai.editor.judgeEffort')} hint={t('ai.editor.judgeEffortHint')}>
+                <select
+                  id="ai-judge-effort"
+                  aria-describedby="ai-judge-effort-hint"
+                  value={judgeEffort}
+                  onChange={(event) => setJudgeEffort(event.target.value)}
+                >
+                  {GENERATION_EFFORTS.map(([value, key]) => (
+                    <option key={value} value={value}>
+                      {t(key)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          </div>
+        </section>
         <details className="fold">
-          <summary>{t('ai.editor.advanced')}</summary>
-          <div className="f2">
+          <summary>
+            {t('ai.editor.advanced')}
+            <small>{t('ai.editor.advancedSub')}</small>
+          </summary>
+          <div className="f2 ai-advanced">
             <Field id="ai-temperature" label={t('ai.editor.temperature')} hint={t('ai.editor.temperatureHint')}>
               <input
                 id="ai-temperature"
@@ -349,15 +378,6 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
                 onChange={(event) => setTimeoutSeconds(event.target.value)}
               />
             </Field>
-            <Field id="ai-effort" label={t('ai.editor.effort')} hint={t('ai.editor.effortHint')}>
-              <select id="ai-effort" aria-describedby="ai-effort-hint" value={effort} onChange={(event) => setEffort(event.target.value)}>
-                {EFFORTS.map(([value, key]) => (
-                  <option key={value} value={value}>
-                    {t(key)}
-                  </option>
-                ))}
-              </select>
-            </Field>
             <Field id="ai-seed" label={t('ai.editor.seed')} hint={t('ai.editor.seedHint')}>
               <input
                 id="ai-seed"
@@ -371,11 +391,11 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
             </Field>
           </div>
         </details>
-        <div className="stepno">
-          <i>3</i>
+        <h3 className="stepno" id="ai-step-test">
+          <i aria-hidden="true">3</i>
           {t('ai.editor.stepTest')}
-        </div>
-        <div>
+        </h3>
+        <div className="ai-act">
           <button className="btn sm" type="button" disabled={tested.state === 'busy'} onClick={() => void test()}>
             {tested.state === 'busy' ? (
               t('ai.testing')
@@ -386,7 +406,7 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
               </>
             )}
           </button>
-          <span className="note ai-aside">{t('ai.editor.testNote')}</span>
+          <span className="note ai-act-state">{t('ai.editor.testNote')}</span>
         </div>
         <div aria-live="polite">
           {tested.state === 'busy' && <p className="note">{t('ai.editor.testing')}</p>}
