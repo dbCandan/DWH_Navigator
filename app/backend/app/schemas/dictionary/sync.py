@@ -154,3 +154,17 @@ class Version(BaseModel):
 
 class VersionsPage(BaseModel):
     items: list[Version]
+
+
+class SyncPreview(BaseModel):
+    """What an update would look at and how long its model work would take."""
+
+    has_changes: bool
+    scope: dict[str, int]
+    tables_needing_model: int
+    rows_to_describe: int
+    objects_to_describe: int
+    model_calls: int
+    average_call_seconds: float
+    estimated_seconds: int
+    requires_approval: bool

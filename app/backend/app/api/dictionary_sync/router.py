@@ -19,6 +19,7 @@ from app.schemas.dictionary.sync import (
     Source,
     SourceInput,
     SourceTest,
+    SyncPreview,
     VersionsPage,
 )
 from app.schemas.errors import error_responses
@@ -64,6 +65,13 @@ async def save_source(context: CurrentContext, service: Service, body: SourceInp
 @router.post("/source/test", response_model=SourceTest)
 async def test_source(context: CurrentContext, service: Service, body: SourceInput) -> SourceTest:
     return await service.test_source(context, body)
+
+
+@router.get("/sync/preview", response_model=SyncPreview)
+async def preview_sync(context: CurrentContext, service: Service) -> SyncPreview:
+    """What an update would look at and how long it would take; nothing is written."""
+
+    return await service.preview(context)
 
 
 @router.post("/sync", response_model=RunSummary, status_code=status.HTTP_202_ACCEPTED)

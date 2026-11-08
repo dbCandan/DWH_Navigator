@@ -198,6 +198,18 @@ def _column_wanted(column: MergedColumn) -> list[str]:
     return _column_empty(column)
 
 
+def table_wanted(table: MergedTable) -> bool:
+    """The table has a field the fill call would ask the model for."""
+
+    return bool(_table_wanted(table))
+
+
+def column_wanted(column: MergedColumn) -> bool:
+    """The column has a field the fill call would ask the model for."""
+
+    return bool(_column_wanted(column))
+
+
 def _store(
     owner: MergedTable | MergedColumn,
     name: str,

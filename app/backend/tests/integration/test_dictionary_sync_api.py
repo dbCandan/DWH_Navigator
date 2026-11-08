@@ -433,3 +433,19 @@ async def test_only_a_waiting_version_can_be_edited(sync: Harness) -> None:
         json={"table_key": "EDWDM.CUS.vParty", "column_name": "Kolon0", "field": "Summary", "value": "x"},
     )
     assert response.status_code == 409
+
+
+async def test_the_preview_counts_the_model_work_and_writes_nothing(sync: Harness) -> None:
+    first = await sync.run()
+    calls = sync.gateway.port.calls
+    unchanged = (await sync.dd.get("/dictionary/sync/preview")).json()
+    assert unchanged["has_changes"] is False and unchanged["model_calls"] == 0
+    assert unchanged["estimated_seconds"] == 0
+    sync.source.snapshot = tables("vParty", "vOther")
+    grown = (await sync.dd.get("/dictionary/sync/preview")).json()
+    assert grown["has_changes"] is True
+    assert grown["rows_to_describe"] == 2 and grown["objects_to_describe"] == 1
+    assert grown["model_calls"] >= 4 and grown["estimated_seconds"] > 0
+    # Nothing was written and no model was called.
+    assert sync.gateway.port.calls == calls
+    assert (await sync.active())[0] == first["new_version"]

@@ -59,8 +59,22 @@ from app.services.dictionary_curation.score import score_card
 from app.services.dictionary_reading import dictionary_identity
 from app.services.dictionary_service import write_dictionary_version
 from app.services.dictionary_sync_describe import describe_tables
-from app.services.dictionary_sync_fill import count_empty, fill_tables, suggest
-from app.services.dictionary_sync_merge import Change, MergePlan, fold, merge
+from app.services.dictionary_sync_fill import (
+    CHUNK_COLUMNS,
+    PARALLEL_CALLS,
+    column_wanted,
+    count_empty,
+    fill_tables,
+    suggest,
+    table_wanted,
+)
+from app.services.dictionary_sync_merge import (
+    ORIGIN_ADMIN,
+    Change,
+    MergePlan,
+    fold,
+    merge,
+)
 from app.services.llm_connections import LlmGateway
 from app.services.search_index import (
     ChangePlan,
@@ -73,6 +87,7 @@ from app.services.search_inputs import SearchInputs
 logger = logging.getLogger("app.dictionary")
 
 REMOVAL_LIMIT = 0.10
+DEFAULT_CALL_MS = 30_000  # a dictionary call's duration before any was logged
 MAX_STORED_WARNINGS = 200
 KIND_UPDATE = "guncelleme"
 KIND_ROLLBACK = "geri_donus"
@@ -184,6 +199,23 @@ def with_extra_headers(records: list[dict[str, str]], headers: list[str]) -> Non
     for record in records:
         for header in headers:
             record.setdefault(header, "")
+
+
+def described_again(plan: MergePlan, scope: Scope) -> tuple[set[tuple[str, str]], set[str]]:
+    """The rows and objects to describe again: a changed computation, or a text the source rewrote."""
+
+    rows = set(scope.columns)
+    rows.update(
+        (fold(c.table_key), fold(c.column_name))
+        for c in plan.changes
+        if c.kind == "column_changed" and c.field == "ColumnDescription" and c.origin == "kaynak"
+    )
+    objects = {
+        fold(c.table_key)
+        for c in plan.changes
+        if c.kind == "table_changed" and c.field == "ObjectDescription" and c.origin == "kaynak"
+    }
+    return rows, objects
 
 
 @dataclass(frozen=True, slots=True)
@@ -409,6 +441,60 @@ class DictionarySync:
                 run.status = "rejected"
                 run.finished_at = now
 
+    async def preview(self, tenant_id: int, tenant_public_id: str) -> dict[str, Any]:
+        """What an update would look at and how long its model work would take; writes nothing.
+
+        Reads the source as an update does, plans the scope against the stored digests and counts
+        the model calls: fill chunks of tables with empty fields, descriptions of rows and objects
+        in scope, the verifier's sample and the suggestion call. The duration uses the average of
+        recent dictionary calls (analysis calls before the first update), two calls at a time.
+        """
+
+        async with self.session_factory() as session:
+            connection = await self._connection(session, tenant_id, tenant_public_id)
+        snapshot = await self._read(connection)
+        async with self.session_factory() as session:
+            repository = DictionaryRepository(session)
+            active = await repository.version(tenant_id, DictionaryStatus.ACTIVE)
+            objects = await repository.objects(active) if active else []
+            columns = await repository.columns(active) if active else []
+            object_meta = await repository.object_meta(active) if active else []
+            column_meta = await repository.column_meta(active) if active else []
+            stored = await DictionarySyncRepository(session).trail_digests(tenant_id)
+            average_ms = await DictionarySyncRepository(session).average_call_ms(tenant_id)
+        plan = merge(snapshot, objects, object_meta, columns, column_meta, self.kept_databases)
+        scope = await asyncio.to_thread(plan_scope, plan.tables, snapshot.code, stored)
+        again_rows, again_objects = described_again(plan, scope)
+        fill = 0
+        for table in plan.tables:
+            if not table.needs_model:
+                continue
+            empty = sum(1 for c in table.columns if column_wanted(c))
+            fill += max(1 if table_wanted(table) else 0, -(-empty // CHUNK_COLUMNS))
+        describe_rows = {
+            (fold(t.key), fold(c.record["ColumnName"]))
+            for t in plan.tables
+            for c in t.columns
+            if (c.is_new or (fold(t.key), fold(c.record["ColumnName"])) in again_rows)
+            and c.origins.get("ColumnDescription") != ORIGIN_ADMIN
+        }
+        describe_objects = {fold(t.key) for t in plan.tables if t.is_new} | again_objects
+        needs_model = any(t.needs_model for t in plan.tables) or bool(describe_rows)
+        judge = min(self.judge_sample, len(describe_rows)) if self.judge_sample else 0
+        calls = fill + len(describe_rows) + len(describe_objects) + judge + (1 if needs_model else 0)
+        seconds = round(calls * (average_ms or DEFAULT_CALL_MS) / 1000 / PARALLEL_CALLS)
+        return {
+            "has_changes": plan.has_changes,
+            "scope": scope.counts(),
+            "tables_needing_model": sum(1 for t in plan.tables if t.needs_model),
+            "rows_to_describe": len(describe_rows),
+            "objects_to_describe": len(describe_objects),
+            "model_calls": calls,
+            "average_call_seconds": round((average_ms or DEFAULT_CALL_MS) / 1000, 1),
+            "estimated_seconds": seconds,
+            "requires_approval": self.requires_approval,
+        }
+
     async def _update(
         self, run_id: int, tenant_id: int, tenant_public_id: str, user_id: int
     ) -> None:
@@ -449,18 +535,7 @@ class DictionarySync:
                 f"{snapshot.skipped} kaynak satırı bozuk veya yinelenen olduğu için atlandı."
             )
 
-        # The rows to describe again: a changed computation, or a description the source rewrote.
-        again_rows = set(scope.columns)
-        again_rows.update(
-            (fold(c.table_key), fold(c.column_name))
-            for c in plan.changes
-            if c.kind == "column_changed" and c.field == "ColumnDescription" and c.origin == "kaynak"
-        )
-        again_objects = {
-            fold(c.table_key)
-            for c in plan.changes
-            if c.kind == "table_changed" and c.field == "ObjectDescription" and c.origin == "kaynak"
-        }
+        again_rows, again_objects = described_again(plan, scope)
         scoped = {key for key, _ in again_rows} | again_objects
         # The rows the model will describe get their code trail (a changed source text too).
         await asyncio.to_thread(scope.ensure_evidence, plan.tables, again_rows)

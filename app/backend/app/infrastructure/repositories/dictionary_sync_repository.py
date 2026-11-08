@@ -15,6 +15,7 @@ from app.domain.models.dictionary_sync import (
     DictionarySyncSuggestion,
     DictionaryTrailDigest,
 )
+from app.domain.models.llm_call_log import LlmCallLog
 
 RUNNING = "running"
 INSERT_BATCH = 2000
@@ -222,3 +223,23 @@ class DictionarySyncRepository:
                 origin=change.origin,
             )
         )
+
+    async def average_call_ms(self, tenant_id: int, sample: int = 200) -> float | None:
+        """The average duration of recent successful dictionary calls; analysis calls before any."""
+
+        for purpose in ("dictionary_sync", "analysis"):
+            recent = (
+                select(LlmCallLog.duration_ms)
+                .where(
+                    LlmCallLog.tenant_id == tenant_id,
+                    LlmCallLog.purpose == purpose,
+                    LlmCallLog.outcome == "ok",
+                )
+                .order_by(LlmCallLog.started_at.desc())
+                .limit(sample)
+                .subquery()
+            )
+            value = await self.session.scalar(select(func.avg(recent.c.duration_ms)))
+            if value:
+                return float(value)
+        return None

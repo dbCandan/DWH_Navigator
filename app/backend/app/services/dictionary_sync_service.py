@@ -40,6 +40,7 @@ from app.schemas.dictionary.sync import (
     SourceInput,
     SourceTest,
     Suggestion,
+    SyncPreview,
     Version,
     VersionsPage,
 )
@@ -289,6 +290,10 @@ class DictionarySyncService:
         run = await self._run(tenant, public_id)
         people = await self._people({run.created_by} if run.created_by else set())
         return RunSummary(**self._summary(run, people))
+
+    async def preview(self, context: RequestContext) -> SyncPreview:
+        _actor, tenant = await self._manager(context)
+        return SyncPreview(**await self.sync.preview(tenant.tenant_id, tenant.public_id))
 
     async def start(self, context: RequestContext) -> RunSummary:
         actor, tenant = await self._manager(context)

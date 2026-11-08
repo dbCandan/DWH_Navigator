@@ -4975,6 +4975,53 @@
         ],
         "type": "object"
       },
+      "SyncPreview": {
+        "description": "What an update would look at and how long its model work would take.",
+        "properties": {
+          "average_call_seconds": {
+            "type": "number"
+          },
+          "estimated_seconds": {
+            "type": "integer"
+          },
+          "has_changes": {
+            "type": "boolean"
+          },
+          "model_calls": {
+            "type": "integer"
+          },
+          "objects_to_describe": {
+            "type": "integer"
+          },
+          "requires_approval": {
+            "type": "boolean"
+          },
+          "rows_to_describe": {
+            "type": "integer"
+          },
+          "scope": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "tables_needing_model": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "has_changes",
+          "scope",
+          "tables_needing_model",
+          "rows_to_describe",
+          "objects_to_describe",
+          "model_calls",
+          "average_call_seconds",
+          "estimated_seconds",
+          "requires_approval"
+        ],
+        "type": "object"
+      },
       "TableColumn": {
         "properties": {
           "column": {
@@ -8291,6 +8338,53 @@
           }
         ],
         "summary": "Start Sync",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/sync/preview": {
+      "get": {
+        "description": "What an update would look at and how long it would take; nothing is written.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncPreview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Preview Sync",
         "tags": [
           "dictionary"
         ]

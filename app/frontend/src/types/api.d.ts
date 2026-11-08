@@ -2056,6 +2056,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/dictionary/sync/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Sync
+         * @description What an update would look at and how long it would take; nothing is written.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Successful Response */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SyncPreview"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/dictionary/sync/runs": {
         parameters: {
             query?: never;
@@ -6570,6 +6627,20 @@ export interface components {
             /** @enum {string} */
             status: "pending" | "applied";
             value: string;
+        };
+        /** @description What an update would look at and how long its model work would take. */
+        SyncPreview: {
+            average_call_seconds: number;
+            estimated_seconds: number;
+            has_changes: boolean;
+            model_calls: number;
+            objects_to_describe: number;
+            requires_approval: boolean;
+            rows_to_describe: number;
+            scope: {
+                [key: string]: number;
+            };
+            tables_needing_model: number;
         };
         TableColumn: {
             column: string;
