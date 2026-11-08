@@ -1224,6 +1224,32 @@
         ],
         "type": "object"
       },
+      "DictionaryImported": {
+        "properties": {
+          "changed": {
+            "type": "boolean"
+          },
+          "index": {
+            "$ref": "#/components/schemas/SearchIndexState"
+          },
+          "version": {
+            "$ref": "#/components/schemas/DictionaryVersionSummary"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "changed",
+          "version",
+          "warnings",
+          "index"
+        ],
+        "type": "object"
+      },
       "DictionaryImporter": {
         "properties": {
           "display_name": {
@@ -8221,6 +8247,157 @@
         ]
       }
     },
+    "/api/dwhnavigator/v1/dictionary/imports": {
+      "post": {
+        "description": "Replace the dictionary with a workbook in the template; 201 with a new version, 200 when\nthe content is the active version's (Requirement 7).",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Filename",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            },
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionaryImported"
+                }
+              }
+            },
+            "description": "\u0130\u00e7erik etkin s\u00fcr\u00fcmle ayn\u0131"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DictionaryImported"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "dictionary_import_in_progress: ba\u015fka bir i\u00e7e aktarma yaz\u0131yor; dictionary_sync_in_progress: s\u00f6zl\u00fck g\u00fcncellemesi ya da geri d\u00f6n\u00fc\u015f s\u00fcr\u00fcyor"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "upload_too_large: g\u00f6vde 20 MB'tan b\u00fcy\u00fck"
+          },
+          "415": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "unsupported_media_type: g\u00f6vde Excel de\u011fil"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "dictionary_file_empty: g\u00f6vde bo\u015f; dictionary_workbook_invalid: dosya \u015fablona uymuyor"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_index_build_failed: indeks kurulamad\u0131, hi\u00e7bir \u015fey yaz\u0131lmad\u0131"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "search_change_busy: ba\u015fka bir de\u011fi\u015fiklik uygulan\u0131yor"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Import Dictionary",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
     "/api/dwhnavigator/v1/dictionary/source": {
       "get": {
         "responses": {
@@ -9188,6 +9365,54 @@
           }
         ],
         "summary": "Dictionary Table",
+        "tags": [
+          "dictionary"
+        ]
+      }
+    },
+    "/api/dwhnavigator/v1/dictionary/template": {
+      "get": {
+        "description": "The empty template: both sheets with their header rows.",
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Excel \u00e7al\u0131\u015fma kitab\u0131"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "not_authenticated: oturum yok"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "forbidden: yonetici de\u011fil; cross_site_request: istek ba\u015fka bir siteden geldi"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": [],
+            "tenant": []
+          }
+        ],
+        "summary": "Dictionary Template",
         "tags": [
           "dictionary"
         ]

@@ -9,6 +9,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.schemas.search.settings import SearchIndexState
+
 
 class DictionaryImporter(BaseModel):
     public_id: str
@@ -59,3 +61,10 @@ class DictionaryTableRecords(BaseModel):
     key: str
     object: dict[str, str] | None
     columns: list[dict[str, str]]
+
+
+class DictionaryImported(BaseModel):
+    changed: bool
+    version: DictionaryVersionSummary
+    warnings: list[str]
+    index: SearchIndexState

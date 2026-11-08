@@ -1830,6 +1830,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dwhnavigator/v1/dictionary/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Import Dictionary
+         * @description Replace the dictionary with a workbook in the template; 201 with a new version, 200 when
+         *     the content is the active version's (Requirement 7).
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: {
+                    "X-Filename"?: string | null;
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/octet-stream": string;
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                };
+            };
+            responses: {
+                /** @description İçerik etkin sürümle aynı */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryImported"];
+                    };
+                };
+                /** @description Successful Response */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryImported"];
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description dictionary_import_in_progress: başka bir içe aktarma yazıyor; dictionary_sync_in_progress: sözlük güncellemesi ya da geri dönüş sürüyor */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description upload_too_large: gövde 20 MB'tan büyük */
+                413: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description unsupported_media_type: gövde Excel değil */
+                415: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description dictionary_file_empty: gövde boş; dictionary_workbook_invalid: dosya şablona uymuyor */
+                422: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_index_build_failed: indeks kurulamadı, hiçbir şey yazılmadı */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description search_change_busy: başka bir değişiklik uygulanıyor */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dwhnavigator/v1/dictionary/source": {
         parameters: {
             query?: never;
@@ -2728,6 +2856,63 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HTTPValidationError"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dwhnavigator/v1/dictionary/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dictionary Template
+         * @description The empty template: both sheets with their header rows.
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description Excel çalışma kitabı */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": string;
+                    };
+                };
+                /** @description not_authenticated: oturum yok */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description forbidden: yonetici değil; cross_site_request: istek başka bir siteden geldi */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -5941,6 +6126,12 @@ export interface components {
             date: string;
             with_tables: number;
             without_tables: number;
+        };
+        DictionaryImported: {
+            changed: boolean;
+            index: components["schemas"]["SearchIndexState"];
+            version: components["schemas"]["DictionaryVersionSummary"];
+            warnings: string[];
         };
         DictionaryImporter: {
             display_name: string;

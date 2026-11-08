@@ -13,8 +13,8 @@ kaynağından günceller. Kaynaktan gelen sınırlı teknik bilgi, kurum içi so
 Navigator'ın beklediği sözlük alanlarına dönüştürülür ve etkin sözlükle **birleştirilir**; elle veya
 daha önce üretilmiş değerli bilgi kaybolmaz. Her güncelleme yeni bir sürüm ve yöneticinin inceleyeceği
 bir **sözlük güncelleme raporu** üretir. Sürümler bir ay saklanır; sorun olursa eski bir sürüme
-dönülür. Sistem her zaman etkin olan en güncel sürümü kullanır. Dışa aktarma kalır, sözlüğün Excel'den
-içe aktarılması kalkar.
+dönülür. Sistem her zaman etkin olan en güncel sürümü kullanır. Dışa aktarma kalır; şablondaki Excel'den içe aktarma
+da, sözlüğün tamamını değiştiren ikinci bir yol olarak kalır (Requirement 13).
 
 Periyodik zamanlayıcı bu yeteneğin dışındadır (Decision 1).
 
@@ -143,10 +143,17 @@ raporda görünür; yönetici seçtiklerini tek işlemle uygular ve mevcut
 [vocabulary-management](../002-vocabulary-management/PRD.md) kuralları geçerlidir. Yönetici onayı
 olmadan liste değişmez (Open Question 4).
 
-Requirement 13: Sözlüğün Excel'den içe aktarılması kalkar: yükleme ucu, sürükle-bırak alanı, içe aktarma
-düğmesi ve betiğin `import` komutu silinir. Dışa aktarma kalır. Boş şablon indirme kalkar. Etkin sürüm
-yokken boş durum **Kaynağı bağla** yönlendirmesini gösterir. Kelimeler sayfasının Excel'i bu kararın
-dışındadır.
+Requirement 13: Sözlüğün Excel'den içe aktarılması kalır (sahip kararı, 2026-11-09; ilk taslakta
+kaldırılmıştı). Sözlük sayfasında "Excel'den içe aktar…" ve "Boş şablon" düğmeleri durur; yükleme ucu
+`POST /dictionary/imports` ve `GET /dictionary/template` 001-dictionary-management'taki doğrulama, hata
+iletileri ve sınırlarla çalışır. İçe aktarma sözlüğün tamamının yerini alır (birleştirmez), kanalı
+`arayuz` olan yeni bir etkin sürüm yazar; önceki sürüm diğer sürümler gibi bir ay saklanır ve geri
+dönülebilir. İçerik etkin sürümle aynıysa sürüm oluşmaz. Bir güncelleme ya da geri dönüş sürerken içe
+aktarma 409 `dictionary_sync_in_progress` ile reddedilir; onay bekleyen bir güncelleme varsa, eski sürüm
+üzerine kurulduğu için reddedilir ve bekleyen sürümü budanır. İçe aktarılan kayıtlar alan kaynağı
+taşımaz; sonraki güncelleme onları "önceden dolu" sayar ve dolu alanları ezmez. Etkin sürüm yokken boş
+durum **Kaynağı bağla** ve içe aktarma yollarını birlikte gösterir. Betiğin `import` komutu ve
+sürükle-bırak alanı geri gelmez. Kelimeler sayfasının Excel'i bu kararın dışındadır.
 
 ## API sözleşmesi
 
@@ -192,7 +199,9 @@ yazılır.
 - Tümleştirme: gerçek PostgreSQL ve HTTP uygulamasıyla güncelleme, tek işlem, kilit, kesilme, geri dönüş,
   yetki ve kiracı yalıtımı; kaynak ve model için sözleşmeye bağlı sahte sunucular.
 - Tarayıcı: gerçek girişle bağlantı, güncelleme, rapor, onay ve geri dönüş.
-- Excel içe aktarmanın kaldırıldığı uçların ve arayüzün yok olduğu doğrulanır; dışa aktarma korunur.
+- Excel içe aktarma ve boş şablon uçları doğrulanır; güncelleme sürerken içe aktarma reddedilir, onay
+  bekleyen güncelleme içe aktarmayla reddedilir, içe aktarmadan sonraki güncelleme içe aktarılan metinleri
+  korur; dışa aktarma korunur.
 
 ## Gözlemlenebilirlik
 

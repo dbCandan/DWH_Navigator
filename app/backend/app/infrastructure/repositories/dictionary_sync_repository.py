@@ -62,6 +62,17 @@ class DictionarySyncRepository:
         )
         return list(rows.scalars()), int(total or 0)
 
+    async def is_running(self, tenant_id: int) -> bool:
+        """Whether an update or a rollback is running for the tenant."""
+
+        rows = await self.session.execute(
+            select(DictionarySyncRun.dictionary_sync_run_id).where(
+                DictionarySyncRun.tenant_id == tenant_id,
+                DictionarySyncRun.status == "running",
+            )
+        )
+        return rows.first() is not None
+
     async def pending_runs(self, tenant_id: int) -> list[DictionarySyncRun]:
         rows = await self.session.execute(
             select(DictionarySyncRun).where(

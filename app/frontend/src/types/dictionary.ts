@@ -9,3 +9,4 @@ export type DictionaryVersionSummary = Schemas['DictionaryVersionSummary'];
 export type DictionaryTable = Schemas['DictionaryTable'];
 export type DictionaryTablesPage = Schemas['DictionaryTablesPage'];
 export type DictionaryTableRecords = Schemas['DictionaryTableRecords'];
+export type DictionaryImported = Schemas['DictionaryImported'];

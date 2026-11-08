@@ -140,6 +140,9 @@ class DataDictionary:
             headers={"Content-Type": media_type, "X-Filename": name},
         )
 
+    async def import_dictionary(self, data: bytes, name: str = "sozluk.xlsx") -> Response:
+        return await self.upload("/dictionary/imports", data, name=name)
+
     async def seed_dictionary(self, data: bytes, name: str = DEFAULT_NAME) -> Seeded:
         """A workbook written as the manager's version, through the search index."""
 

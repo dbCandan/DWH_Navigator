@@ -22,6 +22,7 @@ from app.domain.llm import LlmConnection
 from app.main import app
 from app.services.dictionary_sync import DictionarySync
 from tests.integration.data_dictionary import DataDictionary, error, sql
+from tests.unit.analysis.workbooks import xlsx_bytes
 
 pytestmark = pytest.mark.integration
 
@@ -582,3 +583,74 @@ async def test_the_run_passes_through_its_detailed_phases(sync: Harness) -> None
     await sync.run()
     # "reading" is the phase the run opens with; the later ones follow in order.
     assert seen == ["comparing", "filling", "describing", "verifying", "scoring", "indexing"], seen
+
+
+# --- the Excel import beside the update (dictionary-sync Requirement 13) -------------------------
+
+
+def excel(*names: str, description: str = "Excel açıklaması") -> bytes:
+    """A workbook in the template with the fake source's names."""
+
+    columns = [
+        {
+            "DatabaseName": "EDWDM",
+            "SchemaName": "CUS",
+            "ObjectName": n,
+            "ColumnName": f"Kolon{i}",
+            "ColumnDescription": description,
+            "Synonyms": "",
+            "Role": "",
+            "Summary": "",
+        }
+        for n in names
+        for i in range(2)
+    ]
+    objects = [
+        {"ObjectKey": f"EDWDM.CUS.{n}", "DatabaseName": "", "SchemaName": "", "ObjectName": "",
+         "DatasetGroup": "Excel"}
+        for n in names
+    ]  # fmt: skip
+    return xlsx_bytes({"Objeler": objects, "Kolonlar": columns})
+
+
+async def test_an_excel_import_is_refused_while_an_update_runs(sync: Harness) -> None:
+    sync.source.gate = asyncio.Event()
+    started = await sync.dd.request("POST", "/dictionary/sync")
+    assert started.status_code == 202
+    refused = await sync.dd.import_dictionary(excel("vParty"))
+    assert error(refused) == (409, "dictionary_sync_in_progress")
+    assert refused.json()["detail"]["message"] == (
+        "Bir sözlük güncellemesi sürüyor; bitince yeniden deneyin."
+    )
+    sync.source.gate.set()
+    run = await sync.finished(started.json()["public_id"])
+    assert run["status"] == "completed"
+    assert (await sync.active())[0] == run["new_version"]
+
+
+async def test_an_excel_import_drops_an_update_waiting_for_approval(sync: Harness) -> None:
+    sync.source.snapshot = tables("vA", "vB", "vC")
+    await sync.run()
+    sync.source.snapshot = tables("vA")
+    waiting = await sync.run()
+    assert waiting["status"] == "pending_approval"
+
+    imported = await sync.dd.import_dictionary(excel("vA", "vB"), name="elle.xlsx")
+    assert imported.status_code == 201, imported.text
+    assert await sync.active() == (imported.json()["version"]["version"], 2)
+    run = (await sync.dd.get(f"/dictionary/sync/runs/{waiting['public_id']}")).json()
+    assert run["status"] == "rejected"
+    approve = await sync.dd.request("POST", f"/dictionary/sync/runs/{waiting['public_id']}/approve")
+    assert error(approve) == (409, "dictionary_run_not_pending")
+    rows = await sql("SELECT count(*) FROM dictionary_version WHERE status = 'pending'")
+    assert rows[0][0] == 0
+
+
+async def test_an_update_after_an_excel_import_keeps_the_imported_texts(sync: Harness) -> None:
+    imported = await sync.dd.import_dictionary(excel("vParty"))
+    assert imported.status_code == 201, imported.text
+    run = await sync.run()
+    assert run["status"] in ("completed", "no_change"), run
+    table = (await sync.dd.get("/dictionary/tables/EDWDM.CUS.vParty")).json()
+    assert [c["ColumnDescription"] for c in table["columns"]] == ["Excel açıklaması"] * 2
+    assert table["object"]["DatasetGroup"] == "Excel"
