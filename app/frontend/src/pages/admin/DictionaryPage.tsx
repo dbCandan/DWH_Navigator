@@ -14,7 +14,7 @@ import {TableList} from '@/components/dictionary/TableList';
 import {UpdateDrawer} from '@/components/dictionary/UpdateDrawer';
 import {VersionList} from '@/components/dictionary/VersionList';
 import {useIntl} from '@/contexts/IntlContext';
-import {useDownload, useIndexRebuild} from '@/hooks/useAdminActions';
+import {useDictionaryImport, useDownload, useIndexRebuild} from '@/hooks/useAdminActions';
 import {useDictionaryState} from '@/hooks/useDictionaryState';
 import {useDictionarySync} from '@/hooks/useDictionarySync';
 import {useToast} from '@/hooks/useToast';
@@ -33,11 +33,12 @@ const SLUGS: Record<View, string> = {tables: 'tablolar', runs: 'guncellemeler', 
 const viewOfSlug = (slug: string | null): View | null => VIEWS.find((name) => SLUGS[name] === slug) ?? null;
 
 /**
- * The "Sözlük" page (dictionary-management Requirement 13; dictionary-sync Requirement 1, 2, 9, 10,
- * 12, 13): "Sözlüğü güncelle" and the export above the version's facts, the live progress of a
- * running run, and the tables, the update history, the kept versions and the source connection,
- * one at a time so that the page stays one screen. Without an active version it points to the
- * source. `/admin/sozluk/<key>` opens the table's drawer.
+ * The "Sözlük" page (dictionary-management Requirement 13, 15; dictionary-sync Requirement 1, 2, 9,
+ * 10, 12, 13): "Sözlüğü güncelle", the Excel import, the empty template and the export above the
+ * version's facts, the live progress of a running run, and the tables, the update history, the kept
+ * versions and the source connection, one at a time so that the page stays one screen. Without an
+ * active version it points to the source and to the import. `/admin/sozluk/<key>` opens the
+ * table's drawer.
  */
 export default function DictionaryPage() {
   const {t} = useIntl();
@@ -72,6 +73,17 @@ export default function DictionaryPage() {
     if (windowOpen.current) setEnded(run);
     else if (!tableKey) openReport(run.public_id);
   });
+  const importWorkbook = useDictionaryImport(sync.settle);
+  const pickWorkbook = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx';
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (file) void importWorkbook(file);
+    };
+    input.click();
+  };
   const label = t('admin.page.sozluk.label');
   const status = dictionaryStatus(dictionary);
   const active = status.active;
@@ -177,6 +189,25 @@ export default function DictionaryPage() {
               <Icon name="refresh" />
               {t('dictionary.sync.button')}
             </button>
+            <button
+              className="btn"
+              type="button"
+              id="d-import"
+              disabled={running !== null}
+              title={t('dictionary.import.tip')}
+              onClick={pickWorkbook}
+            >
+              <Icon name="import" />
+              {t('dictionary.import.button')}
+            </button>
+            <button
+              className="btn ghost"
+              type="button"
+              title={t('dictionary.template.tip')}
+              onClick={() => void download(DictionaryService.template)}
+            >
+              {t('dictionary.template.button')}
+            </button>
             {active ? (
               <button className="btn" type="button" onClick={() => void download(DictionaryService.exportWorkbook)}>
                 <Icon name="export" />
@@ -249,10 +280,16 @@ export default function DictionaryPage() {
         <section className="card" id="d-empty">
           <h2>{t('dictionary.empty.title')}</h2>
           <p className="intro">{t('dictionary.empty.body')}</p>
-          <button className="btn primary" type="button" onClick={connectSource}>
-            <Icon name="db" />
-            {t('dictionary.empty.connect')}
-          </button>
+          <div className="acts" style={{display: 'flex', gap: 8, flexWrap: 'wrap'}}>
+            <button className="btn primary" type="button" onClick={connectSource}>
+              <Icon name="db" />
+              {t('dictionary.empty.connect')}
+            </button>
+            <button className="btn" type="button" disabled={running !== null} onClick={pickWorkbook}>
+              <Icon name="import" />
+              {t('dictionary.import.button')}
+            </button>
+          </div>
         </section>
       )}
       <div className="card-h">

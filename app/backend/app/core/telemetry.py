@@ -86,7 +86,11 @@ LLM_FEATURES = frozenset(
     {"system_role", "response_format", "reasoning_effort", "seed", "chat_template_kwargs"}
 )
 # Fixed label sets of data-dictionary/PRDs/001-dictionary-management (Gözlemlenebilirlik).
-DICTIONARY_EXPORT_KINDS = frozenset({"dictionary"})
+DICTIONARY_IMPORT_OUTCOMES = frozenset(
+    {"created", "unchanged", "invalid", "too_large", "unsupported_type", "conflict", "error"}
+)
+DICTIONARY_CHANNELS = frozenset({"arayuz", "betik"})
+DICTIONARY_EXPORT_KINDS = frozenset({"dictionary", "template"})
 # Fixed label sets of data-dictionary/PRDs/009-search-settings (Gözlemlenebilirlik).
 SEARCH_TRIGGERS = frozenset({"startup", "dictionary", "terms", "stopwords", "settings", "manual"})
 SEARCH_BUILD_OUTCOMES = frozenset({"ok", "failed"})
@@ -218,10 +222,21 @@ class _Instruments:
             description="Model server /models reads by operation and outcome class",
         )
         # data-dictionary/PRDs/001-dictionary-management
+        self.dictionary_imports = meter.create_counter(
+            "dwhnavigator_dictionary_imports_total",
+            unit="{import}",
+            description="Dictionary imports by outcome class and channel",
+        )
+        self.dictionary_import_duration = meter.create_histogram(
+            "dwhnavigator_dictionary_import_duration_seconds",
+            unit="s",
+            description="Reading, checking and writing one dictionary import, by outcome class",
+            explicit_bucket_boundaries_advisory=_IMPORT_BUCKETS,
+        )
         self.dictionary_exports = meter.create_counter(
             "dwhnavigator_dictionary_exports_total",
             unit="{export}",
-            description="Dictionary downloads",
+            description="Dictionary and empty template downloads",
         )
         self.dictionary_active_columns = meter.create_gauge(
             "dwhnavigator_dictionary_active_columns",
@@ -643,6 +658,41 @@ def record_llm_probe(*, operation: str, outcome: str) -> None:
 
 
 # --- Dictionary (data-dictionary/PRDs/001-dictionary-management) --------------------------------
+
+
+@dataclass
+class DictionaryImportRecord:
+    """What the ``dictionary import`` span reports at its end; classes and counts only."""
+
+    outcome: str = "error"
+    row_count: int = 0
+
+
+@contextmanager
+def dictionary_import_span(channel: str) -> Iterator[DictionaryImportRecord]:
+    """The ``dictionary import`` span: outcome, channel, row count and duration; no content."""
+
+    record = DictionaryImportRecord()
+    bounded_channel = bounded(channel, DICTIONARY_CHANNELS)
+    started = perf_counter()
+    with _content_free_span(
+        "dictionary import",
+        SpanKind.INTERNAL,
+        {"dwhnavigator.dictionary.channel": bounded_channel},
+    ) as span:
+        try:
+            yield record
+        finally:
+            seconds = perf_counter() - started
+            outcome = bounded(record.outcome, DICTIONARY_IMPORT_OUTCOMES)
+            span.set_attribute("dwhnavigator.dictionary.outcome", outcome)
+            span.set_attribute("dwhnavigator.dictionary.row_count", record.row_count)
+            span.set_attribute("dwhnavigator.duration_ms", round(seconds * 1000))
+            if outcome == "error":
+                span.set_status(Status(StatusCode.ERROR))
+            instruments = _signals.instruments
+            instruments.dictionary_imports.add(1, {"outcome": outcome, "channel": bounded_channel})
+            instruments.dictionary_import_duration.record(seconds, {"outcome": outcome})
 
 
 def record_dictionary_export(kind: str) -> None:

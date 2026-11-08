@@ -2,8 +2,8 @@
 
 Requirement 8 (one transaction, the import lock), 9 (build first, then write), 10-11 (the read
 function, the empty dictionary), 12 (export), 14 (replaced versions kept), 17, 18 (state, tables, one
-table) and the roles of Decision 3; no content in any signal. The Excel import and the empty
-template are gone (dictionary-sync Requirement 13): versions come from ``tests.dictionary_seed``.
+table) and the roles of Decision 3; no content in any signal. The Excel import itself is tested in
+``test_dictionary_import_api``; here versions come from ``tests.dictionary_seed``.
 """
 
 import logging
@@ -18,7 +18,6 @@ from sqlalchemy import text
 from app.core.errors import ApplicationError
 from app.db.session import async_session_factory, engine
 from app.domain.dictionary import DictionaryStatus
-from app.infrastructure.excel.writer import XLSX_MEDIA_TYPE
 from app.infrastructure.repositories import dictionary_repository
 from app.infrastructure.repositories.dictionary_repository import (
     IMPORT_LOCK_KEY,
@@ -85,14 +84,29 @@ async def record_counts() -> tuple[int, int]:
 
 async def test_every_endpoint_needs_a_session_and_the_manager_role(dd: DataDictionary) -> None:
     user = await dd.auth.account(dd.admin, "kullanici")
-    paths = ["/dictionary", "/dictionary/tables", "/dictionary/tables/DB.S.T", "/dictionary/export"]
+    calls = [
+        ("GET", "/dictionary", {}),
+        ("GET", "/dictionary/tables", {}),
+        ("GET", "/dictionary/tables/DB.S.T", {}),
+        ("GET", "/dictionary/export", {}),
+        ("GET", "/dictionary/template", {}),
+        (
+            "POST",
+            "/dictionary/imports",
+            {"content": b"x", "headers": {"Content-Type": "application/octet-stream"}},
+        ),
+    ]
     client = dd.auth.client
-    for path in paths:
-        anonymous = await client.get(
-            dd.url(path), headers={dd.auth.settings.tenant_header: dd.manager.tenant_id}
+    for method, path, kwargs in calls:
+        anonymous = await client.request(
+            method,
+            dd.url(path),
+            headers={dd.auth.settings.tenant_header: dd.manager.tenant_id},
+            **{k: v for k, v in kwargs.items() if k != "headers"},
         )
         assert error(anonymous) == (401, "not_authenticated"), path
-        assert error(await dd.get(path, user)) == (403, "forbidden"), path
+        refused = await dd.request(method, path, user, **kwargs)
+        assert error(refused) == (403, "forbidden"), path
     assert (await dd.get("/dictionary", dd.admin)).status_code == 200
     await sql(
         "UPDATE app_user_role SET role_id = (SELECT role_id FROM app_role WHERE code = "
@@ -100,21 +114,6 @@ async def test_every_endpoint_needs_a_session_and_the_manager_role(dd: DataDicti
         p=dd.manager.public_id,
     )
     assert error(await dd.get("/dictionary")) == (403, "forbidden")  # the service re-reads it
-
-
-# --- dictionary-sync Requirement 13: no Excel import, no empty template --------------------------
-
-
-async def test_the_excel_import_and_the_template_are_gone(dd: DataDictionary) -> None:
-    upload = {"content": workbook("A"), "headers": {"Content-Type": XLSX_MEDIA_TYPE}}
-    for method, path, kwargs in (
-        ("POST", "/dictionary/imports", upload),
-        ("POST", "/dictionary", upload),
-        ("GET", "/dictionary/template", {}),
-    ):
-        response = await dd.request(method, path, **kwargs)
-        assert response.status_code in (404, 405), path
-    assert await versions() == []
 
 
 # --- Requirement 11: no dictionary yet ----------------------------------------------------------

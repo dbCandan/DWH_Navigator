@@ -26,6 +26,8 @@ export interface DictionarySync {
   showRuns: (page: number) => void;
   /** Follow a run an action left running, or read the lists again after one that settled it. */
   adopt: (run: SyncRunSummary) => Promise<void>;
+  /** Read the history, the versions and the shell's states again (after an Excel import). */
+  settle: () => Promise<void>;
 }
 
 /**
@@ -192,5 +194,5 @@ export function useDictionarySync(onFinished: (run: SyncRunSummary) => void): Di
     [readRuns, reportUnreachable, t, toast],
   );
 
-  return {runs, runsTotal, runsPage, versions, running, failure, start, restore, showRuns, adopt};
+  return {runs, runsTotal, runsPage, versions, running, failure, start, restore, showRuns, adopt, settle};
 }

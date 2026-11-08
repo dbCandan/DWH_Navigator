@@ -3,7 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {ApiError} from '@/lib/apiClient';
 import {clearAuth} from '@/lib/authStorage';
 import {DictionaryService} from '@/services/dictionary';
-import {dictionaryState, table} from '@/test/admin';
+import {answerConfirm, dictionaryState, indexState, table} from '@/test/admin';
 import {message, renderApp, signedIn} from '@/test/render';
 import type {DictionaryTable} from '@/types/dictionary';
 
@@ -12,6 +12,10 @@ const BRANCH = table('SYNDM.BRN.vBranch', {group: 'Şube', description: 'Şube l
 const CAMPAIGN_CFM = table('SYNDM.CFM.vCampaign', {group: 'Kampanya', columns: 5});
 const CAMPAIGN_CMP = table('SYNDM.CMP.vCampaign', {group: 'Kampanya', columns: 7});
 const TABLES = [CHURN, BRANCH, CAMPAIGN_CFM, CAMPAIGN_CMP];
+const pickFile = (input: HTMLInputElement, name: string) => {
+  Object.defineProperty(input, 'files', {value: [new File(['x'], name)]});
+  input.onchange?.(new Event('change'));
+};
 
 function serve(tables: DictionaryTable[] = TABLES, state = dictionaryState()) {
   vi.mocked(DictionaryService.state).mockResolvedValue(state);
@@ -109,17 +113,65 @@ describe('Sözlük page (dictionary-management Requirement 13-15)', () => {
     expect(document.querySelector('#sys .led.warn')).not.toBeNull();
   });
 
-  it('offers no workbook import: no picker, no drop area, and a dropped file is left alone', async () => {
+  it('imports a workbook after the confirmation, says what changed and reads the page again', async () => {
     serve();
-    renderApp('/admin/bakim');
-    await screen.findByRole('heading', {level: 1, name: message('admin.page.bakim.label')});
-    const transfer = {types: ['Files'], files: [new File(['PK'], 'sozluk.xlsx')]};
-    fireEvent.dragEnter(window, {dataTransfer: transfer});
-    fireEvent.drop(window, {dataTransfer: transfer});
-    expect(document.getElementById('file')).toBeNull();
-    expect(document.getElementById('dropzone')).toBeNull();
-    expect('importWorkbook' in DictionaryService).toBe(false);
-    expect('template' in DictionaryService).toBe(false);
+    const state = dictionaryState();
+    const imported = vi.spyOn(DictionaryService, 'importWorkbook').mockResolvedValue({
+      changed: true,
+      version: {...state.active!, column_count: 1557, object_count: 87, source_name: 'sozluk.xlsx', warning_count: 0},
+      warnings: [],
+      index: indexState(),
+    });
+    const pickers: HTMLInputElement[] = [];
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
+      pickers.push(this);
+    });
+    renderApp('/admin/sozluk');
+    const button = await screen.findByRole('button', {name: message('dictionary.import.button')}, {timeout: 5000});
+    expect(button).toHaveAttribute('title', message('dictionary.import.tip'));
+    const confirm = answerConfirm(false, true);
+    fireEvent.click(button);
+    pickFile(pickers[0], 'sozluk.csv');
+    expect(await screen.findByText(message('admin.excel.notExcel'))).toBeInTheDocument();
+    fireEvent.click(button);
+    pickFile(pickers[1], 'sozluk.xlsx');
+    await waitFor(() => expect(confirm).toHaveBeenCalledWith(message('dictionary.import.confirm', {name: 'sozluk.xlsx'})));
+    expect(imported).not.toHaveBeenCalled(); // the first answer was "Vazgeç"
+    const loads = vi.mocked(DictionaryService.state).mock.calls.length;
+    fireEvent.click(button);
+    pickFile(pickers[2], 'sozluk.xlsx');
+    expect(await screen.findByText(message('dictionary.import.done'))).toBeInTheDocument();
+    expect(imported).toHaveBeenCalledWith(expect.objectContaining({name: 'sozluk.xlsx'}));
+    expect(screen.getByText(message('dictionary.import.doneCounts', {columns: '1.557', objects: '87', source: 'sozluk.xlsx'}))).toBeInTheDocument();
+    await waitFor(() => expect(vi.mocked(DictionaryService.state).mock.calls.length).toBeGreaterThan(loads));
+  });
+
+  it('shows the server\'s Turkish reason when a workbook is refused', async () => {
+    serve(TABLES, {active: null, previous: null, index_dictionary_version: ''});
+    const reason = '“Kolonlar” sayfası yok (dosyadaki sayfalar: Sayfa1). Şablonu indirip ona göre doldurun.';
+    vi.spyOn(DictionaryService, 'importWorkbook').mockRejectedValue(
+      new ApiError(422, reason, 'dictionary_workbook_invalid'),
+    );
+    const pickers: HTMLInputElement[] = [];
+    vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(function (this: HTMLInputElement) {
+      pickers.push(this);
+    });
+    renderApp('/admin/sozluk');
+    const card = await screen.findByRole('heading', {level: 2, name: message('dictionary.empty.title')}, {timeout: 5000});
+    const confirm = answerConfirm(true);
+    fireEvent.click(within(card.closest('section') as HTMLElement).getByRole('button', {name: message('dictionary.import.button')}));
+    pickFile(pickers[0], 'bos.xlsx');
+    expect(await screen.findByText(message('dictionary.import.failed'))).toBeInTheDocument();
+    expect(screen.getByText(reason)).toBeInTheDocument();
+    expect(confirm).not.toHaveBeenCalled(); // nothing to replace yet
+  });
+
+  it('downloads the empty template', async () => {
+    serve();
+    const template = vi.spyOn(DictionaryService, 'template').mockResolvedValue('VeriSozlugu_sablon.xlsx');
+    renderApp('/admin/sozluk');
+    fireEvent.click(await screen.findByRole('button', {name: message('dictionary.template.button')}, {timeout: 5000}));
+    expect(template).toHaveBeenCalled();
   });
 
   it('downloads the export through the shared client and reports a failure', async () => {

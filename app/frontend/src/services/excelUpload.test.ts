@@ -25,6 +25,17 @@ describe('workbook uploads (vocabulary-management Requirement 7)', () => {
     expect(headers.get('Authorization')).toBe('Bearer token');
   });
 
+  it('sends a dictionary workbook to the import endpoint the same way', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('{}', {status: 201}));
+    const file = new File(['PK'], 'sozluk.xlsx');
+    await DictionaryService.importWorkbook(file);
+    const [[url, init]] = fetchMock.mock.calls;
+    expect(String(url)).toBe('/api/dwhnavigator/v1/dictionary/imports');
+    expect(init?.method).toBe('POST');
+    expect(init?.body).toBe(file);
+    expect(new Headers(init?.headers).get('X-Filename')).toBe('sozluk.xlsx');
+  });
+
   it('reads every page of the table list', async () => {
     vi.mocked(DictionaryService.tables).mockRestore();
     const page = (items: number, total: number) =>
