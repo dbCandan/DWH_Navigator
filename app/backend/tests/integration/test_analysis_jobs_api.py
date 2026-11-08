@@ -377,7 +377,8 @@ async def test_a_dropped_stream_leaves_the_job_running_and_resumes_from_the_last
         assert [e.id for e in replay[1:]] == [
             e.id
             for e in seen
-            if e.id is not None and e.id > first_step.id and e.data and e.data["type"] == "step"
+            if e.id is not None and e.id > first_step.id and e.data
+            and e.data["type"] != "snapshot"
         ][: len(replay) - 1]
         qa.model.hold.set()
         await again.wait_closed()
@@ -399,6 +400,25 @@ async def test_at_most_five_streams_per_user(qa: Qa) -> None:
     await asyncio.sleep(0.2)
     seventh = await qa.follow(analysis_id)
     assert seventh.response.status_code == 200
+
+
+async def test_a_first_connect_gets_the_tables_found_before_it(qa: Qa) -> None:
+    # The pre-filter announces its tables before step 1 calls the model, so before a browser
+    # that opens the stream after the start answer can subscribe: the first connect replays them.
+    qa.model.hold = asyncio.Event()
+    analysis_id = await qa.started("kart limiti")
+    async with asyncio.timeout(5):
+        await qa.model.chat_started.wait()
+    live = await qa.follow(analysis_id)
+    await live.wait_for("tables")
+    first = next(e for e in live.events if e.data is not None and e.data["type"] == "tables")
+    assert first.data is not None and first.data["stage"] == "prefilter"
+    assert live.types()[0] == "snapshot"
+    steps = [e.data["key"] for e in live.events if e.data and e.data["type"] == "step"]
+    assert "rule_hints" in steps  # the steps before the connect are replayed too
+    qa.model.hold.set()
+    await live.wait_closed()
+    assert live.types()[-1] == "completed"
 
 
 async def test_a_stream_ends_when_its_token_expires(qa: Qa) -> None:

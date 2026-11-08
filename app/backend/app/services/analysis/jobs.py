@@ -1061,7 +1061,14 @@ class AnalysisJobs:
                 yield _frame(self._final_event(view, last + 1))
             return
         queue: asyncio.Queue[Event | None] = asyncio.Queue()
-        replay = [e for e in job.events if last_event_id is not None and e.id > last_event_id]
+        # A reconnect gets every event after its Last-Event-ID; a first connect gets every event
+        # of a running job so far. The job starts before the browser can subscribe, and the
+        # pre-filter's tables come at once: without them the radar turned empty until step 1
+        # ended. A finished job answers a first connect with its snapshot and final event only.
+        if last_event_id is not None:
+            replay = [e for e in job.events if e.id > last_event_id]
+        else:
+            replay = [] if job.terminal else list(job.events)
         if not job.terminal:
             job.subscribers.add(queue)
         try:
