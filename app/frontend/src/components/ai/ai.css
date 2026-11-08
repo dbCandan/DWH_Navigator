@@ -1,65 +1,54 @@
-/* The Yapay zekâ page: the active model's stage, then the integrations as rows. */
-[data-surface="admin"] .ai-body { display: flex; flex-direction: column; gap: 14px; }
-[data-surface="admin"] .ai-stage { display: grid; grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1fr) auto; gap: 22px; align-items: center; padding: 22px 24px; position: relative; overflow: hidden; }
-[data-surface="admin"] .ai-stage::after { content: ""; position: absolute; inset: auto -10% -60% 40%; height: 120%; background: radial-gradient(closest-side, var(--violet-a12), transparent); pointer-events: none; }
-[data-surface="admin"] .ai-stage.ok::after { background: radial-gradient(closest-side, var(--mint-a08), transparent); }
-[data-surface="admin"] .ai-stage .ring { width: 76px; height: 76px; }
-[data-surface="admin"] .ai-stage .ring.ok { animation: pulse 2.6s infinite; }
-[data-surface="admin"] .ai-stage .ai-stage-role { color: var(--muted); font: 700 10.5px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
-[data-surface="admin"] .ai-stage .ai-stage-gen { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
-[data-surface="admin"] .ai-stage .ai-stage-gen .ai-stage-role { flex-basis: 100%; }
-[data-surface="admin"] .ai-stage .ai-stage-gen b { font: 700 15px var(--mono); overflow-wrap: anywhere; }
-[data-surface="admin"] .ai-stage h2 { margin: 6px 0 4px; font: 700 26px/1.15 var(--mono); overflow-wrap: anywhere; }
-[data-surface="admin"] .ai-stage p { margin: 0; color: var(--muted); font-size: 13px; }
-[data-surface="admin"] .ai-stage .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin: 0; padding-left: 22px; border-left: 1px solid var(--line); }
-[data-surface="admin"] .ai-stage .facts dt { color: var(--faint); font-size: 11.5px; font-weight: 600; }
-[data-surface="admin"] .ai-stage .facts dd { margin: 2px 0 0; font-size: 13px; overflow-wrap: anywhere; }
-[data-surface="admin"] .ai-stage .facts dd.mono { font: 12.5px var(--mono); }
-[data-surface="admin"] .ai-stage .acts { display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 1; }
-
-[data-surface="admin"] .ai-list-head { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; margin-top: 4px; }
-[data-surface="admin"] .ai-list-head h2 { margin: 0; font: 700 15px var(--display); }
-[data-surface="admin"] .ai-list-head .note { margin: 0; color: var(--muted); font-size: 12.5px; }
-
-[data-surface="admin"] .integs { display: flex; flex-direction: column; gap: 10px; }
-[data-surface="admin"] .integ { border-radius: 14px; border: 1px solid var(--line); background: var(--surface); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
-[data-surface="admin"] .integ.off { opacity: .78; }
-[data-surface="admin"] .integ .ir { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 16px; align-items: center; }
-[data-surface="admin"] .integ .led { width: 10px; height: 10px; border-radius: 50%; background: var(--faint); }
+/* The Yapay zekâ page: the hero's numbers, then one panel with each integration as a compact row. */
+[data-surface="admin"] .ai-body { display: flex; flex-direction: column; gap: 12px; }
+[data-surface="admin"] .ai-body > .msg { margin: 0; }
+[data-surface="admin"] .ai-list { padding: 0; overflow: hidden; }
+[data-surface="admin"] .ai-list > h2 { margin: 0; padding: 12px 16px; font: 700 13px var(--display); border-bottom: 1px solid var(--line); }
+[data-surface="admin"] .integs { display: flex; flex-direction: column; }
+[data-surface="admin"] .integ { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; }
+[data-surface="admin"] .integ + .integ { border-top: 1px solid var(--line); }
+[data-surface="admin"] .integ.off { opacity: .8; }
+[data-surface="admin"] .integ .ir { display: grid; grid-template-columns: auto minmax(160px, .9fr) minmax(0, 1.2fr) minmax(0, 1.2fr) auto; gap: 16px; align-items: center; }
+[data-surface="admin"] .integ .led { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); }
 [data-surface="admin"] .integ .led.ok { background: var(--ok); box-shadow: 0 0 0 4px var(--mint-a15); }
 [data-surface="admin"] .integ .led.bad { background: var(--bad); box-shadow: 0 0 0 4px var(--rose-a15); }
 [data-surface="admin"] .integ .led.idle { background: var(--warn); box-shadow: 0 0 0 4px var(--amber-a15); }
-[data-surface="admin"] .integ .nm b { font-size: 15px; }
-[data-surface="admin"] .integ .url { font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
-[data-surface="admin"] .integ .model { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-[data-surface="admin"] .integ .model .note { color: var(--faint); font-size: 11.5px; }
-[data-surface="admin"] .integ .model b { font: 600 13px var(--mono); overflow-wrap: anywhere; }
-[data-surface="admin"] .integ .model .none { color: var(--warn); font-size: 13px; }
-[data-surface="admin"] .integ .model .same { color: var(--muted); font-size: 13px; }
-/* The chat and generation roles side by side, each with its model, reasoning and own test. */
-[data-surface="admin"] .integ .roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-[data-surface="admin"] .integ .role { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); min-width: 0; }
-[data-surface="admin"] .integ .role .model { flex: 1 1 200px; }
-[data-surface="admin"] .integ .role .model .note { white-space: normal; overflow-wrap: anywhere; }
-[data-surface="admin"] .integ .role-test { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-[data-surface="admin"] .integ .role-test svg { width: 14px; height: 14px; }
-[data-surface="admin"] .integ .tags { display: flex; gap: 6px; flex-wrap: wrap; }
-[data-surface="admin"] .integ .acts { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--line); }
-[data-surface="admin"] .integ .acts .grow { flex: 1; }
-[data-surface="admin"] .integ .acts svg { width: 14px; height: 14px; }
+[data-surface="admin"] .integ .nm { min-width: 0; display: grid; gap: 2px; }
+[data-surface="admin"] .integ .nm-t { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+[data-surface="admin"] .integ .nm b { font-size: 14px; }
+[data-surface="admin"] .integ .url { font: 11.5px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+[data-surface="admin"] .integ .key { font-size: 11.5px; color: var(--faint); }
+/* A role: its name, its model, then reasoning, last test and "Test et" on one line. */
+[data-surface="admin"] .integ .role { display: grid; gap: 3px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--line); }
+[data-surface="admin"] .integ .role .k { color: var(--faint); font: 700 10.5px var(--mono); letter-spacing: .8px; text-transform: uppercase; }
+[data-surface="admin"] .integ .role b { font: 600 13px var(--mono); overflow-wrap: anywhere; }
+[data-surface="admin"] .integ .role .none { color: var(--warn); font-size: 13px; }
+[data-surface="admin"] .integ .role .same { color: var(--muted); font-size: 13px; }
+[data-surface="admin"] .integ .role-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+[data-surface="admin"] .integ .role-meta .note { color: var(--muted); font-size: 11.5px; }
+[data-surface="admin"] .integ .tst { font-size: 11.5px; color: var(--faint); }
+[data-surface="admin"] .integ .tst.ok { color: var(--ok); }
+[data-surface="admin"] .integ .tst.bad { color: var(--bad); }
+[data-surface="admin"] .integ .role-meta .btn { margin-left: auto; }
+[data-surface="admin"] .integ .acts { display: flex; align-items: center; gap: 6px; }
+[data-surface="admin"] .integ .acts .switch { margin-left: 6px; }
+[data-surface="admin"] .integ svg { width: 14px; height: 14px; }
+[data-surface="admin"] .integ > .msg { margin: 0; }
 [data-surface="admin"] .integ .models { border-top: 1px dashed var(--line); padding-top: 10px; }
-[data-surface="admin"] .integs .integ-add { min-height: 60px; flex-direction: row; gap: 8px; }
-[data-surface="admin"] .ai-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 34px 20px; text-align: center; color: var(--muted); }
-[data-surface="admin"] .ai-empty svg { width: 34px; height: 34px; color: var(--accent); }
+[data-surface="admin"] .ai-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 30px 20px; text-align: center; color: var(--muted); }
+[data-surface="admin"] .ai-empty h2 { margin: 0; font: 700 13px var(--display); color: var(--text); }
+[data-surface="admin"] .ai-empty svg { width: 30px; height: 30px; color: var(--accent); }
 [data-surface="admin"] .ai-empty p { margin: 0; max-width: 60ch; }
 
-@media (max-width: 1100px) {
-  [data-surface="admin"] .ai-stage { grid-template-columns: auto minmax(0, 1fr); }
-  [data-surface="admin"] .ai-stage .facts { grid-column: 1 / -1; padding-left: 0; border-left: 0; }
-  [data-surface="admin"] .ai-stage .acts { grid-column: 1 / -1; flex-direction: row; }
+@media (max-width: 1200px) {
   [data-surface="admin"] .integ .ir { grid-template-columns: auto minmax(0, 1fr) auto; }
-  [data-surface="admin"] .integ .ir .tags { grid-column: 2 / -1; grid-row: 2; }
-  [data-surface="admin"] .integ .roles { grid-template-columns: 1fr; }
+  [data-surface="admin"] .integ .role { grid-row: 2; padding-left: 0; border-left: 0; padding-top: 8px; border-top: 1px dashed var(--line); }
+  [data-surface="admin"] .integ .role.chat { grid-column: 1 / 3; }
+  [data-surface="admin"] .integ .role.generation { grid-column: 3 / -1; }
+}
+@media (max-width: 760px) {
+  [data-surface="admin"] .integ .ir { grid-template-columns: auto minmax(0, 1fr); }
+  [data-surface="admin"] .integ .role, [data-surface="admin"] .integ .role.chat, [data-surface="admin"] .integ .role.generation { grid-row: auto; grid-column: 1 / -1; }
+  [data-surface="admin"] .integ .acts { grid-column: 1 / -1; flex-wrap: wrap; }
 }
 
 /* The integration editor (IntegrationEditor): three numbered steps; step 2 holds one group per role. */

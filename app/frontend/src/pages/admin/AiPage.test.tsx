@@ -63,25 +63,18 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     await openPage();
     expect(screen.getByRole('heading', {level: 1, name: message('admin.page.yapay-zeka.label')})).toBeInTheDocument();
     expect(screen.getByText(message('admin.page.yapay-zeka.description'))).toBeInTheDocument();
-    expect(screen.getByText(message('ai.hero.role'))).toBeInTheDocument();
-    expect(screen.getByRole('heading', {level: 2, name: 'google/gemma-4-31b'})).toBeInTheDocument();
-    expect(screen.getByText(message('ai.hero.ok', {name: 'DGX Spark 1'}))).toBeInTheDocument();
-
+    // The old stage is gone: the hero's numbers name the chat and the generation model.
+    expect(document.querySelector('.ai-stage')).toBeNull();
     const stats = [...document.querySelectorAll('.hb-stats .st')].map((node) => [node.querySelector('dt')?.textContent, node.querySelector('dd')?.textContent]);
-    expect(stats.slice(0, 2)).toEqual([
+    expect(stats.slice(0, 3)).toEqual([
       [message('ai.stat.model'), message('ai.stat.state.ok')],
+      [message('ai.stat.generation'), 'google/gemma-4-31b'],
       [message('ai.stat.integrations'), '2'],
     ]);
     expect(document.querySelector('.hb-stats .st')).toHaveClass('st', 'ok');
-    const stage = document.querySelector('.ai-stage') as HTMLElement;
-    expect(stage).toHaveClass('ok');
-    expect(within(stage).getByText('DGX Spark 1')).toBeInTheDocument();
-    // The generation model sits under the chat model; without its own it is the chat model.
-    const generation = stage.querySelector('.ai-stage-gen') as HTMLElement;
-    expect(within(generation).getByText(message('ai.hero.generationRole'))).toBeInTheDocument();
-    expect(within(generation).getByText('google/gemma-4-31b')).toBeInTheDocument();
-    expect(within(generation).getByText(message('ai.card.generationSame'))).toBeInTheDocument();
-    expect(within(stage).getByRole('button', {name: message('ai.hero.testGeneration')})).toBeEnabled();
+    expect(screen.getByText(message('ai.card.generationSame'), {selector: '.hb-stats *'})).toBeInTheDocument();
+    // The active integration comes first.
+    expect([...document.querySelectorAll('.integ')].map((node) => node.getAttribute('aria-label'))).toEqual(['DGX Spark 1', 'LM Studio']);
 
     const spark = card('DGX Spark 1');
     expect(spark.querySelector('.led')).toHaveClass('led', 'ok');
@@ -109,9 +102,7 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
 
   it('says when no model is bound', async () => {
     await openPage(llmState([STUDIO]));
-    expect(screen.getByRole('heading', {level: 2, name: message('ai.status.none')})).toBeInTheDocument();
-    expect(screen.getByText(message('ai.hero.none'))).toBeInTheDocument();
-    expect(screen.queryByRole('button', {name: message('ai.test')})?.closest('.hero')).toBeFalsy();
+    expect(screen.getByText(message('ai.hero.none'))).toHaveClass('msg', 'warn');
     expect(screen.getByText(message('admin.sys.modelNone'))).toBeInTheDocument();
     expect(document.querySelector('#nav-yapay-zeka .bdg')).toHaveClass('warn');
   });

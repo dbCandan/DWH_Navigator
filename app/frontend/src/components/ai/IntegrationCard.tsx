@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, type ReactNode} from 'react';
 import {Icon} from '@/components/admin/Icon';
 import {useIntl} from '@/contexts/IntlContext';
 import {formatWhen} from '@/lib/format';
@@ -6,11 +6,11 @@ import type {LlmIntegrationItem, LlmModelRow, LlmTestResult} from '@/types/llm';
 import {ModelTable} from './ModelTable';
 import {effortKey, generationRole} from './roles';
 
-/** A server's model list as the card shows it: the rows, or the failure's text. */
+/** A server's model list as the row shows it: the rows, or the failure's text. */
 export type ModelsOutcome = {ok: true; rows: LlmModelRow[]} | {ok: false; message: string};
 
-/** The generation model's test as the card keeps it while the page is open; not recorded. */
-type GenerationTest = {at: string; ok: boolean; summary: string};
+/** A test as a role shows it: when, whether it passed, and its steps for the tooltip. */
+type Tested = {at: string; ok: boolean; summary: string};
 
 interface Props {
   item: LlmIntegrationItem;
@@ -27,18 +27,68 @@ interface Props {
   onActivate: (active: boolean) => Promise<void>;
 }
 
+/** One role of an integration: its model, its reasoning, its last test and its own "Test et". */
+function Role({
+  kind,
+  label,
+  model,
+  empty,
+  detail,
+  tested,
+  untestedTitle,
+  testLabel,
+  testing,
+  disabled,
+  onTest,
+}: {
+  kind: 'chat' | 'generation';
+  label: string;
+  model: string;
+  empty: ReactNode;
+  detail: string;
+  tested: Tested | null;
+  untestedTitle?: string;
+  testLabel: string;
+  testing: boolean;
+  disabled: boolean;
+  onTest: () => void;
+}) {
+  const {t} = useIntl();
+  return (
+    <div className={'role ' + kind} role="group" aria-label={label}>
+      <span className="k">{label}</span>
+      {model ? <b>{model}</b> : empty}
+      <div className="role-meta">
+        <span className="note">{detail}</span>
+        {tested ? (
+          <span className={'tst ' + (tested.ok ? 'ok' : 'bad')} title={tested.summary}>
+            {t(tested.ok ? 'ai.card.testedOk' : 'ai.card.testedFailed', {when: formatWhen(tested.at, t)})}
+          </span>
+        ) : (
+          <span className="tst" title={untestedTitle}>
+            {t('ai.card.untested')}
+          </span>
+        )}
+        <button className="btn sm" type="button" aria-label={testLabel} disabled={testing || disabled} onClick={onTest}>
+          <Icon name="bolt" />
+          {testing ? t('ai.testing') : t('ai.test')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
- * An integration as a row (llm-connection Requirement 19): a light for its health, name and
- * address, Aktif/Pasif, Anahtar kayıtlı/Anahtarsız, the active switch; then its two roles side
- * by side — the chat model with its reasoning and recorded last test, the generation model
- * (the dictionary update's) with its reasoning and this page's test — each with its own
- * "Test et"; then "Modeller" (opens the server's models below), "Düzenle", "Sil".
+ * An integration as one compact row (llm-connection Requirement 19): a light for its health,
+ * name, address and key; the chat model and the generation model (the dictionary update's) side
+ * by side, each with its reasoning, last test and own "Test et"; then "Modeller" (the server's
+ * models open below), "Düzenle", "Sil" and the active switch.
  */
 export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPick, onEdit, onRemove, onActivate}: Props) {
   const {t} = useIntl();
   const [testing, setTesting] = useState(false);
   const [generationTesting, setGenerationTesting] = useState(false);
-  const [generationTest, setGenerationTest] = useState<GenerationTest | null>(null);
+  const [generationTest, setGenerationTest] = useState<Tested | null>(null);
   const [models, setModels] = useState<ModelsOutcome | 'loading' | null>(null);
   const [switching, setSwitching] = useState<boolean | null>(null);
   const switchLabel = t(item.active ? 'ai.card.deactivate' : 'ai.card.activate');
@@ -59,7 +109,7 @@ export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPic
       const answer = await onTestGeneration();
       if (answer) {
         const summary = answer.steps.map((step) => `${step.name}: ${step.ok ? '✓' : '✗'}`).join('; ');
-        setGenerationTest({at: new Date().toISOString(), ok: answer.ok, summary});
+        setGenerationTest({at: new Date().toISOString(), ok: answer.ok, summary: `${summary} — ${t('ai.card.generationTestNote')}`});
       }
     } finally {
       setGenerationTesting(false);
@@ -95,96 +145,65 @@ export function IntegrationCard({item, onTest, onTestGeneration, onModels, onPic
       <div className="ir">
         <span className={'led ' + health} aria-hidden="true" />
         <div className="nm">
-          <b>{item.name}</b>
+          <div className="nm-t">
+            <b>{item.name}</b>
+            <span className={'tag' + (item.active ? ' on' : '')}>{t(item.active ? 'ai.card.active' : 'ai.card.inactive')}</span>
+          </div>
           <div className="url">{item.endpoint}</div>
+          <div className="key">{t(item.has_key ? 'ai.card.keySaved' : 'ai.card.noKey')}</div>
         </div>
-        <div className="tags">
-          <span className={'tag' + (item.active ? ' on' : '')}>{t(item.active ? 'ai.card.active' : 'ai.card.inactive')}</span>
-          <span className="tag">{t(item.has_key ? 'ai.card.keySaved' : 'ai.card.noKey')}</span>
-        </div>
-        <label className="switch" title={switchLabel}>
-          <input
-            type="checkbox"
-            aria-label={switchLabel}
-            checked={switching ?? item.active}
-            disabled={switching !== null}
-            onChange={(event) => void activate(event.target.checked)}
-          />
-          <span />
-        </label>
-      </div>
-      <div className="roles">
-        <div className="role">
-          <div className="model">
-            <span className="note">{t('ai.card.chatModel')}</span>
-            {item.chat_model ? <b>{item.chat_model}</b> : <span className="none">{t('ai.card.noModelShort')}</span>}
-            <span className="note">{t('ai.card.effort', {effort: effort(item.reasoning_effort)})}</span>
-          </div>
-          <div className="role-test">
-            {lastTest ? (
-              <span className={'tag ' + (lastTest.ok ? 'on' : 'bad')} title={lastTest.summary}>
-                {t(lastTest.ok ? 'ai.card.testedOk' : 'ai.card.testedFailed', {when: formatWhen(lastTest.at, t)})}
-              </span>
-            ) : (
-              <span className="tag">{t('ai.card.untested')}</span>
-            )}
-            <button className="btn sm" type="button" aria-label={t('ai.card.testChat')} disabled={testing} onClick={() => void test()}>
-              <Icon name="bolt" />
-              {testing ? t('ai.testing') : t('ai.test')}
-            </button>
-          </div>
-        </div>
-        <div className="role">
-          <div className="model">
-            <span className="note">{t('ai.card.generationModel')}</span>
-            {item.generation_model ? <b>{item.generation_model}</b> : <span className="same">{t('ai.card.generationSame')}</span>}
-            <span className="note">
-              {t('ai.card.generationEfforts', {
-                effort: effort(item.generation_reasoning_effort),
-                judge: effort(item.judge_reasoning_effort),
-              })}
-            </span>
-          </div>
-          <div className="role-test">
-            {generationTest ? (
-              <span
-                className={'tag ' + (generationTest.ok ? 'on' : 'bad')}
-                title={generationTest.summary + ' — ' + t('ai.card.generationTestNote')}
-              >
-                {t(generationTest.ok ? 'ai.card.testedOk' : 'ai.card.testedFailed', {when: formatWhen(generationTest.at, t)})}
-              </span>
-            ) : (
-              <span className="tag" title={t('ai.card.generationTestNote')}>
-                {t('ai.card.untested')}
-              </span>
-            )}
-            <button
-              className="btn sm"
-              type="button"
-              aria-label={t('ai.card.testGeneration')}
-              disabled={generationTesting || !generation.chat_model}
-              onClick={() => void testGeneration()}
-            >
-              <Icon name="bolt" />
-              {generationTesting ? t('ai.testing') : t('ai.test')}
-            </button>
-          </div>
+        <Role
+          kind="chat"
+          label={t('ai.card.chatModel')}
+          model={item.chat_model}
+          empty={<span className="none">{t('ai.card.noModelShort')}</span>}
+          detail={t('ai.card.effort', {effort: effort(item.reasoning_effort)})}
+          tested={lastTest}
+          testLabel={t('ai.card.testChat')}
+          testing={testing}
+          disabled={false}
+          onTest={() => void test()}
+        />
+        <Role
+          kind="generation"
+          label={t('ai.card.generationModel')}
+          model={item.generation_model}
+          empty={<span className="same">{t('ai.card.generationSame')}</span>}
+          detail={t('ai.card.generationEfforts', {
+            effort: effort(item.generation_reasoning_effort),
+            judge: effort(item.judge_reasoning_effort),
+          })}
+          tested={generationTest}
+          untestedTitle={t('ai.card.generationTestNote')}
+          testLabel={t('ai.card.testGeneration')}
+          testing={generationTesting}
+          disabled={!generation.chat_model}
+          onTest={() => void testGeneration()}
+        />
+        <div className="acts">
+          <button className="btn sm" type="button" aria-expanded={models !== null && models !== 'loading'} disabled={models === 'loading'} onClick={() => void toggleModels()}>
+            <Icon name="list" />
+            {t('ai.card.models')}
+          </button>
+          <button className="btn sm" type="button" onClick={onEdit}>
+            {t('ai.card.edit')}
+          </button>
+          <button className="btn sm ghost danger" type="button" onClick={onRemove}>
+            {t('ai.card.remove')}
+          </button>
+          <label className="switch" title={switchLabel}>
+            <input
+              type="checkbox"
+              aria-label={switchLabel}
+              checked={switching ?? item.active}
+              disabled={switching !== null}
+              onChange={(event) => void activate(event.target.checked)}
+            />
+            <span />
+          </label>
         </div>
       </div>
       {item.chat_model ? null : <div className="msg warn">{t('ai.card.noModel')}</div>}
-      <div className="acts">
-        <button className="btn sm" type="button" disabled={models === 'loading'} onClick={() => void toggleModels()}>
-          <Icon name="list" />
-          {t('ai.card.models')}
-        </button>
-        <button className="btn sm" type="button" onClick={onEdit}>
-          {t('ai.card.edit')}
-        </button>
-        <span className="grow" />
-        <button className="btn sm ghost danger" type="button" onClick={onRemove}>
-          {t('ai.card.remove')}
-        </button>
-      </div>
       {models !== null && models !== 'loading' ? (
         <div className="models">
           {models.ok ? (
