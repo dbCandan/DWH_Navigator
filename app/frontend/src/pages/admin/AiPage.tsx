@@ -254,33 +254,47 @@ export default function AiPage() {
         ) : null}
         {llm.items.length ? (
           <section className="panel ai-list" aria-labelledby="ai-list-title">
-            <h2 id="ai-list-title">{t('ai.list.title', {count: llm.items.length})}</h2>
-            <div className="integs" key={version}>
-              {rows.map((item) => (
-                <IntegrationCard
-                  key={item.public_id}
-                  item={item}
-                  onTest={() => testSaved(item)}
-                  onTestGeneration={() => testGeneration(item)}
-                  onModels={() => models(item)}
-                  onPick={(model) => void pick(item, model)}
-                  onEdit={() => show({kind: 'editor', item})}
-                  onRemove={() => void remove(item)}
-                  onActivate={(active) => activate(item, active)}
-                />
-              ))}
+            <div className="panel-h">
+              <h2 id="ai-list-title">{t('ai.list.title', {count: llm.items.length})}</h2>
+            </div>
+            <div className="ai-grid">
+              <div className="ai-list-head" aria-hidden="true">
+                <span>{t('ai.list.integration')}</span>
+                <span>{t('ai.card.chatModel')}</span>
+                <span>{t('ai.card.generationModel')}</span>
+                <span />
+              </div>
+              <div className="ai-integs" key={version}>
+                {rows.map((item) => (
+                  <IntegrationCard
+                    key={item.public_id}
+                    item={item}
+                    onTest={() => testSaved(item)}
+                    onTestGeneration={() => testGeneration(item)}
+                    onModels={() => models(item)}
+                    onPick={(model) => void pick(item, model)}
+                    onEdit={() => show({kind: 'editor', item})}
+                    onRemove={() => void remove(item)}
+                    onActivate={(active) => activate(item, active)}
+                  />
+                ))}
+              </div>
             </div>
           </section>
         ) : (
-          <div className="panel ai-empty">
-            <h2 id="ai-list-title">{t('ai.list.title', {count: 0})}</h2>
-            <Icon name="server" />
-            <p>{t('ai.list.empty')}</p>
-            <button className="btn primary" type="button" onClick={add}>
-              <Icon name="plus" />
-              {t('ai.list.add')}
-            </button>
-          </div>
+          <section className="panel ai-list" aria-labelledby="ai-list-title">
+            <div className="panel-h">
+              <h2 id="ai-list-title">{t('ai.list.title', {count: 0})}</h2>
+            </div>
+            <div className="ai-empty">
+              <Icon name="server" />
+              <p>{t('ai.list.empty')}</p>
+              <button className="btn primary" type="button" onClick={add}>
+                <Icon name="plus" />
+                {t('ai.list.add')}
+              </button>
+            </div>
+          </section>
         )}
       </div>
       {drawer}

@@ -1,54 +1,63 @@
-/* The Yapay zekâ page: the hero's numbers, then one panel with each integration as a compact row. */
+/* The Yapay zekâ page: the hero's numbers, then one panel listing the integrations in aligned
+   columns (name, chat model, generation model, actions). Class names carry "ai-" so the shared
+   admin rules (.role, .nm, .acts…) never reach in. */
 [data-surface="admin"] .ai-body { display: flex; flex-direction: column; gap: 12px; }
 [data-surface="admin"] .ai-body > .msg { margin: 0; }
-[data-surface="admin"] .ai-list { padding: 0; overflow: hidden; }
-[data-surface="admin"] .ai-list > h2 { margin: 0; padding: 12px 16px; font: 700 13px var(--display); border-bottom: 1px solid var(--line); }
-[data-surface="admin"] .integs { display: flex; flex-direction: column; }
-[data-surface="admin"] .integ { display: flex; flex-direction: column; gap: 8px; padding: 12px 16px; }
-[data-surface="admin"] .integ + .integ { border-top: 1px solid var(--line); }
-[data-surface="admin"] .integ.off { opacity: .8; }
-[data-surface="admin"] .integ .ir { display: grid; grid-template-columns: auto minmax(160px, .9fr) minmax(0, 1.2fr) minmax(0, 1.2fr) auto; gap: 16px; align-items: center; }
-[data-surface="admin"] .integ .led { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); }
-[data-surface="admin"] .integ .led.ok { background: var(--ok); box-shadow: 0 0 0 4px var(--mint-a15); }
-[data-surface="admin"] .integ .led.bad { background: var(--bad); box-shadow: 0 0 0 4px var(--rose-a15); }
-[data-surface="admin"] .integ .led.idle { background: var(--warn); box-shadow: 0 0 0 4px var(--amber-a15); }
-[data-surface="admin"] .integ .nm { min-width: 0; display: grid; gap: 2px; }
-[data-surface="admin"] .integ .nm-t { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-[data-surface="admin"] .integ .nm b { font-size: 14px; }
-[data-surface="admin"] .integ .url { font: 11.5px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
-[data-surface="admin"] .integ .key { font-size: 11.5px; color: var(--faint); }
-/* A role: its name, its model, then reasoning, last test and "Test et" on one line. */
-[data-surface="admin"] .integ .role { display: grid; gap: 3px; min-width: 0; padding-left: 16px; border-left: 1px solid var(--line); }
-[data-surface="admin"] .integ .role .k { color: var(--faint); font: 700 10.5px var(--mono); letter-spacing: .8px; text-transform: uppercase; }
-[data-surface="admin"] .integ .role b { font: 600 13px var(--mono); overflow-wrap: anywhere; }
-[data-surface="admin"] .integ .role .none { color: var(--warn); font-size: 13px; }
-[data-surface="admin"] .integ .role .same { color: var(--muted); font-size: 13px; }
-[data-surface="admin"] .integ .role-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
-[data-surface="admin"] .integ .role-meta .note { color: var(--muted); font-size: 11.5px; }
-[data-surface="admin"] .integ .tst { font-size: 11.5px; color: var(--faint); }
-[data-surface="admin"] .integ .tst.ok { color: var(--ok); }
-[data-surface="admin"] .integ .tst.bad { color: var(--bad); }
-[data-surface="admin"] .integ .role-meta .btn { margin-left: auto; }
-[data-surface="admin"] .integ .acts { display: flex; align-items: center; gap: 6px; }
-[data-surface="admin"] .integ .acts .switch { margin-left: 6px; }
-[data-surface="admin"] .integ svg { width: 14px; height: 14px; }
-[data-surface="admin"] .integ > .msg { margin: 0; }
-[data-surface="admin"] .integ .models { border-top: 1px dashed var(--line); padding-top: 10px; }
+[data-surface="admin"] .ai-list { overflow: hidden; }
+/* One grid for the head and every row (subgrid), so the columns line up whatever the actions take. */
+[data-surface="admin"] .ai-grid { display: grid; grid-template-columns: minmax(180px, .9fr) minmax(0, 1.15fr) minmax(0, 1.45fr) auto; column-gap: 20px; }
+[data-surface="admin"] .ai-integs { display: contents; }
+[data-surface="admin"] .ai-list-head, [data-surface="admin"] .ai-integ, [data-surface="admin"] .ai-integ-row {
+  grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
+[data-surface="admin"] .ai-integ > * { grid-column: 1 / -1; }
+[data-surface="admin"] .ai-list-head { padding: 8px 18px; border-bottom: 1px solid var(--line); background: var(--table-head);
+  color: var(--muted); font: 700 11px var(--sans); text-transform: uppercase; letter-spacing: .5px; white-space: nowrap; }
+[data-surface="admin"] .ai-integ { row-gap: 10px; padding: 14px 18px; transition: background .15s; }
+[data-surface="admin"] .ai-integ + .ai-integ { border-top: 1px solid var(--line); }
+[data-surface="admin"] .ai-integ:hover { background: var(--surface-2); }
+[data-surface="admin"] .ai-integ.off .ai-integ-row > .ai-cell { opacity: .7; }
+[data-surface="admin"] .ai-integ > .msg { margin: 0; }
+
+/* A cell: one main line and two quiet ones (whole in their tooltip), so every column's lines sit at the same height. */
+[data-surface="admin"] .ai-cell { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px; min-width: 0; }
+[data-surface="admin"] .ai-cell-k { display: none; color: var(--faint); font: 700 10.5px var(--mono); letter-spacing: .8px; text-transform: uppercase; }
+[data-surface="admin"] .ai-cell-main { display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 22px; font-size: 13.5px; }
+[data-surface="admin"] .ai-cell-sub { min-width: 0; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-surface="admin"] .ai-name { font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-surface="admin"] .ai-url { font: 11.5px var(--mono); }
+[data-surface="admin"] .ai-model { font: 600 13px var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-surface="admin"] .ai-none { color: var(--warn); font-weight: 600; }
+[data-surface="admin"] .ai-same { color: var(--muted); }
+[data-surface="admin"] .ai-tst { color: var(--faint); }
+[data-surface="admin"] .ai-tst.ok { color: var(--ok); }
+[data-surface="admin"] .ai-tst.bad { color: var(--bad); }
+/* A role's "Test et" stands at the cell's right, centred on its two lines. */
+[data-surface="admin"] .ai-role-cell { grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; }
+[data-surface="admin"] .ai-role-cell > :not(.ai-cell-test) { grid-column: 1; }
+[data-surface="admin"] .ai-cell-test { grid-column: 2; grid-row: 1 / span 4; align-self: center; }
+[data-surface="admin"] .ai-integ-acts { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+[data-surface="admin"] .ai-integ-acts .switch { margin-left: 8px; }
+[data-surface="admin"] .ai-integ svg { width: 14px; height: 14px; }
+[data-surface="admin"] .ai-integ-models { padding-top: 10px; border-top: 1px dashed var(--line); }
 [data-surface="admin"] .ai-empty { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 30px 20px; text-align: center; color: var(--muted); }
-[data-surface="admin"] .ai-empty h2 { margin: 0; font: 700 13px var(--display); color: var(--text); }
 [data-surface="admin"] .ai-empty svg { width: 30px; height: 30px; color: var(--accent); }
 [data-surface="admin"] .ai-empty p { margin: 0; max-width: 60ch; }
 
-@media (max-width: 1200px) {
-  [data-surface="admin"] .integ .ir { grid-template-columns: auto minmax(0, 1fr) auto; }
-  [data-surface="admin"] .integ .role { grid-row: 2; padding-left: 0; border-left: 0; padding-top: 8px; border-top: 1px dashed var(--line); }
-  [data-surface="admin"] .integ .role.chat { grid-column: 1 / 3; }
-  [data-surface="admin"] .integ .role.generation { grid-column: 3 / -1; }
+/* Narrower: the head goes, each role cell names itself and the two roles share a line under the name. */
+@media (max-width: 1180px) {
+  [data-surface="admin"] .ai-grid { display: block; }
+  [data-surface="admin"] .ai-list-head { display: none; }
+  [data-surface="admin"] .ai-integ { display: flex; flex-direction: column; }
+  [data-surface="admin"] .ai-integ-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 20px; }
+  [data-surface="admin"] .ai-name-cell { grid-column: 1; grid-row: 1; }
+  [data-surface="admin"] .ai-integ-acts { grid-column: 2; grid-row: 1; }
+  [data-surface="admin"] .ai-role-cell { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface-2); }
+  [data-surface="admin"] .ai-cell-k { display: block; }
 }
 @media (max-width: 760px) {
-  [data-surface="admin"] .integ .ir { grid-template-columns: auto minmax(0, 1fr); }
-  [data-surface="admin"] .integ .role, [data-surface="admin"] .integ .role.chat, [data-surface="admin"] .integ .role.generation { grid-row: auto; grid-column: 1 / -1; }
-  [data-surface="admin"] .integ .acts { grid-column: 1 / -1; flex-wrap: wrap; }
+  [data-surface="admin"] .ai-integ-row { grid-template-columns: minmax(0, 1fr); }
+  [data-surface="admin"] .ai-name-cell, [data-surface="admin"] .ai-integ-acts { grid-column: 1; grid-row: auto; }
+  [data-surface="admin"] .ai-integ-acts { justify-content: flex-start; flex-wrap: wrap; order: 3; }
 }
 
 /* The integration editor (IntegrationEditor): three numbered steps; step 2 holds one group per role. */
