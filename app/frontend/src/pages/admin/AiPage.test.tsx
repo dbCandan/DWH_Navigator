@@ -76,6 +76,12 @@ describe('Yapay zekâ page (llm-connection Requirement 19)', () => {
     const stage = document.querySelector('.ai-stage') as HTMLElement;
     expect(stage).toHaveClass('ok');
     expect(within(stage).getByText('DGX Spark 1')).toBeInTheDocument();
+    // The generation model sits under the chat model; without its own it is the chat model.
+    const generation = stage.querySelector('.ai-stage-gen') as HTMLElement;
+    expect(within(generation).getByText(message('ai.hero.generationRole'))).toBeInTheDocument();
+    expect(within(generation).getByText('google/gemma-4-31b')).toBeInTheDocument();
+    expect(within(generation).getByText(message('ai.card.generationSame'))).toBeInTheDocument();
+    expect(within(stage).getByRole('button', {name: message('ai.hero.testGeneration')})).toBeEnabled();
 
     const spark = card('DGX Spark 1');
     expect(spark.querySelector('.led')).toHaveClass('led', 'ok');

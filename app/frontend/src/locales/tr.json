@@ -361,6 +361,8 @@
   "ai.status.noneDetail": "Sorular cevaplanamaz",
   "ai.status.via": "{name} üzerinden",
   "ai.hero.role": "Etkin sohbet modeli · talebi okur, cevabı yazar",
+  "ai.hero.generationRole": "Üretim modeli · sözlük güncellemesinde açıklama yazar",
+  "ai.hero.testGeneration": "Üretimi test et",
   "ai.hero.ok": "{name} üzerinden · yanıt veriyor",
   "ai.hero.down": "{name} — yanıt vermiyor: {reason}",
   "ai.hero.none": "Model bağlanana kadar sorular “Analiz yapılamadı” cevabını alır.",

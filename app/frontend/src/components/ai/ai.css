@@ -5,7 +5,10 @@
 [data-surface="admin"] .ai-stage.ok::after { background: radial-gradient(closest-side, var(--mint-a08), transparent); }
 [data-surface="admin"] .ai-stage .ring { width: 76px; height: 76px; }
 [data-surface="admin"] .ai-stage .ring.ok { animation: pulse 2.6s infinite; }
-[data-surface="admin"] .ai-stage .ai-role { color: var(--muted); font: 700 10.5px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+[data-surface="admin"] .ai-stage .ai-stage-role { color: var(--muted); font: 700 10.5px var(--mono); letter-spacing: 1px; text-transform: uppercase; }
+[data-surface="admin"] .ai-stage .ai-stage-gen { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--line); }
+[data-surface="admin"] .ai-stage .ai-stage-gen .ai-stage-role { flex-basis: 100%; }
+[data-surface="admin"] .ai-stage .ai-stage-gen b { font: 700 15px var(--mono); overflow-wrap: anywhere; }
 [data-surface="admin"] .ai-stage h2 { margin: 6px 0 4px; font: 700 26px/1.15 var(--mono); overflow-wrap: anywhere; }
 [data-surface="admin"] .ai-stage p { margin: 0; color: var(--muted); font-size: 13px; }
 [data-surface="admin"] .ai-stage .facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; margin: 0; padding-left: 22px; border-left: 1px solid var(--line); }

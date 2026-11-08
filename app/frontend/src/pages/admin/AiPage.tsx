@@ -48,6 +48,7 @@ export default function AiPage() {
   const [opened, setOpened] = useState(0);
   const [handled, setHandled] = useState<string | null>(null);
   const [heroTesting, setHeroTesting] = useState(false);
+  const [heroGenerationTesting, setHeroGenerationTesting] = useState(false);
   const label = t('admin.page.yapay-zeka.label');
 
   // "Yeni model entegrasyonu" and "Model envanteri" in the command palette open their drawer here.
@@ -116,6 +117,15 @@ export default function AiPage() {
       await testSaved(item);
     } finally {
       setHeroTesting(false);
+    }
+  }
+
+  async function heroGenerationTest(item: LlmIntegrationItem) {
+    setHeroGenerationTesting(true);
+    try {
+      await testGeneration(item);
+    } finally {
+      setHeroGenerationTesting(false);
     }
   }
 
@@ -252,7 +262,7 @@ export default function AiPage() {
             <Icon name={status.state === 'ok' ? 'spark' : 'alert'} />
           </div>
           <div className="ai-who">
-            <div className="ai-role">{t('ai.hero.role')}</div>
+            <div className="ai-stage-role">{t('ai.hero.role')}</div>
             <h2>{holder ? holder.model : t('ai.status.none')}</h2>
             <p>
               {status.state === 'ok' && holder
@@ -261,6 +271,13 @@ export default function AiPage() {
                   ? t('ai.hero.down', {name: holder.name, reason: status.detail})
                   : t('ai.hero.none')}
             </p>
+            {held ? (
+              <div className="ai-stage-gen">
+                <div className="ai-stage-role">{t('ai.hero.generationRole')}</div>
+                <b>{generationRole(held).chat_model}</b>
+                {held.generation_model.trim() ? null : <span className="note">{t('ai.card.generationSame')}</span>}
+              </div>
+            ) : null}
           </div>
           {held ? (
             <dl className="facts">
@@ -293,6 +310,23 @@ export default function AiPage() {
                   <>
                     <Icon name="bolt" />
                     {t('ai.test')}
+                  </>
+                )}
+              </button>
+            ) : null}
+            {held ? (
+              <button
+                className="btn"
+                type="button"
+                disabled={heroGenerationTesting}
+                onClick={() => void heroGenerationTest(held)}
+              >
+                {heroGenerationTesting ? (
+                  t('ai.testing')
+                ) : (
+                  <>
+                    <Icon name="bolt" />
+                    {t('ai.hero.testGeneration')}
                   </>
                 )}
               </button>
