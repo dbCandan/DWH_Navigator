@@ -8,6 +8,7 @@ import type {
   SyncChangeKind,
   SyncPage,
   SyncRunDetail,
+  SyncRecordEdit,
   SyncRunSummary,
 } from '@/types/dictionarySync';
 
@@ -47,6 +48,9 @@ export const DictionarySyncService = {
   },
   approve(id: string): Promise<SyncRunDetail> {
     return apiRequest<SyncRunDetail>(`${runPath(id)}/approve`, {method: 'POST'});
+  },
+  editRecord(id: string, body: SyncRecordEdit): Promise<SyncRunDetail> {
+    return apiRequest<SyncRunDetail>(`${runPath(id)}/records`, {method: 'PATCH', body: JSON.stringify(body)});
   },
   reject(id: string): Promise<SyncRunDetail> {
     return apiRequest<SyncRunDetail>(`${runPath(id)}/reject`, {method: 'POST'});
