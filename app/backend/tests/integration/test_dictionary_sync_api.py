@@ -449,3 +449,23 @@ async def test_the_preview_counts_the_model_work_and_writes_nothing(sync: Harnes
     # Nothing was written and no model was called.
     assert sync.gateway.port.calls == calls
     assert (await sync.active())[0] == first["new_version"]
+
+
+async def test_approved_admin_corrections_become_gold_set_rows(sync: Harness) -> None:
+    from app.scripts.curation_feedback import collect
+
+    await sync.run()
+    app.state.dictionary_sync.requires_approval = True
+    sync.source.snapshot = tables("vParty", "vOther")
+    run = await sync.run()
+    path = f"/dictionary/sync/runs/{run['public_id']}/records"
+    body = {"table_key": "EDWDM.CUS.vOther", "column_name": "Kolon1", "field": "Summary"}
+    assert (await sync.dd.request("PATCH", path, json={**body, "value": "İlk"})).status_code == 200
+    assert (await sync.dd.request("PATCH", path, json={**body, "value": "Son"})).status_code == 200
+    assert await collect(None) == []  # not approved yet
+    assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{run['public_id']}/approve")).status_code == 200
+    rows = await collect(None)
+    assert [(r["obj"], r["col"], r["field"], r["gold_text"]) for r in rows] == [
+        ("EDWDM.CUS.vOther", "Kolon1", "Summary", "Son")
+    ]
+    assert rows[0]["model_text"] != "İlk"  # the model's own text, not the admin's first try
