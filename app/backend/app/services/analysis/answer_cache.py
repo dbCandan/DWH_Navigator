@@ -10,7 +10,8 @@ says the same thing in other words — gets the earlier answer back. Two keys fi
   order and stopwords do not count, numbers and negations do.
 
 An answer is only reused under the same ``fingerprint``: dictionary version, chat
-model, term dictionary and every setting that shapes an answer. Pure module; the
+model, the term-dictionary groups the question matches and every setting that shapes an
+answer. Pure module; the
 answers are kept in PostgreSQL by the saved-answer repository.
 """
 
@@ -88,8 +89,9 @@ def fingerprint(
     top_n: int,
     stopwords: frozenset[str] = frozenset(),
 ) -> str:
-    """What an answer depends on besides the question; any change makes old answers
-    unusable (they stay stored until cleared). The same inputs give the source's value."""
+    """What an answer depends on besides the question's words; any change makes old answers
+    unusable (they stay stored until cleared). ``term_groups`` are the groups the question
+    matches, in any order: a group the question does not touch does not count."""
     raw = asdict(settings)
     for key in _NEUTRAL:
         raw.pop(key, None)
@@ -97,7 +99,7 @@ def fingerprint(
     raw["_"] = {
         "format": CACHE_FORMAT,
         "dictionary": dictionary_version,
-        "terms": [[g.term, *g.equivalents, g.domain, g.note] for g in term_groups],
+        "terms": sorted([g.term, *g.equivalents, g.domain, g.note] for g in term_groups),
         "stopwords": sorted(stopwords),
         "top": top_n,
         "prompts": prompts_digest(),

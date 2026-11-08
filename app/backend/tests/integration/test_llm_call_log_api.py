@@ -59,7 +59,9 @@ class Log:
             self.url + path, params=params, headers=self.auth.headers(who or self.manager)
         )
 
-    async def chat(self, user: str = f"Soru {MARKER}") -> LlmChatResult:
+    async def chat(
+        self, user: str = f"Soru {MARKER}", analysis: str | None = None
+    ) -> LlmChatResult:
         connection = LlmConnection(
             endpoint=self.server.url(),
             chat_model="gemma",
@@ -74,6 +76,7 @@ class Log:
                 schema={"type": "object"},
                 max_tokens=64,
                 purpose=LlmPurpose.ANALYSIS,
+                analysis_public_id=analysis,
             ),
         )
         await asyncio.gather(*self.adapter._call_log_writes)
@@ -194,8 +197,24 @@ async def test_the_filters(log: Log) -> None:
     assert len((await log.get(limit=1)).json()["rows"]) == 1
 
 
+async def test_the_calls_of_one_analysis(log: Log) -> None:
+    analysis = "7d1c1f0e-5b0a-4e7b-9a55-0c9d2f6b3a10"
+    await log.chat(analysis=analysis)
+    await log.chat("Başka bir soru")
+
+    page = (await log.get(analysis=analysis)).json()
+    assert page["total"] == 1
+    assert page["rows"][0]["analysis_public_id"] == analysis
+    assert (await log.get(analysis="00000000-0000-4000-8000-000000000000")).json()["total"] == 0
+
+
 async def test_bad_filters_are_refused(log: Log) -> None:
-    for params in ({"purpose": "yok"}, {"outcome": "yok"}, {"q": "x" * 201}):
+    for params in (
+        {"purpose": "yok"},
+        {"outcome": "yok"},
+        {"q": "x" * 201},
+        {"analysis": "analiz-degil"},
+    ):
         response = await log.get(**params)
         assert (response.status_code, response.json()["detail"]["code"]) == (422, "invalid_filter")
 

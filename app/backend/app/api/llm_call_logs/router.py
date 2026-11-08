@@ -44,6 +44,13 @@ router = APIRouter(
 Session = Annotated[AsyncSession, Depends(get_db)]
 
 
+def _is_public_id(value: str) -> bool:
+    try:
+        return str(UUID(value)) == value.lower()
+    except ValueError:
+        return False
+
+
 def _invalid_filter() -> ApplicationError:
     return ApplicationError(
         status.HTTP_422_UNPROCESSABLE_CONTENT, "invalid_filter", "Süzgeç değerleri geçersiz."
@@ -59,7 +66,9 @@ async def _tenant_id(session: AsyncSession, context: CurrentContext) -> int:
 @router.get(
     "",
     response_model=LlmCallLogPage,
-    responses=error_responses({422: "invalid_filter: amaç, sonuç, metin ya da sayı geçersiz"}),
+    responses=error_responses(
+        {422: "invalid_filter: amaç, sonuç, metin, analiz ya da sayı geçersiz"}
+    ),
 )
 async def list_calls(
     context: CurrentContext,
@@ -68,6 +77,9 @@ async def list_calls(
     purpose: Annotated[str | None, Query(description="Çağrının amacı")] = None,
     outcome: Annotated[str | None, Query(description="Çağrının sonucu")] = None,
     q: Annotated[str | None, Query(description="İstek ve yanıtta aranan metin")] = None,
+    analysis: Annotated[
+        str | None, Query(description="Yalnız bu analizin çağrıları (analizin public_id'si)")
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_LIMIT)] = DEFAULT_LIMIT,
 ) -> LlmCallLogPage:
     """The newest calls without their bodies, and how many match the filters."""
@@ -78,8 +90,12 @@ async def list_calls(
         raise _invalid_filter()
     if q is not None and len(q) > MAX_TEXT:
         raise _invalid_filter()
+    if analysis is not None and not _is_public_id(analysis):
+        raise _invalid_filter()
     tenant_id = await _tenant_id(session, context)
-    filters = CallLogFilters(purpose=purpose, outcome=outcome, q=(q or "").strip() or None)
+    filters = CallLogFilters(
+        purpose=purpose, outcome=outcome, q=(q or "").strip() or None, analysis=analysis
+    )
     rows, total = await LlmCallLogRepository(session).page(tenant_id, filters, limit)
     return LlmCallLogPage(
         rows=[LlmCallLogRow.model_validate(row, from_attributes=True) for row in rows],

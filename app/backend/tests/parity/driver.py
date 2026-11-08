@@ -70,7 +70,7 @@ class Side(Protocol):
 
     def encode(self, result: Any) -> dict[str, Any]: ...
 
-    def fingerprint(self, engine: Any, top_n: int) -> str: ...
+    def fingerprint(self, engine: Any, top_n: int, query: str) -> str: ...
 
     def prompts_digest(self) -> str: ...
 
@@ -198,7 +198,7 @@ def _outputs(
             "text_key": text_key,
             "meaning_key": meaning_key,
             "prompts_digest": side.prompts_digest(),
-            "fingerprint": side.fingerprint(engine, top_n),
+            "fingerprint": side.fingerprint(engine, top_n, q.query),
         },
         "excel": {
             "topic": side.slugify(q.query),

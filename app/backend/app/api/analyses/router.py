@@ -10,7 +10,9 @@ stream checks the device id and the owner before its first byte; nothing is in t
 import asyncio
 import logging
 import time
+from collections.abc import Callable
 from datetime import datetime
+from functools import partial
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
@@ -43,8 +45,9 @@ from app.schemas.analysis.jobs import (
 )
 from app.schemas.errors import error_responses
 from app.services.analysis.jobs import AnalysisJobs, JobView, Tenant
+from app.services.analysis.llm.port import ModelSampling
 from app.services.analysis.model_view import sampling_of
-from app.services.analysis.pipeline import ISTANBUL
+from app.services.analysis.pipeline import ISTANBUL, Engine
 from app.services.analysis.report.excel import report_filename, write_ask_report
 from app.services.request_scope import acting_user_with_role, active_tenant
 from app.services.search_index import SearchIndex
@@ -368,16 +371,21 @@ async def saved_answers_summary(
 
     tenant = await _tenant(session, context)
     await session.commit()
-    fingerprint = ""
+    fingerprint_of: Callable[[str], str] | None = None
     if index.serving is not None:
         connection = await jobs.models.snapshot(
             tenant_id=tenant.tenant_id, tenant_public_id=tenant.public_id
         )
-        fingerprint = index.serving.engine.cache_fingerprint(DEFAULT_TOP, sampling_of(connection))
-    summary = await jobs.saved_answers.summary(tenant.tenant_id, fingerprint)
+        engine, sampling = index.serving.engine, sampling_of(connection)
+        fingerprint_of = partial(_fingerprint, engine, sampling)
+    summary = await jobs.saved_answers.summary(tenant.tenant_id, fingerprint_of)
     return SavedAnswerSummaryOut(
         total=summary.total, usable=summary.usable, newest_at=summary.newest_at
     )
+
+
+def _fingerprint(engine: Engine, sampling: ModelSampling, query: str) -> str:
+    return engine.cache_fingerprint(query, DEFAULT_TOP, sampling)
 
 
 @router.delete(

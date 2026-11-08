@@ -128,14 +128,14 @@ class TargetSide:
     def encode(self, result: Any) -> dict[str, Any]:
         return answer_cache.encode(result)
 
-    def fingerprint(self, engine: Any, top_n: int) -> str:
+    def fingerprint(self, engine: Any, top_n: int, query: str) -> str:
         sampling = ModelSampling(
             str(SAMPLING["model"]),
             float(SAMPLING["temperature"]),
             str(SAMPLING["reasoning_effort"]),
             int(SAMPLING["seed"]),
         )
-        return str(engine.cache_fingerprint(top_n, sampling))
+        return str(engine.cache_fingerprint(query, top_n, sampling))
 
     def prompts_digest(self) -> str:
         return answer_cache.prompts_digest()

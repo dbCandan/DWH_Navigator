@@ -30,7 +30,8 @@ değiştirir.
   Excel'e aktarılıp değiştirilmeden geri yüklenen liste “değişiklik yok” sonucunu verir ve indeksi
   yeniden kurdurmaz.
 - **Kullanıcı** (`kullanici`): Listeleri görmez ve değiştiremez. Sorusu, analizi başladığı anda
-  geçerli olan listelerle cevaplanır; listeler değişince eski kayıtlı cevaplar ona yeniden verilmez
+  geçerli olan listelerle cevaplanır; sorusunun eşleştiği bir terim grubu ya da durak kelime listesi
+  değişince eski kayıtlı cevap ona yeniden verilmez; başka bir konunun terimi değişirse verilir
   ([question-analysis](../004-question-analysis/PRD.md)).
 - **İşletim ekibi**: Yeni kurulumda başlangıç listelerinin göçle (veritabanı yapısını ve verisini
   sürüm sürüm kuran betik) bir kez yüklendiğini göç işinin olay kaydından görür; liste içeriğini
@@ -63,8 +64,8 @@ değiştirir.
   [question-analysis](../004-question-analysis/PRD.md); giriş ve roller
   [user-accounts](../../../application-foundation/PRDs/001-user-accounts/PRD.md) PRD'sindedir.
 
-Decision 1: Liste sırası korunur ve anlamlıdır: terim genişletme grupları sırayla okur, kayıtlı cevap
-parmak izi terim listesini sırasıyla içerir. Ekran yeni terimi listenin başına, yeni durak kelimeyi
+Decision 1: Liste sırası korunur ve anlamlıdır: terim genişletme grupları sırayla okur. Kayıtlı cevap
+parmak izi yalnız talebin eşleştiği grupları sırasından bağımsız içerir. Ekran yeni terimi listenin başına, yeni durak kelimeyi
 grubunun sonuna ekler (kaynakla aynı).
 
 Decision 2: Motorun (kural motoru ve arama yapılarının bellekteki kopyası) okuduğu biçim kaynakla
@@ -287,9 +288,9 @@ aktarmasını başlatmaz ([dictionary-management](../001-dictionary-management/P
 
 Requirement 14: Başarılı bir liste değişikliğinin yanıtı döndükten sonra başlayan her analiz yeni
 listeyi kullanır; o anda süren analizler başladıkları listeyle biter
-([search-settings](../009-search-settings/PRD.md)). Değişiklik kayıtlı cevap parmak izini Mevcut
-davranış bölümündeki gibi değiştirir; eski kayıtlı cevaplar silinmez, yalnız kullanılmaz
-([question-analysis](../004-question-analysis/PRD.md)).
+([search-settings](../009-search-settings/PRD.md)). Bir terim değişikliği yalnız o grupla eşleşen
+taleplerin kayıtlı cevap parmak izini, bir durak kelime değişikliği ise bütün taleplerinkini değiştirir;
+eski kayıtlı cevaplar silinmez, yalnız kullanılmaz ([question-analysis](../004-question-analysis/PRD.md)).
 
 Requirement 15: Bütün uçlar `yonetici` rolü ister; `kullanici` 403, oturumsuz istek 401 alır.
 Kelimeler menü öğesi ve sayfası yalnız `yonetici`'ye görünür; bu gizleme yetki denetiminin yerini
@@ -501,8 +502,9 @@ Belirtim → Plan → Görevler → Uygulama ([Plan](plan.md), [Görevler](tasks
   yazılımsal silinmiş olarak kalır.
 - **Ayırıcı içeren eşdeğer:** Noktalı virgül içeren bir eşdeğer (çekmece noktalı virgülden bölmez)
   Excel'e aktarılıp geri yüklenince iki eşdeğere bölünür; kaynakta da böyledir.
-- **Gereksiz yeniden analiz:** Terim grubunun yalnız alanı ya da notu değişse de parmak izi değişir ve
-  kayıtlı cevaplar kullanılmaz; bir sonraki benzer soru dakikalar süren analizle yeniden cevaplanır.
+- **Gereksiz yeniden analiz:** Terim grubunun yalnız alanı ya da notu değişse de o grupla eşleşen
+  taleplerin parmak izi değişir ve kayıtlı cevapları kullanılmaz; bir sonraki benzer soru dakikalar
+  süren analizle yeniden cevaplanır.
 - **Kayıt süresi:** Her kayıt indeksin yeniden kurulmasını bekler (kaynakta yaklaşık 10 saniye); büyük
   sözlükte süre uzarsa giriş katmanının 60 saniyelik süre sınırına yaklaşabilir
   ([search-settings](../009-search-settings/PRD.md) Riskler).

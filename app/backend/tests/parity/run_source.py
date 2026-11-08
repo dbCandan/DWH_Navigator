@@ -113,7 +113,8 @@ class SourceSide:
     def encode(self, result: Any) -> dict[str, Any]:
         return answer_cache.encode(result)
 
-    def fingerprint(self, engine: Any, top_n: int) -> str:
+    def fingerprint(self, engine: Any, top_n: int, query: str) -> str:
+        del query  # the source keys every question with the whole term dictionary
         return engine.cache_fingerprint(top_n)
 
     def prompts_digest(self) -> str:

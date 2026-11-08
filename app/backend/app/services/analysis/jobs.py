@@ -486,7 +486,9 @@ class AnalysisJobs:
         self, job: AnalysisJob, engine: Engine, connection: LlmConnection | LlmOutcome
     ) -> Reuse | None:
         keys = await asyncio.to_thread(engine.cache_keys, job.query)
-        fingerprint = engine.cache_fingerprint(job.top, sampling_of(connection))
+        fingerprint = await asyncio.to_thread(
+            engine.cache_fingerprint, job.query, job.top, sampling_of(connection)
+        )
         return await self.saved_answers.lookup(
             job.tenant.tenant_id, engine, job.query, keys, fingerprint
         )
@@ -605,7 +607,9 @@ class AnalysisJobs:
                 )
                 job.model = model.model
                 keys = await asyncio.to_thread(engine.cache_keys, job.query)
-                fingerprint = engine.cache_fingerprint(job.top, sampling_of(connection))
+                fingerprint = await asyncio.to_thread(
+                    engine.cache_fingerprint, job.query, job.top, sampling_of(connection)
+                )
                 if not job.fresh:
                     reuse = await self.saved_answers.lookup(
                         job.tenant.tenant_id, engine, job.query, keys, fingerprint

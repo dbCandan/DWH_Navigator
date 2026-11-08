@@ -179,13 +179,15 @@ class Engine:
         """(text key, meaning key) of a question for reusing earlier answers (ADR-035)."""
         return text_key(query), meaning_key(self.expander.expand(query))
 
-    def cache_fingerprint(self, top_n: int, model: ModelSampling) -> str:
-        """What this engine's answers depend on besides the question (ADR-035)."""
+    def cache_fingerprint(self, query: str, top_n: int, model: ModelSampling) -> str:
+        """What this engine's answer to ``query`` depends on besides its words (ADR-035):
+        of the term dictionary only the groups the question matches, so a term added for
+        another subject leaves this question's saved answer usable."""
         return fingerprint(
             self.settings,
             model,
             self.dictionary.version,
-            self.resources.term_groups,
+            self.expander.expand(query).term_groups,
             top_n,
             self.resources.stopwords,
         )

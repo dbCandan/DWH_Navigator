@@ -9,6 +9,7 @@ lookups count as a miss, writes are skipped, and both leave an event and a metri
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from collections.abc import Callable
@@ -177,9 +178,24 @@ class SavedAnswers:
         log_event(logger, "saved_answer.cleared", removed=removed, user_public_id=actor_public_id)
         return removed
 
-    async def summary(self, tenant_id: int, fingerprint: str) -> SavedAnswerSummary:
+    async def summary(
+        self, tenant_id: int, fingerprint_of: Callable[[str], str] | None
+    ) -> SavedAnswerSummary:
+        """How many answers are kept, how many the current engine and model would give again
+        (each against its own question's fingerprint; none without an engine) and the newest."""
         async with self._session_factory() as session:
-            return await SavedAnswerRepository(session).summary(tenant_id, fingerprint)
+            rows = await SavedAnswerRepository(session).keyed(tenant_id)
+
+        def usable() -> int:
+            if fingerprint_of is None:
+                return 0
+            return sum(1 for query, kept, _ in rows if fingerprint_of(query) == kept)
+
+        return SavedAnswerSummary(
+            total=len(rows),
+            usable=await asyncio.to_thread(usable),
+            newest_at=max((at for _, _, at in rows), default=None),
+        )
 
 
 def _given_again(reuse: Reuse, query: str, started: float) -> None:

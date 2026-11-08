@@ -157,7 +157,7 @@ def test_the_fingerprint_leaves_the_cache_settings_out_and_returns_with_a_value(
 
     def fingerprint(**changes: Any) -> str:
         settings = engine_settings(effective_values(changes))
-        return Engine(dictionary, settings, Resources()).cache_fingerprint(5, SAMPLING)
+        return Engine(dictionary, settings, Resources()).cache_fingerprint('kart limit', 5, SAMPLING)
 
     base = fingerprint()
     assert fingerprint(**{"cache.enabled": False, "cache.meaning": False}) == base

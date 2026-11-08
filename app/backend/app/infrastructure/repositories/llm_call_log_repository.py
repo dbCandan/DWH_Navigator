@@ -18,6 +18,7 @@ class CallLogFilters:
     purpose: str | None = None
     outcome: str | None = None
     q: str | None = None
+    analysis: str | None = None
 
 
 def _conditions(tenant_id: int, filters: CallLogFilters) -> list[ColumnElement[bool]]:
@@ -26,6 +27,8 @@ def _conditions(tenant_id: int, filters: CallLogFilters) -> list[ColumnElement[b
         conditions.append(LlmCallLog.purpose == filters.purpose)
     if filters.outcome:
         conditions.append(LlmCallLog.outcome == filters.outcome)
+    if filters.analysis:
+        conditions.append(LlmCallLog.analysis_public_id == filters.analysis)
     if filters.q:
         needle = filters.q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         conditions.append(cast(LlmCallLog.exchanges, Text).ilike(f"%{needle}%", escape="\\"))

@@ -9349,6 +9349,23 @@
             }
           },
           {
+            "description": "Yaln\u0131z bu analizin \u00e7a\u011fr\u0131lar\u0131 (analizin public_id'si)",
+            "in": "query",
+            "name": "analysis",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Yaln\u0131z bu analizin \u00e7a\u011fr\u0131lar\u0131 (analizin public_id'si)"
+            }
+          },
+          {
             "in": "query",
             "name": "limit",
             "required": false,
@@ -9399,7 +9416,7 @@
                 }
               }
             },
-            "description": "invalid_filter: ama\u00e7, sonu\u00e7, metin ya da say\u0131 ge\u00e7ersiz"
+            "description": "invalid_filter: ama\u00e7, sonu\u00e7, metin, analiz ya da say\u0131 ge\u00e7ersiz"
           }
         },
         "security": [

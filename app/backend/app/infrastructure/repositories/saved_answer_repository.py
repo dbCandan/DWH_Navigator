@@ -122,14 +122,12 @@ class SavedAnswerRepository:
         )
         return len(result.all())
 
-    async def summary(self, tenant_id: int, fingerprint: str) -> SavedAnswerSummary:
-        row = (
-            await self.session.execute(
-                select(
-                    func.count(),
-                    func.count().filter(SavedAnswer.fingerprint == fingerprint),
-                    func.max(SavedAnswer.answered_at),
-                ).where(SavedAnswer.tenant_id == tenant_id)
+    async def keyed(self, tenant_id: int) -> list[tuple[str, str, datetime]]:
+        """Every row's question, fingerprint and time: whether a row is usable depends on
+        its own question (the term groups it matches), so it is decided per row."""
+        rows = await self.session.execute(
+            select(SavedAnswer.query_text, SavedAnswer.fingerprint, SavedAnswer.answered_at).where(
+                SavedAnswer.tenant_id == tenant_id
             )
-        ).one()
-        return SavedAnswerSummary(total=int(row[0]), usable=int(row[1]), newest_at=row[2])
+        )
+        return [(q, f, at) for q, f, at in rows.all()]

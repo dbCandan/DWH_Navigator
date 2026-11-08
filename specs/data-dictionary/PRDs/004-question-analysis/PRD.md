@@ -612,8 +612,9 @@ kırılım değeri işareti; bir terim grubunun bütün üyeleri aynı alternati
 sayılar ve olumsuzluk kelimeleri (`NEGATIONS`: yok, degil, haric, harici, disinda, olmayan, olmadan,
 olmayanlar, hic, without, except, not, no); içerik kavramı yoksa boştur. Parmak izi, şu bileşenlerin
 anahtarları sıralı kanonik metninden hesaplanan SHA-256 özetinin ilk 16 onaltılık hanesidir:
-`CACHE_FORMAT` (3); sözlük sürümü; terim grupları (sırasıyla terim, eşdeğerler, alan, not); sıralı
-durak kelimeler; `top`; istem özeti (istem modülündeki büyük harfli metin ve şema
+`CACHE_FORMAT` (3); sözlük sürümü; talebin eşleştiği terim grupları (her biri terim, eşdeğerler,
+alan, not; gruplar sıralı; talebin eşleşmediği bir grup bileşen değildir, bu yüzden başka bir konu için
+eklenen terim bu talebin kayıtlı cevabını geçersiz kılmaz); sıralı durak kelimeler; `top`; istem özeti (istem modülündeki büyük harfli metin ve şema
 sabitlerinin SHA-256 özetinin ilk 12 hanesi); search-settings'teki arama, genişletme, puanlama ve
 analist ayarlarının tamamı; etkin sohbet modelinin adı, sıcaklığı, düşünme modu ve tohumu. Kayıtlı
 cevap ayarları (`cache.*`) bileşen değildir. Bileşenlerden biri değişince eski kayıtlı cevaplar

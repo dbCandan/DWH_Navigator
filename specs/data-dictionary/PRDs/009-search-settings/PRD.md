@@ -194,7 +194,10 @@ maddede yazılıdır.
   de dakikalarca çalışır ve ikincisi öncekinin yerine yazılır (`AnswerStore.put`). Bu korumanın sahibi
   [question-analysis](../004-question-analysis/PRD.md)'tir. (3) Kaynak parmak izi fazla kapsamlıdır
   (terim grubunun `domain` ve `note` alanları cevabı etkilemez); yalnız gereksiz yeniden analize yol
-  açtığı için korunur.
+  açtığı için korunur. Hedef, terim sözlüğünden yalnız talebin eşleştiği grupları parmak izine katar:
+  bir terim eklemek ya da değiştirmek yalnız o gruba giren taleplerin kayıtlı cevaplarını yeniler.
+  Bu yüzden kayıtlı cevap özetindeki “kullanılabilir” sayısı her kayıt için kendi talebinin parmak
+  iziyle hesaplanır.
 
 ## İşlevsel gereksinimler
 
@@ -773,4 +776,6 @@ Belirtim → Plan → Görevler → Uygulama ([Plan](plan.md), [Görevler](tasks
 - **Sürüm geçişi:** Bir ayarı kaldıran ya da aralığını daraltan sürüm saklanan değeri temizlemezse
   süreç açılmaz (Decision 13); göç bu durumu kapsamalıdır.
 - **Gereksiz yeniden analiz:** Parmak izi terim notu ve alanı gibi cevabı etkilemeyen girdileri de
-  içerdiğinden kayıtlı cevaplar bazen gereksiz yere kullanılmaz.
+  içerdiğinden kayıtlı cevaplar bazen gereksiz yere kullanılmaz. Talebin eşleşmediği terim grupları
+  parmak izine girmez; sözlük sürümü, model, ayar ve durak kelime değişiklikleri ise bütün kayıtlı
+  cevapları yeniler.

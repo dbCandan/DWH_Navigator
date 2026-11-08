@@ -17,6 +17,7 @@ pytestmark = pytest.mark.unit
 
 GROUPS = [TermGroup("müşteri no", ("hesap no", "customer id"))]
 MODEL = ModelSampling("test-model", 0.0, "none", 42)
+Q = "kart limit doluluk oranı"
 
 
 @pytest.fixture
@@ -52,31 +53,50 @@ def test_meaning_key_empty_without_content(engine: Engine) -> None:
 
 
 def test_fingerprint_follows_what_shapes_an_answer(engine: Engine) -> None:
-    fp = engine.cache_fingerprint(5, MODEL)
-    assert fp == engine.cache_fingerprint(5, MODEL)
-    assert fp != engine.cache_fingerprint(3, MODEL)
+    fp = engine.cache_fingerprint(Q, 5, MODEL)
+    assert fp == engine.cache_fingerprint(Q, 5, MODEL)
+    assert fp != engine.cache_fingerprint(Q, 3, MODEL)
     engine.settings.cache.max_age_days = 7  # does not change an answer
     engine.settings.cache.meaning = False
-    assert fp == engine.cache_fingerprint(5, MODEL)
-    assert fp != engine.cache_fingerprint(5, replace(MODEL, model="another-model"))
-    assert fp != engine.cache_fingerprint(5, replace(MODEL, temperature=0.2))
+    assert fp == engine.cache_fingerprint(Q, 5, MODEL)
+    assert fp != engine.cache_fingerprint(Q, 5, replace(MODEL, model="another-model"))
+    assert fp != engine.cache_fingerprint(Q, 5, replace(MODEL, temperature=0.2))
     other = answer_cache.fingerprint(engine.settings, MODEL, "other-version", GROUPS, 5)
-    assert other != engine.cache_fingerprint(5, MODEL)
+    assert other != engine.cache_fingerprint(Q, 5, MODEL)
     # the word lists count by content
     engine.resources.stopwords = engine.resources.stopwords | {"yeni"}
-    assert fp != engine.cache_fingerprint(5, MODEL)
-    fp = engine.cache_fingerprint(5, MODEL)
+    assert fp != engine.cache_fingerprint(Q, 5, MODEL)
+    fp = engine.cache_fingerprint(Q, 5, MODEL)
     engine.settings.analyst.shortlist = 6
-    assert fp != engine.cache_fingerprint(5, MODEL)
+    assert fp != engine.cache_fingerprint(Q, 5, MODEL)
+
+
+def test_fingerprint_counts_only_the_term_groups_the_question_matches(engine: Engine) -> None:
+    """A term added for another subject keeps a question's saved answer; a change in a group
+    the question matches does not; the list's order does not count."""
+    asked = "müşteri no ile kart limit doluluk oranı"
+    fp = engine.cache_fingerprint(asked, 5, MODEL)
+    unrelated = TermGroup("ikametgah", ("adres", "ev adresi"))
+    engine.expander = engine_with([unrelated, *GROUPS], engine).expander
+    assert engine.cache_fingerprint(asked, 5, MODEL) == fp
+    engine.expander = engine_with([*GROUPS, unrelated], engine).expander
+    assert engine.cache_fingerprint(asked, 5, MODEL) == fp
+    changed = TermGroup("müşteri no", ("hesap no", "customer id", "CIF"))
+    engine.expander = engine_with([changed, unrelated], engine).expander
+    assert engine.cache_fingerprint(asked, 5, MODEL) != fp
+
+
+def engine_with(groups: list[TermGroup], base: Engine) -> Engine:
+    return Engine(base.dictionary, base.settings, Resources(groups, base.resources.stopwords))
 
 
 def test_fingerprint_follows_the_prompt(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
     """An answer written under an older analyst prompt is not given again."""
     from app.services.analysis.llm import analyst_prompts
 
-    fp = engine.cache_fingerprint(5, MODEL)
+    fp = engine.cache_fingerprint(Q, 5, MODEL)
     monkeypatch.setattr(analyst_prompts, "ANALYST_RULES", analyst_prompts.ANALYST_RULES + " ")
-    assert fp != engine.cache_fingerprint(5, MODEL)
+    assert fp != engine.cache_fingerprint(Q, 5, MODEL)
 
 
 def test_encode_decode_round_trip(engine: Engine) -> None:
