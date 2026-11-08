@@ -16,6 +16,7 @@ import type {
   LlmModelRow,
   LlmTestStep,
 } from '@/types/llm';
+import {EFFORTS, GENERATION_EFFORTS, generationRole} from './roles';
 import {TestSteps} from './TestSteps';
 import './ai.css';
 
@@ -31,16 +32,6 @@ interface Props {
   onClose: () => void;
 }
 
-const EFFORTS = [
-  ['none', 'ai.editor.effort.none'],
-  ['low', 'ai.editor.effort.low'],
-  ['medium', 'ai.editor.effort.medium'],
-  ['high', 'ai.editor.effort.high'],
-  ['', 'ai.editor.effort.omit'],
-] as const;
-
-/** The generation role's reasoning: 'inherit' uses the chat model's own setting. */
-const GENERATION_EFFORTS = [['inherit', 'ai.editor.effort.inherit'], ...EFFORTS] as const;
 
 type Fetch =
   | {state: 'idle'}
@@ -80,6 +71,7 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
   const [offered, setOffered] = useState<LlmModelRow[]>([]);
   const [fetched, setFetched] = useState<Fetch>({state: 'idle'});
   const [tested, setTested] = useState<Test>({state: 'idle'});
+  const [generationTested, setGenerationTested] = useState<Test>({state: 'idle'});
   const [saving, setSaving] = useState(false);
   const fetchedOnOpen = useRef(false);
 
@@ -125,20 +117,40 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function test() {
-    setTested({state: 'busy'});
+  /** Tries the form's values, nothing saved: the chat model, or the generation model and its reasoning. */
+  async function test(role: 'chat' | 'generation') {
+    const settle = role === 'chat' ? setTested : setGenerationTested;
+    const values = connection();
+    settle({state: 'busy'});
     try {
       const answer = await LlmIntegrationService.test({
         ...(item ? {public_id: item.public_id} : {}),
-        ...connection(),
+        ...values,
+        ...(role === 'generation'
+          ? generationRole({
+              ...values,
+              generation_model: generationModel,
+              generation_reasoning_effort: generationEffort,
+            })
+          : {}),
         ...typedKey,
       });
-      setTested({state: 'done', steps: answer.steps});
+      settle({state: 'done', steps: answer.steps});
     } catch (error) {
       reportUnreachable(error);
-      setTested({state: 'bad', message: llmErrorText(error, t)});
+      settle({state: 'bad', message: llmErrorText(error, t)});
     }
   }
+
+  const testResult = (state: Test, label: string) =>
+    state.state === 'idle' ? null : (
+      <div className="ai-test">
+        <h4>{label}</h4>
+        {state.state === 'busy' && <p className="note">{t('ai.editor.testing')}</p>}
+        {state.state === 'done' && <TestSteps steps={state.steps} />}
+        {state.state === 'bad' && <div className="msg bad">{state.message}</div>}
+      </div>
+    );
 
   async function save() {
     const values = {
@@ -396,22 +408,24 @@ export function IntegrationEditor({item, llm, withConflict, onSaved, onClose}: P
           {t('ai.editor.stepTest')}
         </h3>
         <div className="ai-act">
-          <button className="btn sm" type="button" disabled={tested.state === 'busy'} onClick={() => void test()}>
-            {tested.state === 'busy' ? (
-              t('ai.testing')
-            ) : (
-              <>
-                <Icon name="bolt" />
-                {t('ai.editor.test')}
-              </>
-            )}
+          <button className="btn sm" type="button" disabled={tested.state === 'busy'} onClick={() => void test('chat')}>
+            <Icon name="bolt" />
+            {t('ai.editor.test')}
+          </button>
+          <button
+            className="btn sm"
+            type="button"
+            disabled={generationTested.state === 'busy'}
+            onClick={() => void test('generation')}
+          >
+            <Icon name="bolt" />
+            {t('ai.editor.testGeneration')}
           </button>
           <span className="note ai-act-state">{t('ai.editor.testNote')}</span>
         </div>
-        <div aria-live="polite">
-          {tested.state === 'busy' && <p className="note">{t('ai.editor.testing')}</p>}
-          {tested.state === 'done' && <TestSteps steps={tested.steps} />}
-          {tested.state === 'bad' && <div className="msg bad">{tested.message}</div>}
+        <div className="ai-tests" aria-live="polite">
+          {testResult(tested, t('ai.editor.chatModel'))}
+          {testResult(generationTested, t('ai.editor.generationModel'))}
         </div>
       </div>
     </Drawer>
