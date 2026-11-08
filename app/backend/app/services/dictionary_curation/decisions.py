@@ -23,7 +23,9 @@ class Decisions:
     excluded_schemas: frozenset[str] = frozenset()  # folded
     same_value_columns: tuple[tuple[str, ...], ...] = ()  # columns that carry one value
     business_domains: tuple[str, ...] = ()  # the shared names
-    domain_aliases: Mapping[str, str] = field(default_factory=dict)  # variant -> shared name
+    domain_aliases: Mapping[str, str] = field(
+        default_factory=dict
+    )  # variant -> shared name
     summary_max_chars: int = 70
 
     def ignores(self, column: str) -> bool:
@@ -47,9 +49,13 @@ def _fold_all(values: Any) -> frozenset[str]:
 def parse(raw: Mapping[str, Any]) -> Decisions:
     return Decisions(
         ignored_columns=_fold_all(raw.get("ignored_columns")),
-        excluded_object_prefixes=tuple(sorted(_fold_all(raw.get("excluded_object_prefixes")))),
+        excluded_object_prefixes=tuple(
+            sorted(_fold_all(raw.get("excluded_object_prefixes")))
+        ),
         excluded_schemas=_fold_all(raw.get("excluded_schemas")),
-        same_value_columns=tuple(tuple(group) for group in raw.get("same_value_columns", ())),
+        same_value_columns=tuple(
+            tuple(group) for group in raw.get("same_value_columns", ())
+        ),
         business_domains=tuple(raw.get("business_domains", ())),
         domain_aliases=dict(raw.get("domain_aliases", {})),
         summary_max_chars=int(raw.get("summary_max_chars", 70)),

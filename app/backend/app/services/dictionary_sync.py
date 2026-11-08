@@ -52,8 +52,10 @@ from app.infrastructure.repositories.vocabulary_repository import VocabularyRepo
 from app.services.analysis.dictionary_workbook import load_dictionary, records_digest
 from app.services.dictionary_curation.decisions import Decisions
 from app.services.dictionary_curation.decisions import load as load_decisions
+from app.services.dictionary_curation.judge import JudgeOutcome, judge_rows, sample_rows
 from app.services.dictionary_curation.normalize import normalize_tables
 from app.services.dictionary_curation.scope import Scope, plan_scope
+from app.services.dictionary_curation.score import score_card
 from app.services.dictionary_reading import dictionary_identity
 from app.services.dictionary_service import write_dictionary_version
 from app.services.dictionary_sync_describe import describe_tables
@@ -208,9 +210,14 @@ class DictionarySync:
         session_factory: async_sessionmaker[AsyncSession],
         kept_databases: Sequence[str] = (),
         decisions: Decisions | None = None,
+        requires_approval: bool = False,
+        judge_sample: int = 40,
     ) -> None:
         self.kept_databases = tuple(kept_databases)
         self.decisions = decisions or load_decisions()
+        # Every update with changes waits for an admin's approval, the score card beside it.
+        self.requires_approval = requires_approval
+        self.judge_sample = judge_sample
         self.index = index
         self.models = models
         self.source = source
@@ -443,24 +450,27 @@ class DictionarySync:
             )
 
         # The rows to describe again: a changed computation, or a description the source rewrote.
-        rows = set(scope.columns)
-        rows.update(
+        again_rows = set(scope.columns)
+        again_rows.update(
             (fold(c.table_key), fold(c.column_name))
             for c in plan.changes
             if c.kind == "column_changed" and c.field == "ColumnDescription" and c.origin == "kaynak"
         )
-        objects = {
+        again_objects = {
             fold(c.table_key)
             for c in plan.changes
             if c.kind == "table_changed" and c.field == "ObjectDescription" and c.origin == "kaynak"
         }
-        scoped = {key for key, _ in rows} | objects
+        scoped = {key for key, _ in again_rows} | again_objects
+        # The rows the model will describe get their code trail (a changed source text too).
+        await asyncio.to_thread(scope.ensure_evidence, plan.tables, again_rows)
         work = [t for t in plan.tables if t.needs_model or fold(t.key) in scoped]
         changed = list(work)
         filled = calls = failures = 0
         suggestions: list[Any] = []
         model = ""
         evidence: dict[Any, Any] = dict(scope.evidence)
+        chat_with: Any = None
         if work:
             await self._set(
                 run_id, phase="filling", progress_total=len(work), progress_done=0
@@ -474,6 +484,8 @@ class DictionarySync:
                 async def chat(request: LlmChatRequest) -> LlmChatResult:
                     return await self.models.port.chat(target, request)
 
+                chat_with = chat
+
                 async def progress(done: int, total: int) -> None:
                     await self._set(run_id, progress_done=done, progress_total=total)
 
@@ -481,7 +493,7 @@ class DictionarySync:
                 plan.changes.extend(outcome.changes)
                 warnings.extend(outcome.warnings)
                 described = await describe_tables(
-                    plan.tables, chat, evidence, rows=rows, objects=objects
+                    plan.tables, chat, evidence, rows=again_rows, objects=again_objects
                 )
                 plan.changes.extend(described.changes)
                 warnings.extend(described.warnings)
@@ -507,6 +519,26 @@ class DictionarySync:
         )
         plan.changes.extend(normalized.changes)
 
+        # The verifier: a second prompt scores a sample of the texts this run wrote.
+        model_rows = {
+            (fold(c.table_key), fold(c.column_name))
+            for c in plan.changes
+            if c.column_name and c.field == "ColumnDescription" and c.origin in ("model", "duzenleme")
+        }
+        judged: JudgeOutcome | None = None
+        if chat_with is not None and model_rows and self.judge_sample:
+            chosen = sample_rows(plan.tables, sorted(model_rows), self.judge_sample, seed=str(run_id))
+            judged = await judge_rows(chosen, chat_with, evidence, len(model_rows))
+        score = score_card(
+            plan.tables,
+            self.decisions,
+            judged,
+            model_calls=calls + (judged.calls if judged else 0),
+            model_failures=failures + (judged.failures if judged else 0),
+            normalized=len(normalized.changes),
+            scope={**scope.counts(), "written_rows": len(model_rows)},
+        )
+
         counts = {
             **counts_of(plan),
             "fields_filled": filled,
@@ -518,6 +550,7 @@ class DictionarySync:
             "warnings": len(warnings),
         }
         report = {
+            "score": score,
             "counts": counts,
             "warnings": warnings[:MAX_STORED_WARNINGS],
             "previous_version": previous,
@@ -565,7 +598,9 @@ class DictionarySync:
             column_meta=plan.column_meta(),
         )
 
-        if active is not None and plan.removal_share() > REMOVAL_LIMIT:
+        if active is not None and (
+            self.requires_approval or plan.removal_share() > REMOVAL_LIMIT
+        ):
             async with self.session_factory() as session, session.begin():
                 written, _pruned = await DictionaryRepository(session).write_version(
                     tenant_id,
@@ -635,7 +670,8 @@ class DictionarySync:
         await repository.save_trail_digests(tenant_id, scope.digests, datetime.now(UTC))
         await repository.drop_trail_digests(
             tenant_id,
-            [(fold(t.key), fold(c.record["ColumnName"])) for t in plan.tables for c in t.columns],
+            [(fold(t.key), fold(c.record["ColumnName"])) for t in plan.tables for c in t.columns]
+            + [(fold(t.key), "") for t in plan.tables],
         )
 
     async def swap(

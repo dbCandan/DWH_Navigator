@@ -17,7 +17,9 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
-TERMS_SENTENCE = re.compile(r"\s*Eş anlamlılar(?:/aranabilir terimler)?\s*:.*$", re.IGNORECASE | re.DOTALL)
+TERMS_SENTENCE = re.compile(
+    r"\s*Eş anlamlılar(?:/aranabilir terimler)?\s*:.*$", re.IGNORECASE | re.DOTALL
+)
 TAG = re.compile(
     r"^\s*\[(?:MODEL TAHMİNİ|ORİJİNAL AÇIKLAMA HATALIYDI|BU OBJEDE FARKLI ANLAMDA)[^\]]*\]\s*",
     re.IGNORECASE,
@@ -72,18 +74,27 @@ _WORDING = (
     (re.compile(r"\bkredi\b" + _KEEP_KREDI, re.IGNORECASE), "fon kullandırım"),
     (re.compile(r"\bvadeli mevduat", re.IGNORECASE), "mevduat"),
     (re.compile(r"(?<!kredili )\bmevduat hesab", re.IGNORECASE), "katılma hesab"),
-    (re.compile(r"(?<!kredili )\bmevduatların\b", re.IGNORECASE), "katılma hesaplarının"),
+    (
+        re.compile(r"(?<!kredili )\bmevduatların\b", re.IGNORECASE),
+        "katılma hesaplarının",
+    ),
     (re.compile(r"(?<!kredili )\bmevduatlar\b", re.IGNORECASE), "katılma hesapları"),
     (re.compile(r"(?<!kredili )\bmevduatın\b", re.IGNORECASE), "katılma hesabının"),
     (re.compile(r"(?<!kredili )\bmevduatını\b", re.IGNORECASE), "katılma hesabını"),
-    (re.compile(r"(?<!tasarruf )(?<!kredili )\bmevduatı\b", re.IGNORECASE), "katılma hesabı"),
+    (
+        re.compile(r"(?<!tasarruf )(?<!kredili )\bmevduatı\b", re.IGNORECASE),
+        "katılma hesabı",
+    ),
     (re.compile(r"(?<!kredili )\bmevduat\b", re.IGNORECASE), "katılma hesabı"),
     (re.compile(r"\bleasing icare\b", re.IGNORECASE), "icare"),
     (re.compile(r"\bleasingin\b", re.IGNORECASE), "icarenin"),
     (re.compile(r"\bleasinge\b", re.IGNORECASE), "icareye"),
     (re.compile(r"\bleasing\b", re.IGNORECASE), "icare"),
 )
-_DOUBLED = re.compile(r"\b(fon kullandırım\w*|katılma hesab\w*|icare\w*)\s*(?:\(\1\)|/\s*\1)", re.IGNORECASE)
+_DOUBLED = re.compile(
+    r"\b(fon kullandırım\w*|katılma hesab\w*|icare\w*)\s*(?:\(\1\)|/\s*\1)",
+    re.IGNORECASE,
+)
 _GENERAL_TERMS = (
     (re.compile(r"\bkar payı oran", re.IGNORECASE), "faiz oranı"),
     (re.compile(r"\bkar payı", re.IGNORECASE), "faiz"),
@@ -128,7 +139,9 @@ def _affirmed(sentence: str) -> str:
     for pattern, replacement in _AFFIRM:
         first = pattern.sub(replacement, first)
     first = re.split(r",\s*(?:kapsam|içerik|alan)\b", first)[0]
-    return "" if DOUBT.search(first) or HEDGE.search(first) else first.strip(" ,;.") + "."
+    return (
+        "" if DOUBT.search(first) or HEDGE.search(first) else first.strip(" ,;.") + "."
+    )
 
 
 def remove_doubt(text: str) -> tuple[str, list[str]]:
@@ -140,13 +153,19 @@ def remove_doubt(text: str) -> tuple[str, list[str]]:
         removed.append(tag.group(0).strip())
         text = text[tag.end() :]
     kept: list[str] = []
-    splitter = re.compile(r"(?:;|,\s*(?=(?:kapsam|alan|değer|bu|içerik)\b))" + _OUTSIDE_BRACKETS)
+    splitter = re.compile(
+        r"(?:;|,\s*(?=(?:kapsam|alan|değer|bu|içerik)\b))" + _OUTSIDE_BRACKETS
+    )
     for sentence in sentences(text):
         if not DOUBT.search(sentence):
             kept.append(sentence)
             continue
         removed.append(sentence)
-        good = [c.strip() for c in splitter.split(sentence.rstrip(" .")) if c.strip() and not DOUBT.search(c)]
+        good = [
+            c.strip()
+            for c in splitter.split(sentence.rstrip(" ."))
+            if c.strip() and not DOUBT.search(c)
+        ]
         if good:
             kept.append("; ".join(good).rstrip(" ,;") + ".")
     if not kept:
@@ -182,7 +201,10 @@ def remove_hedges(text: str, sources: str = "") -> tuple[str, list[str]]:
         return ""
 
     text = re.sub(
-        r"\s*\([^)]*\b(?:genellikle|olabilir|genelde|çoğunlukla)\b[^)]*\)", aside, text, flags=re.IGNORECASE
+        r"\s*\([^)]*\b(?:genellikle|olabilir|genelde|çoğunlukla)\b[^)]*\)",
+        aside,
+        text,
+        flags=re.IGNORECASE,
     )
     text = re.sub(r",?\s*\bgenellikle\s+", " ", text, flags=re.IGNORECASE)
     kept: list[str] = []
@@ -231,7 +253,8 @@ def participation_wording(text: str) -> str:
     for index in range(0, len(pieces), 2):
         for pattern, replacement in (*_FAIZ, *_WORDING):
             pieces[index] = pattern.sub(
-                lambda m, r=replacement, piece=pieces[index]: _reworded(m, r, piece), pieces[index]
+                lambda m, r=replacement, piece=pieces[index]: _reworded(m, r, piece),
+                pieces[index],
             )
     text = "".join(pieces)
     text = _DOUBLED.sub(r"\1", text)
@@ -267,7 +290,9 @@ def clean_synonyms(synonyms: str, description: str = "") -> str:
         terms.append(term)
     if terms and description:
         for pattern, word in _GENERAL_TERMS:
-            if pattern.search(description) and not any(word.casefold() in t.casefold() for t in terms):
+            if pattern.search(description) and not any(
+                word.casefold() in t.casefold() for t in terms
+            ):
                 seen.add(word)
                 terms.append(word)
     return ", ".join(terms)
@@ -294,14 +319,18 @@ def drop_unsupported_lists(summary: str, support: str) -> str:
 
     def bracket(match: re.Match[str]) -> str:
         items = re.split(r"\s*[/,]\s*", match.group(1))
-        return "" if len(items) >= 2 and _unsupported(items, support) else match.group(0)
+        return (
+            "" if len(items) >= 2 and _unsupported(items, support) else match.group(0)
+        )
 
     summary = _BRACKET.sub(bracket, summary)
     kept: list[str] = []
     for part in summary.split("·"):
         part = part.strip()
         bare = part.split(":", 1)[-1]
-        if re.fullmatch(rf"\s*(?:{_ITEM}/){{2,}}{_ITEM}\s*", bare) and _unsupported(bare.split("/"), support):
+        if re.fullmatch(rf"\s*(?:{_ITEM}/){{2,}}{_ITEM}\s*", bare) and _unsupported(
+            bare.split("/"), support
+        ):
             if ":" not in part:
                 continue
             part = part.split(":", 1)[0].strip()
@@ -323,6 +352,8 @@ def clean_summary(summary: str, support: str = "", limit: int = 70) -> str:
     summary = " ".join((summary or "").split())
     summary = EXAMPLE.sub("", summary)
     parts = [p.strip() for p in summary.split("·")]
-    summary = " · ".join(p for p in parts if p and not DOUBT.search(p) and not HEDGE.search(p))
+    summary = " · ".join(
+        p for p in parts if p and not DOUBT.search(p) and not HEDGE.search(p)
+    )
     cleaned = drop_unsupported_lists(summary, support) or summary
     return clip(cleaned, limit)

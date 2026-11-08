@@ -364,14 +364,72 @@ async def test_only_a_changed_computation_comes_into_scope_and_no_change_means_n
         code={k: v.replace(" SELECT ", "\n  SELECT\n    ") for k, v in sync.source.snapshot.code.items()},
     )
     assert (await sync.run())["counts"]["scope_columns"] == 0
-    # A changed computation brings that column only, also after a run that wrote no version.
+    # The table came in new, so its trails were stored: a changed computation brings that column
+    # only, also after runs that wrote no version, and it is described again.
     sync.source.snapshot = with_code(tables("vParty"), 1000)
+    calls = sync.gateway.port.calls
+    first = await sync.run()
+    assert first["counts"]["scope_code_changed"] == 1
+    assert sync.gateway.port.calls - calls >= 1
+    sync.source.snapshot = with_code(tables("vParty"), 10000)
     calls = sync.gateway.port.calls
     changed = await sync.run()
     assert changed["counts"]["scope_code_changed"] == 1
     assert changed["counts"]["scope_columns"] == 1
-    # That column is described again (fill and suggestion calls may add at most two more).
     assert 1 <= sync.gateway.port.calls - calls <= 3
     # A changed filter of the object brings both of its columns.
-    sync.source.snapshot = with_code(tables("vParty"), 1000, active=0)
+    sync.source.snapshot = with_code(tables("vParty"), 10000, active=0)
     assert (await sync.run())["counts"]["scope_code_changed"] == 2
+
+
+async def test_with_approval_an_update_waits_with_its_score_and_the_admin_text_survives(
+    sync: Harness,
+) -> None:
+    await sync.run()  # the first dictionary goes live: there is nothing to compare it with
+    app.state.dictionary_sync.requires_approval = True
+    sync.source.snapshot = tables("vParty", "vOther")
+    run = await sync.run()
+    assert run["status"] == "pending_approval", run
+    assert run["score"]["verdict"] in ("onaylanabilir", "incelenmeli", "reddedilmeli")
+    assert "checks" in run["score"] and run["score"]["failed_checks"] == []
+    path = f"/dictionary/sync/runs/{run['public_id']}/records"
+    refused = await sync.dd.request(
+        "PATCH", path, json={"table_key": "EDWDM.CUS.vOther", "column_name": "Kolon0", "field": "Role", "value": "Yok"}
+    )
+    assert refused.status_code == 422
+    edited = await sync.dd.request(
+        "PATCH",
+        path,
+        json={"table_key": "EDWDM.CUS.vOther", "column_name": "Kolon0", "field": "ColumnDescription",
+              "value": "Yöneticinin yazdığı açıklama; iş birimi ile doğrulanmalıdır."},
+    )
+    assert edited.status_code == 200, edited.text
+    assert edited.json()["score"]["admin_edits"] == 1
+    changes = (await sync.dd.get(f"/dictionary/sync/runs/{run['public_id']}/changes?kind=column_admin_edited")).json()
+    assert changes["total"] == 1
+    approved = await sync.dd.request("POST", f"/dictionary/sync/runs/{run['public_id']}/approve")
+    assert approved.status_code == 200, approved.text
+    version, _ = await sync.active()
+    assert version == approved.json()["new_version"]
+
+    def admin_text(table: dict[str, Any]) -> str:
+        return next(c["ColumnDescription"] for c in table["columns"] if c["ColumnName"] == "Kolon0")
+
+    text = "Yöneticinin yazdığı açıklama; iş birimi ile doğrulanmalıdır."
+    assert admin_text((await sync.dd.get("/dictionary/tables/EDWDM.CUS.vOther")).json()) == text
+    # A later update with a new source text neither overwrites nor cleans the admin's text.
+    sync.source.snapshot = tables("vParty", "vOther", description="Yeni kaynak metni")
+    later = await sync.run()
+    assert later["status"] == "pending_approval"
+    assert (await sync.dd.request("POST", f"/dictionary/sync/runs/{later['public_id']}/approve")).status_code == 200
+    assert admin_text((await sync.dd.get("/dictionary/tables/EDWDM.CUS.vOther")).json()) == text
+
+
+async def test_only_a_waiting_version_can_be_edited(sync: Harness) -> None:
+    run = await sync.run()
+    response = await sync.dd.request(
+        "PATCH",
+        f"/dictionary/sync/runs/{run['public_id']}/records",
+        json={"table_key": "EDWDM.CUS.vParty", "column_name": "Kolon0", "field": "Summary", "value": "x"},
+    )
+    assert response.status_code == 409

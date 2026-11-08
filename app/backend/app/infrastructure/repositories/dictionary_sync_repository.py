@@ -200,3 +200,25 @@ class DictionarySyncRepository:
                         DictionaryTrailDigest.column_name == column,
                     )
                 )
+
+    async def append_change(self, run_id: int, change: Any) -> None:
+        """One more report line after the run, such as an admin's edit."""
+
+        last = await self.session.scalar(
+            select(func.max(DictionarySyncChange.position)).where(
+                DictionarySyncChange.dictionary_sync_run_id == run_id
+            )
+        )
+        await self.session.execute(
+            insert(DictionarySyncChange).values(
+                dictionary_sync_run_id=run_id,
+                position=(last + 1) if last is not None else 0,
+                kind=change.kind,
+                table_key=change.table_key,
+                column_name=change.column_name,
+                field=change.field,
+                old_value=change.old_value,
+                new_value=change.new_value,
+                origin=change.origin,
+            )
+        )

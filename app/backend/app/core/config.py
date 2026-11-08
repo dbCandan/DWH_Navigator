@@ -139,6 +139,13 @@ class Settings(BaseSettings):
     dictionary_ignored_columns: str = ""
     # Names the owner confirmed by hand: 'source key=catalog key', separated by semicolons.
     dictionary_object_aliases: str = ""
+    # An update with changes waits for an admin's approval beside its score card; off, it goes
+    # live at once unless it removes more than a tenth of the dictionary.
+    dictionary_sync_requires_approval: bool = True
+    # Changed texts the verifier scores in each update for the score card; 0 skips the verifier.
+    dictionary_judge_sample: Annotated[int, Field(ge=0, le=500)] = 40
+    # The owner's decisions file (dictionary_curation/decisions.json when empty).
+    dictionary_decisions_path: str = ""
     # Process-wide limit of concurrent /chat/completions requests (Requirement 17, Decision 11).
     llm_max_concurrent_calls: Annotated[int, Field(ge=1, le=8)] = 5
     # Days the admin screen's LLM log keeps chat calls with their prompts and replies; 0 keeps none.

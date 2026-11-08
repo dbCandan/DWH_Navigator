@@ -1,7 +1,7 @@
 """Bodies of the dictionary update endpoints (011-dictionary-sync plan.md)."""
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -78,6 +78,8 @@ class RunSummary(BaseModel):
     new_version: str
     model: str
     counts: Counts
+    # The score card an admin decides on (dictionary_curation.score): checks, sample, verdict.
+    score: dict[str, Any] = Field(default_factory=dict)
     error_code: str
     error_message: str
 
@@ -122,6 +124,18 @@ class ChangesPage(BaseModel):
 
 class ApplySuggestions(BaseModel):
     suggestion_ids: list[str] = Field(min_length=1, max_length=500)
+
+
+class RecordEdit(BaseModel):
+    """An admin's text for one field of a version waiting for approval."""
+
+    table_key: str = Field(min_length=3, max_length=400)
+    column_name: str = Field(default="", max_length=256)  # empty: the object record
+    field: Literal[
+        "ColumnDescription", "Synonyms", "Summary", "Role",
+        "ObjectDescription", "Grain", "KeyColumns", "TimeColumns", "BusinessDomain",
+    ]
+    value: str = Field(max_length=4000)
 
 
 class Version(BaseModel):

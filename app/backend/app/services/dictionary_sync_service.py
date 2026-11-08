@@ -32,6 +32,7 @@ from app.schemas.dictionary.sync import (
     ChangesPage,
     Counts,
     Person,
+    RecordEdit,
     RunDetail,
     RunsPage,
     RunSummary,
@@ -42,6 +43,7 @@ from app.schemas.dictionary.sync import (
     Version,
     VersionsPage,
 )
+from app.services.analysis.dictionary_workbook import records_digest
 from app.services.dictionary_sync import (
     SOURCE_INVALID_MESSAGE,
     SOURCE_UNAVAILABLE_MESSAGE,
@@ -50,6 +52,9 @@ from app.services.dictionary_sync import (
     run_in_progress,
     source_not_configured,
 )
+from app.services.dictionary_sync_fill import ROLES, SUMMARY_MAX_CHARS
+from app.services.dictionary_sync_merge import ORIGIN_ADMIN
+from app.services.dictionary_sync_merge import Change as SyncChange
 from app.services.request_scope import acting_user_with_role, active_tenant
 from app.services.search_index import SearchIndex
 from app.services.vocabulary_service import VocabularyService
@@ -60,6 +65,20 @@ KEPT_STATUSES = {"active", "previous", "pending"}
 
 def _not_found(what: str) -> ApplicationError:
     return ApplicationError(status.HTTP_404_NOT_FOUND, "not_found", f"{what} bulunamadı.")
+
+
+COLUMN_EDIT_FIELDS = frozenset({"ColumnDescription", "Synonyms", "Summary", "Role"})
+OBJECT_EDIT_FIELDS = frozenset({"ObjectDescription", "Grain", "KeyColumns", "TimeColumns", "BusinessDomain"})
+
+
+def _bad_edit(message: str) -> ApplicationError:
+    return ApplicationError(status.HTTP_422_UNPROCESSABLE_CONTENT, "dictionary_edit_invalid", message)
+
+
+def _no_record() -> ApplicationError:
+    return ApplicationError(
+        status.HTTP_404_NOT_FOUND, "dictionary_record_not_found", "Bu kayıt bekleyen sürümde yok."
+    )
 
 
 def _not_pending() -> ApplicationError:
@@ -236,6 +255,7 @@ class DictionarySyncService:
             "new_version": run.new_version,
             "model": run.model,
             "counts": Counts(**run.counts),
+            "score": run.score or {},
             "error_code": run.error_code,
             "error_message": run.error_message,
         }
@@ -364,6 +384,51 @@ class DictionarySyncService:
         await self.sync.swap(objects, columns, number, digest, write)
         await self.session.refresh(run)
         return await self._detail(run)
+
+    async def edit_record(
+        self, context: RequestContext, public_id: str, body: RecordEdit
+    ) -> RunDetail:
+        """An admin's text in the version waiting for approval; no update or rule rewrites it."""
+
+        actor, tenant = await self._manager(context)
+        run, version = await self._waiting(tenant, public_id)
+        fields = COLUMN_EDIT_FIELDS if body.column_name else OBJECT_EDIT_FIELDS
+        if body.field not in fields:
+            raise _bad_edit("Bu alan bu kayıtta düzenlenemez.")
+        value = " ".join(body.value.split())
+        if body.field == "Role" and value not in ROLES:
+            raise _bad_edit("Rol şunlardan biri olmalı: " + ", ".join(ROLES) + ".")
+        if body.field == "Summary" and len(value) > SUMMARY_MAX_CHARS:
+            raise _bad_edit(f"Özet en çok {SUMMARY_MAX_CHARS} karakter olabilir.")
+        if body.field in ("ColumnDescription", "ObjectDescription") and not value:
+            raise _bad_edit("Açıklama boş bırakılamaz.")
+        old = await self.dictionary.edit_record(
+            version, body.table_key, body.column_name, body.field, value, ORIGIN_ADMIN
+        )
+        if old is None:
+            raise _no_record()
+        objects = await self.dictionary.objects(version)
+        columns = await self.dictionary.columns(version)
+        digest = records_digest(objects, columns)
+        version.content_digest = digest
+        version.version = f"{digest}-{len(columns)}"
+        run.new_version = version.version
+        run.score = {**(run.score or {}), "admin_edits": int((run.score or {}).get("admin_edits", 0)) + 1}
+        await self.runs.append_change(
+            run.dictionary_sync_run_id,
+            SyncChange(
+                "column_admin_edited" if body.column_name else "table_admin_edited",
+                body.table_key,
+                body.column_name,
+                body.field,
+                old,
+                value,
+                ORIGIN_ADMIN,
+            ),
+        )
+        run.updated_by = actor.user_id
+        await self.session.commit()
+        return await self._detail(await self._run(tenant, public_id))
 
     async def reject(self, context: RequestContext, public_id: str) -> RunDetail:
         actor, tenant = await self._manager(context)

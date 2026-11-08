@@ -54,7 +54,9 @@ def date_key(grain: str, keys: list[str], times: list[str]) -> list[str]:
     return keys
 
 
-def align_object(record: dict[str, str], columns: Sequence[str], decisions: Decisions) -> dict[str, str]:
+def align_object(
+    record: dict[str, str], columns: Sequence[str], decisions: Decisions
+) -> dict[str, str]:
     """The object fields that change, with their new values (the record itself is not touched)."""
 
     keys = present_columns(record.get("KeyColumns", ""), columns)
@@ -65,4 +67,8 @@ def align_object(record: dict[str, str], columns: Sequence[str], decisions: Deci
         "TimeColumns": ", ".join(times),
         "BusinessDomain": decisions.domain(record.get("BusinessDomain", "")),
     }
-    return {name: value for name, value in wanted.items() if value != (record.get(name) or "")}
+    return {
+        name: value
+        for name, value in wanted.items()
+        if value != (record.get(name) or "")
+    }

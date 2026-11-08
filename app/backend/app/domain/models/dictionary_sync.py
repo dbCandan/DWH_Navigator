@@ -97,6 +97,13 @@ class DictionarySyncRun(AuditSoftDeleteMixin, Base):
     counts: Mapped[dict[str, Any]] = mapped_column(
         JSONB, nullable=False, default=dict, server_default=text("'{}'::jsonb")
     )
+    score: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+        comment="The update's score card: mechanical checks, the verifier's sample, the verdict.",
+    )
     warnings: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, default=list, server_default=text("'{}'::text[]")
     )

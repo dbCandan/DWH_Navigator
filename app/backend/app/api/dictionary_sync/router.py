@@ -12,6 +12,7 @@ from app.domain.accounts import ROLE_MANAGER
 from app.schemas.dictionary.sync import (
     ApplySuggestions,
     ChangesPage,
+    RecordEdit,
     RunDetail,
     RunsPage,
     RunSummary,
@@ -98,6 +99,15 @@ async def read_changes(
 @router.post("/sync/runs/{run_id}/approve", response_model=RunDetail)
 async def approve_run(context: CurrentContext, service: Service, run_id: str) -> RunDetail:
     return await service.approve(context, run_id)
+
+
+@router.patch("/sync/runs/{run_id}/records", response_model=RunDetail)
+async def edit_record(
+    context: CurrentContext, service: Service, run_id: str, body: RecordEdit
+) -> RunDetail:
+    """An admin's text for one field of the version waiting for approval."""
+
+    return await service.edit_record(context, run_id, body)
 
 
 @router.post("/sync/runs/{run_id}/reject", response_model=RunDetail)

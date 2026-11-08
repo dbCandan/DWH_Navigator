@@ -49,7 +49,7 @@ def object_code(code: Mapping[str, str]) -> dict[str, list[str]]:
     found: dict[str, list[str]] = {}
     for key in code:
         name = fold(key.rsplit(".", 1)[-1])
-        stem = name[1:] if name.startswith("v") else name
+        stem = name.removeprefix("v")
         found[fold(key)] = [*by_name.get(name, []), *by_name.get(f"ins_{stem}", [])]
     return found
 
@@ -68,13 +68,20 @@ def _set(
     if value == old or origins.get(name) == ORIGIN_ADMIN:
         return False
     record[name] = value
-    outcome.changes.append(Change(kind, table.key, column, name, old, value, origins.get(name, "")))
+    outcome.changes.append(
+        Change(kind, table.key, column, name, old, value, origins.get(name, ""))
+    )
     return True
 
 
 def _keep_removed(kept: dict[str, object], removed: list[str]) -> None:
     if removed:
-        earlier = [r for r in kept.get("removed", []) if isinstance(r, str)]  # type: ignore[union-attr]
+        stored = kept.get("removed")
+        earlier = (
+            [r for r in stored if isinstance(r, str)]
+            if isinstance(stored, list)
+            else []
+        )
         kept["removed"] = list(dict.fromkeys([*earlier, *removed]))[:20]
 
 
@@ -90,14 +97,45 @@ def normalize_column(
     if row.origins.get("ColumnDescription") != ORIGIN_ADMIN:
         text, removed = clean_description(record.get("ColumnDescription", ""), support)
         if text:
-            changed |= _set(outcome, KIND_COLUMN, table, record, row.origins, "ColumnDescription", text, record["ColumnName"])
+            changed |= _set(
+                outcome,
+                KIND_COLUMN,
+                table,
+                record,
+                row.origins,
+                "ColumnDescription",
+                text,
+                record["ColumnName"],
+            )
         _keep_removed(row.kept, removed)
-    synonyms = clean_synonyms(record.get("Synonyms", ""), record.get("ColumnDescription", ""))
+    synonyms = clean_synonyms(
+        record.get("Synonyms", ""), record.get("ColumnDescription", "")
+    )
     if synonyms:
-        changed |= _set(outcome, KIND_COLUMN, table, record, row.origins, "Synonyms", synonyms, record["ColumnName"])
-    summary = clean_summary(record.get("Summary", ""), support, decisions.summary_max_chars)
+        changed |= _set(
+            outcome,
+            KIND_COLUMN,
+            table,
+            record,
+            row.origins,
+            "Synonyms",
+            synonyms,
+            record["ColumnName"],
+        )
+    summary = clean_summary(
+        record.get("Summary", ""), support, decisions.summary_max_chars
+    )
     if summary:
-        changed |= _set(outcome, KIND_COLUMN, table, record, row.origins, "Summary", summary, record["ColumnName"])
+        changed |= _set(
+            outcome,
+            KIND_COLUMN,
+            table,
+            record,
+            row.origins,
+            "Summary",
+            summary,
+            record["ColumnName"],
+        )
     return changed
 
 
@@ -116,16 +154,32 @@ def normalize_tables(
         literals = code_literals(bodies.get(fold(table.key), []))
         changed = False
         if table.origins.get("ObjectDescription") != ORIGIN_ADMIN:
-            text, removed = clean_description(table.record.get("ObjectDescription", ""), literals)
+            text, removed = clean_description(
+                table.record.get("ObjectDescription", ""), literals
+            )
             if text:
-                changed |= _set(outcome, KIND_TABLE, table, table.record, table.origins, "ObjectDescription", text)
+                changed |= _set(
+                    outcome,
+                    KIND_TABLE,
+                    table,
+                    table.record,
+                    table.origins,
+                    "ObjectDescription",
+                    text,
+                )
             _keep_removed(table.kept, removed)
         names = [c.record["ColumnName"] for c in table.columns]
         for name, value in align_object(table.record, names, decisions).items():
-            changed |= _set(outcome, KIND_TABLE, table, table.record, table.origins, name, value)
+            changed |= _set(
+                outcome, KIND_TABLE, table, table.record, table.origins, name, value
+            )
         outcome.tables += changed
         for row in table.columns:
-            trail = " ".join(known.get((fold(table.key), fold(row.record["ColumnName"])), ()))
-            support = " ".join((trail, row.record.get("ColumnDescription", ""), literals))
+            trail = " ".join(
+                known.get((fold(table.key), fold(row.record["ColumnName"])), ())
+            )
+            support = " ".join(
+                (trail, row.record.get("ColumnDescription", ""), literals)
+            )
             outcome.columns += normalize_column(outcome, table, row, support, decisions)
     return outcome

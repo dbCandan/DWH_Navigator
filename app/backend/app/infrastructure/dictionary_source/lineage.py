@@ -12,6 +12,7 @@ import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 MAX_DEPTH = 8
 MAX_EVIDENCE_CHARS = 1800
@@ -606,18 +607,26 @@ def _updates(code: Code, column: str, modules: Iterable[str]) -> list[str]:
     )
     found: list[str] = []
     for module in sorted(modules):
-        text = _flat(code.objects.get(module, ""))
-        for statement in re.findall(
-            r"\bUPDATE\b.*?(?=\bUPDATE\b|\bINSERT\b|;|\Z)",
-            text,
-            re.IGNORECASE | re.DOTALL,
-        ):
+        for statement in _update_statements(code.objects.get(module, "")):
             match = target.search(statement)
             if match:
                 found.append(
                     f"Sonradan güncellenir: {' '.join(statement.split())[:400]}"
                 )
     return found[:3]
+
+
+@lru_cache(maxsize=1024)
+def _update_statements(body: str) -> tuple[str, ...]:
+    """A module's UPDATE statements, split once per definition (the trace asks per column)."""
+
+    return tuple(
+        re.findall(
+            r"\bUPDATE\b.*?(?=\bUPDATE\b|\bINSERT\b|;|\Z)",
+            _flat(body),
+            re.IGNORECASE | re.DOTALL,
+        )
+    )
 
 
 def _note(body: str, table: str) -> str:
@@ -640,18 +649,20 @@ def column_evidence(code: Code, view_key: str, column: str) -> ColumnEvidence:
     body = code.objects.get(view_key.casefold())
     if body is None:
         return ColumnEvidence(KIND_UNKNOWN, ())
-    query: Query | None = view_query(body)
+    query: Query | None = _view_query(body)
     if query is not None and column.casefold() not in query.items:
         query = _result_query(body, column)
     if query is None:
         return _snippet(body, column)
     trail = Trail()
     _trace_query(code, view_key.casefold(), query, column, trail, 0)
+    # The load modules of the warehouse tables the trail went through, each writers list once:
+    # the same set as checking every writers list of the server against the trail.
     modules = {
         w.module
-        for writes in code.writers.values()
+        for table, writes in {id(w): (t, w) for t, w in trail.visited}.values()
+        if table.startswith("edw")
         for w in writes
-        if _touches(trail, writes)
     }
     constants = _constants(code, column, modules)
     if constants:
@@ -672,11 +683,13 @@ def column_evidence(code: Code, view_key: str, column: str) -> ColumnEvidence:
     return ColumnEvidence(KIND_PLAIN if trail.plain else KIND_LOGIC, tuple(steps))
 
 
-def _touches(trail: Trail, writes: list[Write]) -> bool:
-    return any(
-        table.startswith("edw") and writes is trail_writes
-        for table, trail_writes in trail.visited
-    )
+
+
+@lru_cache(maxsize=1024)
+def _view_query(body: str) -> Query:
+    """``view_query`` parsed once per definition: the trace asks for it per column."""
+
+    return view_query(body)
 
 
 def view_query(body: str) -> Query:
@@ -709,12 +722,23 @@ def object_scope(code: Code, view_key: str) -> tuple[str, ...]:
 def _result_query(body: str, column: str) -> Query | None:
     """A procedure's result set: the last SELECT that returns the column instead of writing it."""
 
+    found = None
+    for query in _result_queries(body):
+        if column.casefold() in query.items:
+            found = query
+    return found
+
+
+@lru_cache(maxsize=512)
+def _result_queries(body: str) -> tuple[Query, ...]:
+    """Every SELECT of a procedure that returns rows instead of writing them, parsed once."""
+
     if not re.search(
         r"\bCREATE\s+(?:OR\s+ALTER\s+)?PROC(?:EDURE)?\b", body, re.IGNORECASE
     ):
-        return None
+        return ()
     text = _flat(body)
-    found = None
+    found: list[Query] = []
     for match in re.finditer(r"\bSELECT\b", text, re.IGNORECASE):
         before = text[max(0, match.start() - 400) : match.start()]
         tail = re.split(r";|\bEND\b|\bBEGIN\b", before, flags=re.IGNORECASE)[-1]
@@ -727,10 +751,8 @@ def _result_query(body: str, column: str) -> Query | None:
             r"\bINTO\s+[#@\w\[]", statement.split(" FROM ", 1)[0], re.IGNORECASE
         ):
             continue
-        query = parse_query(statement)
-        if column.casefold() in query.items:
-            found = query
-    return found
+        found.append(parse_query(statement))
+    return tuple(found)
 
 
 def _snippet(body: str, column: str) -> ColumnEvidence:

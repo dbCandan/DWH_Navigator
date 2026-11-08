@@ -1,4 +1,4 @@
-"""Dictionary trail digests: what each column's computation looked like at the last update.
+"""Dictionary trail digests (each column's computation at the last update) and the run score card.
 
 Revision ID: 202611080101
 Revises: 202611070002
@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision: str = "202611080101"
 down_revision: str | None = "202611070002"
@@ -17,6 +18,16 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    op.add_column(
+        "dictionary_sync_run",
+        sa.Column(
+            "score",
+            postgresql.JSONB(),
+            nullable=False,
+            server_default=sa.text("'{}'::jsonb"),
+            comment="The update's score card: mechanical checks, the verifier's sample, the verdict.",
+        ),
+    )
     op.create_table(
         "dictionary_trail_digest",
         sa.Column(
@@ -44,3 +55,4 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("dictionary_trail_digest")
+    op.drop_column("dictionary_sync_run", "score")

@@ -24,6 +24,7 @@ from app.middleware.tenant_context import TenantContextMiddleware
 from app.services.analysis.jobs import AnalysisJobs
 from app.services.analysis.saved_answers import SavedAnswers
 from app.services.answer_feedback import AnswerVotes
+from app.services.dictionary_curation.decisions import load as load_decisions
 from app.services.dictionary_sync import DictionarySync, SourceKeys
 from app.services.explorer import ExplorerIndex
 from app.services.llm_call_log import LlmCallLogWriter
@@ -153,6 +154,9 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         kept_databases=ignored_databases,
         keys=lambda: SourceKeys(settings),
         session_factory=async_session_factory,
+        decisions=load_decisions(settings.dictionary_decisions_path or None),
+        requires_approval=settings.dictionary_sync_requires_approval,
+        judge_sample=settings.dictionary_judge_sample,
     )
     # Starlette makes the middleware added last the outermost. From the outside in: security
     # headers and the 500 envelope, request logging and tracing, CORS, the cross-site guard (before
