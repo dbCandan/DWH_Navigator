@@ -485,6 +485,11 @@ class LlmConnection:
     public_id: str | None = None
     # Whose call this is, for the LLM call log; a connection without it is not logged.
     tenant_id: int | None = None
+    # The generation role of the same server (dictionary updates): empty / 'inherit' use the
+    # chat model's own model and reasoning.
+    generation_model: str = ""
+    generation_reasoning_effort: str = "inherit"
+    judge_reasoning_effort: str = "inherit"
 
     @property
     def fingerprint(self) -> str:

@@ -2043,6 +2043,36 @@
           "endpoint": {
             "type": "string"
           },
+          "generation_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation_reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "judge_reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "name": {
             "type": "string"
           },
@@ -2183,8 +2213,20 @@
           "endpoint": {
             "type": "string"
           },
+          "generation_model": {
+            "default": "",
+            "type": "string"
+          },
+          "generation_reasoning_effort": {
+            "default": "inherit",
+            "type": "string"
+          },
           "has_key": {
             "type": "boolean"
+          },
+          "judge_reasoning_effort": {
+            "default": "inherit",
+            "type": "string"
           },
           "last_test": {
             "anyOf": [
@@ -2272,6 +2314,36 @@
             ]
           },
           "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation_reasoning_effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "judge_reasoning_effort": {
             "anyOf": [
               {
                 "type": "string"

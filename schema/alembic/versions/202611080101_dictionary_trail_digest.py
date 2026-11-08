@@ -19,6 +19,40 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     op.add_column(
+        "llm_integration",
+        sa.Column(
+            "generation_model",
+            sa.String(256),
+            nullable=False,
+            server_default="",
+            comment="The generation model: the dictionary update describes with it; empty uses chat_model.",
+        ),
+    )
+    for column, what in (
+        ("generation_reasoning_effort", "the generation model's describing calls"),
+        ("judge_reasoning_effort", "the dictionary update's verifier calls"),
+    ):
+        op.add_column(
+            "llm_integration",
+            sa.Column(
+                column,
+                sa.String(16),
+                nullable=False,
+                server_default="inherit",
+                comment=f"Reasoning of {what}; 'inherit' uses reasoning_effort.",
+            ),
+        )
+        op.create_check_constraint(
+            f"ck_llm_integration_{column}_allowed",
+            "llm_integration",
+            f"{column} IN ('inherit', 'none', 'low', 'medium', 'high', '')",
+        )
+    op.create_check_constraint(
+        "ck_llm_integration_generation_model_length",
+        "llm_integration",
+        "char_length(generation_model) <= 256",
+    )
+    op.add_column(
         "dictionary_sync_run",
         sa.Column(
             "score",
@@ -64,6 +98,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    for column in ("judge_reasoning_effort", "generation_reasoning_effort", "generation_model"):
+        op.drop_column("llm_integration", column)
     op.drop_table("dictionary_trail_digest")
     op.drop_column("dictionary_sync_run", "pending_digests")
     op.drop_column("dictionary_sync_run", "score")

@@ -54,6 +54,10 @@ class LlmIntegrationCreate(_Request):
     timeout_seconds: NumberInput | None = None
     reasoning_effort: StrictStr | None = None
     seed: NumberInput | None = None
+    # The generation role (dictionary updates): empty model / 'inherit' use the chat model's.
+    generation_model: StrictStr | None = None
+    generation_reasoning_effort: StrictStr | None = None
+    judge_reasoning_effort: StrictStr | None = None
     # Absent: the integration is saved inactive.
     activate: StrictBool | None = None
     # True turns the currently active integration off in the same transaction.
@@ -71,6 +75,9 @@ class LlmIntegrationUpdate(_Request):
     timeout_seconds: NumberInput | None = None
     reasoning_effort: StrictStr | None = None
     seed: NumberInput | None = None
+    generation_model: StrictStr | None = None
+    generation_reasoning_effort: StrictStr | None = None
+    judge_reasoning_effort: StrictStr | None = None
     activate: StrictBool | None = None
     replace: StrictBool = False
 
@@ -121,6 +128,9 @@ class LlmIntegrationItem(BaseModel):
     timeout_seconds: int
     reasoning_effort: str
     seed: int
+    generation_model: str = ""
+    generation_reasoning_effort: str = "inherit"
+    judge_reasoning_effort: str = "inherit"
     last_test: LlmLastTest | None
     created_at: datetime
     updated_at: datetime

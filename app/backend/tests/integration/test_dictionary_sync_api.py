@@ -97,9 +97,12 @@ class FakePort:
 @dataclass
 class FakeGateway:
     port: FakePort = field(default_factory=FakePort)
+    connection: LlmConnection = field(
+        default_factory=lambda: LlmConnection(endpoint="http://model.test/v1", chat_model="test-model")
+    )
 
     async def snapshot(self, **_: Any) -> LlmConnection:
-        return LlmConnection(endpoint="http://model.test/v1", chat_model="test-model")
+        return self.connection
 
 
 @dataclass
@@ -540,3 +543,23 @@ async def test_the_update_writes_with_the_dictionary_model_and_its_reasoning(syn
     describer = [effort for _, effort, system in seen if not system.startswith(judge)]
     assert verifier and set(verifier) == {"low"}
     assert describer and set(describer) == {"none"}
+
+
+async def test_the_ai_pages_generation_model_comes_before_the_environment(sync: Harness) -> None:
+    service = app.state.dictionary_sync
+    service.chat_model, service.reasoning_effort = "env-model", "medium"
+    sync.gateway.connection = replace(
+        sync.gateway.connection,
+        generation_model="ai-page-model",
+        generation_reasoning_effort="none",
+        judge_reasoning_effort="inherit",
+    )
+    sync.gateway.port.extra = {"karar": "eklendi", "ColumnDescription": "Müşteri kaydının kolonudur.", "aciklama": "dogru", "neden": ""}
+    service.judge_reasoning_effort = "low"
+    await sync.run()
+    seen = sync.gateway.port.seen
+    assert {model for model, _, _ in seen} == {"ai-page-model"}
+    judge = "Bir katılım bankası veri sözlüğünün"
+    assert {effort for _, effort, system in seen if not system.startswith(judge)} == {"none"}
+    # The verifier inherits on the AI page, so the environment's default applies.
+    assert {effort for _, effort, system in seen if system.startswith(judge)} == {"low"}

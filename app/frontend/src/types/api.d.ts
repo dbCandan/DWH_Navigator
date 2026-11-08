@@ -6062,6 +6062,9 @@ export interface components {
             api_key?: string | null;
             chat_model?: string | null;
             endpoint: string;
+            generation_model?: string | null;
+            generation_reasoning_effort?: string | null;
+            judge_reasoning_effort?: string | null;
             name: string;
             reasoning_effort?: string | null;
             /** @default false */
@@ -6087,7 +6090,13 @@ export interface components {
             /** Format: date-time */
             created_at: string;
             endpoint: string;
+            /** @default  */
+            generation_model: string;
+            /** @default inherit */
+            generation_reasoning_effort: string;
             has_key: boolean;
+            /** @default inherit */
+            judge_reasoning_effort: string;
             last_test: components["schemas"]["LlmLastTest"] | null;
             name: string;
             /** Format: uuid */
@@ -6105,6 +6114,9 @@ export interface components {
             api_key?: string | null;
             chat_model?: string | null;
             endpoint?: string | null;
+            generation_model?: string | null;
+            generation_reasoning_effort?: string | null;
+            judge_reasoning_effort?: string | null;
             name?: string | null;
             reasoning_effort?: string | null;
             /** @default false */

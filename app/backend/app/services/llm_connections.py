@@ -103,6 +103,9 @@ def connection_of(row: LlmIntegration, api_key: str | None) -> LlmConnection:
         api_key=api_key,
         public_id=row.public_id,
         tenant_id=row.tenant_id,
+        generation_model=row.generation_model,
+        generation_reasoning_effort=row.generation_reasoning_effort,
+        judge_reasoning_effort=row.judge_reasoning_effort,
     )
 
 

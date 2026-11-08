@@ -476,13 +476,21 @@ class DictionarySync:
                 run.status = "rejected"
                 run.finished_at = now
 
-    def connection_for(self, target: LlmConnection, effort: str | None) -> LlmConnection:
-        """The integration's connection with the dictionary's own model and reasoning."""
+    def connection_for(
+        self, target: LlmConnection, effort: str | None, *, judge: bool = False
+    ) -> LlmConnection:
+        """The connection a dictionary call uses: the AI page's generation model and reasoning,
+        else the environment's defaults, else the chat model's own."""
 
+        chosen = target.judge_reasoning_effort if judge else target.generation_reasoning_effort
+        if chosen != "inherit":
+            reasoning = chosen
+        else:
+            reasoning = target.reasoning_effort if effort is None else effort
         return replace(
             target,
-            chat_model=self.chat_model or target.chat_model,
-            reasoning_effort=target.reasoning_effort if effort is None else effort,
+            chat_model=target.generation_model or self.chat_model or target.chat_model,
+            reasoning_effort=reasoning,
         )
 
     async def preview(self, tenant_id: int, tenant_public_id: str) -> dict[str, Any]:
@@ -600,7 +608,7 @@ class DictionarySync:
             )
             if isinstance(target, LlmConnection):
                 describer = self.connection_for(target, self.reasoning_effort)
-                verifier = self.connection_for(target, self.judge_reasoning_effort)
+                verifier = self.connection_for(target, self.judge_reasoning_effort, judge=True)
                 model = describer.chat_model
 
                 async def chat(request: LlmChatRequest) -> LlmChatResult:
