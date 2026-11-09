@@ -1,0 +1,7 @@
+# Gitleaks findings reviewed and accepted, one fingerprint each (commit:file:rule:line).
+# Only history is listed here; a new finding in the working tree still fails the scan.
+
+# A made-up test value ("gizli-anahtar-0b1c", Turkish for "secret key") in the commit that added
+# the model connection tests; the file has used "gizli-anahtar-placeholder" since, which
+# .gitleaks.toml allows in backend tests. Never a real credential.
+57158b16a5b7199ad4bd6f9f536f869e0dbdae93:app/backend/tests/unit/test_llm_domain.py:generic-api-key:328
