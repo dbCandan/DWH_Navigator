@@ -70,6 +70,7 @@ from app.domain.llm import (
     lm_studio_models_url,
     parse_json_reply,
     refused_feature,
+    salvage_truncated_object,
 )
 from app.domain.llm_call_log import (
     CallLogSink,
@@ -358,6 +359,7 @@ class _CallState:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     value: dict[str, Any] | None = None
+    partial: dict[str, Any] | None = None  # a cut reply closed after its last whole element
 
 
 class OpenAICompatibleAdapter:
@@ -525,6 +527,7 @@ class OpenAICompatibleAdapter:
             summary=summary,
             value=state.value if ok else None,
             http_status=state.http_status,
+            partial=state.partial if outcome is LlmOutcome.OUTPUT_TRUNCATED else None,
         )
 
     @staticmethod
@@ -652,6 +655,8 @@ class OpenAICompatibleAdapter:
                         return LlmOutcome.OK
                     if _cut_at_max_tokens(data):
                         # Decision 20: a repair would go with the same max_tokens and be cut again.
+                        # What was written whole is kept for a caller that can use a part.
+                        state.partial = salvage_truncated_object(content)
                         return LlmOutcome.OUTPUT_TRUNCATED
                     # Requirement 8: one repair request with the start of the invalid reply.
                     state.repaired = True

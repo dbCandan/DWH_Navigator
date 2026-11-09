@@ -67,6 +67,7 @@ class JobModel:
         self._token = token
         self._analysis_public_id = analysis_public_id
         self._last_failure: ModelFailure | None = None
+        self._last_partial: dict[str, Any] | None = None
 
     @property
     def available(self) -> bool:
@@ -80,6 +81,12 @@ class JobModel:
     @property
     def last_failure(self) -> ModelFailure | None:
         return self._last_failure
+
+    @property
+    def last_partial(self) -> dict[str, Any] | None:
+        """The last call's reply when it was cut at max_tokens, closed after its last whole
+        element; None otherwise. Only a step that can work with a part reads it."""
+        return self._last_partial
 
     def _wait(self, future: concurrent.futures.Future[Any]) -> Any:
         """The call's result; a stop of the job abandons a call that does not end by itself."""
@@ -118,6 +125,7 @@ class JobModel:
         max_tokens: int = 1024,
     ) -> dict[str, Any] | None:
         connection = self._connection
+        self._last_partial = None
         if not isinstance(connection, LlmConnection):
             self._last_failure = failure_of(connection)
             return None
@@ -151,6 +159,7 @@ class JobModel:
                 raise cancel.Cancelled
             if not result.ok:
                 self._last_failure = failure_of(result.outcome, result.http_status)
+                self._last_partial = result.partial
                 if step is not None:
                     step.status = "error"
                     step.detail = f"{connection.chat_model} — {result.outcome.value}"

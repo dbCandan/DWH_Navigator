@@ -381,6 +381,8 @@ class Engine:
                 sp.status, sp.detail = "error", "yanıt yok"
             elif sp is not None and short is not None:
                 sp.detail = f"{len(short.candidates)} aday, {len(short.confusables)} benzer tablo"
+                if short.salvaged:
+                    sp.detail += " (kesik cevaptan kurtarıldı)"
         if short is None:
             return None
         seconds = time.perf_counter() - started

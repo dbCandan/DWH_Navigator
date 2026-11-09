@@ -568,6 +568,23 @@ async def test_a_reply_cut_at_max_tokens_is_not_repaired(server: FakeLlmServer) 
     assert result.outcome is LlmOutcome.OUTPUT_TRUNCATED and result.value is None
     assert not result.summary.repaired and result.summary.requests == 1
     assert (result.summary.prompt_tokens, result.summary.completion_tokens) == (11, 2500)
+    assert result.partial is None  # no element was finished before the cut
+
+
+async def test_a_cut_reply_keeps_its_whole_part(server: FakeLlmServer) -> None:
+    cut = (
+        '{"candidates": [{"id": "T1", "why": "a"}, {"id": "T2", "why": "b"}], "confusables": [{"id'
+    )
+    server.scenario = respond(chat_reply(cut, completion_tokens=8000, finish_reason="length"))
+    result = await adapter().chat(connection(server), ask())
+    assert result.outcome is LlmOutcome.OUTPUT_TRUNCATED and result.value is None
+    assert result.partial == {"candidates": [{"id": "T1", "why": "a"}, {"id": "T2", "why": "b"}]}
+
+
+async def test_a_whole_reply_has_no_part(server: FakeLlmServer) -> None:
+    server.scenario = respond(chat_reply('{"ok": true}', finish_reason="length"))
+    result = await adapter().chat(connection(server), ask())
+    assert result.ok and result.partial is None
     assert len(server.chat_bodies()) == 1
 
 

@@ -29,6 +29,7 @@ from app.domain.llm import (
     parse_json_reply,
     probe_message,
     refused_feature,
+    salvage_truncated_object,
     short_reason,
 )
 from app.domain.turkish_text import fold
@@ -372,3 +373,25 @@ def test_the_fingerprint_follows_every_connection_field() -> None:
     ]
     assert len({base.fingerprint, *(v.fingerprint for v in variants)}) == len(variants) + 1
     assert base.sampling == ("m", 0.0, "none", 42)
+
+
+def test_a_cut_object_is_closed_after_its_last_whole_element() -> None:
+    # Brackets and an escaped quote inside strings do not count as structure.
+    cut = (
+        r'<think>taslak</think>{"interpretation": "müşteri \"adı\" {x}", '
+        r'"candidates": [{"id": "T1", "why": "a]"}, {"id": "T2", "why": "b"}], '
+        r'"confusables": [{"id": "T3", "why": "c"}, {"id": "T4", "why": "yar'
+    )
+    assert parse_json_reply(cut) is None
+    assert salvage_truncated_object(cut) == {
+        "interpretation": 'müşteri "adı" {x}',
+        "candidates": [{"id": "T1", "why": "a]"}, {"id": "T2", "why": "b"}],
+        "confusables": [{"id": "T3", "why": "c"}],
+    }
+
+
+def test_nothing_is_salvaged_from_a_whole_or_too_short_reply() -> None:
+    assert salvage_truncated_object('{"ok": true}') is None  # whole: parse_json_reply reads it
+    assert salvage_truncated_object('{"interpretation": "yarım') is None
+    assert salvage_truncated_object("düz metin") is None
+    assert salvage_truncated_object('{"a": [1, 2') is None  # no nested value was finished

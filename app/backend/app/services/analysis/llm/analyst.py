@@ -35,7 +35,7 @@ from app.services.analysis.llm.analyst_prompts import (
     shortlist_system,
     shortlist_user,
 )
-from app.services.analysis.llm.port import LLMClient
+from app.services.analysis.llm.port import FailureCode, LLMClient
 
 # Columns every recommendation should be able to carry: record keys and time axes.
 STRUCTURAL = frozenset(
@@ -108,6 +108,8 @@ class Shortlist:
     # table-level search per family, so a table the model overlooked in the catalog is
     # still read when its columns carry the family (e.g. PD / rating for "risk skoru").
     families: list[tuple[str, list[str]]] = field(default_factory=list)
+    # The reply was cut at max_tokens and read up to its last whole element.
+    salvaged: bool = False
 
 
 def _picks(
@@ -171,7 +173,35 @@ def shortlist(
         SHORTLIST_SCHEMA,
         max_tokens=max_tokens,
     )
-    return None if reply is None else parse_shortlist(reply, catalog.ids, limit)
+    if reply is not None:
+        return parse_shortlist(reply, catalog.ids, limit)
+    partial = _usable_part(client)
+    if partial is None:
+        return None
+    return replace(parse_shortlist(partial, catalog.ids, limit), salvaged=True)
+
+
+def _usable_part(client: LLMClient) -> Mapping[str, object] | None:
+    """The fields of a cut reply the model finished, when its candidate list is one (target only).
+
+    A model can loop after its candidate list (Qwen3.6 on vLLM listed the catalog table after
+    table as confusables until max_tokens); the candidates it wrote before are still its answer.
+    The salvaged object keeps the reply's field order, so its last field is the one the cut fell
+    in and may be unfinished: it is left out. So the candidates count only when the model went
+    on to another field after them; a loop inside the candidate list is not used, and a part
+    without candidates would read as "nothing found". Confusables are always left out: the loop
+    happens there, and a dump of the catalog must not become the answer's warnings.
+    """
+    failure = client.last_failure
+    if failure is None or failure.code is not FailureCode.OUTPUT_TRUNCATED:
+        return None
+    partial = getattr(client, "last_partial", None)
+    if not isinstance(partial, Mapping):
+        return None
+    finished = list(partial)[:-1]
+    whole = {key: partial[key] for key in finished if key != "confusables"}
+    candidates = whole.get("candidates")
+    return whole if isinstance(candidates, list) and candidates else None
 
 
 # --------------------------------------------------------------------------- material

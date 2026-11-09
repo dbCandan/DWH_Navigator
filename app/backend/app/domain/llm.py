@@ -226,6 +226,56 @@ def parse_json_reply(text: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+_CLOSERS = {"{": "}", "[": "]"}
+SALVAGE_TRIES = 50
+
+
+def salvage_truncated_object(text: str) -> dict[str, Any] | None:
+    """The JSON object of a reply cut at ``max_tokens``, closed after its last whole element.
+
+    Target only. Each point right after a ``}`` or ``]`` that closes a nested value is a place
+    where everything written so far is complete; the reply is cut at the last such point that
+    parses once the still-open brackets are closed. Keys the model never reached are absent.
+    None when no such point exists (the cut came before any nested value was finished).
+    """
+
+    text = _THINK.sub("", text)
+    start = text.find("{")
+    if start < 0:
+        return None
+    stack: list[str] = []
+    cuts: list[tuple[int, str]] = []
+    in_string = escaped = False
+    for index in range(start, len(text)):
+        char = text[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+        elif char == '"':
+            in_string = True
+        elif char in _CLOSERS:
+            stack.append(char)
+        elif char in "}]":
+            if not stack:
+                return None
+            stack.pop()
+            if not stack:  # the object was complete: not a truncation this helper is for
+                return None
+            cuts.append((index + 1, "".join(_CLOSERS[c] for c in reversed(stack))))
+    for end, closing in reversed(cuts[-SALVAGE_TRIES:]):
+        try:
+            value = json.loads(text[start:end] + closing)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, dict):
+            return value
+    return None
+
+
 def refused_feature(
     folded_error: str,
     *,
@@ -583,6 +633,9 @@ class LlmChatResult:
     summary: LlmCallSummary
     value: dict[str, Any] | None = field(default=None, repr=False)
     http_status: int | None = None
+    # ``output_truncated`` only: the cut reply closed after its last whole element
+    # (salvage_truncated_object); a caller may use it, the outcome stays a failure.
+    partial: dict[str, Any] | None = field(default=None, repr=False)
 
     @property
     def ok(self) -> bool:

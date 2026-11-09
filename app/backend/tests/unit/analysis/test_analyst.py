@@ -17,6 +17,7 @@ from app.services.analysis.llm.analyst import (
     build_answer,
     build_catalog,
     column_caveats,
+    shortlist,
     table_material,
 )
 from app.services.analysis.llm.port import FailureCode, ModelFailure
@@ -362,3 +363,60 @@ def test_partial_answer_names_what_is_missing() -> None:
         "müşterinin kredi kartı bilgisi"
     )
     assert full.verdict is Verdict.FOUND and full.missing == []
+
+
+class CutFirstStep(ScriptedClient):
+    """Step 1's reply is cut at max_tokens; ``partial`` is what the adapter salvaged of it."""
+
+    def __init__(self, partial: dict[str, Any] | None, *replies: dict[str, Any] | None) -> None:
+        super().__init__(None, *replies)
+        self.partial = partial
+        self.last_partial: dict[str, Any] | None = None
+
+    def chat_json(
+        self, system: str, user: str, schema: Mapping[str, Any], *, max_tokens: int = 1024
+    ) -> dict[str, Any] | None:
+        first = not self.systems
+        reply = super().chat_json(system, user, schema, max_tokens=max_tokens)
+        cut = first and reply is None
+        self.last_failure = ModelFailure(FailureCode.OUTPUT_TRUNCATED) if cut else None
+        self.last_partial = self.partial if cut else None
+        return reply
+
+
+# Qwen3.6 on vLLM wrote its candidates, then looped over the catalog as confusables.
+LOOPED = {
+    "interpretation": SHORTLIST["interpretation"],
+    "candidates": SHORTLIST["candidates"],
+    "confusables": [{"id": "T1", "why": "katalog dökümü"}],  # the field the cut fell in
+}
+
+
+def test_a_cut_shortlist_with_finished_candidates_is_used() -> None:
+    r = engine(CutFirstStep(LOOPED, analyst_reply())).analyze("kredi kartı")
+    assert r.analyst and [o.object_key for o in r.objects][:1] == [LIST]
+
+
+def test_a_cut_shortlist_keeps_its_finished_fields_but_never_its_confusables() -> None:
+    catalog = build_catalog(objects())
+    client = CutFirstStep({**LOOPED, "search_terms": ["kart"]})
+    short = shortlist("kredi kartı", catalog, "", client, 14)
+    assert short is not None and short.salvaged
+    assert short.candidates == [LIST] and short.confusables == []  # T1 was a confusable
+    assert short.search_terms == []  # the last field: the cut fell in it
+
+
+def test_a_cut_shortlist_without_finished_candidates_stays_a_failure() -> None:
+    cut_in_candidates = {"interpretation": "yarım", "candidates": SHORTLIST["candidates"]}
+    for partial in (None, {"interpretation": "yarım"}, {"candidates": []}, cut_in_candidates):
+        r = engine(CutFirstStep(partial, analyst_reply())).analyze("kredi kartı")
+        assert not r.analyst and r.objects == [], partial
+        assert "uzunluk sınırında kesildi" in r.fallback
+
+
+def test_only_a_cut_reply_is_salvaged() -> None:
+    client = ScriptedClient(None, analyst_reply())
+    client.last_failure = ModelFailure(FailureCode.INVALID_JSON)
+    client.last_partial = LOOPED  # type: ignore[attr-defined]
+    r = engine(client).analyze("kredi kartı")
+    assert not r.analyst and r.objects == []
