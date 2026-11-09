@@ -944,3 +944,82 @@ html[data-surface="explorer"].has-results main.wrap { max-width: 1440px; }
   [data-surface="explorer"] .ans-main .ask-more { margin: 6px 0; }
   [data-surface="explorer"] #ask-out:not(:empty) { padding-bottom: 8px; }
 }
+
+/* ---------- welcome tour: a sample copy of the screen, shown once to a browser that never saw it ---------- */
+html[data-surface="explorer"].welcome-open body { overflow: hidden; }
+[data-surface="explorer"] .wt { position: fixed; inset: 0; z-index: 60; }
+[data-surface="explorer"] .wt-stage {
+  position: absolute; inset: 0; overflow-y: auto; padding: 0 16px 50vh;
+  background: linear-gradient(180deg, var(--dusk-a86), var(--abyss-a90)); backdrop-filter: blur(18px);
+}
+[data-surface="explorer"] .wt-top { display: flex; justify-content: center; padding: 14px 0 0; }
+[data-surface="explorer"] .wt-badge {
+  font-size: 12.5px; color: var(--mid); padding: 5px 12px; border-radius: 999px;
+  background: var(--mid-bg); border: 1px solid var(--amber-a24);
+}
+[data-surface="explorer"] .wt-ask { max-width: 860px; margin: 0 auto; padding: 8vh 0 24px; text-align: center; }
+[data-surface="explorer"] .wt-title {
+  font-family: var(--display); font-size: clamp(24px, 3.4vw, 34px); line-height: 1.15; font-weight: 700;
+  margin: 0 0 22px; letter-spacing: -.6px; color: var(--ink);
+}
+[data-surface="explorer"] .wt-ask .searchbox { position: relative; padding: 12px; background: var(--night-a78); }
+[data-surface="explorer"] .wt-progress {
+  max-width: 860px; margin: 0 auto; padding: 16px 20px; list-style: none; display: grid; gap: 10px;
+  border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line);
+}
+[data-surface="explorer"] .wt-progress li { display: flex; align-items: center; gap: 10px; color: var(--faint); font-size: 14px; }
+[data-surface="explorer"] .wt-progress li::before {
+  content: ""; width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid var(--line);
+}
+[data-surface="explorer"] .wt-progress li.now { color: var(--text); }
+[data-surface="explorer"] .wt-progress li.now::before { border-color: var(--accent) var(--line) var(--line) var(--line); animation: spin .8s linear infinite; }
+[data-surface="explorer"] .wt-progress li.done { color: var(--text-soft); }
+[data-surface="explorer"] .wt-progress li.done::before { border-color: var(--high); background: var(--high); }
+[data-surface="explorer"] .wt-out { max-width: 1440px; margin: 0 auto; animation: rise .4s ease both; }
+[data-surface="explorer"] .wt-scrim { position: fixed; inset: 0; background: var(--scrim-a60); }
+[data-surface="explorer"] .wt-spot {
+  position: fixed; border-radius: 16px; pointer-events: none; border: 2px solid var(--accent);
+  box-shadow: 0 0 0 200vmax var(--scrim-a55), var(--glow);
+  transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease;
+}
+[data-surface="explorer"] .wt-bubble {
+  position: fixed; z-index: 1; width: min(360px, calc(100% - 32px)); padding: 16px 18px 16px; outline: none;
+  font-family: var(--sans); border-radius: 18px; border: 1px solid var(--periwinkle-a22);
+  background: var(--panel-solid); box-shadow: 0 24px 70px var(--shade-a60), inset 0 1px 0 var(--gloss-a07);
+  transition: top .25s ease, left .25s ease;
+}
+[data-surface="explorer"] .wt-bubble.centred { top: 50%; left: 50%; width: min(460px, calc(100% - 32px)); transform: translate(-50%, -50%); padding: 22px 24px; box-shadow: 0 30px 90px var(--shade-a60), var(--glow); }
+[data-surface="explorer"] .wt-bubble.docked { right: 24px; bottom: 24px; }
+@media (max-width: 700px) {
+  [data-surface="explorer"] .wt-bubble.docked { right: 12px; left: 12px; bottom: 12px; width: auto; }
+}
+[data-surface="explorer"] .wt-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+[data-surface="explorer"] .wt-kicker { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+[data-surface="explorer"] .wt-close {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: transparent;
+  color: var(--muted); cursor: pointer; transition: color .2s, border-color .2s;
+}
+[data-surface="explorer"] .wt-close:hover, [data-surface="explorer"] .wt-close:focus-visible { color: var(--text); border-color: var(--accent); }
+[data-surface="explorer"] .wt-bubble h2 { margin: 0 0 6px; font: 600 18px/1.3 var(--display); color: var(--ink); }
+[data-surface="explorer"] .wt-bubble.centred h2 { font-size: 22px; }
+[data-surface="explorer"] .wt-body { margin: 0; font-size: 14px; line-height: 1.55; color: var(--text-lead); }
+[data-surface="explorer"] .wt-tips { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+[data-surface="explorer"] .wt-tips li {
+  padding: 9px 12px; border-radius: 12px; font-size: 13.5px; color: var(--text-soft);
+  background: var(--surface-2); border: 1px solid var(--line);
+}
+[data-surface="explorer"] .wt-hint { margin: 12px 0 0; padding: 8px 12px; border-radius: 10px; font-size: 13.5px; font-weight: 600; }
+[data-surface="explorer"] .wt-hint.wait { color: var(--accent); background: var(--accent-soft); }
+[data-surface="explorer"] .wt-hint.ok { color: var(--high); background: var(--high-bg); }
+[data-surface="explorer"] .wt-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+[data-surface="explorer"] .wt-actions:empty { display: none; }
+[data-surface="explorer"] .wt-later {
+  padding: 8px 14px; border-radius: 11px; font: 14px/1.4 var(--sans); cursor: pointer;
+  color: var(--muted); background: transparent; border: 1px solid var(--line);
+}
+[data-surface="explorer"] .wt-later:hover, [data-surface="explorer"] .wt-later:focus-visible { color: var(--text); }
+[data-surface="explorer"] .wt-next {
+  padding: 8px 18px; border-radius: 11px; border: 0; font: 600 14px/1.4 var(--sans); cursor: pointer;
+  color: var(--on-accent); background: var(--grad); background-size: 200% 100%; transition: background-position .4s;
+}
+[data-surface="explorer"] .wt-next:hover, [data-surface="explorer"] .wt-next:focus-visible { background-position: 100% 0; }

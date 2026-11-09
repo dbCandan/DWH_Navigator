@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import {cleanup, configure} from '@testing-library/react';
 import {afterEach, beforeEach} from 'vitest';
 import {setConfirmHandler} from '@/lib/confirm';
+import {skipWelcomeForTests} from '@/lib/welcomeGuide';
 import {serveAdminDefaults} from './admin';
 import {serveExplorerDefaults} from './explorer';
 
@@ -14,6 +15,9 @@ configure({asyncUtilTimeout: 5000});
 beforeEach(() => {
   serveAdminDefaults();
   serveExplorerDefaults();
+  // The main screen's welcome guide shows once per browser; tests that do not look at it start
+  // as a browser that already saw it (WelcomeGuide.test.tsx forgets this).
+  skipWelcomeForTests();
 });
 
 // Vitest globals are off, so Testing Library cannot register its own unmount hook.

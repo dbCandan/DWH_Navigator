@@ -26,7 +26,7 @@ import {
 } from '@/lib/answerText';
 import {VoteService} from '@/services/votes';
 import type {AnalysisAnswer, AnswerColumn, AnswerObject} from '@/types/analysis';
-import type {VoteIn} from '@/types/feedback';
+import type {VoteIn, VoteRecorded} from '@/types/feedback';
 
 /*
  * The answer view (question-analysis Requirement 21; index.html answerView, foundBlock,
@@ -593,10 +593,23 @@ interface Props {
   hasTable?: (key: string) => boolean;
   /** Every table of the dictionary: names in the prose that are not suggested are marked. */
   catalog?: readonly {key: string; name: string}[];
+  /** Where a vote goes; the welcome tour keeps its votes in the page. */
+  sendVote?: (vote: VoteIn) => Promise<VoteRecorded>;
 }
 
+const castVote = (vote: VoteIn) => VoteService.cast(vote);
+
 /** The whole answer: the head with the find, the suggestions and the guide column. */
-export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, hasTable, catalog = NO_CATALOG}: Props) {
+export function AnswerView({
+  answer: r,
+  onRedo,
+  onReport,
+  reportHref,
+  openTable,
+  hasTable,
+  catalog = NO_CATALOG,
+  sendVote = castVote,
+}: Props) {
   const {t} = useIntl();
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [nearKey, setNearKey] = useState<string | null>(null);
@@ -672,7 +685,7 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
       vote:
         ({scope, table_key}) =>
         (vote, note) =>
-          VoteService.cast({
+          sendVote({
             query: r.query,
             scope,
             ...(table_key ? {table_key} : {}),
@@ -682,7 +695,7 @@ export function AnswerView({answer: r, onRedo, onReport, reportHref, openTable, 
           }),
       mine: feedback?.mine ?? {},
     }),
-    [t, rich, openTable, hasTable, r.query, feedback],
+    [t, rich, openTable, hasTable, r.query, feedback, sendVote],
   );
 
   const rejected = r.rejected ?? [];

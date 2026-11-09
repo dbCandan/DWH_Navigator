@@ -4,6 +4,7 @@ import {AnswerView} from '@/components/explorer/AnswerView';
 import {Dossier, type OpenTable} from '@/components/explorer/Dossier';
 import {SearchBox} from '@/components/explorer/SearchBox';
 import {ListFormatHelp, TermListView} from '@/components/explorer/TermListView';
+import {WelcomeGuide} from '@/components/explorer/WelcomeGuide';
 import {useIntl} from '@/contexts/IntlContext';
 import {useAsk} from '@/hooks/useAsk';
 import {useDocumentTitle} from '@/hooks/useDocumentTitle';
@@ -18,6 +19,7 @@ import {XLSX_MEDIA_TYPE} from '@/lib/excelUpload';
 import {explorerErrorText} from '@/lib/explorerErrors';
 import {statusView} from '@/lib/serviceStatus';
 import {forgetTabAnalysis, recallTabAnalysis} from '@/lib/tabAnalysis';
+import {shouldShowWelcome} from '@/lib/welcomeGuide';
 import {AnalysisService} from '@/services/analyses';
 import '@/components/explorer/explorer.css';
 
@@ -114,6 +116,8 @@ export default function ExplorerPage() {
   const [question, setQuestion] = useState('');
   const [asked, setAsked] = useState<string | undefined>(undefined);
   const [docked, setDocked] = useState(false);
+  // A browser that never saw the welcome guide gets it once, over the landing view.
+  const [welcome, setWelcome] = useState(shouldShowWelcome);
   const field = useRef<HTMLTextAreaElement>(null);
   const header = useRef<HTMLElement>(null);
   const hero = useRef<HTMLDivElement>(null);
@@ -496,6 +500,14 @@ export default function ExplorerPage() {
         </section>
       </main>
       <footer id="foot" ref={foot} />
+      {welcome ? (
+        <WelcomeGuide
+          onClose={() => {
+            setWelcome(false);
+            requestAnimationFrame(() => field.current?.focus());
+          }}
+        />
+      ) : null}
     </>
   );
 }

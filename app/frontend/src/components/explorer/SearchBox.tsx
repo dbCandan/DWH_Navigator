@@ -32,6 +32,8 @@ interface Props {
   title?: string;
   /** The Excel list button: pick a list file (list-search Requirement 17). */
   onAttach?: () => void;
+  /** The welcome tour's copy of the bar: it leaves the page's ids and the focus to the real one. */
+  sample?: boolean;
 }
 
 /**
@@ -40,7 +42,18 @@ interface Props {
  * drop hint, and "Ara ↵", which turns into "Durdur" while an analysis runs (question-analysis
  * Requirement 19).
  */
-export function SearchBox({value, onChange, onSubmit, textareaRef, docked = false, busy = false, onStop, title, onAttach}: Props) {
+export function SearchBox({
+  value,
+  onChange,
+  onSubmit,
+  textareaRef,
+  docked = false,
+  busy = false,
+  onStop,
+  title,
+  onAttach,
+  sample = false,
+}: Props) {
   const {t} = useIntl();
   const own = useRef<HTMLTextAreaElement>(null);
   const field = textareaRef ?? own;
@@ -65,7 +78,7 @@ export function SearchBox({value, onChange, onSubmit, textareaRef, docked = fals
   return (
     <div className="searchbox">
       <textarea
-        id="q"
+        id={sample ? undefined : 'q'}
         ref={field}
         rows={1}
         placeholder={t('explorer.search.placeholder')}
@@ -75,11 +88,11 @@ export function SearchBox({value, onChange, onSubmit, textareaRef, docked = fals
         onKeyDown={keyDown}
         wrap={docked ? 'off' : undefined}
         title={title}
-        autoFocus={!docked}
+        autoFocus={!docked && !sample}
       />
       <button
         className="attach"
-        id="xl"
+        id={sample ? undefined : 'xl'}
         type="button"
         data-tip={t('explorer.list.attachTip')}
         aria-label={t('explorer.list.attachLabel')}
@@ -106,7 +119,7 @@ export function SearchBox({value, onChange, onSubmit, textareaRef, docked = fals
       </div>
       <button
         className={'primary' + (busy ? ' busy' : '')}
-        id="go"
+        id={sample ? undefined : 'go'}
         type="button"
         title={busy ? t('explorer.search.stopTip') : undefined}
         aria-label={busy ? t('explorer.search.stop') : undefined}
