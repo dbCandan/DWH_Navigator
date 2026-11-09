@@ -75,6 +75,7 @@ services:
       # local-egress gate below. Empty trust store: the image's system trust store.
       DWHNAVIGATOR_LLM_CA_BUNDLE: ""
       DWHNAVIGATOR_LLM_MAX_CONCURRENT_CALLS: "5"
+      DWHNAVIGATOR_LLM_CALL_LOG_DAYS: "7"
       # ERPDM is not among the local backups; an update leaves it out and keeps its records.
       DWHNAVIGATOR_DICTIONARY_IGNORED_DATABASES: "ERPDM"
       DWHNAVIGATOR_DICTIONARY_IGNORED_COLUMNS: "PersonnelFlag"
@@ -82,7 +83,13 @@ services:
       DWHNAVIGATOR_DICTIONARY_LLM_MODEL: "qwen/qwen3.8-27b"
       DWHNAVIGATOR_DICTIONARY_LLM_REASONING_EFFORT: "none"
       DWHNAVIGATOR_DICTIONARY_JUDGE_REASONING_EFFORT: "low"
-      # Confirmed by the owner: the dictionary row names this procedure without its EDW prefix.
+      # An update with changes waits for an admin's approval; the verifier scores 40 changed texts.
+      DWHNAVIGATOR_DICTIONARY_SYNC_REQUIRES_APPROVAL: "true"
+      DWHNAVIGATOR_DICTIONARY_JUDGE_SAMPLE: "40"
+      # Empty: the bundled dictionary_curation/decisions.json.
+      DWHNAVIGATOR_DICTIONARY_DECISIONS_PATH: ""
+      # No hand-confirmed names: the dictionary carries the warehouse's own schemas and names.
+      DWHNAVIGATOR_DICTIONARY_OBJECT_ALIASES: ""
       # Question analysis jobs: up to 4 owners in parallel, one job per owner, at most 20 waiting
       # (004-question-analysis Decision 27).
       DWHNAVIGATOR_ANALYSIS_CONCURRENCY: "4"

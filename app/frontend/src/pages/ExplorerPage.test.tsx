@@ -25,7 +25,7 @@ describe('main screen shell (dictionary-explorer Requirement 1, 15, 17)', () => 
   it('shows the brand, the landing title and the question bar in the source\'s structure', async () => {
     await openExplorer();
     expect(document.documentElement.dataset.surface).toBe('explorer');
-    expect(document.title).toBe(message('explorer.documentTitle'));
+    await waitFor(() => expect(document.title).toBe(message('explorer.documentTitle')));
     const brand = screen.getByRole('link', {name: /DWH Navigator/});
     expect(brand).toHaveAttribute('href', '/');
     expect(brand).toHaveAttribute('title', message('explorer.brand.restart'));

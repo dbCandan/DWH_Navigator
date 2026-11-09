@@ -59,11 +59,11 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("status = 'running' AND owner_visitor_id IS NOT NULL"),
     )
-    op.execute("COMMENT ON TABLE term_list IS '" + _NEW_COMMENT.replace("'", "''") + "'")
+    op.create_table_comment("term_list", _NEW_COMMENT, existing_comment=_OLD_COMMENT)
 
 
 def downgrade() -> None:
-    op.execute("COMMENT ON TABLE term_list IS '" + _OLD_COMMENT.replace("'", "''") + "'")
+    op.create_table_comment("term_list", _OLD_COMMENT, existing_comment=_NEW_COMMENT)
     op.drop_index(
         "uq_term_list_one_running_per_owner_visitor",
         table_name="term_list",

@@ -19,9 +19,9 @@ PyYAML==6.0.3
 # (application-foundation/PRDs/001-user-accounts Requirement 19). Instrumentation is written in
 # app/core/telemetry.py, not taken from instrumentation packages, so no URL, body or login name
 # can reach an attribute.
-opentelemetry-api==1.44.0
-opentelemetry-sdk==1.44.0
-opentelemetry-exporter-otlp-proto-grpc==1.44.0
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+opentelemetry-exporter-otlp-proto-grpc==1.45.1
 # Transitive dependencies of the OTLP/gRPC exporter held at their newest release that is at least
 # 30 days old (rules/54); remove a line once the resolver's own choice is past that window.
 grpcio==1.83.1

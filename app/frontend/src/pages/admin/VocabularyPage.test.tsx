@@ -33,8 +33,14 @@ async function openPage(path = '/admin/kelimeler') {
   return screen.findByRole('heading', {level: 2, name: message('vocabulary.terms.title', {count: 2})});
 }
 
-const tab = (list: 'terms' | 'stopwords', count: number) =>
-  screen.getByRole('tab', {name: new RegExp(`^${message(`vocabulary.list.${list}`)}\\s*${count}\\b`)});
+/** A tab is named "<label> <count>": the label first, then exactly this count. */
+const tab = (list: 'terms' | 'stopwords', count: number) => {
+  const label = message(`vocabulary.list.${list}`);
+  return screen.getByRole('tab', {
+    name: (name) =>
+      name.startsWith(label) && /^\s*(\d+)\b/.exec(name.slice(label.length))?.[1] === String(count),
+  });
+};
 
 /** The stopwords' tab, opened. */
 function openStops(count = 3) {

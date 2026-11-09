@@ -41,7 +41,9 @@ MAX_TABLES = 5_000
 MAX_COLUMNS = 200_000
 APP_NAME = "dwhnavigator-dictionary-sync"
 
-DEFINITIONS_SQL = "SELECT DatabaseName, SchemaName, ObjectName, Description FROM OPR.DatasetDefinition"
+DEFINITIONS_SQL = (
+    "SELECT DatabaseName, SchemaName, ObjectName, Description FROM OPR.DatasetDefinition"
+)
 DETAILS_SQL = (
     "SELECT DatabaseName, SchemaName, ObjectName, ColumnName, ColumnDescription, DatasetGroup "
     "FROM OPR.DatasetDefinitionDetail"
@@ -78,13 +80,9 @@ MODULES_SQL = (
 )
 
 _SCHEMA_ERRORS = frozenset({207, 208, 4104})
-_LOGIN_ERRORS = frozenset(
-    {229, 230, 916, 4060, 4064, 18452, 18456, 18470, 18487, 18488}
-)
+_LOGIN_ERRORS = frozenset({229, 230, 916, 4060, 4064, 18452, 18456, 18470, 18487, 18488})
 _TIMEOUT_ERRORS = frozenset({20003})
-_CLIENT_ERRORS = range(
-    20000, 21000
-)  # DB-Library's own numbers; the others come from the server
+_CLIENT_ERRORS = range(20000, 21000)  # DB-Library's own numbers; the others come from the server
 
 
 def _error_parts(error: BaseException) -> tuple[int, str]:
@@ -122,9 +120,7 @@ def _sort_key(row: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:
     return tuple(value.casefold() for value in row), row
 
 
-def _fetch_rows(
-    cursor: Any, key_width: int, limit: int
-) -> tuple[list[tuple[str, ...]], int]:
+def _fetch_rows(cursor: Any, key_width: int, limit: int) -> tuple[list[tuple[str, ...]], int]:
     """Read trimmed rows, count those without a full key, and stop past ``limit`` distinct keys."""
     rows: list[tuple[str, ...]] = []
     keys: set[tuple[str, ...]] = set()
@@ -156,18 +152,15 @@ class _Targets:
     databases: dict[str, str]  # source spelling -> reachable catalog name
     catalogs: dict[str, DatabaseCatalog]
     missing: tuple[str, ...]
-    code: dict[str, str] = field(
-        default_factory=dict
-    )  # Database.Schema.Name -> definition
+    code: dict[str, str] = field(default_factory=dict)  # Database.Schema.Name -> definition
 
 
-def _read_modules(
-    cursor: Any, driver: Any, name: str, quoted: str, code: dict[str, str]
-) -> None:
+def _read_modules(cursor: Any, driver: Any, name: str, quoted: str, code: dict[str, str]) -> None:
     """Definitions are evidence only: a refusal leaves the dictionary update untouched."""
 
     try:
-        cursor.execute(MODULES_SQL.format(database=quoted))
+        # Only the server's QUOTENAME of a sys.databases name, checked by the caller, is formatted.
+        cursor.execute(MODULES_SQL.format(database=quoted))  # nosemgrep
         for schema, object_name, body in cursor:
             if body:
                 code[f"{name}.{schema}.{object_name}"] = str(body)
@@ -240,9 +233,7 @@ class SqlServerDictionarySource:
     def _layers(cursor: Any, targets: set[str]) -> list[str]:
         cursor.execute(DATABASE_NAMES_SQL)
         server = {_text(row[0]).casefold(): _text(row[0]) for row in cursor}
-        wanted = {
-            server[name.casefold()] for name in CODE_LAYERS if name.casefold() in server
-        }
+        wanted = {server[name.casefold()] for name in CODE_LAYERS if name.casefold() in server}
         return sorted(wanted - targets)
 
     @staticmethod
@@ -279,9 +270,7 @@ class SqlServerDictionarySource:
         return replace(
             definitions,
             tables=tuple(
-                r
-                for r in definitions.tables
-                if r.database.casefold() not in self._ignored
+                r for r in definitions.tables if r.database.casefold() not in self._ignored
             ),
             columns=tuple(
                 r
@@ -291,9 +280,7 @@ class SqlServerDictionarySource:
             ),
         )
 
-    def _reconciled(
-        self, definitions: _Definitions, targets: _Targets
-    ) -> SourceSnapshot:
+    def _reconciled(self, definitions: _Definitions, targets: _Targets) -> SourceSnapshot:
         snapshot = reconcile(
             definitions.tables,
             definitions.columns,
@@ -381,7 +368,8 @@ class SqlServerDictionarySource:
                 return None
 
             schemas: dict[str, dict[str, set[str] | None]] = {}
-            cursor.execute(CATALOG_OBJECTS_SQL.format(database=quoted))
+            # Only the QUOTENAME checked above is formatted in; no source text reaches the statement.
+            cursor.execute(CATALOG_OBJECTS_SQL.format(database=quoted))  # nosemgrep
             for schema, object_name, kind in cursor:
                 # A procedure has no column list in the catalog: only the object can be confirmed.
                 schemas.setdefault(schema, {})[object_name] = (
@@ -389,7 +377,7 @@ class SqlServerDictionarySource:
                 )
             if not schemas:
                 return None
-            cursor.execute(CATALOG_COLUMNS_SQL.format(database=quoted))
+            cursor.execute(CATALOG_COLUMNS_SQL.format(database=quoted))  # nosemgrep
             for schema, object_name, column in cursor:
                 known = schemas.get(schema, {}).get(object_name)
                 if known is not None:
@@ -399,11 +387,7 @@ class SqlServerDictionarySource:
             return schemas
         except driver.Error as error:
             number, message = _error_parts(error)
-            if (
-                number != 0
-                and number not in _CLIENT_ERRORS
-                and "timed out" not in message
-            ):
+            if number != 0 and number not in _CLIENT_ERRORS and "timed out" not in message:
                 return None  # the server refused this database: unreadable
             failure = _classify(error, driver)
         raise failure
