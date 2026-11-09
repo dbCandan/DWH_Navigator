@@ -25,8 +25,6 @@ SOURCE_ONLY = {
         "_EQUIVALENT_SPLIT",
     },
     "vsa.dictionary_store": {"FORMAT"},  # the jsonl store; the target keeps it in PostgreSQL
-    # Step 1 sends shortlist_schema(limit), SHORTLIST_SCHEMA with its lists capped.
-    "vsa.llm.analyst": {"SHORTLIST_SCHEMA"},
 }
 # Allowed difference (d) of Requirement 1: the fingerprint takes the chat model from the model
 # port, so of the settings only the saved-answer switches stay out of it.
@@ -38,13 +36,6 @@ TARGET_ONLY = {
     "vsa.dictionary_store": {"SOURCE_NAME"},
     "vsa.feedback": {"UTC"},
     "vsa.answer_cache": {"_NEUTRAL_FIELDS"},  # step 1's reply limit stays out of the key
-    # Step 1's list caps, shared by the schema and the parser (a looping model filled max_tokens).
-    "vsa.llm.analyst": {
-        "SHORTLIST_FAMILIES",
-        "SHORTLIST_FAMILY_TERMS",
-        "SHORTLIST_TERMS",
-    },
-    "vsa.llm.analyst_prompts": {"SHORTLIST_FAMILIES", "SHORTLIST_FAMILY_TERMS", "SHORTLIST_TERMS"},
 }
 # Target-only settings: step 1's reply limit, a fixed 2500 in the source (a thinking model filled
 # it before its JSON), is an analyst setting here.

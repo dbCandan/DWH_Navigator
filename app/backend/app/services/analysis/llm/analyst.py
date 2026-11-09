@@ -29,12 +29,9 @@ from app.domain.analysis import DictColumn, Note, ObjectProfile, Verdict
 from app.domain.turkish_text import fold
 from app.services.analysis.llm.analyst_prompts import (
     ANALYST_SCHEMA,
-    SHORTLIST_FAMILIES,
-    SHORTLIST_FAMILY_TERMS,
-    SHORTLIST_TERMS,
+    SHORTLIST_SCHEMA,
     analyst_system,
     analyst_user,
-    shortlist_schema,
     shortlist_system,
     shortlist_user,
 )
@@ -146,16 +143,16 @@ def parse_shortlist(reply: Mapping[str, object], ids: Mapping[str, str], limit: 
     families: list[tuple[str, list[str]]] = []
     raw_families = reply.get("families")
     for fam in raw_families if isinstance(raw_families, list) else []:
-        if isinstance(fam, dict) and (words := _terms(fam.get("terms"), SHORTLIST_FAMILY_TERMS)):
+        if isinstance(fam, dict) and (words := _terms(fam.get("terms"), 8)):
             families.append((str(fam.get("name", "")).strip() or "-", words))
     return Shortlist(
         interpretation=str(reply.get("interpretation", "")).strip(),
         candidates=cands,
         reasons=reasons,
         confusables=[k for k in conf if k not in cands],
-        search_terms=_terms(reply.get("search_terms"), SHORTLIST_TERMS),
+        search_terms=_terms(reply.get("search_terms"), 12),
         unknown_ids=unknown + unknown_conf,
-        families=families[:SHORTLIST_FAMILIES],
+        families=families[:6],
     )
 
 
@@ -171,7 +168,7 @@ def shortlist(
     reply = client.chat_json(
         shortlist_system(catalog.text, limit),
         shortlist_user(query, hints),
-        shortlist_schema(limit),
+        SHORTLIST_SCHEMA,
         max_tokens=max_tokens,
     )
     return None if reply is None else parse_shortlist(reply, catalog.ids, limit)

@@ -19,7 +19,6 @@ from app.services.analysis.llm.analyst import (
     column_caveats,
     table_material,
 )
-from app.services.analysis.llm.analyst_prompts import SHORTLIST_SCHEMA, shortlist_schema
 from app.services.analysis.llm.port import FailureCode, ModelFailure
 from app.services.analysis.pipeline import Engine, Resources
 from app.services.analysis.report.excel import write_ask_report
@@ -363,15 +362,3 @@ def test_partial_answer_names_what_is_missing() -> None:
         "müşterinin kredi kartı bilgisi"
     )
     assert full.verdict is Verdict.FOUND and full.missing == []
-
-
-def test_the_shortlist_schema_caps_every_list_where_the_parser_cuts_it() -> None:
-    # A model looping over the catalog (Qwen3.6 on vLLM listed T24, T25, … as confusables)
-    # is stopped by structured output at these caps instead of filling max_tokens.
-    capped = shortlist_schema(14)
-    props = capped["properties"]
-    assert props["candidates"]["maxItems"] == 14 and props["confusables"]["maxItems"] == 14
-    assert props["search_terms"]["maxItems"] == 12 and props["families"]["maxItems"] == 6
-    assert props["families"]["items"]["properties"]["terms"]["maxItems"] == 8
-    assert "maxItems" not in SHORTLIST_SCHEMA["properties"]["candidates"]  # constant unchanged
-    assert capped["required"] == SHORTLIST_SCHEMA["required"]
