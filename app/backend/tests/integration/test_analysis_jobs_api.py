@@ -377,8 +377,7 @@ async def test_a_dropped_stream_leaves_the_job_running_and_resumes_from_the_last
         assert [e.id for e in replay[1:]] == [
             e.id
             for e in seen
-            if e.id is not None and e.id > first_step.id and e.data
-            and e.data["type"] != "snapshot"
+            if e.id is not None and e.id > first_step.id and e.data and e.data["type"] != "snapshot"
         ][: len(replay) - 1]
         qa.model.hold.set()
         await again.wait_closed()

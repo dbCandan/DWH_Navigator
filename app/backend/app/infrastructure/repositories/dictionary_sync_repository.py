@@ -182,7 +182,13 @@ class DictionarySyncRepository:
         """Upsert the given digests; rows of columns that left the dictionary go."""
 
         items = [
-            {"tenant_id": tenant_id, "table_key": t, "column_name": c, "digest": d, "updated_at": now}
+            {
+                "tenant_id": tenant_id,
+                "table_key": t,
+                "column_name": c,
+                "digest": d,
+                "updated_at": now,
+            }
             for (t, c), d in digests.items()
         ]
         for start in range(0, len(items), INSERT_BATCH):
@@ -195,9 +201,7 @@ class DictionarySyncRepository:
                 )
             )
 
-    async def drop_trail_digests(
-        self, tenant_id: int, keep: Sequence[tuple[str, str]]
-    ) -> None:
+    async def drop_trail_digests(self, tenant_id: int, keep: Sequence[tuple[str, str]]) -> None:
         """Rows of columns no longer in the dictionary go."""
 
         kept = set(keep)

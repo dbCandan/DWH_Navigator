@@ -416,9 +416,7 @@ async def test_only_one_list_runs_per_owner(bench: Bench) -> None:
     await bench.until(other["id"], "completed")
 
 
-async def test_two_owners_run_lists_at_the_same_time(
-    bench: Bench, dd: DataDictionary
-) -> None:
+async def test_two_owners_run_lists_at_the_same_time(bench: Bench, dd: DataDictionary) -> None:
     """Decision 3: different owners' lists run in parallel; neither engels the other."""
 
     other_user = await dd.auth.account(dd.admin, "kullanici")
@@ -442,9 +440,7 @@ async def test_two_owners_run_lists_at_the_same_time(
     await bench.until(first["id"], "completed")
     async with asyncio.timeout(10):
         while True:
-            snap = await bench.lists.snapshot(
-                bench.tenant.tenant_id, other.public_id, second["id"]
-            )
+            snap = await bench.lists.snapshot(bench.tenant.tenant_id, other.public_id, second["id"])
             if snap["status"] == "completed":
                 break
             await asyncio.sleep(0.02)

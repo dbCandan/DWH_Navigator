@@ -67,8 +67,4 @@ def align_object(
         "TimeColumns": ", ".join(times),
         "BusinessDomain": decisions.domain(record.get("BusinessDomain", "")),
     }
-    return {
-        name: value
-        for name, value in wanted.items()
-        if value != (record.get(name) or "")
-    }
+    return {name: value for name, value in wanted.items() if value != (record.get(name) or "")}

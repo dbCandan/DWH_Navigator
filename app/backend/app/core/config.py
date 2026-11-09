@@ -193,9 +193,7 @@ class Settings(BaseSettings):
     def validate_tenant_header(cls, value: str) -> str:
         normalized = value.strip().lower()
         if not normalized or "_" in normalized:
-            raise ValueError(
-                "tenant_header must be a non-empty HTTP header name using hyphens"
-            )
+            raise ValueError("tenant_header must be a non-empty HTTP header name using hyphens")
         return normalized
 
     @field_validator("database_url")
@@ -224,9 +222,7 @@ class Settings(BaseSettings):
             or parts.query
             or parts.fragment
         ):
-            raise ValueError(
-                "public_origin must be an exact scheme://host[:port] origin"
-            )
+            raise ValueError("public_origin must be an exact scheme://host[:port] origin")
         return value
 
     @field_validator("trusted_proxy_cidrs")
@@ -235,30 +231,22 @@ class Settings(BaseSettings):
         try:
             _parse_networks(value)
         except ValueError:
-            raise ValueError(
-                "trusted_proxy_cidrs must list IP addresses or networks"
-            ) from None
+            raise ValueError("trusted_proxy_cidrs must list IP addresses or networks") from None
         return value
 
-    @field_validator(
-        "bootstrap_super_admin_password", "settings_encryption_key", mode="before"
-    )
+    @field_validator("bootstrap_super_admin_password", "settings_encryption_key", mode="before")
     @classmethod
     def empty_optional_secret_is_absent(cls, value: object) -> object:
         return None if value == "" else value
 
     @field_validator("settings_encryption_key")
     @classmethod
-    def validate_settings_encryption_key(
-        cls, value: SecretStr | None
-    ) -> SecretStr | None:
+    def validate_settings_encryption_key(cls, value: SecretStr | None) -> SecretStr | None:
         if value is not None:
             try:
                 decode_encryption_key(value.get_secret_value())
             except ValueError:
-                raise ValueError(
-                    "settings_encryption_key must be base64 of 32 bytes"
-                ) from None
+                raise ValueError("settings_encryption_key must be base64 of 32 bytes") from None
         return value
 
     @field_validator("llm_ca_bundle")
@@ -269,9 +257,7 @@ class Settings(BaseSettings):
             try:
                 ssl.create_default_context(cafile=path)
             except (OSError, ssl.SSLError, ValueError):
-                raise ValueError(
-                    "llm_ca_bundle must name a readable certificate file"
-                ) from None
+                raise ValueError("llm_ca_bundle must name a readable certificate file") from None
         return path
 
     @field_validator("otel_exporter_otlp_endpoint")
@@ -299,9 +285,7 @@ class Settings(BaseSettings):
     @classmethod
     def validate_otel_service_name(cls, value: str) -> str:
         if _SERVICE_NAME_RE.fullmatch(value) is None:
-            raise ValueError(
-                "otel_service_name must be a lowercase name of letters, digits and -"
-            )
+            raise ValueError("otel_service_name must be a lowercase name of letters, digits and -")
         return value
 
     @property
@@ -316,11 +300,7 @@ class Settings(BaseSettings):
 
     @property
     def cors_allow_origins_list(self) -> list[str]:
-        return [
-            origin.strip()
-            for origin in self.cors_allow_origins.split(",")
-            if origin.strip()
-        ]
+        return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
 
     @cached_property
     def jwt_signing_key(self) -> JwtSigningKey:
@@ -334,17 +314,9 @@ class Settings(BaseSettings):
     def require_key_matching_the_algorithm(self) -> "Settings":
         key = self.jwt_signing_key
         if self.jwt_algorithm == "ES256":
-            if (
-                not isinstance(key, ec.EllipticCurvePrivateKey)
-                or key.curve.name != "secp256r1"
-            ):
-                raise ValueError(
-                    "jwt_algorithm ES256 requires a P-256 elliptic-curve private key"
-                )
-        elif (
-            not isinstance(key, rsa.RSAPrivateKey)
-            or key.key_size < _RSA_MINIMUM_KEY_BITS
-        ):
+            if not isinstance(key, ec.EllipticCurvePrivateKey) or key.curve.name != "secp256r1":
+                raise ValueError("jwt_algorithm ES256 requires a P-256 elliptic-curve private key")
+        elif not isinstance(key, rsa.RSAPrivateKey) or key.key_size < _RSA_MINIMUM_KEY_BITS:
             raise ValueError(
                 f"jwt_algorithm RS256 requires an RSA private key of at least "
                 f"{_RSA_MINIMUM_KEY_BITS} bits"
@@ -353,9 +325,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def reject_hosted_llm_services(self) -> "Settings":
-        configured = [
-            name for name in _HOSTED_LLM_SERVICE_VARIABLES if os.environ.get(name)
-        ]
+        configured = [name for name in _HOSTED_LLM_SERVICE_VARIABLES if os.environ.get(name)]
         configured += [
             name
             for name in _HOSTED_LLM_TRACING_VARIABLES
@@ -372,9 +342,7 @@ class Settings(BaseSettings):
     def reject_untyped_telemetry_configuration(self) -> "Settings":
         # The OpenTelemetry SDK would otherwise read exporter headers, endpoints, certificates and
         # resource attributes from OTEL_* process variables behind the typed settings.
-        configured = sorted(
-            name for name in os.environ if name.upper().startswith("OTEL_")
-        )
+        configured = sorted(name for name in os.environ if name.upper().startswith("OTEL_"))
         if configured:
             raise ValueError(
                 "telemetry is configured only through DWHNAVIGATOR_OTEL_* settings: "
@@ -390,29 +358,21 @@ class Settings(BaseSettings):
             and self.runtime_environment == "nonprod"
             and urlsplit(endpoint).scheme != "https"
         ):
-            raise ValueError(
-                "otel_exporter_otlp_endpoint must use https outside development"
-            )
+            raise ValueError("otel_exporter_otlp_endpoint must use https outside development")
         return self
 
 
 def _parse_networks(value: str) -> tuple[IPv4Network | IPv6Network, ...]:
     return tuple(
-        ip_network(item.strip(), strict=False)
-        for item in value.split(",")
-        if item.strip()
+        ip_network(item.strip(), strict=False) for item in value.split(",") if item.strip()
     )
 
 
 def _load_signing_key(value: SecretStr) -> JwtSigningKey:
     try:
-        key = load_pem_private_key(
-            value.get_secret_value().encode("utf-8"), password=None
-        )
+        key = load_pem_private_key(value.get_secret_value().encode("utf-8"), password=None)
     except (TypeError, ValueError, UnsupportedAlgorithm):
-        raise ValueError(
-            "jwt_private_key must be an unencrypted PEM private key"
-        ) from None
+        raise ValueError("jwt_private_key must be an unencrypted PEM private key") from None
     if isinstance(key, (ec.EllipticCurvePrivateKey, rsa.RSAPrivateKey)):
         return key
     raise ValueError("jwt_private_key must be an elliptic-curve or RSA private key")

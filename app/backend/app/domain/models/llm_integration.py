@@ -61,9 +61,7 @@ class LlmIntegration(AuditSoftDeleteMixin, Base):
             unique=True,
             postgresql_where=text("active AND is_deleted = false"),
         ),
-        CheckConstraint(
-            f"char_length(name) BETWEEN 1 AND {NAME_MAX_LENGTH}", name="name_length"
-        ),
+        CheckConstraint(f"char_length(name) BETWEEN 1 AND {NAME_MAX_LENGTH}", name="name_length"),
         CheckConstraint(
             f"char_length(endpoint) BETWEEN 1 AND {ENDPOINT_MAX_LENGTH}",
             name="endpoint_length",
@@ -72,17 +70,11 @@ class LlmIntegration(AuditSoftDeleteMixin, Base):
             f"char_length(chat_model) <= {CHAT_MODEL_MAX_LENGTH}",
             name="chat_model_length",
         ),
-        CheckConstraint(
-            "NOT active OR chat_model <> ''", name="active_needs_chat_model"
-        ),
+        CheckConstraint("NOT active OR chat_model <> ''", name="active_needs_chat_model"),
         CheckConstraint("NOT (active AND is_deleted)", name="deleted_is_inactive"),
-        CheckConstraint(
-            "NOT is_deleted OR api_key_ciphertext IS NULL", name="deleted_has_no_key"
-        ),
+        CheckConstraint("NOT is_deleted OR api_key_ciphertext IS NULL", name="deleted_has_no_key"),
         CheckConstraint("temperature BETWEEN 0 AND 2", name="temperature_range"),
-        CheckConstraint(
-            "timeout_seconds BETWEEN 5 AND 3600", name="timeout_seconds_range"
-        ),
+        CheckConstraint("timeout_seconds BETWEEN 5 AND 3600", name="timeout_seconds_range"),
         CheckConstraint(
             "reasoning_effort IN ('none', 'low', 'medium', 'high', '')",
             name="reasoning_effort_allowed",
@@ -118,9 +110,7 @@ class LlmIntegration(AuditSoftDeleteMixin, Base):
         },
     )
 
-    llm_integration_id: Mapped[int] = mapped_column(
-        BigInteger, Identity(), primary_key=True
-    )
+    llm_integration_id: Mapped[int] = mapped_column(BigInteger, Identity(), primary_key=True)
     public_id: Mapped[str] = mapped_column(
         Text,
         default=new_public_id,

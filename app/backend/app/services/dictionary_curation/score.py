@@ -41,11 +41,7 @@ def wilson(hits: int, total: int, z: float = 1.96) -> tuple[float, float]:
         return 0.0, 0.0
     p = hits / total
     centre = (p + z * z / (2 * total)) / (1 + z * z / total)
-    half = (
-        z
-        * math.sqrt(p * (1 - p) / total + z * z / (4 * total * total))
-        / (1 + z * z / total)
-    )
+    half = z * math.sqrt(p * (1 - p) / total + z * z / (4 * total * total)) / (1 + z * z / total)
     return max(0.0, centre - half), min(1.0, centre + half)
 
 
@@ -94,8 +90,7 @@ def mechanical_checks(
             if decisions.ignores(row["ColumnName"]):
                 found["haric_kolon"].append(label)
     return {
-        name: {"count": len(items), "examples": items[:EXAMPLES]}
-        for name, items in found.items()
+        name: {"count": len(items), "examples": items[:EXAMPLES]} for name, items in found.items()
     }
 
 
@@ -116,9 +111,7 @@ def score_card(
     low, high = wilson(wrong, sample)
     usable = 1 - wrong / sample if sample else 1.0
     failure_rate = model_failures / model_calls if model_calls else 0.0
-    score = round(
-        max(0.0, 100 * usable * (1 - failure_rate) - CHECK_PENALTY * len(failed))
-    )
+    score = round(max(0.0, 100 * usable * (1 - failure_rate) - CHECK_PENALTY * len(failed)))
     verdict = _verdict(score, failed, sample, scope.get("scope_columns", 0))
     return {
         "score": score,
@@ -128,18 +121,14 @@ def score_card(
         "judge": {
             "sample": sample,
             "population": judged.population if judged else 0,
-            "right": sum(v["verdict"] == VERDICT_RIGHT for v in judged.verdicts)
-            if judged
-            else 0,
-            "minor": sum(v["verdict"] == VERDICT_MINOR for v in judged.verdicts)
-            if judged
-            else 0,
+            "right": sum(v["verdict"] == VERDICT_RIGHT for v in judged.verdicts) if judged else 0,
+            "minor": sum(v["verdict"] == VERDICT_MINOR for v in judged.verdicts) if judged else 0,
             "wrong": wrong,
             "wrong_interval": [round(low, 3), round(high, 3)],
             "failures": judged.failures if judged else 0,
-            "wrong_rows": [v for v in judged.verdicts if v["verdict"] == VERDICT_WRONG]
-            if judged
-            else [],
+            "wrong_rows": (
+                [v for v in judged.verdicts if v["verdict"] == VERDICT_WRONG] if judged else []
+            ),
         },
         "model": {
             "calls": model_calls,

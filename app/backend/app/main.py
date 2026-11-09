@@ -45,32 +45,22 @@ def _lifespan(
         telemetry_export = configure_telemetry(settings)
         # application-foundation 001 Requirement 17: creates the configured super admin once; it
         # retries in the background while a first installation is still migrating.
-        bootstrap = asyncio.create_task(
-            run_super_admin_bootstrap(async_session_factory, settings)
-        )
+        bootstrap = asyncio.create_task(run_super_admin_bootstrap(async_session_factory, settings))
         # data-dictionary 009-search-settings Requirement 10: the process listens at once; the
         # first search index is built in the background once the database is ready.
         search_index: SearchIndex = application.state.search_index
-        index_startup = asyncio.create_task(
-            search_index.run_startup(database_readiness.is_ready)
-        )
+        index_startup = asyncio.create_task(search_index.run_startup(database_readiness.is_ready))
         # data-dictionary 004-question-analysis Requirement 12: records an earlier process left
         # queued or running are interrupted; at the end queued and running jobs are interrupted.
         analysis_jobs: AnalysisJobs = application.state.analysis_jobs
-        jobs_startup = asyncio.create_task(
-            analysis_jobs.run_startup(database_readiness.is_ready)
-        )
+        jobs_startup = asyncio.create_task(analysis_jobs.run_startup(database_readiness.is_ready))
         # data-dictionary 005-list-search Requirement 10: lists an earlier process left running
         # are interrupted, then a minute check; at the end running lists are interrupted.
         term_lists: TermLists = application.state.term_lists
-        lists_startup = asyncio.create_task(
-            term_lists.run_startup(database_readiness.is_ready)
-        )
+        lists_startup = asyncio.create_task(term_lists.run_startup(database_readiness.is_ready))
         # 011-dictionary-sync: runs an earlier process left are interrupted, old versions go.
         dictionary_sync: DictionarySync = application.state.dictionary_sync
-        sync_startup = asyncio.create_task(
-            dictionary_sync.run_startup(database_readiness.is_ready)
-        )
+        sync_startup = asyncio.create_task(dictionary_sync.run_startup(database_readiness.is_ready))
         try:
             yield
         finally:
@@ -131,9 +121,7 @@ def create_application(settings: Settings | None = None) -> FastAPI:
         jobs=application.state.analysis_jobs, session_factory=async_session_factory
     )
     ignored_databases = tuple(
-        name.strip()
-        for name in settings.dictionary_ignored_databases.split(",")
-        if name.strip()
+        name.strip() for name in settings.dictionary_ignored_databases.split(",") if name.strip()
     )
     application.state.dictionary_sync = DictionarySync(
         index=application.state.search_index,

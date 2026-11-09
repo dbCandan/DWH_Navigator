@@ -141,8 +141,15 @@ class RecordEdit(BaseModel):
     table_key: str = Field(min_length=3, max_length=400)
     column_name: str = Field(default="", max_length=256)  # empty: the object record
     field: Literal[
-        "ColumnDescription", "Synonyms", "Summary", "Role",
-        "ObjectDescription", "Grain", "KeyColumns", "TimeColumns", "BusinessDomain",
+        "ColumnDescription",
+        "Synonyms",
+        "Summary",
+        "Role",
+        "ObjectDescription",
+        "Grain",
+        "KeyColumns",
+        "TimeColumns",
+        "BusinessDomain",
     ]
     value: str = Field(max_length=4000)
 

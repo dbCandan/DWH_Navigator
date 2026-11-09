@@ -36,9 +36,7 @@ def test_doubting_sentence_goes_and_plain_one_stays() -> None:
 
 
 def test_a_doubting_clause_goes_and_the_plain_clause_of_the_sentence_stays() -> None:
-    text, _ = rules.remove_doubt(
-        "Kayıt tarihidir; kapsamı iş birimi ile doğrulanmalıdır."
-    )
+    text, _ = rules.remove_doubt("Kayıt tarihidir; kapsamı iş birimi ile doğrulanmalıdır.")
     assert text == "Kayıt tarihidir."
 
 
@@ -102,9 +100,7 @@ def test_okunabilir_is_not_a_hedge() -> None:
 
 def test_an_example_the_sources_do_not_hold_goes_and_one_they_hold_stays() -> None:
     assert rules.remove_hedges("Döviz kodudur (ör. TRY, USD).")[0] == "Döviz kodudur."
-    kept = rules.remove_hedges(
-        "Döviz kodudur (ör. TRY, USD).", sources="... 'TRY' ..."
-    )[0]
+    kept = rules.remove_hedges("Döviz kodudur (ör. TRY, USD).", sources="... 'TRY' ...")[0]
     assert kept == "Döviz kodudur (ör. TRY, USD)."
 
 
@@ -155,9 +151,9 @@ def test_terms_sentence_leaves_the_description() -> None:
 def test_a_hedged_search_term_goes() -> None:
     """Regression: 'TCKN (bazı durumlarda)' stood among the terms of ten TaxNumber columns."""
 
-    assert rules.clean_synonyms(
-        "VKN, vergi numarası, TCKN (bazı durumlarda), tax ID"
-    ) == ("VKN, vergi numarası, tax ID")
+    assert rules.clean_synonyms("VKN, vergi numarası, TCKN (bazı durumlarda), tax ID") == (
+        "VKN, vergi numarası, tax ID"
+    )
 
 
 def test_only_an_exact_repeat_goes() -> None:
@@ -167,9 +163,7 @@ def test_only_an_exact_repeat_goes() -> None:
 
 
 def test_the_general_banking_word_joins_once() -> None:
-    synonyms = rules.clean_synonyms(
-        "katılma hesabı bakiyesi", "Katılma hesabının bakiyesidir."
-    )
+    synonyms = rules.clean_synonyms("katılma hesabı bakiyesi", "Katılma hesabının bakiyesidir.")
     assert synonyms == "katılma hesabı bakiyesi, mevduat"
     assert rules.clean_synonyms(synonyms, "Katılma hesabının bakiyesidir.") == synonyms
 
@@ -182,10 +176,7 @@ def test_no_terms_stay_no_terms() -> None:
 
 
 def test_a_value_list_the_code_does_not_hold_goes() -> None:
-    assert (
-        rules.clean_summary("Müşteri sınıfı · Bireysel/KOBİ/Ticari/Kurumsal")
-        == "Müşteri sınıfı"
-    )
+    assert rules.clean_summary("Müşteri sınıfı · Bireysel/KOBİ/Ticari/Kurumsal") == "Müşteri sınıfı"
     assert rules.clean_summary("Döviz cinsi kodu (TRY, USD, EUR)") == "Döviz cinsi kodu"
 
 
@@ -193,19 +184,14 @@ def test_a_value_list_the_code_writes_stays() -> None:
     """Regression: lists of quoted values in the object's code were cut too."""
 
     support = rules.code_literals(
-        [
-            "CASE WHEN x=1 THEN 'Yatırım Fonu' WHEN x=2 THEN 'Hisse Senedi' ELSE 'Sukuk' END"
-        ]
+        ["CASE WHEN x=1 THEN 'Yatırım Fonu' WHEN x=2 THEN 'Hisse Senedi' ELSE 'Sukuk' END"]
     )
     summary = "Yatırım aracı tipi (Yatırım Fonu, Hisse Senedi, Sukuk)"
     assert rules.clean_summary(summary, support) == summary
 
 
 def test_summary_drops_doubt_and_examples_and_stays_short() -> None:
-    assert (
-        rules.clean_summary("Kalem kodu (ör. 1.9) · olası değerler doğrulanmalı")
-        == "Kalem kodu"
-    )
+    assert rules.clean_summary("Kalem kodu (ör. 1.9) · olası değerler doğrulanmalı") == "Kalem kodu"
     long = "Müşterinin son on iki aydaki ortalama katılma hesabı bakiyesi toplamının Türk lirası karşılığı"
     clipped = rules.clean_summary(long, limit=70)
     assert len(clipped) <= 70 and long.startswith(clipped)
@@ -228,9 +214,7 @@ def test_the_description_rules_are_idempotent(text: str) -> None:
 
 
 def test_key_columns_name_columns_the_object_has_in_its_spelling() -> None:
-    assert present_columns(
-        "customerid, Missing, CustomerId, Period", ["CustomerId", "Period"]
-    ) == [
+    assert present_columns("customerid, Missing, CustomerId, Period", ["CustomerId", "Period"]) == [
         "CustomerId",
         "Period",
     ]
@@ -244,9 +228,7 @@ def test_key_columns_name_columns_the_object_has_in_its_spelling() -> None:
         ("Teminat", ["CollateralId"]),
     ],
 )
-def test_a_grain_cut_by_a_date_has_the_date_in_its_keys(
-    grain: str, expected: list[str]
-) -> None:
+def test_a_grain_cut_by_a_date_has_the_date_in_its_keys(grain: str, expected: list[str]) -> None:
     assert date_key(grain, ["CollateralId"], ["DataDate", "Period"]) == expected
 
 
@@ -264,10 +246,7 @@ def test_align_object_reports_only_what_changes() -> None:
         "TimeColumns": "DataDate",
         "BusinessDomain": "Karlılık ve Fiyatlama",
     }
-    assert (
-        align_object({**record, **changed}, ["AccountNumber", "DataDate"], decisions)
-        == {}
-    )
+    assert align_object({**record, **changed}, ["AccountNumber", "DataDate"], decisions) == {}
 
 
 # --------------------------------------------------------------------------- decisions
@@ -276,9 +255,7 @@ def test_align_object_reports_only_what_changes() -> None:
 def test_bundled_decisions_hold_the_owner_rules() -> None:
     decisions = load()
     assert decisions.ignores("PersonnelFlag")
-    assert decisions.excludes("CUS", "prm_Something") and decisions.excludes(
-        "Unused", "vAny"
-    )
+    assert decisions.excludes("CUS", "prm_Something") and decisions.excludes("Unused", "vAny")
     assert decisions.domain("Kart") == "Kart ve Harcama"
     assert set(decisions.domain_aliases.values()) <= set(decisions.business_domains)
     assert ("AccountNumber", "CustomerId") in decisions.same_value_columns
@@ -293,9 +270,7 @@ def test_parse_folds_names() -> None:
 # --------------------------------------------------------------------------- normalize
 
 
-def _table(
-    desc: str, column: dict[str, str], origins: dict[str, str] | None = None
-) -> MergedTable:
+def _table(desc: str, column: dict[str, str], origins: dict[str, str] | None = None) -> MergedTable:
     row = MergedColumn({"ColumnName": "Rate", **column}, dict(origins or {}))
     record = {
         "ObjectDescription": desc,
@@ -369,7 +344,9 @@ def test_object_code_finds_the_view_and_its_load_procedure() -> None:
 def test_a_word_inside_a_name_keeps_its_spelling() -> None:
     """Regression: 'İşletme Kredileri Grubu' (a project type) became 'İşletme Fon kullandırımları Grubu'."""
 
-    text = "İşletme Kredileri Grubu proje tipindeki projelerin tutarıdır. Krediler bu tutara dahildir."
+    text = (
+        "İşletme Kredileri Grubu proje tipindeki projelerin tutarıdır. Krediler bu tutara dahildir."
+    )
     assert rules.participation_wording(text) == (
         "İşletme Kredileri Grubu proje tipindeki projelerin tutarıdır. Fon kullandırımları bu tutara dahildir."
     )
@@ -402,29 +379,54 @@ def test_a_cleaned_source_text_remembers_the_raw_one() -> None:
         pick_source,
     )
 
-    table = _table("Oranlar.", {"ColumnDescription": "Kredinin faiz oranıdır.", "Synonyms": "x", "Summary": "y"},
-                   {"ColumnDescription": ORIGIN_SOURCE})
+    table = _table(
+        "Oranlar.",
+        {"ColumnDescription": "Kredinin faiz oranıdır.", "Synonyms": "x", "Summary": "y"},
+        {"ColumnDescription": ORIGIN_SOURCE},
+    )
     normalize_tables([table], {}, load())
     row = table.columns[0]
     assert row.kept[SOURCE_TEXT] == "Kredinin faiz oranıdır."
     cleaned = row.record["ColumnDescription"]
-    assert pick_source(cleaned, ORIGIN_SOURCE, "Kredinin faiz oranıdır.", row.kept[SOURCE_TEXT]) == (cleaned, ORIGIN_SOURCE)
-    assert pick_source(cleaned, ORIGIN_SOURCE, "Yeni metin.", row.kept[SOURCE_TEXT]) == ("Yeni metin.", ORIGIN_SOURCE)
+    assert pick_source(
+        cleaned, ORIGIN_SOURCE, "Kredinin faiz oranıdır.", row.kept[SOURCE_TEXT]
+    ) == (cleaned, ORIGIN_SOURCE)
+    assert pick_source(cleaned, ORIGIN_SOURCE, "Yeni metin.", row.kept[SOURCE_TEXT]) == (
+        "Yeni metin.",
+        ORIGIN_SOURCE,
+    )
 
 
-def test_the_describer_never_replaces_an_admin_summary_and_fill_never_fills_an_admin_field() -> None:
+def test_the_describer_never_replaces_an_admin_summary_and_fill_never_fills_an_admin_field() -> (
+    None
+):
     """Review: a re-description replaced the admin's Summary; an emptied admin field was filled."""
 
     from app.services.dictionary_sync_describe import DescribeOutcome, apply_column
     from app.services.dictionary_sync_fill import column_wanted
 
-    table = _table("Oranlar.", {"ColumnDescription": "Eski.", "Synonyms": "", "Summary": "Yöneticinin özeti"},
-                   {"Summary": ORIGIN_ADMIN, "Synonyms": ORIGIN_ADMIN})
+    table = _table(
+        "Oranlar.",
+        {"ColumnDescription": "Eski.", "Synonyms": "", "Summary": "Yöneticinin özeti"},
+        {"Summary": ORIGIN_ADMIN, "Synonyms": ORIGIN_ADMIN},
+    )
     row = table.columns[0]
-    value = {"karar": "eklendi", "ColumnDescription": "Oran kolonu, yüzde olarak tutulan oran değeridir.",
-             "Summary": "Modelin özeti"}
+    value = {
+        "karar": "eklendi",
+        "ColumnDescription": "Oran kolonu, yüzde olarak tutulan oran değeridir.",
+        "Summary": "Modelin özeti",
+    }
     apply_column(table, row, value, ["Rate * 100 AS Rate"], DescribeOutcome())
     assert row.record["Summary"] == "Yöneticinin özeti"
-    assert not column_wanted(MergedColumn({"ColumnName": "X", "ColumnDescription": "a", "Summary": "b",
-                                           "Role": "Kod", "Synonyms": ""}, {"Synonyms": ORIGIN_ADMIN}))
-
+    assert not column_wanted(
+        MergedColumn(
+            {
+                "ColumnName": "X",
+                "ColumnDescription": "a",
+                "Summary": "b",
+                "Role": "Kod",
+                "Synonyms": "",
+            },
+            {"Synonyms": ORIGIN_ADMIN},
+        )
+    )

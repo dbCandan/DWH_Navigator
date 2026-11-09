@@ -95,9 +95,7 @@ KIND_ROLLBACK = "geri_donus"
 RUN_IN_PROGRESS_MESSAGE = "Bir sözlük güncellemesi sürüyor; bitince yeniden deneyin."
 SOURCE_NOT_CONFIGURED_MESSAGE = "Önce kaynak bağlantısını ve parolasını kaydedin."
 SOURCE_UNAVAILABLE_MESSAGE = "Sözlük kaynağına ulaşılamadı."
-SOURCE_INVALID_MESSAGE = (
-    "Sözlük kaynağının yapısı beklenenden farklı veya sınırları aşıyor."
-)
+SOURCE_INVALID_MESSAGE = "Sözlük kaynağının yapısı beklenenden farklı veya sınırları aşıyor."
 SOURCE_EMPTY_MESSAGE = "Sözlük kaynağı boş döndü; etkin sözlük değişmedi."
 INTERRUPTED_MESSAGE = "Güncelleme uygulama yeniden başladığı için kesildi."
 FAILED_MESSAGE = "Güncelleme beklenmedik bir hatayla durdu; etkin sözlük değişmedi."
@@ -131,22 +129,16 @@ class SourceKeys:
     def __init__(self, settings: Settings) -> None:
         key = settings.settings_encryption_key
         self._cipher = (
-            SecretCipher(decode_encryption_key(key.get_secret_value()))
-            if key is not None
-            else None
+            SecretCipher(decode_encryption_key(key.get_secret_value())) if key is not None else None
         )
 
     @property
     def available(self) -> bool:
         return self._cipher is not None
 
-    def seal(
-        self, password: str, *, tenant_public_id: str, row: DictionarySource
-    ) -> str:
+    def seal(self, password: str, *, tenant_public_id: str, row: DictionarySource) -> str:
         assert self._cipher is not None
-        return self._cipher.encrypt(
-            password, context=source_context(tenant_public_id, row)
-        )
+        return self._cipher.encrypt(password, context=source_context(tenant_public_id, row))
 
     def open(self, row: DictionarySource, *, tenant_public_id: str) -> str | None:
         if self._cipher is None or row.password_ciphertext is None:
@@ -205,7 +197,11 @@ def kept_digests(scope: Scope, answered: set[tuple[str, str]]) -> dict[tuple[str
     """The digests to store: a row whose computation changed but which the model did not answer
     keeps its old digest (and its object its old gate), so the next update looks at it again."""
 
-    held = {row for row, reason in scope.columns.items() if reason == REASON_CODE and row not in answered}
+    held = {
+        row
+        for row, reason in scope.columns.items()
+        if reason == REASON_CODE and row not in answered
+    }
     objects = {table for table, _ in held}
     return {
         key: value
@@ -215,7 +211,10 @@ def kept_digests(scope: Scope, answered: set[tuple[str, str]]) -> dict[tuple[str
 
 
 async def remember(
-    session: AsyncSession, tenant_id: int, digests: dict[tuple[str, str], str], plan: MergePlan | None
+    session: AsyncSession,
+    tenant_id: int,
+    digests: dict[tuple[str, str], str],
+    plan: MergePlan | None,
 ) -> None:
     """Store the trail digests for the next update; without a plan, nothing is dropped."""
 
@@ -335,9 +334,7 @@ class DictionarySync:
 
     # ------------------------------------------------------------------ start
 
-    async def _open_run(
-        self, tenant_id: int, kind: str, user_id: int, phase: str
-    ) -> Started:
+    async def _open_run(self, tenant_id: int, kind: str, user_id: int, phase: str) -> Started:
         now = datetime.now(UTC)
         try:
             async with self.session_factory() as session, session.begin():
@@ -363,9 +360,7 @@ class DictionarySync:
         self._tasks.add(task)
         task.add_done_callback(self._tasks.discard)
 
-    async def start_update(
-        self, tenant_id: int, tenant_public_id: str, user_id: int
-    ) -> str:
+    async def start_update(self, tenant_id: int, tenant_public_id: str, user_id: int) -> str:
         async with self.session_factory() as session:
             await self._connection(session, tenant_id, tenant_public_id)
         started = await self._open_run(tenant_id, KIND_UPDATE, user_id, "reading")
@@ -448,13 +443,9 @@ class DictionarySync:
         try:
             snapshot = await self.source.read(connection)
         except SourceUnavailable:
-            raise _RunFailed(
-                "dictionary_source_unavailable", SOURCE_UNAVAILABLE_MESSAGE
-            ) from None
+            raise _RunFailed("dictionary_source_unavailable", SOURCE_UNAVAILABLE_MESSAGE) from None
         except SourceInvalid:
-            raise _RunFailed(
-                "dictionary_source_invalid", SOURCE_INVALID_MESSAGE
-            ) from None
+            raise _RunFailed("dictionary_source_invalid", SOURCE_INVALID_MESSAGE) from None
         except TargetUnavailable as target:
             raise _RunFailed(
                 "dictionary_target_unavailable", target_message(tuple(target.databases))
@@ -533,7 +524,9 @@ class DictionarySync:
         describe_objects = {fold(t.key) for t in plan.tables if t.is_new} | again_objects
         needs_model = any(t.needs_model for t in plan.tables) or bool(describe_rows)
         judge = min(self.judge_sample, len(describe_rows)) if self.judge_sample else 0
-        calls = fill + len(describe_rows) + len(describe_objects) + judge + (1 if needs_model else 0)
+        calls = (
+            fill + len(describe_rows) + len(describe_objects) + judge + (1 if needs_model else 0)
+        )
         seconds = round(calls * (average_ms or DEFAULT_CALL_MS) / 1000 / PARALLEL_CALLS)
         return {
             "has_changes": plan.has_changes,
@@ -563,16 +556,12 @@ class DictionarySync:
             columns = await repository.columns(active) if active else []
             object_meta = await repository.object_meta(active) if active else []
             column_meta = await repository.column_meta(active) if active else []
-            terms = await VocabularyRepository(session).items(
-                tenant_id, VocabularyList.TERMS
-            )
+            terms = await VocabularyRepository(session).items(tenant_id, VocabularyList.TERMS)
             stopwords = await VocabularyRepository(session).items(
                 tenant_id, VocabularyList.STOPWORDS
             )
             stored_digests = await DictionarySyncRepository(session).trail_digests(tenant_id)
-        plan = merge(
-            snapshot, objects, object_meta, columns, column_meta, self.kept_databases
-        )
+        plan = merge(snapshot, objects, object_meta, columns, column_meta, self.kept_databases)
         # Only what changed is looked at: new rows, a changed source text, a changed computation.
         scope = await asyncio.to_thread(plan_scope, plan.tables, snapshot.code, stored_digests)
         previous = active.version if active else ""
@@ -600,9 +589,7 @@ class DictionarySync:
         evidence: dict[Any, Any] = dict(scope.evidence)
         chat_with: Any = None
         if work:
-            await self._set(
-                run_id, phase="filling", progress_total=len(work), progress_done=0
-            )
+            await self._set(run_id, phase="filling", progress_total=len(work), progress_done=0)
             target = await self.models.snapshot(
                 tenant_id=tenant_id, tenant_public_id=tenant_public_id
             )
@@ -625,6 +612,7 @@ class DictionarySync:
                 outcome = await fill_tables(plan.tables, chat, progress)
                 plan.changes.extend(outcome.changes)
                 warnings.extend(outcome.warnings)
+
                 async def describing(done: int, total: int) -> None:
                     await self._set(
                         run_id, phase="describing", progress_done=done, progress_total=total
@@ -645,9 +633,7 @@ class DictionarySync:
                 filled = outcome.filled + described.changed
                 calls = outcome.calls + described.calls
                 failures = outcome.failures + described.failures
-                known = {fold(i["term"]) for i in terms} | {
-                    fold(i["word"]) for i in stopwords
-                }
+                known = {fold(i["term"]) for i in terms} | {fold(i["word"]) for i in stopwords}
                 for item in terms:
                     known.update(fold(e) for e in item["equivalents"])
                 suggestions, answered = await suggest(changed, known, chat)
@@ -676,13 +662,17 @@ class DictionarySync:
         digests = kept_digests(scope, described_rows)
         judged: JudgeOutcome | None = None
         if chat_with is not None and model_rows and self.judge_sample:
-            chosen = sample_rows(plan.tables, sorted(model_rows), self.judge_sample, seed=str(run_id))
+            chosen = sample_rows(
+                plan.tables, sorted(model_rows), self.judge_sample, seed=str(run_id)
+            )
 
             async def verifying(done: int, total: int) -> None:
                 await self._set(run_id, phase="verifying", progress_done=done, progress_total=total)
 
             await verifying(0, len(chosen))
-            judged = await judge_rows(chosen, chat_with, evidence, len(model_rows), progress=verifying)
+            judged = await judge_rows(
+                chosen, chat_with, evidence, len(model_rows), progress=verifying
+            )
         await self._set(run_id, phase="scoring", progress_done=0, progress_total=0)
         score = score_card(
             plan.tables,
@@ -753,9 +743,7 @@ class DictionarySync:
             column_meta=plan.column_meta(),
         )
 
-        if active is not None and (
-            self.requires_approval or plan.removal_share() > REMOVAL_LIMIT
-        ):
+        if active is not None and (self.requires_approval or plan.removal_share() > REMOVAL_LIMIT):
             async with self.session_factory() as session, session.begin():
                 written, _pruned = await DictionaryRepository(session).write_version(
                     tenant_id,
@@ -778,9 +766,7 @@ class DictionarySync:
                     dictionary_version_id=written.dictionary_version_id,
                     **report,
                 )
-            log_event(
-                logger, "dictionary.sync_end", outcome="pending_approval", error_code=""
-            )
+            log_event(logger, "dictionary.sync_end", outcome="pending_approval", error_code="")
             return
 
         await self._set(run_id, phase="indexing")
@@ -826,9 +812,7 @@ class DictionarySync:
     ) -> None:
         """Build the new engine first; the write commits only when the build succeeded."""
 
-        async def plan(
-            inputs: SearchInputs, _serving: ServingEngine | None
-        ) -> ChangePlan:
+        async def plan(inputs: SearchInputs, _serving: ServingEngine | None) -> ChangePlan:
             dictionary = load_dictionary(objects, columns, number, digest)
             return ChangePlan(
                 inputs=inputs.replace(
@@ -842,9 +826,7 @@ class DictionarySync:
 
     # ------------------------------------------------------------------ rollback
 
-    async def _restore(
-        self, run_id: int, tenant_id: int, version_id: int, user_id: int
-    ) -> None:
+    async def _restore(self, run_id: int, tenant_id: int, version_id: int, user_id: int) -> None:
         async with self.session_factory() as session:
             repository = DictionaryRepository(session)
             active = await repository.version(tenant_id, DictionaryStatus.ACTIVE)

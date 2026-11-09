@@ -45,9 +45,7 @@ SADECE şemaya uyan JSON döndür."""
 def _examples() -> str:
     """Scored examples from the gold set (judge_examples.json), shown before each row."""
 
-    items = (
-        json.loads(EXAMPLES.read_text(encoding="utf-8")) if EXAMPLES.exists() else []
-    )
+    items = json.loads(EXAMPLES.read_text(encoding="utf-8")) if EXAMPLES.exists() else []
     lines = ["Altın setten puanlanmış örnekler (bunlar puanlanacak satır değildir):"]
     for item in items:
         lines.append(json.dumps(item, ensure_ascii=False))
@@ -70,9 +68,7 @@ JUDGE_SCHEMA: dict[str, Any] = {
 
 @dataclass(slots=True)
 class JudgeOutcome:
-    verdicts: list[dict[str, str]] = field(
-        default_factory=list
-    )  # table, column, verdict, reason
+    verdicts: list[dict[str, str]] = field(default_factory=list)  # table, column, verdict, reason
     calls: int = 0
     failures: int = 0
     population: int = 0  # rows the sample was drawn from
@@ -85,9 +81,7 @@ class JudgeOutcome:
         )
 
 
-def judge_request(
-    table: MergedTable, row: MergedColumn, evidence: Sequence[str]
-) -> LlmChatRequest:
+def judge_request(table: MergedTable, row: MergedColumn, evidence: Sequence[str]) -> LlmChatRequest:
     record = row.record
     payload = {
         "nesne": table.key,

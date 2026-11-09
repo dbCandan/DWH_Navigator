@@ -34,9 +34,7 @@ REASON_SOURCE = "kaynak_degisti"
 REASON_CODE = "kod_degisti"
 GATE = ""  # the column name under which an object's gate digest is stored
 RowKey = tuple[str, str]  # (folded table key, folded column name)
-_READS = re.compile(
-    r"\b(?:FROM|JOIN)\s+((?:\[?[\w#]+\]?\.){0,2}\[?[\w#]+\]?)", re.IGNORECASE
-)
+_READS = re.compile(r"\b(?:FROM|JOIN)\s+((?:\[?[\w#]+\]?\.){0,2}\[?[\w#]+\]?)", re.IGNORECASE)
 
 
 @dataclass(slots=True)
@@ -68,9 +66,7 @@ class Scope:
             "scope_code_changed": reasons.count(REASON_CODE),
         }
 
-    def ensure_evidence(
-        self, tables: Sequence[MergedTable], rows: Collection[RowKey]
-    ) -> None:
+    def ensure_evidence(self, tables: Sequence[MergedTable], rows: Collection[RowKey]) -> None:
         """Trace the given rows that have no trail yet (rows the model will describe)."""
 
         if self.index is None:
@@ -81,9 +77,7 @@ class Scope:
             for row in table.columns:
                 item = row_key(table, row)
                 if item in wanted and item not in self.evidence:
-                    self.evidence[item] = _steps(
-                        self.index, table.key, row.record["ColumnName"]
-                    )
+                    self.evidence[item] = _steps(self.index, table.key, row.record["ColumnName"])
                     self.traced += 1
             if any(k == key for k, _ in wanted) and (key, GATE) not in self.evidence:
                 self.evidence[(key, GATE)] = tuple(object_scope(self.index, table.key))
@@ -121,11 +115,7 @@ def gate_digest(index: Code, table_key: str) -> str | None:
     modules: set[str] = set()
     for name in _READS.findall(body):
         parts = name.replace("[", "").replace("]", "").casefold().split(".")
-        full = (
-            ".".join(parts)
-            if len(parts) == 3
-            else f"{database}." + ".".join(parts[-2:])
-        )
+        full = ".".join(parts) if len(parts) == 3 else f"{database}." + ".".join(parts[-2:])
         modules.update(write.module for write in index.writers.get(full, ()))
     bodies = [_folded(index.objects.get(m, "")) for m in sorted(modules)]
     return _hash([_folded(body), bodies])
@@ -159,9 +149,7 @@ def plan_scope(
         changed = old_gate is not None and old_gate != gate
         if old_gate is None:
             scope.baseline += 1
-        traced = changed or any(
-            row_key(table, row) in scope.columns for row in table.columns
-        )
+        traced = changed or any(row_key(table, row) in scope.columns for row in table.columns)
         filters = tuple(object_scope(index, table.key)) if traced else ()
         if traced:
             scope.evidence[(key, GATE)] = filters

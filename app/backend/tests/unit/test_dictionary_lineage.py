@@ -70,9 +70,7 @@ def code() -> Code:
 
 
 def test_commented_out_code_and_authors_leave_but_rule_comments_stay() -> None:
-    text = clean_sql(
-        "-- created by x\n--CASE WHEN a=1 THEN 2 END\nSELECT 1 -- son 3 aylık oran\n"
-    )
+    text = clean_sql("-- created by x\n--CASE WHEN a=1 THEN 2 END\nSELECT 1 -- son 3 aylık oran\n")
     assert "CASE" not in text
     assert "created" not in text
     assert "son 3 aylık oran" in text
@@ -187,16 +185,12 @@ def test_constants_of_temporary_sets_are_collected() -> None:
             "EDWDM.TRE.vBehaviour": "CREATE VIEW TRE.vBehaviour AS SELECT T1.DefinitionId FROM [EDWDM].[TRE].[Behaviour] T1",
         }
     )
-    text = " ".join(
-        column_evidence(built, "EDWDM.TRE.vBehaviour", "DefinitionId").steps
-    )
+    text = " ".join(column_evidence(built, "EDWDM.TRE.vBehaviour", "DefinitionId").steps)
     assert "9: leaving" in text
     assert "Gitmek uzere" in text
 
 
-def test_an_unqualified_column_in_a_joined_view_reaches_the_procedure_that_fills_it() -> (
-    None
-):
+def test_an_unqualified_column_in_a_joined_view_reaches_the_procedure_that_fills_it() -> None:
     code = Code.build(
         {
             "EDWDM.OTH.vMemzuc": """CREATE VIEW [OTH].[vMemzuc] AS
@@ -247,9 +241,7 @@ END;""",
         }
     )
 
-    evidence = column_evidence(
-        code, "EDWBridge.AIS.rpt_Segment", "BankingProductTotalCount"
-    )
+    evidence = column_evidence(code, "EDWBridge.AIS.rpt_Segment", "BankingProductTotalCount")
 
     assert evidence.kind == KIND_LOGIC
     assert any("SUM(P.ProductCount)" in step for step in evidence.steps)
@@ -264,13 +256,10 @@ def test_new_rows_of_a_sync_get_their_code_evidence() -> None:
     old = SimpleNamespace(record={"ColumnName": "PushId"}, is_new=False)
     table = SimpleNamespace(key="EDWDM.CMP.vPush", is_new=False, columns=[column, old])
 
-    found = evidence_for(
-        [table], {"EDWDM.CMP.vPush": VIEW, "EDWLRY.CMP.ins_Push": LOAD}
-    )
+    found = evidence_for([table], {"EDWDM.CMP.vPush": VIEW, "EDWLRY.CMP.ins_Push": LOAD})
 
     assert any(
-        "PartyId IS NOT NULL" in step
-        for step in found[("edwdm.cmp.vpush", "personnelflag")]
+        "PartyId IS NOT NULL" in step for step in found[("edwdm.cmp.vpush", "personnelflag")]
     )
     assert ("edwdm.cmp.vpush", "pushid") not in found
     assert evidence_for([table], {}) == {}

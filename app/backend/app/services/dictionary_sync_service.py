@@ -71,11 +71,15 @@ def _not_found(what: str) -> ApplicationError:
 
 
 COLUMN_EDIT_FIELDS = frozenset({"ColumnDescription", "Synonyms", "Summary", "Role"})
-OBJECT_EDIT_FIELDS = frozenset({"ObjectDescription", "Grain", "KeyColumns", "TimeColumns", "BusinessDomain"})
+OBJECT_EDIT_FIELDS = frozenset(
+    {"ObjectDescription", "Grain", "KeyColumns", "TimeColumns", "BusinessDomain"}
+)
 
 
 def _bad_edit(message: str) -> ApplicationError:
-    return ApplicationError(status.HTTP_422_UNPROCESSABLE_CONTENT, "dictionary_edit_invalid", message)
+    return ApplicationError(
+        status.HTTP_422_UNPROCESSABLE_CONTENT, "dictionary_edit_invalid", message
+    )
 
 
 def _no_record() -> ApplicationError:

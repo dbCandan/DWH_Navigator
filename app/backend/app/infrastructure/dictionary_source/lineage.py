@@ -150,9 +150,7 @@ def _top_keywords(text: str) -> list[tuple[int, str]]:
     return [
         (position, word)
         for position, char, depth in _scan(text)
-        if depth == 0
-        and char.isalpha()
-        and (word := _keyword_at(text, position)) in _KEYWORDS
+        if depth == 0 and char.isalpha() and (word := _keyword_at(text, position)) in _KEYWORDS
     ]
 
 
@@ -177,13 +175,9 @@ def select_item(text: str) -> tuple[str, str]:
 
 @dataclass(slots=True)
 class Query:
-    items: dict[str, tuple[str, str]] = field(
-        default_factory=dict
-    )  # folded name -> (name, expr)
+    items: dict[str, tuple[str, str]] = field(default_factory=dict)  # folded name -> (name, expr)
     ordered: list[str] = field(default_factory=list)
-    sources: dict[str, str] = field(
-        default_factory=dict
-    )  # folded alias -> folded table
+    sources: dict[str, str] = field(default_factory=dict)  # folded alias -> folded table
     joins: dict[str, str] = field(default_factory=dict)  # folded alias -> join text
     where: str = ""
     ctes: dict[str, Query] = field(default_factory=dict)
@@ -208,9 +202,7 @@ def _split_ctes(text: str) -> tuple[dict[str, str], str]:
         return {}, text
     ctes: dict[str, str] = {}
     position = match.start()
-    pattern = re.compile(
-        r"(?:WITH\s+|,\s*)(\w+)\s*(?:\([^)]*\))?\s+AS\s*\(", re.IGNORECASE
-    )
+    pattern = re.compile(r"(?:WITH\s+|,\s*)(\w+)\s*(?:\([^)]*\))?\s+AS\s*\(", re.IGNORECASE)
     while True:
         found = pattern.match(text, position)
         if found is None:
@@ -228,16 +220,12 @@ def parse_query(sql: str) -> Query:
     text = _flat(sql)
     cte_texts, body = _split_ctes(text)
     query = Query(ctes={name: parse_query(value) for name, value in cte_texts.items()})
-    start = re.search(
-        r"\bSELECT\b(?:\s+DISTINCT\b)?(?:\s+TOP\s+\(?\d+\)?)?", body, re.IGNORECASE
-    )
+    start = re.search(r"\bSELECT\b(?:\s+DISTINCT\b)?(?:\s+TOP\s+\(?\d+\)?)?", body, re.IGNORECASE)
     if start is None:
         return query
     body = body[start.end() :]
     marks = _top_keywords(body)
-    query.branches = 1 + sum(
-        word in ("union", "except", "intersect") for _, word in marks
-    )
+    query.branches = 1 + sum(word in ("union", "except", "intersect") for _, word in marks)
     from_at = next((p for p, word in marks if word == "from"), len(body))
     for entry in split_top(body[:from_at]):
         name, expression = select_item(entry)
@@ -256,9 +244,7 @@ def parse_query(sql: str) -> Query:
     for join in _JOIN.findall(clause):
         found = _SOURCE.search(join)
         if found:
-            alias = (
-                found.group(2) or _name(found.group(1)).rsplit(".", 1)[-1]
-            ).casefold()
+            alias = (found.group(2) or _name(found.group(1)).rsplit(".", 1)[-1]).casefold()
             query.joins[alias] = join.strip()
     where_at = next((p for p, word in marks if word == "where"), None)
     if where_at is not None:
@@ -290,16 +276,12 @@ def writes_of(module: str, sql: str) -> dict[str, list[Write]]:
         begin = upper.rfind("SELECT", 0, match.start())
         depth_start = begin
         window = max(0, match.start() - 20000)
-        for candidate in reversed(
-            list(re.finditer(r"\bSELECT\b", upper[window : match.start()]))
-        ):
+        for candidate in reversed(list(re.finditer(r"\bSELECT\b", upper[window : match.start()]))):
             inner = text[window + candidate.start() : match.start()]
             if inner.count("(") == inner.count(")"):
                 depth_start = window + candidate.start()
                 break
-        statement = (
-            text[depth_start : match.start()] + " " + _statement(text, match.end() - 4)
-        )
+        statement = text[depth_start : match.start()] + " " + _statement(text, match.end() - 4)
         found[_name(match.group(1))].append(Write([], parse_query(statement), module))
     return found
 
@@ -319,11 +301,7 @@ def _statement(text: str, start: int) -> str:
         depth += (char == "(") - (char == ")")
         if depth == 0 and char == ";":
             return text[start:position]
-        if (
-            depth == 0
-            and _NEXT.match(text, position)
-            and not text[position - 1].isalnum()
-        ):
+        if depth == 0 and _NEXT.match(text, position) and not text[position - 1].isalnum():
             return text[start:position]
     return text[start:]
 
@@ -333,18 +311,14 @@ class Code:
     """Every definition of the server, indexed for tracing."""
 
     objects: dict[str, str]  # folded db.schema.name -> cleaned definition
-    writers: dict[str, list[Write]] = field(
-        default_factory=dict
-    )  # folded table -> writes
+    writers: dict[str, list[Write]] = field(default_factory=dict)  # folded table -> writes
     locals: dict[str, dict[str, list[Write]]] = field(
         default_factory=dict
     )  # module -> #temp writes
 
     @classmethod
     def build(cls, definitions: Mapping[str, str]) -> Code:
-        code = cls(
-            {key.casefold(): clean_sql(value) for key, value in definitions.items()}
-        )
+        code = cls({key.casefold(): clean_sql(value) for key, value in definitions.items()})
         writers: dict[str, list[Write]] = defaultdict(list)
         for key, body in code.objects.items():
             if not re.search(r"\b(?:INSERT|INTO)\b", body, re.IGNORECASE):
@@ -391,9 +365,7 @@ def _narrowing(text: str) -> bool:
     """The condition keeps only some rows, or changes a value's sign or meaning."""
 
     return (
-        re.search(
-            r"\bIN\s*\(|=\s*'|[<>]=?\s*[-'\d@]|\*\s*-1|\bLIKE\b", text, re.IGNORECASE
-        )
+        re.search(r"\bIN\s*\(|=\s*'|[<>]=?\s*[-'\d@]|\*\s*-1|\bLIKE\b", text, re.IGNORECASE)
         is not None
     )
 
@@ -448,8 +420,7 @@ def _trace_query(
     plain = _is_plain(expression)
     matched = _REFERENCE.match(expression) if plain else None
     rename = matched is not None and (
-        (matched.group(2 if "." in expression else 3) or "").casefold()
-        != name.casefold()
+        (matched.group(2 if "." in expression else 3) or "").casefold() != name.casefold()
     )
     if not plain:
         trail.plain = False
@@ -465,9 +436,7 @@ def _trace_query(
         targets |= _references(expression)
         if not targets:
             words = {w.casefold() for w in re.findall(r"\b[A-Za-z_]\w*\b", expression)}
-            targets |= {
-                ("", w) for cte in query.ctes.values() for w in words if w in cte.items
-            }
+            targets |= {("", w) for cte in query.ctes.values() for w in words if w in cte.items}
     for gate in _gates(query, {t for t in targets if t[0]}):
         trail.plain = False
         trail.add(gate)
@@ -499,9 +468,7 @@ def _trace_query(
                     trail.quiet -= 1
         cte = query.ctes.get(table.rsplit(".", 1)[-1])
         if cte is None and not alias:
-            cte = next(
-                (c for c in query.ctes.values() if source_column in c.items), None
-            )
+            cte = next((c for c in query.ctes.values() if source_column in c.items), None)
         if cte is not None:
             _trace_query(code, module, cte, source_column, trail, depth + 1)
         elif table:
@@ -515,9 +482,7 @@ def _trace_query(
 
 def _has_literal(text: str) -> bool:
     return (
-        re.search(
-            r"\bIN\s*\(|=\s*'|'\s*\)|[<>]=?\s*['\d@]|DATEADD", text, re.IGNORECASE
-        )
+        re.search(r"\bIN\s*\(|=\s*'|'\s*\)|[<>]=?\s*['\d@]|DATEADD", text, re.IGNORECASE)
         is not None
     )
 
@@ -551,11 +516,7 @@ def _trace_table(
             trail.add(f"Kaynak: {full}.{column}")
             return
         view = code.objects.get(full)
-        if (
-            view is not None
-            and not writes
-            and re.search(r"\bCREATE\s+VIEW\b", view, re.IGNORECASE)
-        ):
+        if view is not None and not writes and re.search(r"\bCREATE\s+VIEW\b", view, re.IGNORECASE):
             # A view reading another view: the calculation lives one level down.
             _trace_query(code, full, view_query(view), column, trail, depth + 1)
             return
@@ -610,9 +571,7 @@ def _updates(code: Code, column: str, modules: Iterable[str]) -> list[str]:
         for statement in _update_statements(code.objects.get(module, "")):
             match = target.search(statement)
             if match:
-                found.append(
-                    f"Sonradan güncellenir: {' '.join(statement.split())[:400]}"
-                )
+                found.append(f"Sonradan güncellenir: {' '.join(statement.split())[:400]}")
     return found[:3]
 
 
@@ -683,8 +642,6 @@ def column_evidence(code: Code, view_key: str, column: str) -> ColumnEvidence:
     return ColumnEvidence(KIND_PLAIN if trail.plain else KIND_LOGIC, tuple(steps))
 
 
-
-
 @lru_cache(maxsize=1024)
 def _view_query(body: str) -> Query:
     """``view_query`` parsed once per definition: the trace asks for it per column."""
@@ -693,9 +650,7 @@ def _view_query(body: str) -> Query:
 
 
 def view_query(body: str) -> Query:
-    return parse_query(
-        re.sub(r"(?is)^.*?\bAS\b(?=\s+(?:WITH|SELECT|BEGIN)\b)", "", body, count=1)
-    )
+    return parse_query(re.sub(r"(?is)^.*?\bAS\b(?=\s+(?:WITH|SELECT|BEGIN)\b)", "", body, count=1))
 
 
 def object_scope(code: Code, view_key: str) -> tuple[str, ...]:
@@ -733,23 +688,17 @@ def _result_query(body: str, column: str) -> Query | None:
 def _result_queries(body: str) -> tuple[Query, ...]:
     """Every SELECT of a procedure that returns rows instead of writing them, parsed once."""
 
-    if not re.search(
-        r"\bCREATE\s+(?:OR\s+ALTER\s+)?PROC(?:EDURE)?\b", body, re.IGNORECASE
-    ):
+    if not re.search(r"\bCREATE\s+(?:OR\s+ALTER\s+)?PROC(?:EDURE)?\b", body, re.IGNORECASE):
         return ()
     text = _flat(body)
     found: list[Query] = []
     for match in re.finditer(r"\bSELECT\b", text, re.IGNORECASE):
         before = text[max(0, match.start() - 400) : match.start()]
         tail = re.split(r";|\bEND\b|\bBEGIN\b", before, flags=re.IGNORECASE)[-1]
-        if re.search(
-            r"\b(?:INSERT|UPDATE|MERGE|EXISTS|IN)\b|\(\s*$|=\s*$", tail, re.IGNORECASE
-        ):
+        if re.search(r"\b(?:INSERT|UPDATE|MERGE|EXISTS|IN)\b|\(\s*$|=\s*$", tail, re.IGNORECASE):
             continue
         statement = _statement(text, match.start())
-        if re.search(
-            r"\bINTO\s+[#@\w\[]", statement.split(" FROM ", 1)[0], re.IGNORECASE
-        ):
+        if re.search(r"\bINTO\s+[#@\w\[]", statement.split(" FROM ", 1)[0], re.IGNORECASE):
             continue
         found.append(parse_query(statement))
     return tuple(found)
@@ -759,7 +708,5 @@ def _snippet(body: str, column: str) -> ColumnEvidence:
     """A procedure whose result could not be isolated: only the lines naming the column."""
 
     wanted = re.compile(rf"\b{re.escape(column)}\b", re.IGNORECASE)
-    lines = [
-        " ".join(line.split()) for line in body.splitlines() if wanted.search(line)
-    ]
+    lines = [" ".join(line.split()) for line in body.splitlines() if wanted.search(line)]
     return ColumnEvidence(KIND_UNKNOWN, tuple(lines[:6]))

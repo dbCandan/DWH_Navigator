@@ -28,12 +28,9 @@ def _table(
     new_columns: tuple[str, ...] = (),
 ) -> MergedTable:
     columns = [
-        MergedColumn({"ColumnName": n}, {}, is_new=n in new_columns)
-        for n in ("RateId", "RatePct")
+        MergedColumn({"ColumnName": n}, {}, is_new=n in new_columns) for n in ("RateId", "RatePct")
     ]
-    return MergedTable(
-        VIEW, {"ObjectKey": VIEW}, {}, columns, "", needs_model, new_table
-    )
+    return MergedTable(VIEW, {"ObjectKey": VIEW}, {}, columns, "", needs_model, new_table)
 
 
 def _with(view: str | None = None, loader: str | None = None) -> dict[str, str]:
@@ -64,11 +61,7 @@ def test_nothing_changed_nothing_traced_nothing_in_scope() -> None:
 
 
 def test_reformatted_code_brings_nothing_into_scope() -> None:
-    view = (
-        CODE[VIEW]
-        .replace(" AS SELECT ", "\nAS\n  SELECT\n    ")
-        .replace(", ", ",\n    ")
-    )
+    view = CODE[VIEW].replace(" AS SELECT ", "\nAS\n  SELECT\n    ").replace(", ", ",\n    ")
     reformatted = _with(view=view)
     assert plan_scope([_table()], reformatted, _after(CODE)).empty
 
@@ -89,12 +82,8 @@ def test_a_later_change_brings_only_the_column_whose_computation_changed() -> No
 
 def test_a_changed_load_procedure_of_a_read_table_opens_the_gate() -> None:
     once = _with(loader=CODE["EDW.CRP.ins_Rate"].replace("Amt", "Amt * 2"))
-    stored = _after(
-        CODE, _with(view=CODE[VIEW].replace("R.Active = 1", "R.Active = 1 "))
-    )
-    assert (
-        plan_scope([_table()], once, stored).digests[(KEY, GATE)] != stored[(KEY, GATE)]
-    )
+    stored = _after(CODE, _with(view=CODE[VIEW].replace("R.Active = 1", "R.Active = 1 ")))
+    assert plan_scope([_table()], once, stored).digests[(KEY, GATE)] != stored[(KEY, GATE)]
 
 
 def test_a_changed_filter_brings_every_column_of_the_object() -> None:
@@ -105,15 +94,11 @@ def test_a_changed_filter_brings_every_column_of_the_object() -> None:
 
 
 def test_new_table_and_new_column_and_changed_source() -> None:
-    assert plan_scope([_table(new_table=True)], CODE, {}).tables == {
-        KEY: REASON_NEW_TABLE
-    }
+    assert plan_scope([_table(new_table=True)], CODE, {}).tables == {KEY: REASON_NEW_TABLE}
     scope = plan_scope([_table(new_columns=("RatePct",))], CODE, _after(CODE))
     assert scope.columns == {(KEY, "ratepct"): REASON_NEW_COLUMN}
     assert any("Amount" in step for step in scope.evidence[(KEY, "ratepct")])
-    assert plan_scope([_table(needs_model=True)], CODE, _after(CODE)).tables == {
-        KEY: REASON_SOURCE
-    }
+    assert plan_scope([_table(needs_model=True)], CODE, _after(CODE)).tables == {KEY: REASON_SOURCE}
 
 
 def test_a_run_without_code_keeps_nothing_new() -> None:

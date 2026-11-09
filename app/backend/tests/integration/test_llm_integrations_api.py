@@ -451,24 +451,41 @@ async def test_a_changed_address_or_model_forgets_the_test_result(llm: Llm) -> N
     assert changed.json()["item"]["last_test"] is None
 
 
-async def test_the_generation_model_and_its_reasoning_are_kept_beside_the_chat_model(llm: Llm) -> None:
+async def test_the_generation_model_and_its_reasoning_are_kept_beside_the_chat_model(
+    llm: Llm,
+) -> None:
     item = await llm.create(chat_model="gemma-4-31b")
-    assert (item["generation_model"], item["generation_reasoning_effort"], item["judge_reasoning_effort"]) == (
+    assert (
+        item["generation_model"],
+        item["generation_reasoning_effort"],
+        item["judge_reasoning_effort"],
+    ) == (
         "",
         "inherit",
         "inherit",
     )
     target = f"/{item['public_id']}"
-    body = {"generation_model": " qwen/qwen3.8-27b ", "generation_reasoning_effort": "none", "judge_reasoning_effort": "low"}
+    body = {
+        "generation_model": " qwen/qwen3.8-27b ",
+        "generation_reasoning_effort": "none",
+        "judge_reasoning_effort": "low",
+    }
     saved = (await llm.put(target, body)).json()["item"]
     assert (saved["chat_model"], saved["generation_model"]) == ("gemma-4-31b", "qwen/qwen3.8-27b")
-    assert (saved["generation_reasoning_effort"], saved["judge_reasoning_effort"]) == ("none", "low")
+    assert (saved["generation_reasoning_effort"], saved["judge_reasoning_effort"]) == (
+        "none",
+        "low",
+    )
     # An absent field keeps its value; an unknown reasoning is refused.
     kept = (await llm.put(target, {"temperature": 1})).json()["item"]
-    assert kept["generation_model"] == "qwen/qwen3.8-27b" and kept["judge_reasoning_effort"] == "low"
+    assert (
+        kept["generation_model"] == "qwen/qwen3.8-27b" and kept["judge_reasoning_effort"] == "low"
+    )
     refused = await llm.put(target, {"judge_reasoning_effort": "maximum"})
     assert refused.status_code == 422
-    cleared = (await llm.put(target, {"generation_model": "", "generation_reasoning_effort": "inherit"})).json()["item"]
+    cleared = (
+        await llm.put(target, {"generation_model": "", "generation_reasoning_effort": "inherit"})
+    ).json()["item"]
     assert cleared["generation_model"] == "" and cleared["generation_reasoning_effort"] == "inherit"
 
 

@@ -189,7 +189,6 @@ def test_the_card_follows_an_admin_fix() -> None:
     assert fixed["judge"] == flagged["judge"]
 
 
-
 def test_the_verifier_prompt_carries_scored_gold_examples() -> None:
     from app.services.dictionary_curation.judge import JUDGE_PROMPT
 

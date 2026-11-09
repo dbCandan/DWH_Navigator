@@ -70,7 +70,9 @@ _FAIZ = (
     (re.compile(r"\bfaizi\b", re.IGNORECASE), "kar payı"),
     (re.compile(r"\bfaiz(?!siz)\b", re.IGNORECASE), "kar payı"),
 )
-_KEEP_KREDI = r"(?!\s+(?:kart|kayıt|büro|garanti|skor|not|kaybı|kayıp|zarar|sigorta)|\s*/\s*(?:debit|banka))"
+_KEEP_KREDI = (
+    r"(?!\s+(?:kart|kayıt|büro|garanti|skor|not|kaybı|kayıp|zarar|sigorta)|\s*/\s*(?:debit|banka))"
+)
 _WORDING = (
     (re.compile(r"fon kullandırım kart", re.IGNORECASE), "kredi kart"),
     (re.compile(r"\bkredilerinin\b", re.IGNORECASE), "fon kullandırımlarının"),
@@ -151,9 +153,7 @@ def _affirmed(sentence: str) -> str:
     for pattern, replacement in _AFFIRM:
         first = pattern.sub(replacement, first)
     first = re.split(r",\s*(?:kapsam|içerik|alan)\b", first)[0]
-    return (
-        "" if DOUBT.search(first) or HEDGE.search(first) else first.strip(" ,;.") + "."
-    )
+    return "" if DOUBT.search(first) or HEDGE.search(first) else first.strip(" ,;.") + "."
 
 
 def remove_doubt(text: str) -> tuple[str, list[str]]:
@@ -165,9 +165,7 @@ def remove_doubt(text: str) -> tuple[str, list[str]]:
         removed.append(tag.group(0).strip())
         text = text[tag.end() :]
     kept: list[str] = []
-    splitter = re.compile(
-        r"(?:;|,\s*(?=(?:kapsam|alan|değer|bu|içerik)\b))" + _OUTSIDE_BRACKETS
-    )
+    splitter = re.compile(r"(?:;|,\s*(?=(?:kapsam|alan|değer|bu|içerik)\b))" + _OUTSIDE_BRACKETS)
     for sentence in sentences(text):
         if not DOUBT.search(sentence):
             kept.append(sentence)
@@ -333,9 +331,7 @@ def drop_unsupported_lists(summary: str, support: str) -> str:
 
     def bracket(match: re.Match[str]) -> str:
         items = re.split(r"\s*[/,]\s*", match.group(1))
-        return (
-            "" if len(items) >= 2 and _unsupported(items, support) else match.group(0)
-        )
+        return "" if len(items) >= 2 and _unsupported(items, support) else match.group(0)
 
     summary = _BRACKET.sub(bracket, summary)
     kept: list[str] = []
@@ -366,8 +362,6 @@ def clean_summary(summary: str, support: str = "", limit: int = 70) -> str:
     summary = " ".join((summary or "").split())
     summary = EXAMPLE.sub("", summary)
     parts = [p.strip() for p in summary.split("·")]
-    summary = " · ".join(
-        p for p in parts if p and not DOUBT.search(p) and not HEDGE.search(p)
-    )
+    summary = " · ".join(p for p in parts if p and not DOUBT.search(p) and not HEDGE.search(p))
     cleaned = drop_unsupported_lists(summary, support) or summary
     return clip(cleaned, limit)

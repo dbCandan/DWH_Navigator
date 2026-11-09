@@ -43,7 +43,9 @@ pytestmark = pytest.mark.integration
 # --- the empty template ---------------------------------------------------------------------------
 
 
-async def test_the_template_has_the_two_sheets_even_without_a_dictionary(dd: DataDictionary) -> None:
+async def test_the_template_has_the_two_sheets_even_without_a_dictionary(
+    dd: DataDictionary,
+) -> None:
     template = await dd.get("/dictionary/template")
     assert template.status_code == 200
     assert template.headers["content-disposition"] == (

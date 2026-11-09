@@ -292,9 +292,7 @@ def llm_events(recorded_logs: RecordingHandler) -> Iterator[RecordingHandler]:
         logger.setLevel(level)
 
 
-async def test_a_manager_deletes_the_matching_calls(
-    log: Log, llm_events: RecordingHandler
-) -> None:
+async def test_a_manager_deletes_the_matching_calls(log: Log, llm_events: RecordingHandler) -> None:
     analysis = "7d1c1f0e-5b0a-4e7b-9a55-0c9d2f6b3a10"
     await log.chat(analysis=analysis)
     await log.chat("Başka bir soru")

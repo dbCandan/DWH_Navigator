@@ -38,9 +38,7 @@ def _is_single_edit(left: str, right: str) -> bool:
     if left == right or abs(len(left) - len(right)) > 1 or left[:1] != right[:1]:
         return False
     if len(left) == len(right):
-        changed = [
-            index for index, pair in enumerate(zip(left, right)) if pair[0] != pair[1]
-        ]
+        changed = [index for index, pair in enumerate(zip(left, right)) if pair[0] != pair[1]]
         if len(changed) == 1:
             return left[changed[0]].isalpha() and right[changed[0]].isalpha()
         if len(changed) != 2 or changed[1] != changed[0] + 1:
@@ -62,8 +60,7 @@ def _single_edit_candidates(normal: str, catalog: Mapping[str, list[str]]) -> li
     return [
         name
         for catalog_normal, names in catalog.items()
-        if len(catalog_normal) >= MIN_SINGLE_EDIT_LENGTH
-        and _is_single_edit(normal, catalog_normal)
+        if len(catalog_normal) >= MIN_SINGLE_EDIT_LENGTH and _is_single_edit(normal, catalog_normal)
         for name in names
     ]
 
@@ -107,11 +104,7 @@ def match_names(
 
     if exclusive:
         for name, candidate in result.items():
-            if (
-                candidate is not None
-                and name != candidate
-                and len(claimants[candidate]) > 1
-            ):
+            if candidate is not None and name != candidate and len(claimants[candidate]) > 1:
                 result[name] = None
     return result
 
@@ -163,9 +156,7 @@ def _locate(
         real_database = databases[database]
         real_schema = schema_names[real_database][schema]
         real_name = (
-            None
-            if real_schema is None
-            else object_names[(real_database, real_schema)][name]
+            None if real_schema is None else object_names[(real_database, real_schema)][name]
         )
         located[(database, schema, name)] = (
             None
@@ -280,9 +271,7 @@ def reconcile(
                 r.name: spellings.setdefault(r.name.casefold(), r.name) for r in details
             }
         else:
-            column_names = match_names(
-                (row.name for row in details), available, single_edit=True
-            )
+            column_names = match_names((row.name for row in details), available, single_edit=True)
         verified: dict[str, list[SourceColumn]] = defaultdict(list)
         missing: dict[str, str] = {}
         for row in details:
@@ -318,9 +307,7 @@ def reconcile(
             )
         excluded_columns.update((key, column_name) for column_name in missing.values())
         corrected_tables.update(
-            (source_key, key)
-            for source_key in source_keys[target].values()
-            if source_key != key
+            (source_key, key) for source_key in source_keys[target].values() if source_key != key
         )
 
     return SourceSnapshot(
@@ -340,18 +327,10 @@ def reconcile(
             )
         ),
         skipped=skipped,
-        excluded_tables=tuple(
-            sorted(excluded_tables, key=lambda item: (item.casefold(), item))
-        ),
-        excluded_columns=tuple(
-            sorted(excluded_columns, key=lambda item: (_fold(*item), item))
-        ),
-        corrected_tables=tuple(
-            sorted(corrected_tables, key=lambda item: (_fold(*item), item))
-        ),
-        corrected_columns=tuple(
-            sorted(corrected_columns, key=lambda item: (_fold(*item), item))
-        ),
+        excluded_tables=tuple(sorted(excluded_tables, key=lambda item: (item.casefold(), item))),
+        excluded_columns=tuple(sorted(excluded_columns, key=lambda item: (_fold(*item), item))),
+        corrected_tables=tuple(sorted(corrected_tables, key=lambda item: (_fold(*item), item))),
+        corrected_columns=tuple(sorted(corrected_columns, key=lambda item: (_fold(*item), item))),
         unverified_tables=tuple(
             sorted(unverified_tables, key=lambda item: (item.casefold(), item))
         ),

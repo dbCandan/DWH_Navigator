@@ -206,12 +206,8 @@ def _generation(
 
     values = (
         (model if model is not None else (row.generation_model if row else "")).strip(),
-        describe
-        if describe is not None
-        else (row.generation_reasoning_effort if row else INHERIT),
-        judge
-        if judge is not None
-        else (row.judge_reasoning_effort if row else INHERIT),
+        describe if describe is not None else (row.generation_reasoning_effort if row else INHERIT),
+        judge if judge is not None else (row.judge_reasoning_effort if row else INHERIT),
     )
     if len(values[0]) > CHAT_MODEL_MAX_LENGTH:
         raise _invalid(
@@ -222,9 +218,7 @@ def _generation(
     for value in values[1:]:
         if value not in GENERATION_EFFORTS:
             raise _invalid(
-                LlmIntegrationInvalid(
-                    "Düşünme modu: inherit, none, low, medium, high ya da boş."
-                )
+                LlmIntegrationInvalid("Düşünme modu: inherit, none, low, medium, high ya da boş.")
             )
     return values
 
@@ -466,9 +460,7 @@ class LlmIntegrationService:
         if await self.integrations.count_live(tenant.tenant_id) >= MAX_INTEGRATIONS:
             raise _limit_reached()
         name_key = fold(fields.name)
-        if await self.integrations.name_key_taken(
-            tenant.tenant_id, name_key, except_id=None
-        ):
+        if await self.integrations.name_key_taken(tenant.tenant_id, name_key, except_id=None):
             raise _name_taken(fields.name)
         await self._require_private(fields.endpoint)
         row = LlmIntegration(
@@ -523,15 +515,11 @@ class LlmIntegrationService:
         fields = self._fields(
             name=body.name if body.name is not None else row.name,
             endpoint=body.endpoint if body.endpoint is not None else row.endpoint,
-            chat_model=body.chat_model
-            if body.chat_model is not None
-            else row.chat_model,
+            chat_model=body.chat_model if body.chat_model is not None else row.chat_model,
             temperature=_given(body.temperature, row.temperature),
             timeout_seconds=_given(body.timeout_seconds, row.timeout_seconds),
             reasoning_effort=(
-                body.reasoning_effort
-                if body.reasoning_effort is not None
-                else row.reasoning_effort
+                body.reasoning_effort if body.reasoning_effort is not None else row.reasoning_effort
             ),
             seed=_given(body.seed, row.seed),
             api_key=body.api_key,
@@ -602,9 +590,7 @@ class LlmIntegrationService:
         deactivating = row.active and not target_active
         if not changed and not activating and not deactivating:
             state = await self._state(tenant)
-            return LlmIntegrationUpdated(
-                item=_item(row), key_cleared=False, **state.model_dump()
-            )
+            return LlmIntegrationUpdated(item=_item(row), key_cleared=False, **state.model_dump())
 
         replaced: list[LlmIntegration] = []
         if activating:
@@ -676,14 +662,10 @@ class LlmIntegrationService:
                 raise _role_taken(await self._holder_name(tenant)) from None
             for other in replaced:
                 self._changed(scope, other, "deactivated", ["active"])
-            self._changed(
-                scope, row, "activated" if body.active else "deactivated", ["active"]
-            )
+            self._changed(scope, row, "activated" if body.active else "deactivated", ["active"])
         return await self._state(tenant)
 
-    async def delete(
-        self, context: RequestContext, public_id: UUID
-    ) -> LlmIntegrationsState:
+    async def delete(self, context: RequestContext, public_id: UUID) -> LlmIntegrationsState:
         scope = await self._scope(context)
         tenant = scope.tenant
         row = await self._row(tenant, public_id)
@@ -720,14 +702,10 @@ class LlmIntegrationService:
             report_key_unreadable(row)
             return LlmOutcome.KEY_UNREADABLE
 
-    async def models(
-        self, context: RequestContext, body: LlmModelsRequest
-    ) -> LlmModelsResult:
+    async def models(self, context: RequestContext, body: LlmModelsRequest) -> LlmModelsResult:
         scope = await self._scope(context)
         row = await self._row(scope.tenant, body.public_id) if body.public_id else None
-        endpoint = (
-            normalize_endpoint(body.endpoint) if body.endpoint is not None else ""
-        )
+        endpoint = normalize_endpoint(body.endpoint) if body.endpoint is not None else ""
         if body.endpoint is None and row is not None:
             endpoint = row.endpoint
         if not endpoint:
@@ -737,12 +715,8 @@ class LlmIntegrationService:
             endpoint=endpoint,
             chat_model=row.chat_model if row is not None else "",
             temperature=row.temperature if row is not None else DEFAULT_TEMPERATURE,
-            timeout_seconds=row.timeout_seconds
-            if row is not None
-            else DEFAULT_TIMEOUT_SECONDS,
-            reasoning_effort=row.reasoning_effort
-            if row is not None
-            else DEFAULT_REASONING_EFFORT,
+            timeout_seconds=row.timeout_seconds if row is not None else DEFAULT_TIMEOUT_SECONDS,
+            reasoning_effort=row.reasoning_effort if row is not None else DEFAULT_REASONING_EFFORT,
             seed=row.seed if row is not None else DEFAULT_SEED,
             api_key=body.api_key,
             check_name=False,
@@ -753,9 +727,7 @@ class LlmIntegrationService:
                 ok=False, code=_code(key), message=probe_message(key), models=[], ms=0
             )
         connection = self._connection(fields, key, row, scope.tenant.tenant_id)
-        listing = await self.adapter.list_models(
-            connection, operation=ProbeOperation.MODELS
-        )
+        listing = await self.adapter.list_models(connection, operation=ProbeOperation.MODELS)
         probe = listing.probe
         in_use = row.chat_model if row is not None and row.active else None
         return LlmModelsResult(
@@ -789,8 +761,7 @@ class LlmIntegrationService:
         scope = await self._scope(context)
         rows = await self.integrations.list_live(scope.tenant.tenant_id)
         prepared = [
-            self.keys.connection(row, tenant_public_id=scope.tenant.public_id)
-            for row in rows
+            self.keys.connection(row, tenant_public_id=scope.tenant.public_id) for row in rows
         ]
         usable = [item for item in prepared if isinstance(item, LlmConnection)]
         listings = iter(await self.adapter.list_models_of(usable))
@@ -824,17 +795,13 @@ class LlmIntegrationService:
             )
         return LlmInventory(servers=servers)
 
-    async def test(
-        self, context: RequestContext, body: LlmTestRequest
-    ) -> LlmTestResult:
+    async def test(self, context: RequestContext, body: LlmTestRequest) -> LlmTestResult:
         scope = await self._scope(context)
         given = body.model_fields_set
         if body.record and (body.public_id is None or given & set(_CONNECTION_FIELDS)):
             raise _record_with_fields()
         row = await self._row(scope.tenant, body.public_id) if body.public_id else None
-        endpoint = (
-            normalize_endpoint(body.endpoint) if body.endpoint is not None else ""
-        )
+        endpoint = normalize_endpoint(body.endpoint) if body.endpoint is not None else ""
         if body.endpoint is None and row is not None:
             endpoint = row.endpoint
         if not endpoint:
@@ -845,9 +812,7 @@ class LlmIntegrationService:
             chat_model=(
                 body.chat_model
                 if body.chat_model is not None
-                else row.chat_model
-                if row is not None
-                else ""
+                else row.chat_model if row is not None else ""
             ),
             temperature=_given(
                 body.temperature,
@@ -860,9 +825,7 @@ class LlmIntegrationService:
             reasoning_effort=(
                 body.reasoning_effort
                 if body.reasoning_effort is not None
-                else row.reasoning_effort
-                if row is not None
-                else DEFAULT_REASONING_EFFORT
+                else row.reasoning_effort if row is not None else DEFAULT_REASONING_EFFORT
             ),
             seed=_given(body.seed, row.seed if row is not None else DEFAULT_SEED),
             api_key=body.api_key,
@@ -885,9 +848,7 @@ class LlmIntegrationService:
             steps.extend(await self._test_steps(connection))
         ok = all(step.ok for step in steps)
         if body.record and row is not None:
-            summary = "; ".join(
-                f"{step.name}: {'✓' if step.ok else '✗'}" for step in steps
-            )
+            summary = "; ".join(f"{step.name}: {'✓' if step.ok else '✗'}" for step in steps)
             await self.integrations.record_test(
                 row.llm_integration_id, at=datetime.now(UTC), ok=ok, summary=summary
             )

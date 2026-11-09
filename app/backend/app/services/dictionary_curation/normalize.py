@@ -75,20 +75,14 @@ def _set(
         # The raw source text: the next merge keeps the cleaned text while the source keeps it.
         kept[SOURCE_TEXT] = old
     record[name] = value
-    outcome.changes.append(
-        Change(kind, table.key, column, name, old, value, origins.get(name, ""))
-    )
+    outcome.changes.append(Change(kind, table.key, column, name, old, value, origins.get(name, "")))
     return True
 
 
 def _keep_removed(kept: dict[str, object], removed: list[str]) -> None:
     if removed:
         stored = kept.get("removed")
-        earlier = (
-            [r for r in stored if isinstance(r, str)]
-            if isinstance(stored, list)
-            else []
-        )
+        earlier = [r for r in stored if isinstance(r, str)] if isinstance(stored, list) else []
         kept["removed"] = list(dict.fromkeys([*earlier, *removed]))[:20]
 
 
@@ -116,9 +110,7 @@ def normalize_column(
                 kept=row.kept,
             )
         _keep_removed(row.kept, removed)
-    synonyms = clean_synonyms(
-        record.get("Synonyms", ""), record.get("ColumnDescription", "")
-    )
+    synonyms = clean_synonyms(record.get("Synonyms", ""), record.get("ColumnDescription", ""))
     if synonyms:
         changed |= _set(
             outcome,
@@ -130,9 +122,7 @@ def normalize_column(
             synonyms,
             record["ColumnName"],
         )
-    summary = clean_summary(
-        record.get("Summary", ""), support, decisions.summary_max_chars
-    )
+    summary = clean_summary(record.get("Summary", ""), support, decisions.summary_max_chars)
     if summary:
         changed |= _set(
             outcome,
@@ -162,9 +152,7 @@ def normalize_tables(
         literals = code_literals(bodies.get(fold(table.key), []))
         changed = False
         if table.origins.get("ObjectDescription") != ORIGIN_ADMIN:
-            text, removed = clean_description(
-                table.record.get("ObjectDescription", ""), literals
-            )
+            text, removed = clean_description(table.record.get("ObjectDescription", ""), literals)
             if text:
                 changed |= _set(
                     outcome,
@@ -179,16 +167,10 @@ def normalize_tables(
             _keep_removed(table.kept, removed)
         names = [c.record["ColumnName"] for c in table.columns]
         for name, value in align_object(table.record, names, decisions).items():
-            changed |= _set(
-                outcome, KIND_TABLE, table, table.record, table.origins, name, value
-            )
+            changed |= _set(outcome, KIND_TABLE, table, table.record, table.origins, name, value)
         outcome.tables += changed
         for row in table.columns:
-            trail = " ".join(
-                known.get((fold(table.key), fold(row.record["ColumnName"])), ())
-            )
-            support = " ".join(
-                (trail, row.record.get("ColumnDescription", ""), literals)
-            )
+            trail = " ".join(known.get((fold(table.key), fold(row.record["ColumnName"])), ()))
+            support = " ".join((trail, row.record.get("ColumnDescription", ""), literals))
             outcome.columns += normalize_column(outcome, table, row, support, decisions)
     return outcome

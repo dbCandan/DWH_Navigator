@@ -63,7 +63,9 @@ class LlmCallLogRepository:
         )
 
     async def prune(self, before: datetime) -> int:
-        result = await self.session.execute(delete(LlmCallLog).where(LlmCallLog.started_at < before))
+        result = await self.session.execute(
+            delete(LlmCallLog).where(LlmCallLog.started_at < before)
+        )
         return int(result.rowcount) if isinstance(result, CursorResult) else 0
 
     async def delete_matching(

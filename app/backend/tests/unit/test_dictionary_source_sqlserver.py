@@ -92,15 +92,8 @@ class FakeCursor:
             raise target.catalog_error
         if match.group(2) == "objects":
             # sys.objects.type is char(2), so a view comes back padded.
-            return [
-                (*key, "P " if key in target.procedures else "V ")
-                for key in target.objects
-            ]
-        return [
-            (*key, column)
-            for key, columns in target.objects.items()
-            for column in columns
-        ]
+            return [(*key, "P " if key in target.procedures else "V ") for key in target.objects]
+        return [(*key, column) for key, columns in target.objects.items() for column in columns]
 
     def __iter__(self) -> Any:
         return iter(self.rows)
@@ -124,9 +117,7 @@ class FakeDriver:
     InterfaceError = FakeInterfaceError
 
     def __init__(self) -> None:
-        self.definitions: list[tuple[Any, ...]] = [
-            ("EDWDM", "dbo", "Customer", " Müşteri ")
-        ]
+        self.definitions: list[tuple[Any, ...]] = [("EDWDM", "dbo", "Customer", " Müşteri ")]
         self.details: list[tuple[Any, ...]] = [
             ("EDWDM", "dbo", "Customer", "CustomerId", "Kimlik", "CRM"),
             ("EDWDM", "dbo", "Customer", "FullName", None, None),
@@ -300,9 +291,7 @@ async def test_typo_corrected_end_to_end(driver: FakeDriver) -> None:
     snapshot = await read(driver)
     assert snapshot.tables == (SourceTable("EDWDM", "dbo", "Customer", "Müşteri"),)
     assert snapshot.corrected_tables == (("EDWDM..DBO.Custmer", "EDWDM.dbo.Customer"),)
-    assert snapshot.corrected_columns == (
-        ("EDWDM.dbo.Customer", "FulName", "FullName"),
-    )
+    assert snapshot.corrected_columns == (("EDWDM.dbo.Customer", "FulName", "FullName"),)
 
 
 # --- limits --------------------------------------------------------------------------------------
@@ -325,9 +314,7 @@ async def test_table_limit_counts_detail_only_tables(
         await read(driver)
 
 
-async def test_column_limit(
-    driver: FakeDriver, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_column_limit(driver: FakeDriver, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sqlserver, "MAX_COLUMNS", 1)
     with pytest.raises(SourceInvalid) as caught:
         await read(driver)
@@ -370,16 +357,12 @@ async def test_a_procedure_keeps_its_columns_though_the_catalog_lists_none(
     driver: FakeDriver,
 ) -> None:
     driver.definitions.append(("EDWBridge", "AIS", "rpt_Loyalty", "Rapor"))
-    driver.details.append(
-        ("EDWBridge", "AIS", "rpt_Loyalty", "Period", "Dönem", "Grup")
-    )
+    driver.details.append(("EDWBridge", "AIS", "rpt_Loyalty", "Period", "Dönem", "Grup"))
     driver.databases["EDWBridge"] = Database(
         {("AIS", "rpt_Loyalty"): []}, procedures={("AIS", "rpt_Loyalty")}
     )
     snapshot = await read(driver)
-    assert any(
-        row.table == "rpt_Loyalty" and row.name == "Period" for row in snapshot.columns
-    )
+    assert any(row.table == "rpt_Loyalty" and row.name == "Period" for row in snapshot.columns)
     assert ("EDWBridge.AIS.rpt_Loyalty", "Period") not in snapshot.excluded_columns
 
 
@@ -465,9 +448,7 @@ async def test_database_spellings_share_one_check(driver: FakeDriver) -> None:
     driver.details.append(("EDWDM.", "dbo", "Customer", "CustomerId", "", ""))
     snapshot = await read(driver)
     assert len(snapshot.columns) == 2
-    checks = [
-        sql for sql, _ in driver.statements if sql == sqlserver.DATABASE_STATE_SQL
-    ]
+    checks = [sql for sql, _ in driver.statements if sql == sqlserver.DATABASE_STATE_SQL]
     assert len(checks) == 1
 
 
@@ -516,9 +497,7 @@ async def test_lost_connection_in_a_catalog_is_not_a_target_problem(
 
 
 async def test_catalog_timeout_is_not_a_target_problem(driver: FakeDriver) -> None:
-    driver.databases["EDWDM"].catalog_error = FakeOperationalError(
-        (20003, b"timed out")
-    )
+    driver.databases["EDWDM"].catalog_error = FakeOperationalError((20003, b"timed out"))
     with pytest.raises(SourceUnavailable) as caught:
         await read(driver)
     assert caught.value.code == "timeout"
@@ -534,16 +513,10 @@ async def test_hostile_database_name_enters_only_quoted(driver: FakeDriver) -> N
     add_target(driver, HOSTILE)
     await read(driver)
 
-    state = [
-        params
-        for sql, params in driver.statements
-        if sql == sqlserver.DATABASE_STATE_SQL
-    ]
+    state = [params for sql, params in driver.statements if sql == sqlserver.DATABASE_STATE_SQL]
     assert ((HOSTILE,),) in state
     catalog = [sql for sql, _ in driver.statements if "x]" in sql]
-    assert (
-        len(catalog) == 3
-    )  # objects, columns and the definitions read for code evidence
+    assert len(catalog) == 3  # objects, columns and the definitions read for code evidence
     for sql in catalog:
         assert "[x]]; DROP DATABASE EDWDM; --].sys." in sql
         assert sql.replace("[x]]; DROP DATABASE EDWDM; --]", "").count("DROP") == 0
@@ -581,9 +554,7 @@ async def test_statements_name_no_forbidden_column(driver: FakeDriver) -> None:
     read_statements = [sql for sql, _ in driver.statements]
     await probe(driver)
     every = [sql for sql, _ in driver.statements]
-    constants = [
-        value for name, value in vars(sqlserver).items() if name.endswith("_SQL")
-    ]
+    constants = [value for name, value in vars(sqlserver).items() if name.endswith("_SQL")]
     for sql in every + constants:
         for name in FORBIDDEN:
             assert name.casefold() not in sql.casefold()
@@ -597,9 +568,7 @@ async def test_every_statement_only_reads(driver: FakeDriver) -> None:
     await read(driver)
     for sql, _ in driver.statements:
         assert sql.startswith("SELECT ")
-        assert not re.search(
-            r"\b(INSERT|UPDATE|DELETE|MERGE|EXEC|ALTER|DROP|CREATE)\b", sql
-        )
+        assert not re.search(r"\b(INSERT|UPDATE|DELETE|MERGE|EXEC|ALTER|DROP|CREATE)\b", sql)
 
 
 async def test_catalog_statements_touch_only_system_views(driver: FakeDriver) -> None:
@@ -607,9 +576,7 @@ async def test_catalog_statements_touch_only_system_views(driver: FakeDriver) ->
     for sql, _ in driver.statements:
         if sql not in (sqlserver.DEFINITIONS_SQL, sqlserver.DETAILS_SQL):
             sources = re.findall(r"(?:FROM|JOIN) (\S+)", sql)
-            assert sources and all(
-                ".sys." in name or name.startswith("sys.") for name in sources
-            )
+            assert sources and all(".sys." in name or name.startswith("sys.") for name in sources)
 
 
 # --- driver errors -------------------------------------------------------------------------------
@@ -621,9 +588,7 @@ TEXT = b"Login failed for user reader at dwh-source " + SECRET.encode()
     ("error", "code"),
     [
         (
-            FakeOperationalError(
-                (20009, b"Unable to connect: Connection refused (111)")
-            ),
+            FakeOperationalError((20009, b"Unable to connect: Connection refused (111)")),
             "network",
         ),
         (
@@ -657,9 +622,7 @@ async def test_connect_errors(driver: FakeDriver, error: Exception, code: str) -
 async def test_missing_definition_table_or_column(
     driver: FakeDriver, sql: str, number: int
 ) -> None:
-    driver.failures[sql] = FakeProgrammingError(
-        number, b"Invalid name OPR.DatasetDefinition"
-    )
+    driver.failures[sql] = FakeProgrammingError(number, b"Invalid name OPR.DatasetDefinition")
     with pytest.raises(SourceInvalid) as caught:
         await read(driver)
     assert caught.value.code == "schema"
@@ -667,9 +630,7 @@ async def test_missing_definition_table_or_column(
 
 
 async def test_denied_definition_table_is_a_login_class(driver: FakeDriver) -> None:
-    driver.failures[sqlserver.DEFINITIONS_SQL] = FakeOperationalError(
-        229, b"permission denied"
-    )
+    driver.failures[sqlserver.DEFINITIONS_SQL] = FakeOperationalError(229, b"permission denied")
     with pytest.raises(SourceUnavailable) as caught:
         await read(driver)
     assert caught.value.code == "login"
