@@ -157,14 +157,19 @@ def parse_shortlist(reply: Mapping[str, object], ids: Mapping[str, str], limit: 
 
 
 def shortlist(
-    query: str, catalog: Catalog, hints: str, client: LLMClient, limit: int
+    query: str,
+    catalog: Catalog,
+    hints: str,
+    client: LLMClient,
+    limit: int,
+    max_tokens: int = 8000,
 ) -> Shortlist | None:
     """Step 1: the whole catalog in one call."""
     reply = client.chat_json(
         shortlist_system(catalog.text, limit),
         shortlist_user(query, hints),
         SHORTLIST_SCHEMA,
-        max_tokens=2500,
+        max_tokens=max_tokens,
     )
     return None if reply is None else parse_shortlist(reply, catalog.ids, limit)
 

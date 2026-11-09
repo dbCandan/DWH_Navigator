@@ -46,9 +46,13 @@ MAX_REPLIES = 2
 ERROR_TEXT_CHARS = 600
 REPAIR_REPLY_CHARS = 2000
 REPAIR_PROMPT = "Yanıtın geçerli JSON değil. SADECE şemaya uyan JSON döndür."
-# Requirement 7, rule 3 (target only): when the server refuses ``reasoning_effort: "none"``, the
-# resend asks the model's chat template to turn thinking off instead (vLLM serving Qwen).
-THINKING_OFF_KWARGS: Mapping[str, Any] = {"enable_thinking": False}
+# Target only: when the admin sets thinking off (``reasoning_effort: "none"``), every request also
+# asks the model's chat template to turn thinking off, from the first request on. Servers such as
+# vLLM accept ``reasoning_effort`` silently for Qwen and keep thinking, which filled the reply
+# budget. ``enable_thinking`` is the switch of the Qwen3, GLM and Hunyuan templates, ``thinking``
+# that of the DeepSeek-V3.1 and Granite templates; a template ignores a name it does not use. A
+# server that refuses the field gets the request again without it (Requirement 7).
+THINKING_OFF_KWARGS: Mapping[str, Any] = {"enable_thinking": False, "thinking": False}
 
 # Requirement 15: the connection test's chat step, as in the source.
 SERVER_STEP = "Sunucu"
@@ -233,8 +237,9 @@ def refused_feature(
 ) -> AdaptedFeature | None:
     """The first Requirement 7 rule a 400 body matches among the features still sent.
 
-    ``thinking_off`` is the target-only ``chat_template_kwargs`` field; its rule comes last, so
-    the four source rules keep their order and precedence.
+    ``thinking_off`` is the target-only ``chat_template_kwargs`` field. An error that names the
+    field itself drops it before the effort rule (whose word "thinking" would match it too);
+    otherwise its rule comes last, so the four source rules keep their order and precedence.
     """
 
     text = folded_error
@@ -244,6 +249,8 @@ def refused_feature(
         word in text for word in ("json mode", "response_format", "response_mime_type", "schema")
     ):
         return AdaptedFeature.RESPONSE_FORMAT
+    if thinking_off and ("chat_template_kwargs" in text or "enable_thinking" in text):
+        return AdaptedFeature.CHAT_TEMPLATE_KWARGS
     if reasoning_effort and ("reasoning" in text or "thinking" in text):
         return AdaptedFeature.REASONING_EFFORT
     if seed is not None and "seed" in text:

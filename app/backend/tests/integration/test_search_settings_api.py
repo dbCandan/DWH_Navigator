@@ -56,8 +56,9 @@ async def test_every_endpoint_needs_a_session_and_the_manager_role(dd: DataDicti
 async def test_the_schema_values_and_defaults(dd: DataDictionary) -> None:
     body = (await dd.get("/search-settings")).json()
     assert [s["id"] for s in body["sections"]] == ["analyst", "terms", "ranking", "words", "cache"]
-    assert sum(len(s["fields"]) for s in body["sections"]) == 24
+    assert sum(len(s["fields"]) for s in body["sections"]) == 25
     assert body["values"] == body["defaults"] and body["values"]["analyst.shortlist"] == 14
+    assert body["values"]["analyst.shortlist_max_tokens"] == 8000
     assert body["sections"][3]["fields"][5]["effect"] == "reindex"
 
 

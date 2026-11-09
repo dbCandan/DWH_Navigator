@@ -44,7 +44,7 @@ def _rejected(values: dict[str, Any]) -> tuple[str, str]:
     return refused.value.code, refused.value.message
 
 
-def test_five_sections_and_twenty_four_fields_on_two_pages() -> None:
+def test_five_sections_and_twenty_five_fields_on_two_pages() -> None:
     assert [(s.id, s.page, s.advanced) for s in SECTIONS] == [
         ("analyst", "search", False),
         ("terms", "search", False),
@@ -52,7 +52,7 @@ def test_five_sections_and_twenty_four_fields_on_two_pages() -> None:
         ("words", "search", True),
         ("cache", "data", False),
     ]
-    assert len(FIELDS) == 24
+    assert len(FIELDS) == 25
     assert not any(key.startswith(("llm.", "dictionary.", "report.", "index.")) for key in FIELDS)
     assert "expansion.term_dictionary" not in FIELDS and "expansion.stopwords" not in FIELDS
     assert FIELDS["expansion.enabled"].help == (

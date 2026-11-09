@@ -241,7 +241,7 @@ def test_rule_order_and_still_sent_features() -> None:
     assert refused_feature(fold("bilinmeyen alan"), **every) is None
 
 
-def test_the_thinking_switch_rule_comes_after_the_source_rules() -> None:
+def test_the_thinking_switch_rule() -> None:
     sent = {
         "system_role": False,
         "structured": True,
@@ -257,10 +257,17 @@ def test_the_thinking_switch_rule_comes_after_the_source_rules() -> None:
         assert refused_feature(fold(text), **sent) is AdaptedFeature.CHAT_TEMPLATE_KWARGS
         # Not sent, never refused.
         assert refused_feature(fold(text), **{**sent, "thinking_off": False}) is None
-    # The four source rules keep their precedence.
+    # The system role and schema rules keep their precedence.
     both = fold("chat_template_kwargs: schema and seed are not supported")
     assert refused_feature(both, **sent) is AdaptedFeature.RESPONSE_FORMAT
-    assert refused_feature(both, **{**sent, "structured": False}) is AdaptedFeature.SEED
+    # An error that names the switch drops it before the effort and seed rules.
+    named = {**sent, "structured": False, "reasoning_effort": "none"}
+    assert refused_feature(both, **named) is AdaptedFeature.CHAT_TEMPLATE_KWARGS
+    thinking = fold("unexpected keyword enable_thinking")
+    assert refused_feature(thinking, **named) is AdaptedFeature.CHAT_TEMPLATE_KWARGS
+    # A bare "template" word still comes after the source rules.
+    late = fold("template and seed are not supported")
+    assert refused_feature(late, **named) is AdaptedFeature.SEED
 
 
 def test_context_exceeded_needs_context_and_a_size_word() -> None:

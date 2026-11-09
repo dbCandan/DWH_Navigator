@@ -76,6 +76,9 @@ class AnalystSettings:
     detail_columns: int = 8
     min_confidence: float = 0.5  # recommendations below this are not shown (ADR-006)
     max_tokens: int = 8000  # answer budget of the second step
+    # Reply budget of the first step (catalog shortlist); was a fixed 2500, which a thinking
+    # model could fill before writing its JSON (output_truncated).
+    shortlist_max_tokens: int = 8000
 
 
 @dataclass(slots=True)

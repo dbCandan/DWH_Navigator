@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -34,7 +35,18 @@ TARGET_ONLY = {
     "vsa.pipeline": {"ISTANBUL", "_UNREACHABLE", "_NO_MODEL", "_KEY_UNREADABLE"},
     "vsa.dictionary_store": {"SOURCE_NAME"},
     "vsa.feedback": {"UTC"},
+    "vsa.answer_cache": {"_NEUTRAL_FIELDS"},  # step 1's reply limit stays out of the key
 }
+# Target-only settings: step 1's reply limit, a fixed 2500 in the source (a thinking model filled
+# it before its JSON), is an analyst setting here.
+TARGET_ONLY_SETTINGS = {"analyst": {"shortlist_max_tokens"}}
+
+
+def _without_target_settings(settings: list[Any]) -> list[Any]:
+    return [
+        [section, [kv for kv in values if kv[0] not in TARGET_ONLY_SETTINGS.get(section, set())]]
+        for section, values in settings
+    ]
 
 
 def test_target_matches_the_source_snapshot(tmp_path: Path) -> None:
@@ -56,7 +68,7 @@ def test_constants_match_the_source() -> None:
     source = json.loads((harness.SNAPSHOT / "constants.json").read_text(encoding="utf-8"))
     target = harness.target_constants()
     assert target["prompts_digest"] == source["prompts_digest"]
-    assert target["settings"] == source["settings"]
+    assert _without_target_settings(target["settings"]) == source["settings"]
     for module, values in source["modules"].items():
         mine = target["modules"][module]
         for name, value in values.items():

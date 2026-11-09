@@ -120,8 +120,9 @@ class LlmTimeouts:
 class RequestFeatures:
     """What a chat request still sends; a feature the server refused is dropped (Requirement 7).
 
-    ``thinking_off`` sends ``chat_template_kwargs`` (target only): it is set when the server
-    refuses ``reasoning_effort: "none"`` and is never sent in a first request.
+    ``thinking_off`` sends ``chat_template_kwargs`` (target only): it is set from the first
+    request on when thinking is off (``reasoning_effort: "none"``), and stays when the server
+    refuses the effort field, so thinking is still asked off through the chat template.
     """
 
     system_role: bool
@@ -133,7 +134,8 @@ class RequestFeatures:
     @classmethod
     def initial(cls, connection: LlmConnection) -> "RequestFeatures":
         seed = connection.seed if connection.seed >= 0 else None
-        return cls(True, True, connection.reasoning_effort, seed)
+        effort = connection.reasoning_effort
+        return cls(True, True, effort, seed, thinking_off=effort == "none")
 
     def refused(self, folded_error: str) -> AdaptedFeature | None:
         return refused_feature(
@@ -151,8 +153,7 @@ class RequestFeatures:
         elif feature is AdaptedFeature.RESPONSE_FORMAT:
             self.structured = False
         elif feature is AdaptedFeature.REASONING_EFFORT:
-            # Thinking was asked off: ask the chat template instead of the refused field.
-            self.thinking_off = self.reasoning_effort == "none"
+            # The chat template switch (thinking_off) is kept: it still asks thinking off.
             self.reasoning_effort = ""
         elif feature is AdaptedFeature.CHAT_TEMPLATE_KWARGS:
             self.thinking_off = False
@@ -184,7 +185,7 @@ def chat_body(
     }
     if features.reasoning_effort:
         body["reasoning_effort"] = features.reasoning_effort
-    if features.thinking_off:  # in the refused field's place (Requirement 7, rule 3)
+    if features.thinking_off:  # thinking off through the chat template too (target only)
         body["chat_template_kwargs"] = dict(THINKING_OFF_KWARGS)
     if features.seed is not None:
         body["seed"] = features.seed

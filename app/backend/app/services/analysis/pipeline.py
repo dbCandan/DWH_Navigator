@@ -376,7 +376,7 @@ class Engine:
             "1. adım — aday seçimi", f"{len(catalog.ids)} tablonun kataloğu", key="shortlist"
         ) as sp:
             hints = self._hints(ranked, relevance, catalog)
-            short = shortlist(query, catalog, hints, self.llm, a.shortlist)
+            short = shortlist(query, catalog, hints, self.llm, a.shortlist, a.shortlist_max_tokens)
             if sp is not None and short is None:
                 sp.status, sp.detail = "error", "yanıt yok"
             elif sp is not None and short is not None:

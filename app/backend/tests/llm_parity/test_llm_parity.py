@@ -5,10 +5,10 @@ the source client sent (adaptation and repair resends included), the returned JS
 equal, and each failure is its Requirement 13 class. The source side is recorded in the snapshot
 by ``tests.llm_parity.run_source``; with ``DWHNAVIGATOR_PARITY_SOURCE_DIR`` naming an export of the
 source at that commit, the source is also run again here and must reproduce the snapshot. The
-target differs in two declared places only (Requirement 6): the ``chat_template_kwargs`` field of
-Requirement 7, rule 3 (``Scenario.thinking_off_from``), added to the source bytes here and never to
-the snapshot, and the repair request it does not send after a reply cut at ``max_tokens``
-(Requirement 8, Decision 20; ``TRUNCATIONS``).
+target differs in two declared places only (Requirement 6): the ``chat_template_kwargs`` field it
+sends in every request while thinking is off (``reasoning_effort: "none"``), added to the source
+bytes here and never to the snapshot, and the repair request it does not send after a reply cut at
+``max_tokens`` (Requirement 8, Decision 20; ``TRUNCATIONS``).
 """
 
 import json
@@ -21,6 +21,7 @@ from typing import Any
 import pytest
 
 from app.domain.llm import (
+    THINKING_OFF_KWARGS,
     LlmChatRequest,
     LlmConnection,
     LlmOutcome,
@@ -50,43 +51,37 @@ def _snapshot() -> dict[str, Any]:
 
 
 def _with_thinking_off(body: str) -> str:
-    """The source body with ``chat_template_kwargs`` in the place of the dropped effort."""
+    """The source body with ``chat_template_kwargs`` after the effort (or ``max_tokens``)."""
 
     fields = json.loads(body)
     # json.dumps defaults write the source's bytes back unchanged (Decision 6).
     assert json.dumps(fields) == body
-    assert "reasoning_effort" not in fields and "chat_template_kwargs" not in fields
+    assert "chat_template_kwargs" not in fields
+    after = "reasoning_effort" if "reasoning_effort" in fields else "max_tokens"
     written: dict[str, Any] = {}
     for name, value in fields.items():
         written[name] = value
-        if name == "max_tokens":
-            written["chat_template_kwargs"] = {"enable_thinking": False}
+        if name == after:
+            written["chat_template_kwargs"] = dict(THINKING_OFF_KWARGS)
     return json.dumps(written)
 
 
 def target_bodies(scenario: Scenario, source_bodies: list[str]) -> list[str]:
     """What the target must send: the source's bodies plus the declared difference only."""
 
-    start = scenario.thinking_off_from
-    if start is None:
+    if scenario.reasoning_effort != "none":
         return list(source_bodies)
-    return [
-        _with_thinking_off(body) if index >= start else body
-        for index, body in enumerate(source_bodies)
-    ]
+    return [_with_thinking_off(body) for body in source_bodies]
 
 
-def test_the_declared_difference_follows_a_refused_none_effort_only() -> None:
+def test_the_declared_difference_follows_thinking_off_only() -> None:
     for scenario in SCENARIOS:
         source = _snapshot()["scenarios"][scenario.name]["bodies"]
-        if scenario.thinking_off_from is None:
-            continue
-        assert scenario.reasoning_effort == "none"
-        start = scenario.thinking_off_from
-        # The first request is never changed, and the change starts where the effort was dropped.
-        assert start >= 1
-        assert '"reasoning_effort": "none"' in source[start - 1]
-        assert all('"reasoning_effort"' not in body for body in source[start:])
+        target = target_bodies(scenario, source)
+        if scenario.reasoning_effort == "none":
+            assert all('"chat_template_kwargs"' in body for body in target)
+        else:
+            assert target == source
 
 
 def test_the_snapshot_is_the_source_commit_and_covers_every_scenario() -> None:

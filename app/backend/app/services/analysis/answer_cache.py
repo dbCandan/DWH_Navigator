@@ -48,6 +48,9 @@ NEGATIONS = frozenset({"yok", "degil", "haric", "harici", "disinda", "olmayan", 
 # Settings that do not change an answer: this feature's own switches. The dictionary and
 # the word lists count by their content (below); the chat model comes from the model port.
 _NEUTRAL = ("cache",)
+# Single settings that do not change an answer: step 1's reply limit only decides whether a
+# thinking model's reply is cut, so saved answers stay usable when it changes.
+_NEUTRAL_FIELDS = {"analyst": ("shortlist_max_tokens",)}
 _LLM_KEYS = ("model", "temperature", "reasoning_effort", "seed")
 
 
@@ -95,6 +98,9 @@ def fingerprint(
     raw = asdict(settings)
     for key in _NEUTRAL:
         raw.pop(key, None)
+    for section, names in _NEUTRAL_FIELDS.items():
+        for name in names:
+            raw[section].pop(name, None)
     raw["llm"] = {k: getattr(model, k) for k in _LLM_KEYS}
     raw["_"] = {
         "format": CACHE_FORMAT,

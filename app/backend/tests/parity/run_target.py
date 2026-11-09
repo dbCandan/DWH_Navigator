@@ -33,6 +33,8 @@ from tests.parity.driver import (
     main,
 )
 
+# The source's fixed step 1 reply limit (a setting in the target).
+SOURCE_SHORTLIST_MAX_TOKENS = 2500
 _CHAT_FAILURES = {
     fake_model.FAIL_INVALID_JSON: ModelFailure(FailureCode.INVALID_JSON),
     fake_model.FAIL_CONTEXT: ModelFailure(FailureCode.CONTEXT_EXCEEDED, 400),
@@ -119,6 +121,8 @@ class TargetSide:
         self, dictionary: Any, overrides: Mapping[str, Any], groups: list[Any], stop: Any, llm: Any
     ) -> Engine:
         settings = Settings()
+        # Step 1's reply limit is a target setting; the source sent a fixed 2500.
+        settings.analyst.shortlist_max_tokens = SOURCE_SHORTLIST_MAX_TOKENS
         apply_overrides(settings, overrides)
         return Engine(dictionary, settings, Resources(list(groups), stop), llm=llm)
 

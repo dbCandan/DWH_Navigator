@@ -115,6 +115,16 @@ SECTIONS: tuple[SettingSection, ...] = (
                 step=0.05,
             ),
             _number(
+                "analyst.shortlist_max_tokens",
+                "Aday seçimi için en fazla token",
+                "1. adımda modelin yazabileceği en uzun cevap (aday tablo listesi).",
+                type="int",
+                min=1000,
+                max=32000,
+                step=500,
+                advanced=True,
+            ),
+            _number(
                 "analyst.max_tokens",
                 "Cevap için en fazla token",
                 "2. adımda modelin yazabileceği en uzun cevap.",
@@ -385,7 +395,7 @@ def _set(settings: Settings, key: str, value: Any) -> None:
 
 
 def values_of(settings: Settings) -> dict[str, Any]:
-    """The 24 schema values of engine settings, by key, in schema order."""
+    """The 25 schema values of engine settings, by key, in schema order."""
 
     return {key: _get(settings, key) for key in FIELDS}
 

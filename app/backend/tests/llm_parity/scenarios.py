@@ -3,9 +3,9 @@
 Standard library only: the source side imports this module next to the source package. Each
 scenario is a connection, the chat calls made on one client in order, and the scripted answers
 of the fake server. ``expected`` is the Requirement 13 class of each call on the target.
-``thinking_off_from`` declares the first target difference (Requirement 7, rule 3): from that
-request on, the target sends ``chat_template_kwargs`` where the source sent nothing, because the
-server refused ``reasoning_effort: "none"``. ``TRUNCATIONS`` declares the second (Requirement 8,
+The first target difference: with thinking off (``reasoning_effort: "none"``) every target request
+also sends ``chat_template_kwargs`` (thinking off through the chat template), which the source
+never sent. ``TRUNCATIONS`` declares the second (Requirement 8,
 Decision 20): after a non-JSON reply cut at ``max_tokens`` the target sends no repair request.
 Every other byte stays the source's.
 """
@@ -86,7 +86,6 @@ class Scenario:
     reasoning_effort: str = "none"
     seed: int = 42
     api_key: str = ""
-    thinking_off_from: int | None = None
 
 
 _DEVELOPER = "Developer instruction is not enabled for model"
@@ -113,7 +112,7 @@ SCENARIOS: tuple[Scenario, ...] = (
     ),
     Scenario("sistem_reddi", (error(400, _DEVELOPER), reply(_OK)), ("ok",)),
     Scenario("sema_reddi", (error(400, _JSON_MODE), reply(_OK)), ("ok",)),
-    Scenario("dusunme_reddi", (error(400, _REASONING), reply(_OK)), ("ok",), thinking_off_from=1),
+    Scenario("dusunme_reddi", (error(400, _REASONING), reply(_OK)), ("ok",)),
     Scenario("seed_reddi", (error(400, _SEED), reply(_OK)), ("ok",)),
     Scenario(
         "art_arda_ret_ve_hafiza",
@@ -126,7 +125,6 @@ SCENARIOS: tuple[Scenario, ...] = (
         ),
         ("ok", "ok"),
         calls=(Call(), Call(user="İkinci soru: şube müdürü kim?", max_tokens=8000)),
-        thinking_off_from=3,
     ),
     Scenario(
         "dort_ret_siniri",
@@ -137,7 +135,6 @@ SCENARIOS: tuple[Scenario, ...] = (
             error(400, _SEED),
         ),
         ("upstream_status",),
-        thinking_off_from=3,
     ),
     Scenario(
         "json_olmayan_ve_onarim",
