@@ -92,6 +92,43 @@ SHORTLIST_SCHEMA: dict[str, Any] = {
 }
 
 
+# What parse_shortlist keeps of each list; the schema sent to the model says the same, so a
+# server with structured output closes a list there (target only). Without it Qwen3.6 on vLLM
+# listed the catalog one table after another under "confusables" until max_tokens.
+SHORTLIST_TERMS = 12
+SHORTLIST_FAMILIES = 6
+SHORTLIST_FAMILY_TERMS = 8
+
+
+def shortlist_schema(shortlist: int) -> dict[str, Any]:
+    """SHORTLIST_SCHEMA with every list capped where parse_shortlist cuts it."""
+    props = SHORTLIST_SCHEMA["properties"]
+    family = props["families"]["items"]
+    return {
+        **SHORTLIST_SCHEMA,
+        "properties": {
+            **props,
+            "candidates": {**props["candidates"], "maxItems": shortlist},
+            "confusables": {**props["confusables"], "maxItems": shortlist},
+            "search_terms": {**props["search_terms"], "maxItems": SHORTLIST_TERMS},
+            "families": {
+                **props["families"],
+                "maxItems": SHORTLIST_FAMILIES,
+                "items": {
+                    **family,
+                    "properties": {
+                        **family["properties"],
+                        "terms": {
+                            **family["properties"]["terms"],
+                            "maxItems": SHORTLIST_FAMILY_TERMS,
+                        },
+                    },
+                },
+            },
+        },
+    }
+
+
 def shortlist_system(catalog: str, shortlist: int) -> str:
     return f"{ANALYST_ROLE}\n\n{SHORTLIST_RULES.format(shortlist=shortlist)}\n\nKATALOG:\n{catalog}"
 

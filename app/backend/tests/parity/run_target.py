@@ -70,10 +70,20 @@ class TargetClient:
     def chat_json(
         self, system: str, user: str, schema: Mapping[str, Any], *, max_tokens: int = 1024
     ) -> dict[str, Any] | None:
-        reply, failure = self.core.reply(system, user, schema, max_tokens)
+        # Target only: step 1's schema caps its lists (maxItems) where the parser cuts them;
+        # the source sent the same schema without the caps.
+        reply, failure = self.core.reply(system, user, _without_caps(schema), max_tokens)
         if failure:
             self.last_failure = _CHAT_FAILURES[failure]
         return reply
+
+
+def _without_caps(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {k: _without_caps(v) for k, v in value.items() if k != "maxItems"}
+    if isinstance(value, list):
+        return [_without_caps(v) for v in value]
+    return value
 
 
 def _text(value: object) -> str:
